@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.api_key_lessons(text);
