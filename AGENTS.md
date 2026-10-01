@@ -11,3 +11,4 @@
 
 - Course catalogue is static in src/lib/courses.ts; per-learner state (lesson_progress, bookmarks, api_keys) lives in Lovable Cloud with own-row RLS — why: content is curated, learner data must persist.
 - Learner API keys are stored only as SHA-256 hashes; src/lib/api-auth.server.ts enforces revocation, per-key scopes and daily limits for /api/public/v1/* routes; learners may only update safe columns (usage counters are server-only) — why: raw keys are unrecoverable and usage limits must not be self-editable.
+- Learner profile details (name, region, role) live in a profiles table written by the client right after sign-up under own-row RLS; learner role is descriptive only, never used for permissions — why: no auth-schema triggers allowed, and access roles must stay in a separate roles table.
