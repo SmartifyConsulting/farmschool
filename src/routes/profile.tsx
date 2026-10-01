@@ -1,12 +1,16 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Award } from "lucide-react";
+import { Award, KeyRound, LogOut } from "lucide-react";
 import { Phone, Header, Sheet } from "@/components/AppShell";
+import { CourseCard } from "./index";
+import { courses } from "@/lib/courses";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth, useBookmarks, useProgress, courseProgress } from "@/hooks/useLearning";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({ meta: [
     { title: "Profile — FarmerPlus Learning" },
-    { name: "description", content: "Your learner profile, interests and certificates." },
+    { name: "description", content: "Your learner profile, saved courses and certificates." },
     { property: "og:title", content: "Profile — FarmerPlus" },
     { property: "og:description", content: "Your learner profile." },
   ] }),
@@ -14,29 +18,43 @@ export const Route = createFileRoute("/profile")({
 });
 
 function Profile() {
-  const [tab, setTab] = useState("About Me");
+  const [tab, setTab] = useState("Saved");
+  const { user, ready } = useAuth();
+  const { ids } = useBookmarks();
+  const { data } = useProgress();
+  const nav = useNavigate();
+  const enrolled = courses.filter((c) => courseProgress(c, data).started);
+  const completed = courses.filter((c) => courseProgress(c, data).pct === 100);
+  const name = user?.email?.split("@")[0] ?? "Guest";
+  if (ready && !user) return <Phone><Header title="Profile" /><Sheet><p className="py-10 text-center text-sm text-muted-foreground"><Link to="/auth" className="font-semibold text-primary">Sign in</Link> to see your profile and saved courses.</p></Sheet></Phone>;
   return (
     <Phone>
-      <Header title="Profile">
+      <Header greeting={`Hi, ${name}`} title="Profile">
         <div className="mt-4 flex flex-col items-center text-center">
-          <span className="grid h-20 w-20 place-items-center rounded-full border-4 border-primary-foreground/30 bg-accent text-2xl font-bold text-accent-foreground">JS</span>
-          <p className="mt-2 font-semibold">Jacob Samuel</p><p className="text-xs opacity-80">Smallholder Farmer</p>
-          <p className="mt-2 text-sm"><b>4</b> Enrolled <span className="text-accent">•</span> <b>2</b> Certifications</p>
-          <button className="mt-2 rounded-full border border-primary-foreground/50 px-3 py-1 text-xs">Edit Profile</button>
+          <span className="grid h-20 w-20 place-items-center rounded-full border-4 border-primary-foreground/30 bg-accent text-2xl font-bold uppercase text-accent-foreground">{name.slice(0, 2)}</span>
+          <p className="mt-2 font-semibold">{name}</p><p className="text-xs opacity-80">{user?.email}</p>
+          <p className="mt-2 text-sm"><b>{enrolled.length}</b> Enrolled <span className="text-accent">•</span> <b>{completed.length}</b> Certifications</p>
+          <div className="mt-3 flex gap-2">
+            <Link to="/developer" className="flex items-center gap-1 rounded-full border border-primary-foreground/50 px-3 py-1 text-xs"><KeyRound className="h-3 w-3" />API keys</Link>
+            <button onClick={async () => { await supabase.auth.signOut(); nav({ to: "/" }); }} className="flex items-center gap-1 rounded-full border border-primary-foreground/50 px-3 py-1 text-xs"><LogOut className="h-3 w-3" />Sign out</button>
+          </div>
         </div>
-        <div className="mt-4 flex rounded-full bg-primary-foreground/15 p-1 text-sm">
-          {["About Me", "Certifications"].map((t) => <button key={t} onClick={() => setTab(t)} className={`flex-1 rounded-full py-1.5 ${tab === t ? "bg-card text-primary" : ""}`}>{t}</button>)}
+        <div className="mx-auto mt-4 flex max-w-md rounded-full bg-primary-foreground/15 p-1 text-sm">
+          {["Saved", "Certifications"].map((t) => <button key={t} onClick={() => setTab(t)} className={`flex-1 rounded-full py-1.5 ${tab === t ? "bg-card text-primary" : ""}`}>{t}</button>)}
         </div>
       </Header>
       <Sheet>
-        {tab === "About Me" ? (<>
-          <h2 className="font-semibold">Introduction</h2>
-          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">I run a small aquaponics farm and I'm learning to grow more with less water, keep better records and sell directly to local markets.</p>
-          <h2 className="mt-5 font-semibold">Interested Category</h2>
-          <div className="mt-3 flex flex-wrap gap-2">{["Aquaponics", "Water Quality", "Market Access", "Operations", "Sensors"].map((t) => <span key={t} className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">{t}</span>)}</div>
+        {tab === "Saved" ? (<>
+          <h2 className="font-semibold">Saved for later</h2>
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 [&>a]:w-auto">
+            {courses.filter((c) => ids.includes(c.id)).map((c) => <CourseCard key={c.id} c={c} />)}
+          </div>
+          {ids.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No saved courses yet. Tap the bookmark on any course to keep it here.</p>}
         </>) : (
-          <ul className="space-y-3">{["Water Stewardship & Quality Testing", "Market Readiness: Selling Your Produce"].map((c) => (
-            <li key={c} className="flex items-center gap-3 rounded-xl border border-border p-3"><Award className="h-6 w-6 text-accent" /><span className="text-sm font-medium">{c}</span></li>))}</ul>
+          <ul className="grid gap-3 md:grid-cols-2">{completed.map((c) => (
+            <li key={c.id} className="flex items-center gap-3 rounded-xl border border-border p-3"><Award className="h-6 w-6 text-accent" /><span className="text-sm font-medium">{c.title}</span></li>))}
+            {completed.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground md:col-span-2">Finish every lesson in a course to earn its certificate.</p>}
+          </ul>
         )}
       </Sheet>
     </Phone>

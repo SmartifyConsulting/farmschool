@@ -15,6 +15,7 @@ import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as CourseIdRouteImport } from './routes/course.$id'
+import { Route as LessonCourseIdLessonIdRouteImport } from './routes/lesson.$courseId.$lessonId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +47,11 @@ const CourseIdRoute = CourseIdRouteImport.update({
   path: '/course/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LessonCourseIdLessonIdRoute = LessonCourseIdLessonIdRouteImport.update({
+  id: '/lesson/$courseId/$lessonId',
+  path: '/lesson/$courseId/$lessonId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/search': typeof SearchRoute
   '/course/$id': typeof CourseIdRoute
+  '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/search': typeof SearchRoute
   '/course/$id': typeof CourseIdRoute
+  '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,14 +79,27 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/search': typeof SearchRoute
   '/course/$id': typeof CourseIdRoute
+  '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/courses' | '/notifications' | '/profile' | '/search' | '/course/$id'
+    | '/'
+    | '/courses'
+    | '/notifications'
+    | '/profile'
+    | '/search'
+    | '/course/$id'
+    | '/lesson/$courseId/$lessonId'
   fileRoutesByTo: FileRoutesByTo
   to:
-    '/' | '/courses' | '/notifications' | '/profile' | '/search' | '/course/$id'
+    | '/'
+    | '/courses'
+    | '/notifications'
+    | '/profile'
+    | '/search'
+    | '/course/$id'
+    | '/lesson/$courseId/$lessonId'
   id:
     | '__root__'
     | '/'
@@ -87,6 +108,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/search'
     | '/course/$id'
+    | '/lesson/$courseId/$lessonId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -96,6 +118,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   SearchRoute: typeof SearchRoute
   CourseIdRoute: typeof CourseIdRoute
+  LessonCourseIdLessonIdRoute: typeof LessonCourseIdLessonIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -142,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CourseIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lesson/$courseId/$lessonId': {
+      id: '/lesson/$courseId/$lessonId'
+      path: '/lesson/$courseId/$lessonId'
+      fullPath: '/lesson/$courseId/$lessonId'
+      preLoaderRoute: typeof LessonCourseIdLessonIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -152,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   SearchRoute: SearchRoute,
   CourseIdRoute: CourseIdRoute,
+  LessonCourseIdLessonIdRoute: LessonCourseIdLessonIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
