@@ -100,15 +100,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      api_key_lessons: {
-        Args: { _hash: string }
-        Returns: {
-          completed: boolean
-          course_id: string
-          lesson_id: string
-          position_seconds: number
-        }[]
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
