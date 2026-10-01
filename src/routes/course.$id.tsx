@@ -14,7 +14,7 @@ export const Route = createFileRoute("/course/$id")({
     { property: "og:description", content: loaderData?.description ?? "" },
   ] }),
   notFoundComponent: () => <p className="p-10 text-center">Course not found. <Link to="/" className="text-primary">Go home</Link></p>,
-  errorComponent: ({ error }) => <p className="p-10 text-center">{error.message}</p>,
+  errorComponent: ({ error }) => <p className="p-10 text-center">{(error as Error).message}</p>,
   component: CourseDetails,
 });
 
