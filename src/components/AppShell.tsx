@@ -1,8 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, BookOpen, Search, Bell, User, LayoutGrid, KeyRound, Bookmark } from "lucide-react";
 import type { ReactNode } from "react";
-import logo from "@/assets/farmerplus-logo.png.asset.json";
-import { useBookmarks } from "@/hooks/useLearning";
+import logo from "@/assets/mobile-school-logo.png.asset.json";
+import { useBookmarks, useAuth } from "@/hooks/useLearning";
+import { LogIn, UserPlus } from "lucide-react";
 
 const tabs = [
   { to: "/", icon: Home, label: "Home" },
@@ -17,7 +18,7 @@ export function Phone({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-muted md:flex">
       <aside className="sticky top-0 hidden h-screen w-20 shrink-0 flex-col border-r border-border bg-card p-3 md:flex lg:w-64 lg:p-5">
-        <img src={logo.url} alt="FarmerPlus" className="mx-auto mb-8 h-10 w-auto object-contain lg:mx-0" />
+        <img src={logo.url} alt="Mobile School" className="mx-auto mb-6 h-12 w-auto object-contain lg:h-28" />
         <nav className="space-y-1">
           {[...tabs, { to: "/developer", icon: KeyRound, label: "API keys" } as const].map((t) => {
             const active = path === t.to;
@@ -29,6 +30,7 @@ export function Phone({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
+        <AccountLinks />
       </aside>
       <div className="relative mx-auto min-h-screen w-full max-w-md overflow-hidden bg-card pb-28 md:max-w-none md:pb-10">
         {children}
@@ -48,16 +50,38 @@ export function Phone({ children }: { children: ReactNode }) {
   );
 }
 
+function AccountLinks() {
+  const { user, ready } = useAuth();
+  if (!ready || user) return null;
+  return (
+    <div className="mt-auto space-y-2">
+      <Link to="/auth" aria-label="Sign in" className="flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground"><LogIn className="h-4 w-4 shrink-0" /><span className="hidden lg:inline">Sign in</span></Link>
+      <Link to="/auth" search={{ mode: "signup" }} aria-label="Sign up" className="flex items-center justify-center gap-2 rounded-xl bg-accent px-3 py-2.5 text-sm font-semibold text-accent-foreground"><UserPlus className="h-4 w-4 shrink-0" /><span className="hidden lg:inline">Sign up</span></Link>
+    </div>
+  );
+}
+
+function HeaderAction() {
+  const { user, ready } = useAuth();
+  if (ready && !user) return (
+    <div className="flex shrink-0 gap-2 md:hidden">
+      <Link to="/auth" className="rounded-full bg-primary-foreground/15 px-3 py-2 text-xs font-semibold">Sign in</Link>
+      <Link to="/auth" search={{ mode: "signup" }} className="rounded-full bg-accent px-3 py-2 text-xs font-semibold text-accent-foreground">Sign up</Link>
+    </div>
+  );
+  return <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary-foreground/15"><LayoutGrid className="h-5 w-5" /></span>;
+}
+
 export function Header({ greeting = "Hi there", title, children }: { greeting?: string; title: string; children?: ReactNode }) {
   return (
     <header className="bg-primary px-5 pb-6 pt-8 text-primary-foreground md:px-10 md:pt-10">
       <div className="mx-auto max-w-6xl">
-        <div className="flex items-start justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
             <p className="text-sm opacity-80">{greeting} ☁</p>
             <h1 className="text-xl font-semibold md:text-3xl">{title}</h1>
           </div>
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary-foreground/15"><LayoutGrid className="h-5 w-5" /></span>
+          <HeaderAction />
         </div>
         {children}
       </div>
