@@ -10,21 +10,42 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CoursesRouteImport } from './routes/courses'
+import { Route as DeveloperRouteImport } from './routes/developer'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as CourseIdRouteImport } from './routes/course.$id'
 import { Route as LessonCourseIdLessonIdRouteImport } from './routes/lesson.$courseId.$lessonId'
+import { Route as ApiPublicV1CoursesRouteImport } from './routes/api/public/v1/courses'
+import { Route as ApiPublicV1ProgressRouteImport } from './routes/api/public/v1/progress'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CoursesRoute = CoursesRouteImport.update({
   id: '/courses',
   path: '/courses',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeveloperRoute = DeveloperRouteImport.update({
+  id: '/developer',
+  path: '/developer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificationsRoute = NotificationsRouteImport.update({
@@ -35,6 +56,11 @@ const NotificationsRoute = NotificationsRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SearchRoute = SearchRouteImport.update({
@@ -52,73 +78,125 @@ const LessonCourseIdLessonIdRoute = LessonCourseIdLessonIdRouteImport.update({
   path: '/lesson/$courseId/$lessonId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1CoursesRoute = ApiPublicV1CoursesRouteImport.update({
+  id: '/api/public/v1/courses',
+  path: '/api/public/v1/courses',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1ProgressRoute = ApiPublicV1ProgressRouteImport.update({
+  id: '/api/public/v1/progress',
+  path: '/api/public/v1/progress',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/courses': typeof CoursesRoute
+  '/developer': typeof DeveloperRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/course/$id': typeof CourseIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
+  '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
+  '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/courses': typeof CoursesRoute
+  '/developer': typeof DeveloperRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/course/$id': typeof CourseIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
+  '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
+  '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/courses': typeof CoursesRoute
+  '/developer': typeof DeveloperRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/course/$id': typeof CourseIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
+  '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
+  '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth'
     | '/courses'
+    | '/developer'
+    | '/forgot-password'
     | '/notifications'
     | '/profile'
+    | '/reset-password'
     | '/search'
     | '/course/$id'
     | '/lesson/$courseId/$lessonId'
+    | '/api/public/v1/courses'
+    | '/api/public/v1/progress'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auth'
     | '/courses'
+    | '/developer'
+    | '/forgot-password'
     | '/notifications'
     | '/profile'
+    | '/reset-password'
     | '/search'
     | '/course/$id'
     | '/lesson/$courseId/$lessonId'
+    | '/api/public/v1/courses'
+    | '/api/public/v1/progress'
   id:
     | '__root__'
     | '/'
+    | '/auth'
     | '/courses'
+    | '/developer'
+    | '/forgot-password'
     | '/notifications'
     | '/profile'
+    | '/reset-password'
     | '/search'
     | '/course/$id'
     | '/lesson/$courseId/$lessonId'
+    | '/api/public/v1/courses'
+    | '/api/public/v1/progress'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
   CoursesRoute: typeof CoursesRoute
+  DeveloperRoute: typeof DeveloperRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   NotificationsRoute: typeof NotificationsRoute
   ProfileRoute: typeof ProfileRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SearchRoute: typeof SearchRoute
   CourseIdRoute: typeof CourseIdRoute
   LessonCourseIdLessonIdRoute: typeof LessonCourseIdLessonIdRoute
+  ApiPublicV1CoursesRoute: typeof ApiPublicV1CoursesRoute
+  ApiPublicV1ProgressRoute: typeof ApiPublicV1ProgressRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -130,11 +208,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/courses': {
       id: '/courses'
       path: '/courses'
       fullPath: '/courses'
       preLoaderRoute: typeof CoursesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developer': {
+      id: '/developer'
+      path: '/developer'
+      fullPath: '/developer'
+      preLoaderRoute: typeof DeveloperRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notifications': {
@@ -149,6 +248,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/search': {
@@ -172,17 +278,37 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LessonCourseIdLessonIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/courses': {
+      id: '/api/public/v1/courses'
+      path: '/api/public/v1/courses'
+      fullPath: '/api/public/v1/courses'
+      preLoaderRoute: typeof ApiPublicV1CoursesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/progress': {
+      id: '/api/public/v1/progress'
+      path: '/api/public/v1/progress'
+      fullPath: '/api/public/v1/progress'
+      preLoaderRoute: typeof ApiPublicV1ProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
   CoursesRoute: CoursesRoute,
+  DeveloperRoute: DeveloperRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   NotificationsRoute: NotificationsRoute,
   ProfileRoute: ProfileRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SearchRoute: SearchRoute,
   CourseIdRoute: CourseIdRoute,
   LessonCourseIdLessonIdRoute: LessonCourseIdLessonIdRoute,
+  ApiPublicV1CoursesRoute: ApiPublicV1CoursesRoute,
+  ApiPublicV1ProgressRoute: ApiPublicV1ProgressRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
