@@ -5,7 +5,7 @@ export const Route = createFileRoute("/api/public/v1/progress")({
     handlers: {
       GET: async ({ request }) => {
         const { verifyApiKey, json } = await import("@/lib/api-auth.server");
-        const auth = await verifyApiKey(request);
+        const auth = await verifyApiKey(request, "progress:read");
         if (auth instanceof Response) return auth;
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data, error } = await supabaseAdmin.from("lesson_progress")

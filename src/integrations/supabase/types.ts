@@ -17,29 +17,50 @@ export type Database = {
       api_keys: {
         Row: {
           created_at: string
+          daily_limit: number
           id: string
           key_hash: string
           last_used_at: string | null
           name: string
           prefix: string
+          revoked_at: string | null
+          rotated_at: string | null
+          scopes: string[]
+          total_requests: number
+          usage_count: number
+          usage_date: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          daily_limit?: number
           id?: string
           key_hash: string
           last_used_at?: string | null
           name: string
           prefix: string
+          revoked_at?: string | null
+          rotated_at?: string | null
+          scopes?: string[]
+          total_requests?: number
+          usage_count?: number
+          usage_date?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          daily_limit?: number
           id?: string
           key_hash?: string
           last_used_at?: string | null
           name?: string
           prefix?: string
+          revoked_at?: string | null
+          rotated_at?: string | null
+          scopes?: string[]
+          total_requests?: number
+          usage_count?: number
+          usage_date?: string
           user_id?: string
         }
         Relationships: []
