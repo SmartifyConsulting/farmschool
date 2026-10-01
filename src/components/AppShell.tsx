@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, BookOpen, Search, Bell, User, LayoutGrid, KeyRound, Bookmark } from "lucide-react";
 import type { ReactNode } from "react";
-import logo from "@/assets/farmerplus-logo.png.asset.json";
+import logo from "@/assets/mobile-school-logo.png.asset.json";
 import { useBookmarks } from "@/hooks/useLearning";
 
 const tabs = [
@@ -17,7 +17,7 @@ export function Phone({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-muted md:flex">
       <aside className="sticky top-0 hidden h-screen w-20 shrink-0 flex-col border-r border-border bg-card p-3 md:flex lg:w-64 lg:p-5">
-        <img src={logo.url} alt="FarmerPlus" className="mx-auto mb-8 h-10 w-auto object-contain lg:mx-0" />
+        <img src={logo.url} alt="Mobile School" className="mx-auto mb-8 h-10 w-auto object-contain lg:mx-0" />
         <nav className="space-y-1">
           {[...tabs, { to: "/developer", icon: KeyRound, label: "API keys" } as const].map((t) => {
             const active = path === t.to;

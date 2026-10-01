@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PasswordInput, inputCls } from "@/components/PasswordInput";
-import logo from "@/assets/farmerplus-logo.png.asset.json";
+import logo from "@/assets/mobile-school-logo.png.asset.json";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [
@@ -18,7 +18,7 @@ export function AuthCard({ title, children }: { title: string; children: React.R
   return (
     <div className="grid min-h-screen place-items-center bg-primary p-5">
       <div className="w-full max-w-sm rounded-3xl bg-card p-6 shadow-xl">
-        <img src={logo.url} alt="FarmerPlus" className="mx-auto mb-4 h-10 w-auto object-contain" />
+        <img src={logo.url} alt="Mobile School" className="mx-auto mb-4 h-10 w-auto object-contain" />
         <h1 className="mb-5 text-center text-xl font-semibold">{title}</h1>
         {children}
       </div>
