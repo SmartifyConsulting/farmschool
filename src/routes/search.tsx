@@ -40,7 +40,7 @@ function SearchPage() {
           </div>
         ) : (<>
           <div className="flex justify-between"><h2 className="font-semibold">Recent Search</h2><button onClick={() => setRecent([])} className="text-xs text-muted-foreground">Clear</button></div>
-          <div className="mt-3 flex flex-wrap gap-2">{recent.map((r) => <button key={r} onClick={() => setQ(r.split(" ")[0])} className="rounded-full border border-border px-3 py-1 text-xs text-primary">{r}</button>)}</div>
+          <div className="mt-3 flex flex-wrap gap-2">{recent.map((r) => <button key={r} onClick={() => setQ(r.split(" ")[0] ?? r)} className="rounded-full border border-border px-3 py-1 text-xs text-primary">{r}</button>)}</div>
           <h2 className="mt-6 font-semibold">Categories</h2>
           <div className="mt-3 space-y-4">{categories.map((cat) => { const I = icons[cat.icon]; return (
             <button key={cat.name} onClick={() => setQ(cat.name)} className="flex w-full items-center gap-3 text-left">
