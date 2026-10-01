@@ -8,7 +8,7 @@ export const passwordRules = (pw: string, email: string) => [
 ];
 
 /** Turns backend auth errors into friendly messages. */
-export function mapAuthError(err: { message?: string; status?: number; code?: string } | null | undefined, ctx: "signin" | "signup" | "reset" = "signin") {
+export function mapAuthError(err: { message?: string | undefined; status?: number | undefined; code?: string | undefined } | null | undefined, ctx: "signin" | "signup" | "reset" = "signin") {
   if (!err) return "";
   const m = (err.message ?? "").toLowerCase();
   if (err.status === 429 || m.includes("rate limit") || m.includes("too many")) return "Too many attempts. Please wait a minute and try again.";

@@ -38,7 +38,7 @@ const signupSchema = z.object({
 });
 
 type Errors = Partial<Record<"fullName" | "region" | "role" | "email" | "password" | "confirm", string>>;
-const Err = ({ id, msg }: { id: string; msg?: string }) => msg ? <p id={id} className="mt-1 text-xs text-destructive">{msg}</p> : null;
+const Err = ({ id, msg }: { id: string; msg?: string | undefined }) => msg ? <p id={id} className="mt-1 text-xs text-destructive">{msg}</p> : null;
 
 function AuthPage() {
   const search = Route.useSearch();
