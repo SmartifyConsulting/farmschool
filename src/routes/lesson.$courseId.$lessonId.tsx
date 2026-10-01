@@ -75,7 +75,7 @@ function LessonPage() {
           <div className="min-w-0"><p className="truncate text-xs text-muted-foreground">{course.title}</p><h1 className="truncate font-semibold">{lesson.title}</h1></div>
         </div>
         <div className="relative bg-foreground md:overflow-hidden md:rounded-3xl">
-          <video ref={v} src={VIDEO_URL} crossOrigin="anonymous" playsInline className="aspect-video w-full" onClick={toggle}
+          <video ref={v} src={VIDEO_URL} poster={course.image} crossOrigin="anonymous" playsInline className="aspect-video w-full" onClick={toggle}
             onPlay={() => setPlaying(true)} onPause={() => { setPlaying(false); persist(); }} onTimeUpdate={onTime}
             onLoadedMetadata={(e) => { setDur(e.currentTarget.duration); e.currentTarget.playbackRate = speed; const t = e.currentTarget.textTracks[0]; if (t) t.mode = cc ? "showing" : "hidden"; }}
             onEnded={() => persist(true)}>
