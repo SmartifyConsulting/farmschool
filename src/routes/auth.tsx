@@ -5,7 +5,7 @@ import { PasswordInput, inputCls } from "@/components/PasswordInput";
 import logo from "@/assets/mobile-school-logo.png.asset.json";
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (s: Record<string, unknown>): { mode?: "signup" } => (s.mode === "signup" ? { mode: "signup" } : {}),
+  validateSearch: (s: Record<string, unknown>): { mode?: "signup" } => (s['mode'] === "signup" ? { mode: "signup" } : {}),
   head: () => ({ meta: [
     { title: "Sign in — FarmerPlus Learning" },
     { name: "description", content: "Sign in or create a FarmerPlus learner account." },
