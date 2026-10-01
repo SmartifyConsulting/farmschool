@@ -137,6 +137,10 @@
     border-color: var(--color-border);
   }
 
+  html, body {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
   body {
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     background-color: var(--color-background);

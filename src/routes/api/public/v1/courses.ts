@@ -6,7 +6,7 @@ export const Route = createFileRoute("/api/public/v1/courses")({
     handlers: {
       GET: async ({ request }) => {
         const { verifyApiKey, json } = await import("@/lib/api-auth.server");
-        const auth = await verifyApiKey(request);
+        const auth = await verifyApiKey(request, "courses:read");
         if (auth instanceof Response) return auth;
         return json({
           courses: courses.map(({ image: _i, ...c }) => ({
