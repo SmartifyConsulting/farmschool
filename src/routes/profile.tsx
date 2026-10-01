@@ -5,6 +5,7 @@ import { Phone, Header, Sheet } from "@/components/AppShell";
 import { CourseCard } from "./index";
 import { courses } from "@/lib/courses";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth, useBookmarks, useProgress, courseProgress } from "@/hooks/useLearning";
 
 export const Route = createFileRoute("/profile")({
@@ -25,14 +26,15 @@ function Profile() {
   const nav = useNavigate();
   const enrolled = courses.filter((c) => courseProgress(c, data).started);
   const completed = courses.filter((c) => courseProgress(c, data).pct === 100);
-  const name = user?.email?.split("@")[0] ?? "Guest";
+  const { data: prof } = useQuery({ queryKey: ["profile", user?.id], enabled: !!user, queryFn: async () => (await supabase.from("profiles").select("full_name, region, learner_role").maybeSingle()).data });
+  const name = prof?.full_name ?? user?.email?.split("@")[0] ?? "Guest";
   if (ready && !user) return <Phone><Header title="Profile" /><Sheet><p className="py-10 text-center text-sm text-muted-foreground"><Link to="/auth" className="font-semibold text-primary">Sign in</Link> to see your profile and saved courses.</p></Sheet></Phone>;
   return (
     <Phone>
       <Header greeting={`Hi, ${name}`} title="Profile">
         <div className="mt-4 flex flex-col items-center text-center">
           <span className="grid h-20 w-20 place-items-center rounded-full border-4 border-primary-foreground/30 bg-accent text-2xl font-bold uppercase text-accent-foreground">{name.slice(0, 2)}</span>
-          <p className="mt-2 font-semibold">{name}</p><p className="text-xs opacity-80">{user?.email}</p>
+          <p className="mt-2 font-semibold">{name}</p><p className="text-xs opacity-80">{prof ? `${prof.learner_role} · ${prof.region}` : user?.email}</p>
           <p className="mt-2 text-sm"><b>{enrolled.length}</b> Enrolled <span className="text-accent">•</span> <b>{completed.length}</b> Certifications</p>
           <div className="mt-3 flex gap-2">
             <Link to="/developer" className="flex items-center gap-1 rounded-full border border-primary-foreground/50 px-3 py-1 text-xs"><KeyRound className="h-3 w-3" />API keys</Link>
