@@ -5,6 +5,7 @@ import { PasswordInput, inputCls } from "@/components/PasswordInput";
 import logo from "@/assets/mobile-school-logo.png.asset.json";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (s: Record<string, unknown>): { mode?: "signup" } => (s.mode === "signup" ? { mode: "signup" } : {}),
   head: () => ({ meta: [
     { title: "Sign in — FarmerPlus Learning" },
     { name: "description", content: "Sign in or create a FarmerPlus learner account." },
@@ -18,7 +19,7 @@ export function AuthCard({ title, children }: { title: string; children: React.R
   return (
     <div className="grid min-h-screen place-items-center bg-primary p-5">
       <div className="w-full max-w-sm rounded-3xl bg-card p-6 shadow-xl">
-        <img src={logo.url} alt="Mobile School" className="mx-auto mb-4 h-10 w-auto object-contain" />
+        <img src={logo.url} alt="Mobile School" className="mx-auto mb-4 h-28 w-auto object-contain" />
         <h1 className="mb-5 text-center text-xl font-semibold">{title}</h1>
         {children}
       </div>
@@ -27,7 +28,9 @@ export function AuthCard({ title, children }: { title: string; children: React.R
 }
 
 function AuthPage() {
-  const [mode, setMode] = useState<"in" | "up">("in");
+  const search = Route.useSearch();
+  const [mode, setMode] = useState<"in" | "up">(search.mode === "signup" ? "up" : "in");
+  const [confirm, setConfirm] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
@@ -39,6 +42,7 @@ function AuthPage() {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setMsg(error.message); else nav({ to: "/" });
     } else {
+      if (password !== confirm) { setMsg("Passwords don't match."); setBusy(false); return; }
       const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } });
       setMsg(error ? error.message : "Check your email to confirm your account.");
     }
@@ -46,6 +50,9 @@ function AuthPage() {
   };
   return (
     <AuthCard title={mode === "in" ? "Welcome back" : "Create your account"}>
+      <div className="mb-5 flex rounded-full bg-muted p-1 text-sm">
+        {(["in", "up"] as const).map((m) => <button key={m} type="button" onClick={() => { setMode(m); setMsg(null); }} className={`flex-1 rounded-full py-1.5 ${mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{m === "in" ? "Sign in" : "Sign up"}</button>)}
+      </div>
       <form onSubmit={submit} className="space-y-3">
         <label className="block text-sm font-medium" htmlFor="email">Email</label>
         <input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} />
@@ -54,7 +61,11 @@ function AuthPage() {
           {mode === "in" && <Link to="/forgot-password" tabIndex={-1} className="text-xs text-primary">Forgot password?</Link>}
         </div>
         <PasswordInput id="password" value={password} onChange={setPassword} autoComplete={mode === "in" ? "current-password" : "new-password"} />
-        {msg && <p className="text-sm text-muted-foreground">{msg}</p>}
+        {mode === "up" && <>
+          <label className="block text-sm font-medium" htmlFor="confirm">Confirm password</label>
+          <PasswordInput id="confirm" value={confirm} onChange={setConfirm} autoComplete="new-password" />
+        </>}
+        {msg && <p aria-live="polite" className="text-sm text-muted-foreground">{msg}</p>}
         <button disabled={busy} className="w-full rounded-full bg-accent py-3 font-semibold text-accent-foreground disabled:opacity-60">{mode === "in" ? "Sign in" : "Sign up"}</button>
       </form>
       <button onClick={() => { setMode(mode === "in" ? "up" : "in"); setMsg(null); }} className="mt-4 w-full text-center text-sm text-muted-foreground">
