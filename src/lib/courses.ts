@@ -66,6 +66,7 @@ export const courses: Course[] = [
   { id: "farm-operations", title: "Farm Operations Rhythm for Small Teams", category: "Operations", creator: "Grace Wanjiru", image: operations.url, price: 59, rating: 4.6, reviews: 540, duration: "5h 30m", lessons: 23, description: "Build weekly routines, roles and records that keep a small farm running smoothly.", modules: mods("Farm Operations") },
   { id: "market-access", title: "Market Readiness: Selling Your Produce", category: "Market Access", creator: "Samuel Kariuki", image: market.url, price: 45, rating: 4.9, reviews: 1530, duration: "4h 20m", lessons: 15, description: "Price, package and sell your produce to local buyers, restaurants and co-operatives.", modules: mods("Market Access") },
   { id: "smart-monitoring", title: "Smart Monitoring with Sensors", category: "Monitoring", creator: "Lina Haddad", image: monitoring.url, price: 65, rating: 4.5, reviews: 412, duration: "2h 40m", lessons: 14, description: "Use low-cost sensors and dashboards to watch your crops and tanks from anywhere.", modules: mods("Sensor Monitoring") },
+  { id: "soil-health", title: "Soil Health & Composting", category: "Operations", creator: "Thabo Nkosi", image: operations.url, price: 35, rating: 4.7, reviews: 389, duration: "2h 10m", lessons: 11, description: "Build rich, living soil with compost, cover crops and simple soil tests.", modules: mods("Soil Health") },
 ];
 
 export const getCourse = (id: string) => courses.find((c) => c.id === id);

@@ -22,7 +22,7 @@ export function AuthCard({ title, children }: { title: string; children: React.R
   return (
     <div className="grid min-h-screen place-items-center bg-primary p-5">
       <div className="w-full max-w-sm rounded-3xl bg-card p-6 shadow-xl">
-        <Link to="/"><img src={logo.url} alt="Mobile School" className="mx-auto mb-4 h-28 w-auto object-contain" /></Link>
+        <Link to="/"><img src={logo.url} alt="Mobile School" className="mx-auto mb-4 h-[168px] w-auto object-contain" /></Link>
         <h1 className="mb-5 text-center text-xl font-semibold">{title}</h1>
         {children}
       </div>

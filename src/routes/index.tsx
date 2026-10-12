@@ -9,9 +9,9 @@ const icons = { Fish, Droplets, Tractor, Store, Gauge };
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "FarmerPlus Learning — Agricultural Courses" },
-      { name: "description", content: "Learn aquaponics, water quality, farm operations and market access with FarmerPlus." },
-      { property: "og:title", content: "FarmerPlus Learning" },
+      { title: "Mobile School — Agricultural Courses" },
+      { name: "description", content: "Learn aquaponics, water quality, farm operations and market access with Mobile School." },
+      { property: "og:title", content: "Mobile School" },
       { property: "og:description", content: "Practical agricultural courses on any device." },
     ],
   }),
@@ -22,7 +22,7 @@ export function CourseCard({ c }: { c: Course }) {
   const { data } = useProgress();
   const p = courseProgress(c, data);
   return (
-    <Link to="/course/$id" params={{ id: c.id }} className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card">
+    <Link to="/course/$id" params={{ id: c.id }} className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
       <div className="relative h-28 sm:h-32 md:h-40"><img src={c.image} alt="" className="h-full w-full object-cover" />
         <span className="absolute left-2 top-2 rounded-full bg-primary/85 px-2 py-0.5 text-[10px] text-primary-foreground">{c.creator}</span>
         <BookmarkButton courseId={c.id} className="absolute right-2 top-2" /></div>
@@ -43,7 +43,7 @@ function Section({ title, list }: { title: string; list: Course[] }) {
     <section className="mt-6">
       <div className="mb-3 flex items-center justify-between"><h2 className="font-semibold md:text-lg">{title}</h2>
         <Link to="/search" className="flex items-center text-xs text-muted-foreground">See All <ChevronRight className="h-3 w-3" /></Link></div>
-      <div className="grid grid-cols-2 gap-3 pb-2 md:gap-5 lg:grid-cols-3 xl:grid-cols-4">{list.map((c) => <CourseCard key={c.id} c={c} />)}</div>
+      <div className="grid grid-cols-2 gap-3 pb-2 md:grid-cols-3 md:gap-5">{list.map((c) => <CourseCard key={c.id} c={c} />)}</div>
     </section>
   );
 }
@@ -68,7 +68,7 @@ function Index() {
       </div>
       <Sheet>
         {inProgress.length > 0 && <Section title="Continue learning" list={inProgress} />}
-        <Section title="Recommended for you" list={courses} />
+        <Section title="Recommended for you" list={courses.slice(0, 6)} />
         <Section title="Aquaponics & Water" list={courses.filter((c) => ["Aquaponics", "Water Quality", "Monitoring"].includes(c.category))} />
       </Sheet>
     </Phone>
