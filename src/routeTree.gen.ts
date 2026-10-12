@@ -18,6 +18,7 @@ import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as AdminMoodleRouteImport } from './routes/admin.moodle'
 import { Route as CourseIdRouteImport } from './routes/course.$id'
 import { Route as LessonCourseIdLessonIdRouteImport } from './routes/lesson.$courseId.$lessonId'
 import { Route as ApiPublicV1CoursesRouteImport } from './routes/api/public/v1/courses'
@@ -68,6 +69,11 @@ const SearchRoute = SearchRouteImport.update({
   path: '/search',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminMoodleRoute = AdminMoodleRouteImport.update({
+  id: '/admin/moodle',
+  path: '/admin/moodle',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CourseIdRoute = CourseIdRouteImport.update({
   id: '/course/$id',
   path: '/course/$id',
@@ -99,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
+  '/admin/moodle': typeof AdminMoodleRoute
   '/course/$id': typeof CourseIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
@@ -114,6 +121,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
+  '/admin/moodle': typeof AdminMoodleRoute
   '/course/$id': typeof CourseIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
@@ -130,6 +138,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
+  '/admin/moodle': typeof AdminMoodleRoute
   '/course/$id': typeof CourseIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
@@ -147,6 +156,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/reset-password'
     | '/search'
+    | '/admin/moodle'
     | '/course/$id'
     | '/lesson/$courseId/$lessonId'
     | '/api/public/v1/courses'
@@ -162,6 +172,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/reset-password'
     | '/search'
+    | '/admin/moodle'
     | '/course/$id'
     | '/lesson/$courseId/$lessonId'
     | '/api/public/v1/courses'
@@ -177,6 +188,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/reset-password'
     | '/search'
+    | '/admin/moodle'
     | '/course/$id'
     | '/lesson/$courseId/$lessonId'
     | '/api/public/v1/courses'
@@ -193,6 +205,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SearchRoute: typeof SearchRoute
+  AdminMoodleRoute: typeof AdminMoodleRoute
   CourseIdRoute: typeof CourseIdRoute
   LessonCourseIdLessonIdRoute: typeof LessonCourseIdLessonIdRoute
   ApiPublicV1CoursesRoute: typeof ApiPublicV1CoursesRoute
@@ -264,6 +277,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SearchRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/moodle': {
+      id: '/admin/moodle'
+      path: '/admin/moodle'
+      fullPath: '/admin/moodle'
+      preLoaderRoute: typeof AdminMoodleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/course/$id': {
       id: '/course/$id'
       path: '/course/$id'
@@ -305,6 +325,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SearchRoute: SearchRoute,
+  AdminMoodleRoute: AdminMoodleRoute,
   CourseIdRoute: CourseIdRoute,
   LessonCourseIdLessonIdRoute: LessonCourseIdLessonIdRoute,
   ApiPublicV1CoursesRoute: ApiPublicV1CoursesRoute,
