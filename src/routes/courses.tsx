@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Clock, FileText } from "lucide-react";
 import { Phone, Header, SearchBox, Sheet, ProgressBar } from "@/components/AppShell";
 import { courses } from "@/lib/courses";
@@ -20,6 +22,7 @@ function MyCourses() {
   const { user } = useAuth();
   const { data } = useProgress();
   const { ids } = useBookmarks();
+  const { data: moodle } = useQuery({ queryKey: ["moodle-courses"], queryFn: async () => (await supabase.from("moodle_courses").select("moodle_id, title, summary, category, image_url").order("title")).data ?? [] });
   const list = courses.filter((c) => {
     const p = courseProgress(c, data);
     if (tab === "Saved") return ids.includes(c.id);
@@ -51,6 +54,14 @@ function MyCourses() {
             </Link>); })}
           {list.length === 0 && <p className="col-span-full py-10 text-center text-sm text-muted-foreground">{tab === "Saved" ? "Nothing saved yet — tap the bookmark on any course." : tab === "Completed" ? "No completed courses yet." : "Start a lesson to see it here."}</p>}
         </div>)}
+        {!!moodle?.length && <section className="mt-8"><h2 className="mb-3 font-semibold">From the Mobile School LMS</h2>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{moodle.map((m) => (
+            <div key={m.moodle_id} className="min-w-0 rounded-2xl border border-border p-3">
+              {m.image_url && <img src={m.image_url} alt="" className="mb-2 h-28 w-full rounded-xl object-cover" />}
+              <p className="truncate text-sm font-semibold">{m.title}</p>
+              {m.category && <p className="text-xs text-primary">{m.category}</p>}
+              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{m.summary}</p>
+            </div>))}</div></section>}
       </Sheet>
     </Phone>
   );
