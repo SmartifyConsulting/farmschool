@@ -159,7 +159,7 @@ function Editor() {
         const response = await fetch("/api/course-factory", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.session.access_token}` },
-          body: JSON.stringify({ courseId: id, title: lesson.title, sourceId: lesson.sourceRefs[0]?.sourceId ?? sourceName, sourceText: lesson.body.slice(0, 12000) }),
+          body: JSON.stringify({ courseId: id, title: lesson.title, sourceId: lesson.sourceRefs[0]?.sourceId ?? sourceName, sourceText: lesson.body.slice(0, 12000), approvedMethods: choicesFor(candidate.index, lesson.title, lesson.body) }),
         });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.message ?? "AI generation stopped.");
