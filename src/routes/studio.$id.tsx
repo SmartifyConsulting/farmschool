@@ -98,6 +98,42 @@ function Editor() {
   };
 
   const designTable = () => supabase.from("studio_learning_designs" as never);
+  const sourceDraftTable = () => supabase.from("studio_course_source_drafts" as never);
+  const [cloudDraftReady, setCloudDraftReady] = useState(false);
+  const [cloudDraftEnabled, setCloudDraftEnabled] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const loadCloudDraft = async () => {
+      const { data, error } = await sourceDraftTable().select("*").eq("course_id", id).maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        if (!["PGRST205", "42P01"].includes(error.code ?? "")) toast.error("Cloud draft could not be loaded: " + error.message);
+        setCloudDraftReady(true);
+        return;
+      }
+      const row = data as unknown as { source_name: string; source_text: string; draft: DraftCourse | null } | null;
+      if (row) {
+        setSourceName(row.source_name);
+        setSourceText(row.source_text);
+        if (row.draft?.lessons && Array.isArray(row.draft.lessons)) setDraft(row.draft);
+      }
+      setCloudDraftEnabled(true);
+      setCloudDraftReady(true);
+    };
+    void loadCloudDraft();
+    return () => { cancelled = true; };
+  }, [id]);
+  useEffect(() => {
+    if (!cloudDraftReady || !cloudDraftEnabled || !restoredDesign || course?.published) return;
+    const timer = setTimeout(async () => {
+      const { error } = await sourceDraftTable().upsert({
+        course_id: id, source_name: sourceName, source_text: sourceText, draft,
+      } as never, { onConflict: "course_id" });
+      if (error) toast.error("Cloud draft autosave failed: " + error.message);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [id, cloudDraftReady, cloudDraftEnabled, restoredDesign, sourceName, sourceText, draft, course?.published]);
+
   const lessonKey = (index: number, lesson: { title: string; sourceRefs: { sourceId: string; page: number }[] }) =>
     JSON.stringify([index, lesson.title, lesson.sourceRefs]);
   const [designSyncing, setDesignSyncing] = useState(false);
