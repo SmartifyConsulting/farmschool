@@ -1,6 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Award, KeyRound, LogOut } from "lucide-react";
+import { Award, BadgeCheck, KeyRound, LogOut, Printer } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { credentialCode } from "@/lib/studio";
+import logo from "@/assets/mobile-school-logo.png.asset.json";
 import { Phone, Header, Sheet } from "@/components/AppShell";
 import { CourseCard } from "./index";
 import { courses } from "@/lib/courses";
@@ -22,6 +25,7 @@ export const Route = createFileRoute("/profile")({
 
 function Profile() {
   const [tab, setTab] = useState("Saved");
+  const [open, setOpen] = useState<{ id: string; title: string; issued_at: string } | null>(null);
   const { user, ready } = useAuth();
   const { ids } = useBookmarks();
   const { data } = useProgress();
@@ -57,11 +61,29 @@ function Profile() {
           {ids.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No saved courses yet. Tap the bookmark on any course to keep it here.</p>}
         </>) : (
           <ul className="grid gap-3 md:grid-cols-2">{(certs ?? []).map((c) => (
-            <li key={c.id} className="flex items-center gap-3 rounded-xl border border-border p-3"><Award className="h-6 w-6 shrink-0 text-accent" /><span className="min-w-0"><span className="block text-sm font-medium">{c.title}</span><span className="text-xs text-muted-foreground">{c.source === "moodle" ? "Moodle" : "Mobile School"} · {new Date(c.issued_at).toLocaleDateString()}</span></span></li>))}
+            <li key={c.id}><button onClick={() => setOpen(c)} className="flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left hover:bg-muted"><Award className="h-6 w-6 shrink-0 text-accent" /><span className="min-w-0 flex-1"><span className="block text-sm font-medium">{c.title}</span><span className="flex items-center gap-1 text-xs text-muted-foreground"><BadgeCheck className="h-3.5 w-3.5 text-primary" />Mobile School Certified · {new Date(c.issued_at).toLocaleDateString()} · {credentialCode(c.id)}</span></span><span className="text-xs font-semibold text-primary">View</span></button></li>))}
             {!certs?.length && <p className="py-8 text-center text-sm text-muted-foreground md:col-span-2">Finish a course and claim its certificate to see it here.{completed.length > 0 && " Open a completed course and tap “Get my certificate”."}</p>}
           </ul>
         )}
       </Sheet>
+      <Dialog open={!!open} onOpenChange={(o) => !o && setOpen(null)}>
+        <DialogContent className="max-w-2xl print:max-w-none print:border-0 print:shadow-none">
+          <DialogTitle className="sr-only">Certificate</DialogTitle>
+          {open && <div id="certificate" className="rounded-2xl border-4 border-primary p-6 text-center sm:p-10">
+            <img src={logo.url} alt="Mobile School" className="mx-auto h-20 w-auto" />
+            <p className="mt-4 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Certificate of Completion</p>
+            <p className="mt-4 text-sm text-muted-foreground">This certifies that</p>
+            <p className="mt-1 font-display text-2xl font-bold sm:text-3xl">{name}</p>
+            <p className="mt-3 text-sm text-muted-foreground">has completed every lesson and passed every assessment in</p>
+            <p className="mt-1 text-lg font-semibold">{open.title}</p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
+              <span>Issued {new Date(open.issued_at).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}</span>
+              <span className="flex items-center gap-1 font-semibold text-primary"><BadgeCheck className="h-4 w-4" />Verified · {credentialCode(open.id)}</span>
+            </div>
+          </div>}
+          <button onClick={() => window.print()} className="mx-auto flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground print:hidden"><Printer className="h-4 w-4" />Print or save as PDF</button>
+        </DialogContent>
+      </Dialog>
     </Phone>
   );
 }

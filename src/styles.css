@@ -159,3 +159,9 @@
     letter-spacing: -0.02em;
   }
 }
+
+@media print {
+  body * { visibility: hidden; }
+  #certificate, #certificate * { visibility: visible; }
+  #certificate { position: fixed; inset: 0; margin: auto; height: fit-content; }
+}
