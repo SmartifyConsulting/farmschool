@@ -36,10 +36,32 @@ function Editor() {
   const [sourceName, setSourceName] = useState("Training manual");
   const [draft, setDraft] = useState<DraftCourse | null>(null);
   const [importing, setImporting] = useState(false);
+  const [readingFile, setReadingFile] = useState(false);
+  const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", category: STUDIO_CATEGORIES[0] ?? "Farm Management", level: "Beginner", cover_url: "" });
   useEffect(() => { if (course) setForm({ title: course.title, description: course.description, category: course.category, level: course.level, cover_url: course.cover_url ?? "" }); }, [course]);
   const refresh = () => { qc.invalidateQueries({ queryKey: ["studio-course", id] }); qc.invalidateQueries({ queryKey: ["studio-lessons", id] }); qc.invalidateQueries({ queryKey: ["studio-mine"] }); qc.invalidateQueries({ queryKey: ["studio-published"] }); };
 
+  const readTextFile = async (file: File | undefined) => {
+    if (!file) return;
+    if (!/\\.(txt|md)$/i.test(file.name) || file.size > 1_000_000) {
+      toast.error("Choose a .txt or .md file under 1 MB.");
+      return;
+    }
+    setReadingFile(true);
+    try {
+      const text = await file.text();
+      if (!text.trim()) throw new Error("This file has no readable text.");
+      setSourceName(file.name);
+      setSourceText(text);
+      setDraft(null);
+      toast.success("Text loaded. Preview the lessons before importing.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not read file.");
+    } finally {
+      setReadingFile(false);
+    }
+  };
   const previewSource = () => {
     try {
       const next = buildCourseDraft(form.title || course?.title || "Course", [{ sourceId: sourceName.trim() || "Pasted source", page: 1, text: sourceText }]);
@@ -74,8 +96,11 @@ function Editor() {
     if (error) toast.error("Could not add lesson."); else refresh();
   };
   const setPublished = async (published: boolean) => {
+    if (published && !reviewConfirmed) { toast.error("Confirm that you have reviewed the course and its quizzes."); return; }
     if (published && !lessons?.length) { toast.error("Add at least one lesson before publishing."); return; }
-    await supabase.from("studio_courses").update({ published }).eq("id", id); refresh();
+    const { error } = await supabase.from("studio_courses").update({ published }).eq("id", id);
+    if (error) { toast.error("Could not change publishing status."); return; }
+    setReviewConfirmed(false); refresh();
     toast.success(published ? "Published — it now appears in the catalogue." : "Moved back to draft.");
   };
   const remove = async () => { if (!confirm("Delete this course and all its lessons?")) return; await supabase.from("studio_courses").delete().eq("id", id); refresh(); nav({ to: "/studio" }); };
@@ -103,6 +128,7 @@ function Editor() {
             <Input value={form.cover_url} onChange={(e) => setForm({ ...form, cover_url: e.target.value })} placeholder="Cover image link (https://…)" />
             <Button onClick={saveDetails} className="w-full">Save details</Button>
             <div className="border-t border-border pt-3">
+              {!course.published && <label className="mb-3 flex items-start gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={reviewConfirmed} onChange={(e) => setReviewConfirmed(e.target.checked)} className="mt-0.5" />I have reviewed all lessons, sources and quiz answers for accuracy before publishing.</label>}
               {course.published ? <Button variant="outline" className="w-full" onClick={() => setPublished(false)}>Unpublish</Button>
                 : <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setPublished(true)}>Publish to catalogue</Button>}
               <Button variant="ghost" className="mt-2 w-full text-destructive" onClick={remove}><Trash2 className="h-4 w-4" />Delete course</Button>
@@ -110,7 +136,10 @@ function Editor() {
           </section>
           <section className="space-y-3 rounded-2xl border border-border p-4 lg:col-span-2">
             <h2 className="font-semibold">Course Factory — source import</h2>
-            <p className="text-xs text-muted-foreground">Paste extracted text from a training manual. Module and chapter headings become draft reading lessons. This first importer does not yet extract PDF, Word or PowerPoint files or generate AI media. Review every lesson before publishing.</p>
+            <p className="text-xs text-muted-foreground">Paste extracted text from a training manual. Module and chapter headings become draft reading lessons. You can also upload .txt or .md files. PDF, Word and PowerPoint extraction and AI media are not yet available. Review every lesson before publishing.</p>
+            <label className="block text-xs font-medium">Upload a plain-text manual (.txt or .md)
+              <input type="file" accept=".txt,.md,text/plain,text/markdown" disabled={readingFile} onChange={(e) => { void readTextFile(e.target.files?.[0]); e.target.value = ""; }} className="mt-1 block w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-primary" />
+            </label>
             <Input value={sourceName} onChange={(e) => setSourceName(e.target.value)} placeholder="Source document name" aria-label="Source document name" maxLength={160} />
             <Textarea value={sourceText} onChange={(e) => { setSourceText(e.target.value); setDraft(null); }} placeholder={"Module 1: Introduction\\nYour training content..."} rows={6} maxLength={1000000} aria-label="Extracted manual text" />
             <Button type="button" variant="outline" onClick={previewSource} disabled={!sourceText.trim()}>Preview draft lessons</Button>
