@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { STUDIO_CATEGORIES, PASS_MARKS, parsePassMark } from "@/lib/studio";
 import { toast } from "sonner";
-import { buildCourseDraft, type DraftCourse } from "@/lib/course-factory";
+import { buildCourseDraft, type DraftCourse, type SourcePage } from "@/lib/course-factory";
+import { extractDocument } from "@/lib/document-extraction";
 
 export const Route = createFileRoute("/studio/$id")({
   head: () => ({ meta: [
@@ -33,6 +34,7 @@ function Editor() {
   const { data: course, isLoading } = useQuery({ queryKey: ["studio-course", id], queryFn: async () => (await supabase.from("studio_courses").select("*").eq("id", id).maybeSingle()).data });
   const { data: lessons } = useQuery({ queryKey: ["studio-lessons", id], queryFn: async () => ((await supabase.from("studio_lessons").select("*").eq("course_id", id).order("position")).data ?? []) as LessonRow[] });
   const [sourceText, setSourceText] = useState("");
+  const [sourcePages, setSourcePages] = useState<SourcePage[] | null>(null);
   const [sourceName, setSourceName] = useState("Training manual");
   const [draft, setDraft] = useState<DraftCourse | null>(null);
   const [importing, setImporting] = useState(false);
@@ -50,9 +52,11 @@ function Editor() {
     }
     setReadingFile(true);
     try {
-      const text = await file.text();
+      const pages = await extractDocument(file);
+      const text = pages.map((page) => page.text).join("\n\n");
       if (!text.trim()) throw new Error("This file has no readable text.");
       setSourceName(file.name);
+      setSourcePages(pages);
       setSourceText(text);
       setDraft(null);
       toast.success("Text loaded. Preview the lessons before importing.");
@@ -64,7 +68,7 @@ function Editor() {
   };
   const previewSource = () => {
     try {
-      const next = buildCourseDraft(form.title || course?.title || "Course", [{ sourceId: sourceName.trim() || "Pasted source", page: 1, text: sourceText }]);
+      const next = buildCourseDraft(form.title || course?.title || "Course", sourcePages ?? [{ sourceId: sourceName.trim() || "Pasted source", page: 1, text: sourceText }]);
       setDraft(next);
       if (!next.lessons.length) toast.error("No readable lessons found.");
     } catch (error) { toast.error(error instanceof Error ? error.message : "Could not parse source."); }
@@ -138,12 +142,12 @@ function Editor() {
           </section>
           <section className="space-y-3 rounded-2xl border border-border p-4 lg:col-span-2">
             <h2 className="font-semibold">Course Factory — source import</h2>
-            <p className="text-xs text-muted-foreground">Paste extracted text from a training manual. Module and chapter headings become draft reading lessons. You can also upload .txt or .md files. PDF, Word and PowerPoint extraction and AI media are not yet available. Review every lesson before publishing.</p>
-            <label className="block text-xs font-medium">Upload a plain-text manual (.txt or .md)
-              <input type="file" accept=".txt,.md,text/plain,text/markdown" disabled={readingFile} onChange={(e) => { void readTextFile(e.target.files?.[0]); e.target.value = ""; }} className="mt-1 block w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-primary" />
+            <p className="text-xs text-muted-foreground">Paste extracted text from a training manual. Module and chapter headings become draft reading lessons. Upload PDF, Word, PowerPoint or plain text. Scanned PDFs require OCR, which is not yet available. AI media generation is not yet available. Review every lesson before publishing.</p>
+            <label className="block text-xs font-medium">Upload a manual (PDF, DOCX, PPTX, TXT or MD)
+              <input type="file" accept=".pdf,.docx,.pptx,.txt,.md" disabled={readingFile} onChange={(e) => { void readTextFile(e.target.files?.[0]); e.target.value = ""; }} className="mt-1 block w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-primary" />
             </label>
             <Input value={sourceName} onChange={(e) => setSourceName(e.target.value)} placeholder="Source document name" aria-label="Source document name" maxLength={160} />
-            <Textarea value={sourceText} onChange={(e) => { setSourceText(e.target.value); setDraft(null); }} placeholder={"Module 1: Introduction\\nYour training content..."} rows={6} maxLength={1000000} aria-label="Extracted manual text" />
+            <Textarea value={sourceText} onChange={(e) => { setSourceText(e.target.value); setSourcePages(null); setDraft(null); }} placeholder={"Module 1: Introduction\\nYour training content..."} rows={6} maxLength={1000000} aria-label="Extracted manual text" />
             <Button type="button" variant="outline" onClick={previewSource} disabled={!sourceText.trim()}>Preview draft lessons</Button>
             {draft && <div className="space-y-2 rounded-xl bg-muted/40 p-3">
               <p className="text-sm font-medium">{draft.lessons.length} draft reading lessons · Human review required</p>
