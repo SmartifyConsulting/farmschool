@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AskRouteImport } from './routes/ask'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CoursesRouteImport } from './routes/courses'
 import { Route as DeveloperRouteImport } from './routes/developer'
@@ -18,7 +19,9 @@ import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as StudioRouteImport } from './routes/studio'
 import { Route as AdminMoodleRouteImport } from './routes/admin.moodle'
+import { Route as ApiAskRouteImport } from './routes/api/ask'
 import { Route as ApiChallengeRouteImport } from './routes/api/challenge'
 import { Route as CourseIdRouteImport } from './routes/course.$id'
 import { Route as LessonCourseIdLessonIdRouteImport } from './routes/lesson.$courseId.$lessonId'
@@ -28,6 +31,11 @@ import { Route as ApiPublicV1ProgressRouteImport } from './routes/api/public/v1/
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AskRoute = AskRouteImport.update({
+  id: '/ask',
+  path: '/ask',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -70,9 +78,19 @@ const SearchRoute = SearchRouteImport.update({
   path: '/search',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StudioRoute = StudioRouteImport.update({
+  id: '/studio',
+  path: '/studio',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminMoodleRoute = AdminMoodleRouteImport.update({
   id: '/admin/moodle',
   path: '/admin/moodle',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAskRoute = ApiAskRouteImport.update({
+  id: '/api/ask',
+  path: '/api/ask',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiChallengeRoute = ApiChallengeRouteImport.update({
@@ -103,6 +121,7 @@ const ApiPublicV1ProgressRoute = ApiPublicV1ProgressRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/ask': typeof AskRoute
   '/auth': typeof AuthRoute
   '/courses': typeof CoursesRoute
   '/developer': typeof DeveloperRoute
@@ -111,7 +130,9 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
+  '/studio': typeof StudioRoute
   '/admin/moodle': typeof AdminMoodleRoute
+  '/api/ask': typeof ApiAskRoute
   '/api/challenge': typeof ApiChallengeRoute
   '/course/$id': typeof CourseIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
@@ -120,6 +141,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/ask': typeof AskRoute
   '/auth': typeof AuthRoute
   '/courses': typeof CoursesRoute
   '/developer': typeof DeveloperRoute
@@ -128,7 +150,9 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
+  '/studio': typeof StudioRoute
   '/admin/moodle': typeof AdminMoodleRoute
+  '/api/ask': typeof ApiAskRoute
   '/api/challenge': typeof ApiChallengeRoute
   '/course/$id': typeof CourseIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
@@ -138,6 +162,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/ask': typeof AskRoute
   '/auth': typeof AuthRoute
   '/courses': typeof CoursesRoute
   '/developer': typeof DeveloperRoute
@@ -146,7 +171,9 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
+  '/studio': typeof StudioRoute
   '/admin/moodle': typeof AdminMoodleRoute
+  '/api/ask': typeof ApiAskRoute
   '/api/challenge': typeof ApiChallengeRoute
   '/course/$id': typeof CourseIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
@@ -157,6 +184,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/ask'
     | '/auth'
     | '/courses'
     | '/developer'
@@ -165,7 +193,9 @@ export interface FileRouteTypes {
     | '/profile'
     | '/reset-password'
     | '/search'
+    | '/studio'
     | '/admin/moodle'
+    | '/api/ask'
     | '/api/challenge'
     | '/course/$id'
     | '/lesson/$courseId/$lessonId'
@@ -174,6 +204,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/ask'
     | '/auth'
     | '/courses'
     | '/developer'
@@ -182,7 +213,9 @@ export interface FileRouteTypes {
     | '/profile'
     | '/reset-password'
     | '/search'
+    | '/studio'
     | '/admin/moodle'
+    | '/api/ask'
     | '/api/challenge'
     | '/course/$id'
     | '/lesson/$courseId/$lessonId'
@@ -191,6 +224,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/ask'
     | '/auth'
     | '/courses'
     | '/developer'
@@ -199,7 +233,9 @@ export interface FileRouteTypes {
     | '/profile'
     | '/reset-password'
     | '/search'
+    | '/studio'
     | '/admin/moodle'
+    | '/api/ask'
     | '/api/challenge'
     | '/course/$id'
     | '/lesson/$courseId/$lessonId'
@@ -209,6 +245,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AskRoute: typeof AskRoute
   AuthRoute: typeof AuthRoute
   CoursesRoute: typeof CoursesRoute
   DeveloperRoute: typeof DeveloperRoute
@@ -217,7 +254,9 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SearchRoute: typeof SearchRoute
+  StudioRoute: typeof StudioRoute
   AdminMoodleRoute: typeof AdminMoodleRoute
+  ApiAskRoute: typeof ApiAskRoute
   ApiChallengeRoute: typeof ApiChallengeRoute
   CourseIdRoute: typeof CourseIdRoute
   LessonCourseIdLessonIdRoute: typeof LessonCourseIdLessonIdRoute
@@ -232,6 +271,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ask': {
+      id: '/ask'
+      path: '/ask'
+      fullPath: '/ask'
+      preLoaderRoute: typeof AskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -290,11 +336,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SearchRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/studio': {
+      id: '/studio'
+      path: '/studio'
+      fullPath: '/studio'
+      preLoaderRoute: typeof StudioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/moodle': {
       id: '/admin/moodle'
       path: '/admin/moodle'
       fullPath: '/admin/moodle'
       preLoaderRoute: typeof AdminMoodleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ask': {
+      id: '/api/ask'
+      path: '/api/ask'
+      fullPath: '/api/ask'
+      preLoaderRoute: typeof ApiAskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/challenge': {
@@ -337,6 +397,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AskRoute: AskRoute,
   AuthRoute: AuthRoute,
   CoursesRoute: CoursesRoute,
   DeveloperRoute: DeveloperRoute,
@@ -345,7 +406,9 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SearchRoute: SearchRoute,
+  StudioRoute: StudioRoute,
   AdminMoodleRoute: AdminMoodleRoute,
+  ApiAskRoute: ApiAskRoute,
   ApiChallengeRoute: ApiChallengeRoute,
   CourseIdRoute: CourseIdRoute,
   LessonCourseIdLessonIdRoute: LessonCourseIdLessonIdRoute,
