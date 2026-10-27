@@ -11,6 +11,7 @@ import { STUDIO_CATEGORIES, PASS_MARKS, parsePassMark } from "@/lib/studio";
 import { toast } from "sonner";
 import { buildCourseDraft, type DraftCourse, type SourcePage } from "@/lib/course-factory";
 import { extractDocument } from "@/lib/document-extraction";
+import { suggestReviewQuestions } from "@/lib/course-quiz-suggestions";
 
 export const Route = createFileRoute("/studio/$id")({
   head: () => ({ meta: [
@@ -153,6 +154,15 @@ function Editor() {
               <p className="text-sm font-medium">{draft.lessons.length} draft reading lessons · Human review required</p>
               {draft.warnings.map((warning, i) => <p key={i} className="text-xs text-destructive">{warning}</p>)}
               <ol className="list-inside list-decimal text-xs text-muted-foreground">{draft.lessons.map((lesson, i) => <li key={i}>{lesson.title} — {lesson.body.length} characters</li>)}</ol>
+              <div className="space-y-2 border-t border-border pt-3">
+                <h3 className="text-sm font-medium">Suggested knowledge checks</h3>
+                <p className="text-xs text-muted-foreground">These are source-based question prompts, not AI-generated multiple-choice quizzes. Review the suggested answer and create verified options using the Quiz editor below.</p>
+                {suggestReviewQuestions(draft, 8).map((item, i) => <div key={i} className="rounded-lg border border-border p-2 text-xs">
+                  <p className="font-medium">{item.question}</p>
+                  <p className="mt-1 text-muted-foreground">Source answer: {item.suggestedAnswer}</p>
+                  <p className="mt-1 text-muted-foreground">{item.sourceId}, page {item.page}</p>
+                </div>)}
+              </div>
               <Button type="button" onClick={importDraft} disabled={!draft.lessons.length || importing || !!course.published}>{importing ? "Importing…" : "Add draft lessons to course"}</Button>
               {course.published && <p className="text-xs text-destructive">Unpublish the course before importing draft material.</p>}
             </div>}
