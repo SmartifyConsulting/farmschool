@@ -156,6 +156,10 @@ function Editor() {
     if (published && !reviewConfirmed) { toast.error("Confirm that you have reviewed the course and its quizzes."); return; }
     if (published && !lessons?.length) { toast.error("Add at least one lesson before publishing."); return; }
     if (published && lessons?.some((lesson) => lesson.body.includes("Review required before publishing."))) { toast.error("Imported lessons still need review. Edit each imported lesson and remove the review notice after verifying the content."); return; }
+    if (published) {
+      const { error: approvalError } = await supabase.rpc("studio_approve_review" as never, { _course_id: id } as never);
+      if (approvalError) { toast.error(approvalError.message || "Could not record trainer approval."); return; }
+    }
     const { error } = await supabase.from("studio_courses").update({ published }).eq("id", id);
     if (error) { toast.error("Could not change publishing status."); return; }
     setReviewConfirmed(false); refresh();
