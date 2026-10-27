@@ -97,7 +97,7 @@ function Editor() {
     finally { setDesignLoading(null); }
   };
 
-  const designTable = () => supabase.from("studio_learning_designs" as "studio_courses");
+  const designTable = () => supabase.from("studio_learning_designs" as never);
   const lessonKey = (index: number, lesson: { title: string; sourceRefs: { sourceId: string; page: number }[] }) =>
     JSON.stringify([index, lesson.title, lesson.sourceRefs]);
   const [designSyncing, setDesignSyncing] = useState(false);
