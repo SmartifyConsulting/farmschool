@@ -20,6 +20,16 @@ describe("Course Factory draft builder", () => {
     expect(draft.warnings).toHaveLength(2);
   });
 
+  it("skips cover and table-of-contents pages before actual module content", () => {
+    const draft = buildCourseDraft("Beekeeping", [
+      { sourceId: "manual", page: 1, text: "Birds and Bees\\nSHORT LEARNING PROGRAMME\\nentrepreneurship\\ncapacity\\npollinators" },
+      { sourceId: "manual", page: 2, text: "TABLE OF CONTENTS\\nMODULE 1 - KNOWING THE BEE\\nMODULE 2 - THE HONEYBEE COLONY\\nMODULE 3 - BEEKEEPING\\nMODULE 4 - BEE HEALTH" },
+      { sourceId: "manual", page: 3, text: "MODULE 1 - KNOWING THE BEE\\nHoneybees live in organised colonies. Workers forage for food." },
+    ]);
+    expect(draft.lessons.map(x => x.title)).toEqual(["MODULE 1 - KNOWING THE BEE"]);
+    expect(draft.lessons[0].sourceRefs).toEqual([{ sourceId: "manual", page: 3 }]);
+  });
+
   it("rejects invalid provenance", () => {
     expect(() => buildCourseDraft("Example", [{ sourceId: "", page: 0, text: "Content" }])).toThrow();
   });
