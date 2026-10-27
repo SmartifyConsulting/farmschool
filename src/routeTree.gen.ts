@@ -23,6 +23,7 @@ import { Route as StudioRouteImport } from './routes/studio'
 import { Route as AdminMoodleRouteImport } from './routes/admin.moodle'
 import { Route as ApiAskRouteImport } from './routes/api/ask'
 import { Route as ApiChallengeRouteImport } from './routes/api/challenge'
+import { Route as ApiCourseFactoryRouteImport } from './routes/api/course-factory'
 import { Route as ClassIdRouteImport } from './routes/class.$id'
 import { Route as CourseIdRouteImport } from './routes/course.$id'
 import { Route as StudioIdRouteImport } from './routes/studio.$id'
@@ -100,6 +101,11 @@ const ApiChallengeRoute = ApiChallengeRouteImport.update({
   path: '/api/challenge',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCourseFactoryRoute = ApiCourseFactoryRouteImport.update({
+  id: '/api/course-factory',
+  path: '/api/course-factory',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClassIdRoute = ClassIdRouteImport.update({
   id: '/class/$id',
   path: '/class/$id',
@@ -146,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/admin/moodle': typeof AdminMoodleRoute
   '/api/ask': typeof ApiAskRoute
   '/api/challenge': typeof ApiChallengeRoute
+  '/api/course-factory': typeof ApiCourseFactoryRoute
   '/class/$id': typeof ClassIdRoute
   '/course/$id': typeof CourseIdRoute
   '/studio/$id': typeof StudioIdRoute
@@ -168,6 +175,7 @@ export interface FileRoutesByTo {
   '/admin/moodle': typeof AdminMoodleRoute
   '/api/ask': typeof ApiAskRoute
   '/api/challenge': typeof ApiChallengeRoute
+  '/api/course-factory': typeof ApiCourseFactoryRoute
   '/class/$id': typeof ClassIdRoute
   '/course/$id': typeof CourseIdRoute
   '/studio/$id': typeof StudioIdRoute
@@ -191,6 +199,7 @@ export interface FileRoutesById {
   '/admin/moodle': typeof AdminMoodleRoute
   '/api/ask': typeof ApiAskRoute
   '/api/challenge': typeof ApiChallengeRoute
+  '/api/course-factory': typeof ApiCourseFactoryRoute
   '/class/$id': typeof ClassIdRoute
   '/course/$id': typeof CourseIdRoute
   '/studio/$id': typeof StudioIdRoute
@@ -215,6 +224,7 @@ export interface FileRouteTypes {
     | '/admin/moodle'
     | '/api/ask'
     | '/api/challenge'
+    | '/api/course-factory'
     | '/class/$id'
     | '/course/$id'
     | '/studio/$id'
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/admin/moodle'
     | '/api/ask'
     | '/api/challenge'
+    | '/api/course-factory'
     | '/class/$id'
     | '/course/$id'
     | '/studio/$id'
@@ -259,6 +270,7 @@ export interface FileRouteTypes {
     | '/admin/moodle'
     | '/api/ask'
     | '/api/challenge'
+    | '/api/course-factory'
     | '/class/$id'
     | '/course/$id'
     | '/studio/$id'
@@ -282,6 +294,7 @@ export interface RootRouteChildren {
   AdminMoodleRoute: typeof AdminMoodleRoute
   ApiAskRoute: typeof ApiAskRoute
   ApiChallengeRoute: typeof ApiChallengeRoute
+  ApiCourseFactoryRoute: typeof ApiCourseFactoryRoute
   ClassIdRoute: typeof ClassIdRoute
   CourseIdRoute: typeof CourseIdRoute
   LessonCourseIdLessonIdRoute: typeof LessonCourseIdLessonIdRoute
@@ -389,6 +402,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChallengeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/course-factory': {
+      id: '/api/course-factory'
+      path: '/api/course-factory'
+      fullPath: '/api/course-factory'
+      preLoaderRoute: typeof ApiCourseFactoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/class/$id': {
       id: '/class/$id'
       path: '/class/$id'
@@ -460,6 +480,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminMoodleRoute: AdminMoodleRoute,
   ApiAskRoute: ApiAskRoute,
   ApiChallengeRoute: ApiChallengeRoute,
+  ApiCourseFactoryRoute: ApiCourseFactoryRoute,
   ClassIdRoute: ClassIdRoute,
   CourseIdRoute: CourseIdRoute,
   LessonCourseIdLessonIdRoute: LessonCourseIdLessonIdRoute,
