@@ -101,6 +101,15 @@ function Editor() {
   const lessonKey = (index: number, lesson: { title: string; sourceRefs: { sourceId: string; page: number }[] }) =>
     JSON.stringify([index, lesson.title, lesson.sourceRefs]);
   const [designSyncing, setDesignSyncing] = useState(false);
+  const { data: savedDesigns, refetch: refetchSavedDesigns } = useQuery({
+    queryKey: ["studio-learning-designs", id],
+    queryFn: async () => {
+      const { data, error } = await designTable().select("*").eq("course_id", id);
+      if (error) throw error;
+      return (data ?? []) as unknown as Array<{ lesson_key: string; lesson_title: string; proposed_methods: string[]; review_status: string; ai_rationale: string | null }>;
+    },
+  });
+
   useEffect(() => {
     if (!draft?.lessons.length) return;
     let cancelled = false;
@@ -135,6 +144,7 @@ function Editor() {
     };
     const { error } = await designTable().upsert(row as never, { onConflict: "course_id,lesson_key" });
     if (error) throw error;
+    await refetchSavedDesigns();
   };
   const saveDesignSelection = async (index: number, methods: string[]) => {
     if (designSyncing) return;
@@ -410,6 +420,14 @@ function Editor() {
             {draft && <div className="space-y-2 rounded-xl bg-muted/40 p-3">
               <p className="text-sm font-semibold">Proposed course outline · {draft.lessons.length} topics</p><p className="text-xs text-muted-foreground">Review the topics before generating detailed AI lessons. Source references remain attached.</p>
               {draft.warnings.map((warning, i) => <p key={i} className="text-xs text-destructive">{warning}</p>)}
+              {!!savedDesigns?.length && <div className="space-y-2 rounded-xl border border-border p-4">
+                <h3 className="font-semibold">Saved learning designs in Supabase</h3>
+                <p className="text-xs text-muted-foreground">These records are available across devices. To edit or generate their lesson content, upload the source manual on this device.</p>
+                {savedDesigns.map((item, index) => <div key={item.lesson_key} className="rounded-lg bg-muted/40 p-2 text-xs">
+                  <p className="font-medium">{index + 1}. {item.lesson_title} · {item.review_status}</p>
+                  <p className="text-muted-foreground">{item.proposed_methods.join(", ")}</p>
+                </div>)}
+              </div>}
               <div className="space-y-3 rounded-xl border border-border bg-background p-4">
                 <h3 className="font-semibold">AI learning design review</h3>
                 <p className="text-xs text-muted-foreground">Suggested teaching and assessment methods are based on topic keywords. These are preliminary recommendations, not AI-generated media or saved course objects. Approve or adjust each lesson before content generation.</p>
