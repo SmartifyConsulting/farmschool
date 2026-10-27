@@ -42,6 +42,9 @@ function Editor() {
   const [readingFile, setReadingFile] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiDraft, setAiDraft] = useState<{ lessonTitle: string; lessonSummary: string; questions: { question: string; options: string[]; correctIndex: number; sourceQuote: string }[]; droppedUnsupportedQuestions: number } | null>(null);
+  const [batchRunning, setBatchRunning] = useState(false);
+  const [batchProgress, setBatchProgress] = useState("");
+  const [batchDrafts, setBatchDrafts] = useState<{ sourceTitle: string; sourceRefs: string; lessonTitle: string; lessonSummary: string; questions: { question: string; options: string[]; correctIndex: number; sourceQuote: string }[] }[]>([]);
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", category: STUDIO_CATEGORIES[0] ?? "Farm Management", level: "Beginner", cover_url: "" });
   useEffect(() => { if (course) setForm({ title: course.title, description: course.description, category: course.category, level: course.level, cover_url: course.cover_url ?? "" }); }, [course]);
@@ -112,6 +115,66 @@ function Editor() {
       setAiDraft(payload);
     } catch (error) { toast.error(error instanceof Error ? error.message : "AI generation failed."); }
     finally { setAiLoading(false); }
+  };
+
+  const generateBatch = async () => {
+    if (!draft?.lessons.length || batchRunning || aiLoading || course?.published) return;
+    const candidates = draft.lessons.filter((lesson) => lesson.body.length >= 100).slice(0, 5);
+    if (!candidates.length) { toast.error("No lessons with enough source text (100 characters)."); return; }
+    if (!confirm(`Generate AI drafts for ${candidates.length} lessons? Each request uses your daily AI allowance and may incur provider charges.`)) return;
+    setBatchRunning(true); setBatchDrafts([]);
+    const results: { sourceTitle: string; sourceRefs: string; lessonTitle: string; lessonSummary: string; questions: { question: string; options: string[]; correctIndex: number; sourceQuote: string }[] }[] = [];
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session?.access_token) throw new Error("Please sign in.");
+      for (const [index, lesson] of candidates.entries()) {
+        setBatchProgress(`Generating ${index + 1} of ${candidates.length}: ${lesson.title}`);
+        const response = await fetch("/api/course-factory", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.session.access_token}` },
+          body: JSON.stringify({ courseId: id, title: lesson.title, sourceId: lesson.sourceRefs[0]?.sourceId ?? sourceName, sourceText: lesson.body.slice(0, 12000) }),
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.message ?? "AI generation stopped.");
+        results.push({ sourceTitle: lesson.title, sourceRefs: lesson.sourceRefs.map((ref) => `${ref.sourceId}, page ${ref.page}`).join("; "), lessonTitle: payload.lessonTitle, lessonSummary: payload.lessonSummary, questions: payload.questions });
+        setBatchDrafts([...results]);
+      }
+      toast.success(`Generated ${results.length} draft lessons. Review before saving.`);
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Batch generation stopped."); }
+    finally { setBatchProgress(""); setBatchRunning(false); }
+  };
+
+  const saveBatchDrafts = async () => {
+    if (!batchDrafts.length || batchRunning || aiLoading || course?.published) return;
+    setBatchRunning(true);
+    let saved = 0;
+    try {
+      for (const item of batchDrafts) {
+        const position = (lessons?.length ?? 0) + saved * 2;
+        const { error: readingError } = await supabase.from("studio_lessons").insert({
+          course_id: id, kind: "reading", position, title: item.lessonTitle,
+          body: `${item.lessonSummary}\n\nSource: ${item.sourceRefs}\nReview required before publishing.`,
+        });
+        if (readingError) throw readingError;
+        saved++;
+        if (item.questions.length) {
+          const { data: quiz, error: quizError } = await supabase.from("studio_lessons").insert({
+            course_id: id, kind: "quiz", position: position + 1, title: `Knowledge check: ${item.lessonTitle}`,
+            body: "pass:80", quiz: item.questions.map((q) => ({ q: q.question, options: q.options })),
+          }).select("id").single();
+          if (quizError || !quiz) throw quizError ?? new Error("Quiz insert failed.");
+          const { error: answerError } = await supabase.from("studio_quiz_answers").upsert({
+            lesson_id: quiz.id, course_id: id, answers: item.questions.map((q) => q.correctIndex),
+          });
+          if (answerError) throw answerError;
+        }
+      }
+      setBatchDrafts([]);
+      toast.success(`Saved ${saved} AI lesson drafts. Review each lesson and quiz before publishing.`);
+    } catch (error) {
+      setBatchDrafts((current) => current.slice(saved));
+      toast.error(error instanceof Error ? error.message : "Batch save interrupted. Review saved lessons.");
+    } finally { setBatchRunning(false); refresh(); }
   };
 
   const saveAiDraft = async () => {
@@ -210,6 +273,12 @@ function Editor() {
               {draft.warnings.map((warning, i) => <p key={i} className="text-xs text-destructive">{warning}</p>)}
               <ol className="list-inside list-decimal text-xs text-muted-foreground">{draft.lessons.map((lesson, i) => <li key={i}>{lesson.title} — {lesson.body.length} characters</li>)}</ol>
               <div className="space-y-2 border-t border-border pt-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" variant="outline" disabled={batchRunning || aiLoading || !!course.published} onClick={generateBatch}>{batchRunning ? "Working…" : "Generate batch (up to 5 lessons)"}</Button>
+                  {batchProgress && <p className="text-xs text-muted-foreground">{batchProgress}</p>}
+                  {batchDrafts.length > 0 && <Button type="button" size="sm" disabled={batchRunning || aiLoading} onClick={saveBatchDrafts}>Save {batchDrafts.length} batch drafts</Button>}
+                </div>
+                {batchDrafts.map((item, i) => <div key={i} className="rounded-lg border border-border p-2 text-xs"><p className="font-medium">{item.lessonTitle} — {item.questions.length} quiz questions</p><p className="text-muted-foreground">{item.sourceRefs}</p><p className="mt-1 whitespace-pre-wrap">{item.lessonSummary}</p>{item.questions.map((q, j) => <p key={j} className="mt-1">Q: {q.question} — source: {q.sourceQuote}</p>)}</div>)}
                 <Button type="button" variant="outline" disabled={aiLoading || !draft.lessons.length || !!course.published || (draft.lessons[0]?.body.length ?? 0) < 100} onClick={generateAiDraft}>{aiLoading ? "Generating…" : "Generate AI lesson and quiz preview (first lesson)"}</Button>
                 {aiDraft && <div className="space-y-2 rounded-lg border border-border p-3 text-xs">
                   <p className="font-semibold">AI draft — verify against your manual before using</p>
