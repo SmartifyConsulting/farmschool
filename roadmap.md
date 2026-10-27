@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] AI farming-challenge course and lesson finder
 - [x] Desktop + tablet layouts
 - [x] Learner accounts (sign in, forgot/reset password)
 - [x] API keys for learners to access lessons via public API
