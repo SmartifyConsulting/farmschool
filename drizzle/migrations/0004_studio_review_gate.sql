@@ -56,7 +56,7 @@ FOR EACH ROW EXECUTE FUNCTION public.studio_invalidate_answer_review();
 CREATE OR REPLACE FUNCTION public.studio_enforce_publishing_review() RETURNS trigger
 LANGUAGE plpgsql SET search_path = public AS $$
 BEGIN
-  IF NEW.published AND (NOT OLD.published OR NEW.updated_at IS DISTINCT FROM OLD.updated_at) THEN
+  IF NEW.published AND NOT OLD.published THEN
     IF NOT EXISTS (SELECT 1 FROM public.studio_review_approvals WHERE course_id = NEW.id AND reviewer_id = NEW.author_id) THEN
       RAISE EXCEPTION 'Trainer review approval required before publishing'; END IF;
     IF EXISTS (SELECT 1 FROM public.studio_lessons WHERE course_id = NEW.id AND body ILIKE '%Review required before publishing.%') THEN
