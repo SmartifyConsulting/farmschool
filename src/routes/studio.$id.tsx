@@ -146,6 +146,19 @@ function Editor() {
     if (error) throw error;
     await refetchSavedDesigns();
   };
+  const updateSavedApproval = async (lessonKeyValue: string, approved: boolean) => {
+    if (designSyncing || course?.published) return;
+    setDesignSyncing(true);
+    try {
+      const { error } = await designTable().update({
+        review_status: approved ? "approved" : "proposed",
+      } as never).eq("course_id", id).eq("lesson_key", lessonKeyValue);
+      if (error) throw error;
+      await refetchSavedDesigns();
+      toast.success(approved ? "Saved design approved." : "Saved design reopened for review.");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not update saved design."); }
+    finally { setDesignSyncing(false); }
+  };
   const saveDesignSelection = async (index: number, methods: string[]) => {
     if (designSyncing) return;
     setDesignSyncing(true);
@@ -426,6 +439,7 @@ function Editor() {
                   <p className="mt-2 text-muted-foreground"><strong>Teaching methods:</strong> {item.proposed_methods.join(", ") || "Not selected"}</p>
                   {item.ai_rationale && <p className="mt-2 whitespace-pre-wrap text-muted-foreground"><strong>AI explanation:</strong> {item.ai_rationale}</p>}
                   <p className="mt-2 text-muted-foreground">To edit methods or generate learning objects, analyse the original source manual on this device.</p>
+                  {!course?.published && <Button size="sm" variant="outline" disabled={designSyncing || (item.review_status !== "approved" && !item.proposed_methods.length)} onClick={() => void updateSavedApproval(item.lesson_key, item.review_status !== "approved")}>{item.review_status === "approved" ? "Reopen approval" : "Approve saved design"}</Button>}
                 </details>)}
               </div>}
             {draft && <div className="space-y-2 rounded-xl bg-muted/40 p-3">
