@@ -24,6 +24,7 @@ import { Route as AdminMoodleRouteImport } from './routes/admin.moodle'
 import { Route as ApiAskRouteImport } from './routes/api/ask'
 import { Route as ApiChallengeRouteImport } from './routes/api/challenge'
 import { Route as CourseIdRouteImport } from './routes/course.$id'
+import { Route as StudioIdRouteImport } from './routes/studio.$id'
 import { Route as LessonCourseIdLessonIdRouteImport } from './routes/lesson.$courseId.$lessonId'
 import { Route as ApiPublicV1CoursesRouteImport } from './routes/api/public/v1/courses'
 import { Route as ApiPublicV1ProgressRouteImport } from './routes/api/public/v1/progress'
@@ -103,6 +104,11 @@ const CourseIdRoute = CourseIdRouteImport.update({
   path: '/course/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StudioIdRoute = StudioIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => StudioRoute,
+} as any)
 const LessonCourseIdLessonIdRoute = LessonCourseIdLessonIdRouteImport.update({
   id: '/lesson/$courseId/$lessonId',
   path: '/lesson/$courseId/$lessonId',
@@ -130,11 +136,12 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
-  '/studio': typeof StudioRoute
+  '/studio': typeof StudioRouteWithChildren
   '/admin/moodle': typeof AdminMoodleRoute
   '/api/ask': typeof ApiAskRoute
   '/api/challenge': typeof ApiChallengeRoute
   '/course/$id': typeof CourseIdRoute
+  '/studio/$id': typeof StudioIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
   '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
@@ -150,11 +157,12 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
-  '/studio': typeof StudioRoute
+  '/studio': typeof StudioRouteWithChildren
   '/admin/moodle': typeof AdminMoodleRoute
   '/api/ask': typeof ApiAskRoute
   '/api/challenge': typeof ApiChallengeRoute
   '/course/$id': typeof CourseIdRoute
+  '/studio/$id': typeof StudioIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
   '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
@@ -171,11 +179,12 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
-  '/studio': typeof StudioRoute
+  '/studio': typeof StudioRouteWithChildren
   '/admin/moodle': typeof AdminMoodleRoute
   '/api/ask': typeof ApiAskRoute
   '/api/challenge': typeof ApiChallengeRoute
   '/course/$id': typeof CourseIdRoute
+  '/studio/$id': typeof StudioIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
   '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
     | '/api/ask'
     | '/api/challenge'
     | '/course/$id'
+    | '/studio/$id'
     | '/lesson/$courseId/$lessonId'
     | '/api/public/v1/courses'
     | '/api/public/v1/progress'
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/api/ask'
     | '/api/challenge'
     | '/course/$id'
+    | '/studio/$id'
     | '/lesson/$courseId/$lessonId'
     | '/api/public/v1/courses'
     | '/api/public/v1/progress'
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '/api/ask'
     | '/api/challenge'
     | '/course/$id'
+    | '/studio/$id'
     | '/lesson/$courseId/$lessonId'
     | '/api/public/v1/courses'
     | '/api/public/v1/progress'
@@ -254,7 +266,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SearchRoute: typeof SearchRoute
-  StudioRoute: typeof StudioRoute
+  StudioRoute: typeof StudioRouteWithChildren
   AdminMoodleRoute: typeof AdminMoodleRoute
   ApiAskRoute: typeof ApiAskRoute
   ApiChallengeRoute: typeof ApiChallengeRoute
@@ -371,6 +383,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CourseIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/studio/$id': {
+      id: '/studio/$id'
+      path: '/$id'
+      fullPath: '/studio/$id'
+      preLoaderRoute: typeof StudioIdRouteImport
+      parentRoute: typeof StudioRoute
+    }
     '/lesson/$courseId/$lessonId': {
       id: '/lesson/$courseId/$lessonId'
       path: '/lesson/$courseId/$lessonId'
@@ -395,6 +414,17 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface StudioRouteChildren {
+  StudioIdRoute: typeof StudioIdRoute
+}
+
+const StudioRouteChildren: StudioRouteChildren = {
+  StudioIdRoute: StudioIdRoute,
+}
+
+const StudioRouteWithChildren =
+  StudioRoute._addFileChildren(StudioRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AskRoute: AskRoute,
@@ -406,7 +436,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SearchRoute: SearchRoute,
-  StudioRoute: StudioRoute,
+  StudioRoute: StudioRouteWithChildren,
   AdminMoodleRoute: AdminMoodleRoute,
   ApiAskRoute: ApiAskRoute,
   ApiChallengeRoute: ApiChallengeRoute,
