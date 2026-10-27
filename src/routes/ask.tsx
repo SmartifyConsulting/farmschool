@@ -23,6 +23,7 @@ export const Route = createFileRoute("/ask")({
 const examples = ["My maize leaves are turning yellow — what should I check?", "How do I start keeping layer chickens?", "When should I water tomatoes in hot weather?"];
 
 function renderText(text: string) {
+  text = text.replace(/^#{1,6}\s+/gm, "").replace(/^\s*[-*]\s+/gm, "• ");
   return text.split(/(\[[^\]]+\]\([^)]+\))/g).map((part, i) => {
     const m = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
     if (m && m[2]?.startsWith("/")) return <a key={i} href={m[2]} className="font-semibold text-primary underline">{m[1]}</a>;
