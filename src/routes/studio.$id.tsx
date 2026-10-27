@@ -88,12 +88,76 @@ function Editor() {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message ?? "Could not propose learning methods.");
+      await persistDesign(index, payload.methods, false, payload.rationale);
       setDesignChoices(p => ({ ...p, [index]: payload.methods }));
       setDesignApproved(p => ({ ...p, [index]: false }));
       setDesignRationale(p => ({ ...p, [index]: payload.rationale }));
       toast.success("AI proposal ready for review.");
     } catch (error) { toast.error(error instanceof Error ? error.message : "AI proposal failed."); }
     finally { setDesignLoading(null); }
+  };
+
+  const designTable = () => supabase.from("studio_learning_designs" as "studio_courses");
+  const lessonKey = (index: number, lesson: { title: string; sourceRefs: { sourceId: string; page: number }[] }) =>
+    JSON.stringify([index, lesson.title, lesson.sourceRefs]);
+  const [designSyncing, setDesignSyncing] = useState(false);
+  useEffect(() => {
+    if (!draft?.lessons.length) return;
+    let cancelled = false;
+    const restore = async () => {
+      const { data, error } = await designTable().select("*").eq("course_id", id);
+      if (cancelled) return;
+      if (error) { toast.error("Could not load saved learning designs: " + error.message); return; }
+      const rows = (data ?? []) as unknown as Array<{ lesson_key: string; proposed_methods: string[]; review_status: string; ai_rationale: string | null }>;
+      const choices: Record<number, string[]> = {};
+      const approved: Record<number, boolean> = {};
+      const rationale: Record<number, string> = {};
+      draft.lessons.forEach((lesson, index) => {
+        const row = rows.find(item => item.lesson_key === lessonKey(index, lesson));
+        if (!row) return;
+        choices[index] = row.proposed_methods;
+        approved[index] = row.review_status === "approved";
+        if (row.ai_rationale) rationale[index] = row.ai_rationale;
+      });
+      setDesignChoices(choices); setDesignApproved(approved); setDesignRationale(rationale);
+    };
+    void restore();
+    return () => { cancelled = true; };
+  }, [id, draft]);
+  const persistDesign = async (index: number, methods: string[], approved: boolean, rationale?: string) => {
+    const lesson = draft?.lessons[index];
+    if (!lesson) throw new Error("Analyse a manual before saving a learning design.");
+    const row = {
+      course_id: id, lesson_key: lessonKey(index, lesson), lesson_title: lesson.title,
+      source_references: lesson.sourceRefs, proposed_methods: methods,
+      ai_rationale: rationale ?? designRationale[index] ?? null,
+      review_status: approved ? "approved" : "proposed",
+    };
+    const { error } = await designTable().upsert(row as never, { onConflict: "course_id,lesson_key" });
+    if (error) throw error;
+  };
+  const saveDesignSelection = async (index: number, methods: string[]) => {
+    if (designSyncing) return;
+    setDesignSyncing(true);
+    try {
+      await persistDesign(index, methods, false);
+      setDesignChoices(p => ({ ...p, [index]: methods }));
+      setDesignApproved(p => ({ ...p, [index]: false }));
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not save design."); }
+    finally { setDesignSyncing(false); }
+  };
+  const toggleDesignApproval = async (index: number, lesson: { title: string; body: string }) => {
+    if (designSyncing) return;
+    const next = !designApproved[index];
+    const methods = choicesFor(index, lesson.title, lesson.body);
+    if (next && !methods.length) return;
+    setDesignSyncing(true);
+    try {
+      await persistDesign(index, methods, next);
+      setDesignApproved(p => ({ ...p, [index]: next }));
+      toast.success(next ? "Learning design approved and saved." : "Learning design reopened.");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not update approval."); }
+    finally { setDesignSyncing(false); }
   };
 
   const learningMethods = [
@@ -355,13 +419,13 @@ function Editor() {
                     <Button type="button" size="sm" variant="outline" disabled={designLoading !== null || lesson.body.length < 100 || !!course.published} onClick={() => void proposeDesign(i, lesson)}>{designLoading === i ? "Designing…" : "Ask AI to propose methods"}</Button>
                     {designRationale[i] && <p className="rounded-lg bg-muted/50 p-2 text-xs text-muted-foreground"><strong>AI rationale:</strong> {designRationale[i]}</p>}
                     {learningMethods.map(method => <label key={method.id} className="flex items-start gap-2 text-sm">
-                      <input type="checkbox" className="mt-1" checked={choicesFor(i, lesson.title, lesson.body).includes(method.id)} onChange={e => changeDesign(i, e.target.checked ? [...choicesFor(i, lesson.title, lesson.body), method.id] : choicesFor(i, lesson.title, lesson.body).filter(x => x !== method.id))} />
+                      <input type="checkbox" className="mt-1" checked={choicesFor(i, lesson.title, lesson.body).includes(method.id)} disabled={designSyncing} onChange={e => void saveDesignSelection(i, e.target.checked ? [...choicesFor(i, lesson.title, lesson.body), method.id] : choicesFor(i, lesson.title, lesson.body).filter(x => x !== method.id))} />
                       <span><span className="font-medium">{method.label}</span><span className="block text-xs text-muted-foreground">{method.detail}</span></span>
                     </label>)}
-                    <Button type="button" size="sm" variant={designApproved[i] ? "secondary" : "outline"} disabled={!choicesFor(i, lesson.title, lesson.body).length} onClick={() => setDesignApproved(p => ({ ...p, [i]: !p[i] }))}>{designApproved[i] ? "Reopen review" : "Approve lesson design"}</Button>
+                    <Button type="button" size="sm" variant={designApproved[i] ? "secondary" : "outline"} disabled={designSyncing || !choicesFor(i, lesson.title, lesson.body).length} onClick={() => void toggleDesignApproval(i, lesson)}>{designApproved[i] ? "Reopen review" : "Approve lesson design"}</Button>
                   </div>
                 </details>)}
-                <p className="text-xs text-muted-foreground">{draft.lessons.filter((_, i) => designApproved[i]).length} of {draft.lessons.length} designs approved. Design plans and approvals are automatically saved in this browser for this course. They are not yet synced across devices or backed up to the database. Approved methods are passed to the generation API. AI proposals use your daily AI allowance.</p>
+                <p className="text-xs text-muted-foreground">{draft.lessons.filter((_, i) => designApproved[i]).length} of {draft.lessons.length} designs approved. Design approvals and selected methods are saved to Supabase for cross-device access. The imported manual text and draft outline remain cached in this browser. Approved methods are passed to the generation API. AI proposals use your daily AI allowance.</p>
               </div>
               <div className="space-y-2">{draft.lessons.map((lesson, i) => <details key={i} className="rounded-lg border border-border bg-background p-3"><summary className="cursor-pointer text-sm font-medium">{i + 1}. {lesson.title} <span className="text-xs font-normal text-muted-foreground">· {lesson.sourceRefs.length} source pages</span></summary><p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{lesson.body.slice(0, 2500)}{lesson.body.length > 2500 ? "…" : ""}</p><p className="mt-2 text-xs text-muted-foreground">Source: {lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join(", ")}</p></details>)}</div>
               <div className="space-y-2 border-t border-border pt-3">
