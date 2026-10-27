@@ -10,10 +10,12 @@ import { useAuth, useBookmarks, useProgress, courseProgress } from "@/hooks/useL
 
 export const Route = createFileRoute("/profile")({
   head: () => ({ meta: [
-    { title: "Profile — FarmerPlus Learning" },
+    { title: "Profile — Mobile School" },
     { name: "description", content: "Your learner profile, saved courses and certificates." },
-    { property: "og:title", content: "Profile — FarmerPlus" },
+    { property: "og:title", content: "Profile — Mobile School" },
     { property: "og:description", content: "Your learner profile." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
   ] }),
   component: Profile,
 });

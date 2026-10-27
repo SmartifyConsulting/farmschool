@@ -8,10 +8,12 @@ import { useAuth, useProgress, useSaveProgress, courseProgress } from "@/hooks/u
 export const Route = createFileRoute("/course/$id")({
   loader: ({ params }) => { const c = getCourse(params.id); if (!c) throw notFound(); return c; },
   head: ({ loaderData }) => ({ meta: [
-    { title: `${loaderData?.title ?? "Course"} — FarmerPlus Learning` },
+    { title: `${loaderData?.title ?? "Course"} — Mobile School` },
     { name: "description", content: loaderData?.description ?? "" },
     { property: "og:title", content: loaderData?.title ?? "Course" },
     { property: "og:description", content: loaderData?.description ?? "" },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
   ] }),
   notFoundComponent: () => <p className="p-10 text-center">Course not found. <Link to="/" className="text-primary">Go home</Link></p>,
   errorComponent: ({ error }) => <p className="p-10 text-center">{(error as Error).message}</p>,

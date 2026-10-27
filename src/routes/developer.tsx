@@ -9,10 +9,12 @@ import { inputCls } from "@/components/PasswordInput";
 
 export const Route = createFileRoute("/developer")({
   head: () => ({ meta: [
-    { title: "API Keys — FarmerPlus Learning" },
-    { name: "description", content: "Create, rotate and revoke scoped API keys with usage limits for FarmerPlus lessons." },
-    { property: "og:title", content: "API Keys — FarmerPlus" },
+    { title: "API Keys — Mobile School" },
+    { name: "description", content: "Create, rotate and revoke scoped API keys with usage limits for Mobile School lessons." },
+    { property: "og:title", content: "API Keys — Mobile School" },
     { property: "og:description", content: "Manage secure access to your lessons." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
   ] }),
   component: Developer,
 });

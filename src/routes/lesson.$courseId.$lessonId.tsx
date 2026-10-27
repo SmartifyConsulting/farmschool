@@ -12,10 +12,12 @@ export const Route = createFileRoute("/lesson/$courseId/$lessonId")({
     return { course: c, lesson: l };
   },
   head: ({ loaderData }) => ({ meta: [
-    { title: `${loaderData?.lesson.title ?? "Lesson"} — FarmerPlus Learning` },
-    { name: "description", content: `Lesson from ${loaderData?.course.title ?? "a FarmerPlus course"}.` },
+    { title: `${loaderData?.lesson.title ?? "Lesson"} — Mobile School` },
+    { name: "description", content: `Lesson from ${loaderData?.course.title ?? "a Mobile School course"}.` },
     { property: "og:title", content: loaderData?.lesson.title ?? "Lesson" },
     { property: "og:description", content: loaderData?.course.title ?? "" },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
   ] }),
   notFoundComponent: () => <p className="p-10 text-center">Lesson not found. <Link to="/" className="text-primary">Go home</Link></p>,
   errorComponent: ({ error }) => <p className="p-10 text-center">{(error as Error).message}</p>,

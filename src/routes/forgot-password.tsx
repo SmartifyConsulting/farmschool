@@ -11,6 +11,8 @@ export const Route = createFileRoute("/forgot-password")({
     { name: "description", content: "Reset your Mobile School password." },
     { property: "og:title", content: "Forgot password — Mobile School" },
     { property: "og:description", content: "Reset your password." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
   ] }),
   component: Forgot,
 });

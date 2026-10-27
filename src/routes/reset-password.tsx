@@ -12,6 +12,8 @@ export const Route = createFileRoute("/reset-password")({
     { name: "description", content: "Set a new Mobile School password." },
     { property: "og:title", content: "New password — Mobile School" },
     { property: "og:description", content: "Set a new password." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
   ] }),
   component: Reset,
 });

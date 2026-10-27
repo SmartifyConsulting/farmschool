@@ -5,10 +5,12 @@ import { Phone, Header, Sheet } from "@/components/AppShell";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({ meta: [
-    { title: "Notifications — FarmerPlus Learning" },
-    { name: "description", content: "Course updates and messages from your FarmerPlus instructors." },
-    { property: "og:title", content: "Notifications — FarmerPlus" },
+    { title: "Notifications — Mobile School" },
+    { name: "description", content: "Course updates and messages from your Mobile School instructors." },
+    { property: "og:title", content: "Notifications — Mobile School" },
     { property: "og:description", content: "Stay up to date with your courses." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
   ] }),
   component: Notifications,
 });
