@@ -71,6 +71,7 @@ function Editor() {
   };
   const importDraft = async () => {
     if (!draft?.lessons.length || importing || course?.published) return;
+    if (draft.lessons.some((lesson) => lesson.body.length > 19000)) { toast.error("A lesson exceeds the 20,000-character limit. Split the source into smaller modules."); return; }
     setImporting(true);
     try {
       const start = lessons?.length ?? 0;
@@ -98,6 +99,7 @@ function Editor() {
   const setPublished = async (published: boolean) => {
     if (published && !reviewConfirmed) { toast.error("Confirm that you have reviewed the course and its quizzes."); return; }
     if (published && !lessons?.length) { toast.error("Add at least one lesson before publishing."); return; }
+    if (published && lessons?.some((lesson) => lesson.body.includes("Review required before publishing."))) { toast.error("Imported lessons still need review. Edit each imported lesson and remove the review notice after verifying the content."); return; }
     const { error } = await supabase.from("studio_courses").update({ published }).eq("id", id);
     if (error) { toast.error("Could not change publishing status."); return; }
     setReviewConfirmed(false); refresh();
