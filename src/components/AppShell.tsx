@@ -1,9 +1,10 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Home, BookOpen, Search, Bell, User, LayoutGrid, KeyRound, Bookmark } from "lucide-react";
 import type { ReactNode } from "react";
 import logo from "@/assets/mobile-school-logo.png.asset.json";
 import { useBookmarks, useAuth } from "@/hooks/useLearning";
 import { LogIn, UserPlus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const tabs = [
   { to: "/", icon: Home, label: "Home" },
@@ -103,8 +104,9 @@ export function Sheet({ children }: { children: ReactNode }) {
 
 export function BookmarkButton({ courseId, className = "" }: { courseId: string; className?: string }) {
   const { ids, toggle, signedIn } = useBookmarks();
+  const navigate = useNavigate();
   const saved = ids.includes(courseId);
-  if (!signedIn) return <Link to="/auth" aria-label="Sign in to save" onClick={(e) => e.stopPropagation()} className={`grid h-8 w-8 place-items-center rounded-full bg-card/90 text-primary ${className}`}><Bookmark className="h-4 w-4" /></Link>;
+  if (!signedIn) return <Button type="button" variant="ghost" size="icon" aria-label="Sign in to save" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate({ to: "/auth" }); }} className={`h-8 w-8 rounded-full bg-card/90 text-primary ${className}`}><Bookmark className="h-4 w-4" /></Button>;
   return (
     <button aria-label={saved ? "Remove from saved" : "Save for later"} aria-pressed={saved}
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle.mutate(courseId); }}
