@@ -73,7 +73,7 @@ function HeaderAction() {
   return <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary-foreground/15"><LayoutGrid className="h-5 w-5" /></span>;
 }
 
-export function Header({ greeting = "Hi there", title, children }: { greeting?: string; title: string; children?: ReactNode }) {
+export function Header({ greeting = "Hi there", title, children, wide = false }: { greeting?: string; title: string; children?: ReactNode; wide?: boolean }) {
   return (
     <header className="bg-primary px-5 pb-6 pt-8 text-primary-foreground md:px-10 md:pt-10">
       <div className="mx-auto max-w-6xl">
