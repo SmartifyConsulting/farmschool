@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_finder_access_state: {
+        Row: {
+          denial_message: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          denial_message: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          denial_message?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       api_keys: {
         Row: {
           created_at: string

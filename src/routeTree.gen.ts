@@ -19,6 +19,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as AdminMoodleRouteImport } from './routes/admin.moodle'
+import { Route as ApiChallengeRouteImport } from './routes/api/challenge'
 import { Route as CourseIdRouteImport } from './routes/course.$id'
 import { Route as LessonCourseIdLessonIdRouteImport } from './routes/lesson.$courseId.$lessonId'
 import { Route as ApiPublicV1CoursesRouteImport } from './routes/api/public/v1/courses'
@@ -74,6 +75,11 @@ const AdminMoodleRoute = AdminMoodleRouteImport.update({
   path: '/admin/moodle',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiChallengeRoute = ApiChallengeRouteImport.update({
+  id: '/api/challenge',
+  path: '/api/challenge',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CourseIdRoute = CourseIdRouteImport.update({
   id: '/course/$id',
   path: '/course/$id',
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/admin/moodle': typeof AdminMoodleRoute
+  '/api/challenge': typeof ApiChallengeRoute
   '/course/$id': typeof CourseIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
@@ -122,6 +129,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/admin/moodle': typeof AdminMoodleRoute
+  '/api/challenge': typeof ApiChallengeRoute
   '/course/$id': typeof CourseIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
@@ -139,6 +147,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/admin/moodle': typeof AdminMoodleRoute
+  '/api/challenge': typeof ApiChallengeRoute
   '/course/$id': typeof CourseIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/search'
     | '/admin/moodle'
+    | '/api/challenge'
     | '/course/$id'
     | '/lesson/$courseId/$lessonId'
     | '/api/public/v1/courses'
@@ -173,6 +183,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/search'
     | '/admin/moodle'
+    | '/api/challenge'
     | '/course/$id'
     | '/lesson/$courseId/$lessonId'
     | '/api/public/v1/courses'
@@ -189,6 +200,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/search'
     | '/admin/moodle'
+    | '/api/challenge'
     | '/course/$id'
     | '/lesson/$courseId/$lessonId'
     | '/api/public/v1/courses'
@@ -206,6 +218,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SearchRoute: typeof SearchRoute
   AdminMoodleRoute: typeof AdminMoodleRoute
+  ApiChallengeRoute: typeof ApiChallengeRoute
   CourseIdRoute: typeof CourseIdRoute
   LessonCourseIdLessonIdRoute: typeof LessonCourseIdLessonIdRoute
   ApiPublicV1CoursesRoute: typeof ApiPublicV1CoursesRoute
@@ -284,6 +297,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMoodleRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/challenge': {
+      id: '/api/challenge'
+      path: '/api/challenge'
+      fullPath: '/api/challenge'
+      preLoaderRoute: typeof ApiChallengeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/course/$id': {
       id: '/course/$id'
       path: '/course/$id'
@@ -326,6 +346,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SearchRoute: SearchRoute,
   AdminMoodleRoute: AdminMoodleRoute,
+  ApiChallengeRoute: ApiChallengeRoute,
   CourseIdRoute: CourseIdRoute,
   LessonCourseIdLessonIdRoute: LessonCourseIdLessonIdRoute,
   ApiPublicV1CoursesRoute: ApiPublicV1CoursesRoute,

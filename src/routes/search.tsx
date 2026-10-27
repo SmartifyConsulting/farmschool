@@ -10,10 +10,12 @@ const icons = { Fish, Droplets, Tractor, Store, Gauge };
 
 export const Route = createFileRoute("/search")({
   head: () => ({ meta: [
-    { title: "Search Courses — FarmerPlus Learning" },
+    { title: "Search Courses — Mobile School" },
     { name: "description", content: "Find agricultural courses by topic or category." },
-    { property: "og:title", content: "Search — FarmerPlus" },
+    { property: "og:title", content: "Search — Mobile School" },
     { property: "og:description", content: "Find your next agricultural course." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
   ] }),
   component: SearchPage,
 });

@@ -3,6 +3,7 @@ import { Fish, Droplets, Tractor, Store, Gauge, Star, ChevronRight } from "lucid
 import { Phone, Header, SearchBox, Sheet, BookmarkButton, ProgressBar } from "@/components/AppShell";
 import { categories, courses, type Course } from "@/lib/courses";
 import { useAuth, useProgress, courseProgress } from "@/hooks/useLearning";
+import { ChallengeFinder } from "@/components/ChallengeFinder";
 
 const icons = { Fish, Droplets, Tractor, Store, Gauge };
 
@@ -13,6 +14,8 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "Learn aquaponics, water quality, farm operations and market access with Mobile School." },
       { property: "og:title", content: "Mobile School" },
       { property: "og:description", content: "Practical agricultural courses on any device." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Index,
@@ -67,6 +70,7 @@ function Index() {
         </div>
       </div>
       <Sheet>
+        <ChallengeFinder />
         {inProgress.length > 0 && <Section title="Continue learning" list={inProgress} />}
         <Section title="Recommended for you" list={courses.slice(0, 6)} />
         <Section title="Aquaponics & Water" list={courses.filter((c) => ["Aquaponics", "Water Quality", "Monitoring"].includes(c.category))} />

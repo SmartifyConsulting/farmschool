@@ -8,6 +8,13 @@
       "when": 1791837711114,
       "tag": "0000_moodle_integration_framework",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793127458942,
+      "tag": "0001_ai_finder_access_state",
+      "breakpoints": true
     }
   ]
 }
