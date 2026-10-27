@@ -48,6 +48,29 @@ function Editor() {
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [designChoices, setDesignChoices] = useState<Record<number, string[]>>({});
   const [designApproved, setDesignApproved] = useState<Record<number, boolean>>({});
+  const [designRationale, setDesignRationale] = useState<Record<number, string>>({});
+  const [designLoading, setDesignLoading] = useState<number | null>(null);
+  const proposeDesign = async (index: number, lesson: { title: string; body: string; sourceRefs: { sourceId: string }[] }) => {
+    if (designLoading !== null || lesson.body.length < 100) return;
+    setDesignLoading(index);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session?.access_token) throw new Error("Please sign in.");
+      const response = await fetch("/api/course-factory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.session.access_token },
+        body: JSON.stringify({ courseId: id, title: lesson.title, sourceId: lesson.sourceRefs[0]?.sourceId ?? sourceName, sourceText: lesson.body.slice(0, 12000), mode: "design" }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message ?? "Could not propose learning methods.");
+      setDesignChoices(p => ({ ...p, [index]: payload.methods }));
+      setDesignApproved(p => ({ ...p, [index]: false }));
+      setDesignRationale(p => ({ ...p, [index]: payload.rationale }));
+      toast.success("AI proposal ready for review.");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "AI proposal failed."); }
+    finally { setDesignLoading(null); }
+  };
+
   const learningMethods = [
     { id: "illustrated", label: "Illustrated explanation", detail: "Explain key ideas with diagrams and examples" },
     { id: "video", label: "Video demonstration", detail: "Suggest a demonstration; trainer supplies or verifies the video" },
@@ -99,7 +122,7 @@ function Editor() {
   const previewSource = () => {
     try {
       const next = buildCourseDraft(form.title || course?.title || "Course", sourcePages ?? [{ sourceId: sourceName.trim() || "Pasted source", page: 1, text: sourceText }]);
-      setDraft(next); setDesignChoices({}); setDesignApproved({});
+      setDraft(next); setDesignChoices({}); setDesignApproved({}); setDesignRationale({});
       if (!next.lessons.length) toast.error("No readable lessons found.");
     } catch (error) { toast.error(error instanceof Error ? error.message : "Could not parse source."); }
   };
@@ -304,6 +327,8 @@ function Editor() {
                 {draft.lessons.map((lesson, i) => <details key={i} className="rounded-lg border border-border p-3">
                   <summary className="cursor-pointer text-sm font-medium">{i + 1}. {lesson.title} {designApproved[i] ? "✓ Approved" : "· Needs review"}</summary>
                   <div className="mt-3 space-y-2">
+                    <Button type="button" size="sm" variant="outline" disabled={designLoading !== null || lesson.body.length < 100 || !!course.published} onClick={() => void proposeDesign(i, lesson)}>{designLoading === i ? "Designing…" : "Ask AI to propose methods"}</Button>
+                    {designRationale[i] && <p className="rounded-lg bg-muted/50 p-2 text-xs text-muted-foreground"><strong>AI rationale:</strong> {designRationale[i]}</p>}
                     {learningMethods.map(method => <label key={method.id} className="flex items-start gap-2 text-sm">
                       <input type="checkbox" className="mt-1" checked={choicesFor(i, lesson.title, lesson.body).includes(method.id)} onChange={e => changeDesign(i, e.target.checked ? [...choicesFor(i, lesson.title, lesson.body), method.id] : choicesFor(i, lesson.title, lesson.body).filter(x => x !== method.id))} />
                       <span><span className="font-medium">{method.label}</span><span className="block text-xs text-muted-foreground">{method.detail}</span></span>
@@ -311,7 +336,7 @@ function Editor() {
                     <Button type="button" size="sm" variant={designApproved[i] ? "secondary" : "outline"} disabled={!choicesFor(i, lesson.title, lesson.body).length} onClick={() => setDesignApproved(p => ({ ...p, [i]: !p[i] }))}>{designApproved[i] ? "Reopen review" : "Approve lesson design"}</Button>
                   </div>
                 </details>)}
-                <p className="text-xs text-muted-foreground">{draft.lessons.filter((_, i) => designApproved[i]).length} of {draft.lessons.length} designs approved. Selections remain in this browser session; they are not yet persisted or passed to the generation API.</p>
+                <p className="text-xs text-muted-foreground">{draft.lessons.filter((_, i) => designApproved[i]).length} of {draft.lessons.length} designs approved. Selections remain in this browser session. Approved methods are passed to the generation API; permanent storage is not yet implemented. AI proposals use your daily AI allowance.</p>
               </div>
               <div className="space-y-2">{draft.lessons.map((lesson, i) => <details key={i} className="rounded-lg border border-border bg-background p-3"><summary className="cursor-pointer text-sm font-medium">{i + 1}. {lesson.title} <span className="text-xs font-normal text-muted-foreground">· {lesson.sourceRefs.length} source pages</span></summary><p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{lesson.body.slice(0, 2500)}{lesson.body.length > 2500 ? "…" : ""}</p><p className="mt-2 text-xs text-muted-foreground">Source: {lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join(", ")}</p></details>)}</div>
               <div className="space-y-2 border-t border-border pt-3">
