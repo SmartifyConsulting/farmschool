@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { STUDIO_CATEGORIES, PASS_MARKS, parsePassMark } from "@/lib/studio";
 import { toast } from "sonner";
+import { buildCourseDraft, type DraftCourse } from "@/lib/course-factory";
 
 export const Route = createFileRoute("/studio/$id")({
   head: () => ({ meta: [
@@ -31,9 +32,37 @@ function Editor() {
   const nav = useNavigate();
   const { data: course, isLoading } = useQuery({ queryKey: ["studio-course", id], queryFn: async () => (await supabase.from("studio_courses").select("*").eq("id", id).maybeSingle()).data });
   const { data: lessons } = useQuery({ queryKey: ["studio-lessons", id], queryFn: async () => ((await supabase.from("studio_lessons").select("*").eq("course_id", id).order("position")).data ?? []) as LessonRow[] });
+  const [sourceText, setSourceText] = useState("");
+  const [sourceName, setSourceName] = useState("Training manual");
+  const [draft, setDraft] = useState<DraftCourse | null>(null);
+  const [importing, setImporting] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", category: STUDIO_CATEGORIES[0] ?? "Farm Management", level: "Beginner", cover_url: "" });
   useEffect(() => { if (course) setForm({ title: course.title, description: course.description, category: course.category, level: course.level, cover_url: course.cover_url ?? "" }); }, [course]);
   const refresh = () => { qc.invalidateQueries({ queryKey: ["studio-course", id] }); qc.invalidateQueries({ queryKey: ["studio-lessons", id] }); qc.invalidateQueries({ queryKey: ["studio-mine"] }); qc.invalidateQueries({ queryKey: ["studio-published"] }); };
+
+  const previewSource = () => {
+    try {
+      const next = buildCourseDraft(form.title || course?.title || "Course", [{ sourceId: sourceName.trim() || "Pasted source", page: 1, text: sourceText }]);
+      setDraft(next);
+      if (!next.lessons.length) toast.error("No readable lessons found.");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not parse source."); }
+  };
+  const importDraft = async () => {
+    if (!draft?.lessons.length || importing || course?.published) return;
+    setImporting(true);
+    try {
+      const start = lessons?.length ?? 0;
+      const rows = draft.lessons.map((lesson, index) => ({
+        course_id: id, kind: "reading", position: start + index, title: lesson.title,
+        body: `${lesson.body}\n\nSource: ${lesson.sourceRefs.map((ref) => `${ref.sourceId}, page ${ref.page}`).join("; ")}\nReview required before publishing.`,
+      }));
+      const { error } = await supabase.from("studio_lessons").insert(rows);
+      if (error) throw error;
+      toast.success(`Imported ${rows.length} reading lessons for review.`);
+      setDraft(null); setSourceText(""); refresh();
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Import failed."); }
+    finally { setImporting(false); }
+  };
 
   const saveDetails = async () => {
     if (form.cover_url && !/^https:\/\//.test(form.cover_url)) { toast.error("Cover image link must start with https://"); return; }
@@ -78,6 +107,20 @@ function Editor() {
                 : <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setPublished(true)}>Publish to catalogue</Button>}
               <Button variant="ghost" className="mt-2 w-full text-destructive" onClick={remove}><Trash2 className="h-4 w-4" />Delete course</Button>
             </div>
+          </section>
+          <section className="space-y-3 rounded-2xl border border-border p-4 lg:col-span-2">
+            <h2 className="font-semibold">Course Factory — source import</h2>
+            <p className="text-xs text-muted-foreground">Paste extracted text from a training manual. Module and chapter headings become draft reading lessons. This first importer does not yet extract PDF, Word or PowerPoint files or generate AI media. Review every lesson before publishing.</p>
+            <Input value={sourceName} onChange={(e) => setSourceName(e.target.value)} placeholder="Source document name" aria-label="Source document name" maxLength={160} />
+            <Textarea value={sourceText} onChange={(e) => { setSourceText(e.target.value); setDraft(null); }} placeholder={"Module 1: Introduction\\nYour training content..."} rows={6} maxLength={1000000} aria-label="Extracted manual text" />
+            <Button type="button" variant="outline" onClick={previewSource} disabled={!sourceText.trim()}>Preview draft lessons</Button>
+            {draft && <div className="space-y-2 rounded-xl bg-muted/40 p-3">
+              <p className="text-sm font-medium">{draft.lessons.length} draft reading lessons · Human review required</p>
+              {draft.warnings.map((warning, i) => <p key={i} className="text-xs text-destructive">{warning}</p>)}
+              <ol className="list-inside list-decimal text-xs text-muted-foreground">{draft.lessons.map((lesson, i) => <li key={i}>{lesson.title} — {lesson.body.length} characters</li>)}</ol>
+              <Button type="button" onClick={importDraft} disabled={!draft.lessons.length || importing || !!course.published}>{importing ? "Importing…" : "Add draft lessons to course"}</Button>
+              {course.published && <p className="text-xs text-destructive">Unpublish the course before importing draft material.</p>}
+            </div>}
           </section>
           <section className="min-w-0 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">Lessons</h2>
