@@ -98,8 +98,8 @@ export function SearchBox() {
   );
 }
 
-export function Sheet({ children }: { children: ReactNode }) {
-  return <div className="-mt-3 rounded-t-3xl bg-card px-5 pt-5 md:px-10 md:pt-8"><div className="mx-auto max-w-6xl">{children}</div></div>;
+export function Sheet({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
+  return <div className="-mt-3 rounded-t-3xl bg-card px-5 pt-5 md:px-10 md:pt-8"><div className={wide ? "mx-auto w-full max-w-none" : "mx-auto max-w-6xl"}>{children}</div></div>;
 }
 
 export function BookmarkButton({ courseId, className = "" }: { courseId: string; className?: string }) {
