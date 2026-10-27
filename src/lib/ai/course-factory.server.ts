@@ -43,6 +43,12 @@ export async function handleCourseFactoryGenerate(request: Request): Promise<Res
   if (courseError || !course || course.author_id !== claims.claims.sub || course.published) {
     return Response.json({ message: "Only the owner of an unpublished course can generate draft content." }, { status: 403 });
   }
+  const { data: quotaCount, error: quotaError } = await auth.rpc("course_factory_reserve_ai_request" as never);
+  if (quotaError) {
+    const limitReached = quotaError.message.includes("Daily AI generation limit reached");
+    return Response.json({ message: limitReached ? "Daily AI limit reached (20 requests). Try again tomorrow (UTC)." : "AI quota is not configured or could not be checked." }, { status: limitReached ? 429 : 503 });
+  }
+  if (typeof quotaCount !== "number") return Response.json({ message: "AI quota could not be verified." }, { status: 503 });
   const provider = createOpenAI({
     baseURL: "https://ai.gateway.lovable.dev/v1",
     apiKey,
