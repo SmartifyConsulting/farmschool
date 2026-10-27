@@ -10,4 +10,6 @@
 - [x] Sign-in/sign-up: open signup, name+region+role, no email confirm, 8+ letter+number passwords
 - [x] Moodle integration framework: admin settings, connection test, catalogue sync, activity log
 - [ ] Activate Moodle (blocked: needs Moodle hosting + web service token)
-- [ ] Enrolment, quiz results, certificates, profile sync (after activation)
+- [x] Moodle progress pull, certificates, push course to Moodle (built; live once Moodle is activated)
+- [x] In-app Course Studio (videos, readings, quizzes) in catalogue
+- [x] Ask the Farmer AI assistant
