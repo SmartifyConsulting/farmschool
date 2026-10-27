@@ -16,7 +16,12 @@ export async function handleChallenge(request: Request) {
   const publicKey = process.env['SUPABASE_PUBLISHABLE_KEY'];
   const apiKey = process.env['LOVABLE_API_KEY'];
   if (!url || !publicKey || !apiKey) return Response.json({ message: "The AI connection is not configured yet." }, { status: 503 });
-  const auth = createClient(url, publicKey, { auth: { persistSession: false }, accessToken: async () => token });
+  const auth = createClient(url, publicKey, { auth: { persistSession: false }, global: { fetch: (input, init) => {
+    const headers = new Headers(init?.headers);
+    if (publicKey.startsWith("sb_") && headers.get("Authorization") === `Bearer ${publicKey}`) headers.delete("Authorization");
+    headers.set("apikey", publicKey);
+    return fetch(input, { ...init, headers });
+  } } });
   const { data, error } = await auth.auth.getClaims(token);
   if (error || !data?.claims.sub) return Response.json({ message: "Please sign in again." }, { status: 401 });
   let input;
