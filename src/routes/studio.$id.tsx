@@ -101,6 +101,7 @@ function Editor() {
   const sourceDraftTable = () => supabase.from("studio_course_source_drafts" as never);
   const [cloudDraftReady, setCloudDraftReady] = useState(false);
   const [cloudDraftEnabled, setCloudDraftEnabled] = useState(false);
+  const [cloudSaveStatus, setCloudSaveStatus] = useState<"loading" | "unavailable" | "pending" | "saving" | "saved" | "error">("loading");
   useEffect(() => {
     let cancelled = false;
     const loadCloudDraft = async () => {
@@ -108,6 +109,7 @@ function Editor() {
       if (cancelled) return;
       if (error) {
         if (!["PGRST205", "42P01"].includes(error.code ?? "")) toast.error("Cloud draft could not be loaded: " + error.message);
+        setCloudSaveStatus("unavailable");
         setCloudDraftReady(true);
         return;
       }
@@ -118,6 +120,7 @@ function Editor() {
         if (row.draft?.lessons && Array.isArray(row.draft.lessons)) setDraft(row.draft);
       }
       setCloudDraftEnabled(true);
+      setCloudSaveStatus("saved");
       setCloudDraftReady(true);
     };
     void loadCloudDraft();
@@ -125,13 +128,19 @@ function Editor() {
   }, [id]);
   useEffect(() => {
     if (!cloudDraftReady || !cloudDraftEnabled || !restoredDesign || course?.published) return;
+    setCloudSaveStatus("pending");
+    let cancelled = false;
     const timer = setTimeout(async () => {
+      if (cancelled) return;
+      setCloudSaveStatus("saving");
       const { error } = await sourceDraftTable().upsert({
         course_id: id, source_name: sourceName, source_text: sourceText, draft,
       } as never, { onConflict: "course_id" });
-      if (error) toast.error("Cloud draft autosave failed: " + error.message);
+      if (cancelled) return;
+      if (error) { setCloudSaveStatus("error"); toast.error("Cloud draft autosave failed: " + error.message); }
+      else setCloudSaveStatus("saved");
     }, 1500);
-    return () => clearTimeout(timer);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [id, cloudDraftReady, cloudDraftEnabled, restoredDesign, sourceName, sourceText, draft, course?.published]);
 
   const lessonKey = (index: number, lesson: { title: string; sourceRefs: { sourceId: string; page: number }[] }) =>
@@ -493,6 +502,7 @@ function Editor() {
             <Input value={sourceName} onChange={(e) => setSourceName(e.target.value)} placeholder="Source document name" aria-label="Source document name" maxLength={160} />
             <Textarea value={sourceText} onChange={(e) => { setSourceText(e.target.value); setSourcePages(null); setDraft(null); }} placeholder={"Module 1: Introduction\\nYour training content..."} rows={6} maxLength={1000000} aria-label="Extracted manual text" />
             <Button type="button" variant="outline" onClick={previewSource} disabled={!sourceText.trim()}>Analyse manual & build course outline</Button>
+              <p role="status" aria-live="polite" className="text-xs text-muted-foreground">Cloud source draft: {cloudSaveStatus === "saved" ? "Saved to Supabase" : cloudSaveStatus === "saving" ? "Saving…" : cloudSaveStatus === "pending" ? "Unsaved changes — saving shortly" : cloudSaveStatus === "loading" ? "Loading…" : cloudSaveStatus === "error" ? "Save failed — check connection" : "Cloud storage unavailable"}</p>
               {!!savedDesigns?.length && <div className="space-y-2 rounded-xl border border-border p-4">
                 <h3 className="font-semibold">Saved learning designs in Supabase</h3>
                 <p className="text-xs text-muted-foreground">These records are available across devices. To edit or generate their lesson content, upload the source manual on this device.</p>
