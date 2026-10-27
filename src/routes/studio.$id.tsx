@@ -236,14 +236,14 @@ function Editor() {
   if (!course) return <Phone><Header title="Course not found" /><Sheet><Link to="/studio" className="text-primary">Back to Studio</Link></Sheet></Phone>;
   return (
     <Phone>
-      <Header greeting={course.published ? "Published" : "Draft"} title={course.title}>
+      <Header wide greeting={course.published ? "Published" : "Draft"} title={course.title}>
         <div className="mt-3 flex flex-wrap gap-2">
           <Link to="/studio" className="flex items-center gap-1 rounded-full border border-primary-foreground/50 px-3 py-1 text-xs"><ArrowLeft className="h-3 w-3" />All my courses</Link>
           <Link to="/class/$id" params={{ id }} className="flex items-center gap-1 rounded-full border border-primary-foreground/50 px-3 py-1 text-xs"><Eye className="h-3 w-3" />Preview</Link>
         </div>
       </Header>
-      <Sheet>
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+      <Sheet wide>
+        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(230px,1fr)_minmax(0,2.5fr)_minmax(240px,1fr)]">
           <section className="space-y-3 rounded-2xl border border-border p-4">
             <h2 className="font-semibold">Course details</h2>
             <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} aria-label="Title" maxLength={120} />
@@ -261,7 +261,7 @@ function Editor() {
               <Button variant="ghost" className="mt-2 w-full text-destructive" onClick={remove}><Trash2 className="h-4 w-4" />Delete course</Button>
             </div>
           </section>
-          <section className="space-y-3 rounded-2xl border border-border p-4 lg:col-span-2">
+          <section className="space-y-3 rounded-2xl border border-border p-4 xl:col-span-3">
             <h2 className="font-semibold">Course Factory — source import</h2>
             <p className="text-xs text-muted-foreground">Paste extracted text from a training manual. Module and chapter headings become draft reading lessons. Upload PDF, Word, PowerPoint or plain text. Scanned PDFs require OCR, which is not yet available. AI media generation is not yet available. Review every lesson before publishing.</p>
             <label className="block text-xs font-medium">Upload a manual (PDF, DOCX, PPTX, TXT or MD)
@@ -308,7 +308,7 @@ function Editor() {
               {course.published && <p className="text-xs text-destructive">Unpublish the course before importing draft material.</p>}
             </div>}
           </section>
-          <section className="min-w-0 space-y-3 lg:col-span-2">
+          <aside className="hidden space-y-3 rounded-2xl border border-border p-4 xl:block"><h2 className="font-semibold">Course navigation</h2><p className="text-xs text-muted-foreground">{lessons?.length ?? 0} learning objects</p><nav aria-label="Course lessons" className="space-y-2">{lessons?.map((lesson, index) => <a key={lesson.id} href={`#lesson-${lesson.id}`} className="block rounded-lg border border-border px-3 py-2 text-xs hover:bg-muted"><span className="font-semibold">{index + 1}. {lesson.title}</span><span className="mt-1 block capitalize text-muted-foreground">{lesson.kind}</span></a>)}</nav></aside>\n          <section className="min-w-0 space-y-3 xl:col-span-1">
             <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-semibold">Course outline</h2><p className="text-xs text-muted-foreground">Expand a lesson to review or edit. Use Preview above to see the learner experience.</p></div>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={() => addLesson("video")}><Video className="h-4 w-4" />Video</Button>
