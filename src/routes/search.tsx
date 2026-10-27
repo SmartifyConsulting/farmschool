@@ -1,3 +1,5 @@
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Fish, Droplets, Tractor, Store, Gauge, X } from "lucide-react";
@@ -24,6 +26,8 @@ function SearchPage() {
   const [q, setQ] = useState("");
   const { data } = useProgress();
   const [recent, setRecent] = useState(["aquaponics", "ph testing", "pricing produce", "sensors", "fish feed", "irrigation"]);
+  const { data: studio } = useQuery({ queryKey: ["studio-published"], queryFn: async () => (await supabase.from("studio_courses").select("id, title, category, level, cover_url").eq("published", true).order("updated_at", { ascending: false })).data ?? [] });
+  const studioResults = (studio ?? []).filter((c) => q === "*" || (c.title + c.category).toLowerCase().includes(q.toLowerCase()));
   const results = q === "*" ? courses : q ? courses.filter((c) => (c.title + c.category).toLowerCase().includes(q.toLowerCase())) : [];
   return (
     <Phone>
@@ -41,7 +45,12 @@ function SearchPage() {
                 <img src={c.image} alt="" className="h-14 w-14 rounded-lg object-cover" />
                 <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{c.title}</p><p className="text-xs text-muted-foreground">{c.category} · ${c.price}</p>{courseProgress(c, data).started && <div className="mt-1"><ProgressBar pct={courseProgress(c, data).pct} /></div>}</div><BookmarkButton courseId={c.id} />
               </Link>))}
-            {results.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">No courses match “{q}”.</p>}
+            {studioResults.map((c) => (
+              <Link key={c.id} to="/class/$id" params={{ id: c.id }} className="flex items-center gap-3 rounded-xl border border-border p-2">
+                {c.cover_url ? <img src={c.cover_url} alt="" className="h-14 w-14 rounded-lg object-cover" /> : <span className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-secondary text-xs font-bold text-secondary-foreground">NEW</span>}
+                <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{c.title}</p><p className="text-xs text-muted-foreground">{c.category} · {c.level} · By a Mobile School trainer</p></div>
+              </Link>))}
+            {results.length === 0 && studioResults.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">No courses match “{q}”.</p>}
           </div>
         ) : (<>
           <div className="flex justify-between"><h2 className="font-semibold">Recent Search</h2><button onClick={() => setRecent([])} className="text-xs text-muted-foreground">Clear</button></div>
