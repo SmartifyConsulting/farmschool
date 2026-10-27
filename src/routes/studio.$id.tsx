@@ -146,6 +146,33 @@ function Editor() {
     if (error) throw error;
     await refetchSavedDesigns();
   };
+  const updateSavedMethods = async (lessonKeyValue: string, methods: string[]) => {
+    if (designSyncing || course?.published) return;
+    setDesignSyncing(true);
+    try {
+      const { error } = await designTable().update({
+        proposed_methods: methods, review_status: "proposed",
+      } as never).eq("course_id", id).eq("lesson_key", lessonKeyValue);
+      if (error) throw error;
+      setDesignApproved(previous => {
+        const next = { ...previous };
+        draft?.lessons.forEach((lesson, index) => {
+          if (lessonKey(index, lesson) === lessonKeyValue) next[index] = false;
+        });
+        return next;
+      });
+      setDesignChoices(previous => {
+        const next = { ...previous };
+        draft?.lessons.forEach((lesson, index) => {
+          if (lessonKey(index, lesson) === lessonKeyValue) next[index] = methods;
+        });
+        return next;
+      });
+      await refetchSavedDesigns();
+      toast.success("Teaching methods saved; approval reset for review.");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not update teaching methods."); }
+    finally { setDesignSyncing(false); }
+  };
   const updateSavedApproval = async (lessonKeyValue: string, approved: boolean) => {
     if (designSyncing || course?.published) return;
     setDesignSyncing(true);
@@ -436,9 +463,19 @@ function Editor() {
                 <p className="text-xs font-medium">{savedDesigns.filter(item => item.review_status === "approved").length} of {savedDesigns.length} designs approved</p>
                 {savedDesigns.map((item, index) => <details key={item.lesson_key} className="rounded-lg border border-border bg-background p-3 text-xs">
                   <summary className="cursor-pointer font-medium">{index + 1}. {item.lesson_title} · {item.review_status === "approved" ? "✓ Approved" : "Needs review"}</summary>
-                  <p className="mt-2 text-muted-foreground"><strong>Teaching methods:</strong> {item.proposed_methods.join(", ") || "Not selected"}</p>
+                  <div className="mt-2 space-y-2">
+                    <p className="font-medium">Teaching and assessment methods</p>
+                    {learningMethods.map(method => <label key={method.id} className="flex cursor-pointer items-start gap-2">
+                      <input type="checkbox" className="mt-0.5" disabled={designSyncing || course?.published}
+                        checked={item.proposed_methods.includes(method.id)}
+                        onChange={event => void updateSavedMethods(item.lesson_key, event.target.checked
+                          ? [...item.proposed_methods, method.id]
+                          : item.proposed_methods.filter(value => value !== method.id))} />
+                      <span>{method.label}</span>
+                    </label>)}
+                  </div>
                   {item.ai_rationale && <p className="mt-2 whitespace-pre-wrap text-muted-foreground"><strong>AI explanation:</strong> {item.ai_rationale}</p>}
-                  <p className="mt-2 text-muted-foreground">To edit methods or generate learning objects, analyse the original source manual on this device.</p>
+                  <p className="mt-2 text-muted-foreground">Teaching methods can be changed here. To generate lesson content, analyse the original source manual on this device.</p>
                   {!course?.published && <Button size="sm" variant="outline" disabled={designSyncing || (item.review_status !== "approved" && !item.proposed_methods.length)} onClick={() => void updateSavedApproval(item.lesson_key, item.review_status !== "approved")}>{item.review_status === "approved" ? "Reopen approval" : "Approve saved design"}</Button>}
                 </details>)}
               </div>}
