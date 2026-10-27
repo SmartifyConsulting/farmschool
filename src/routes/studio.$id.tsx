@@ -125,6 +125,7 @@ function Editor() {
     if (!draft?.lessons.length || aiLoading || course?.published) return;
     const lesson = draft.lessons[0];
     if (!lesson) return;
+    if (!designApproved[0]) { toast.error("Approve the first lesson learning design before generating."); return; }
     setAiLoading(true); setAiDraft(null);
     try {
       const { data: session } = await supabase.auth.getSession();
@@ -132,7 +133,7 @@ function Editor() {
       const response = await fetch("/api/course-factory", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.session.access_token}` },
-        body: JSON.stringify({ courseId: id, title: lesson.title, sourceId: lesson.sourceRefs[0]?.sourceId ?? sourceName, sourceText: lesson.body.slice(0, 12000) }),
+        body: JSON.stringify({ courseId: id, title: lesson.title, sourceId: lesson.sourceRefs[0]?.sourceId ?? sourceName, sourceText: lesson.body.slice(0, 12000), approvedMethods: choicesFor(0, lesson.title, lesson.body) }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message ?? "AI generation failed.");
@@ -143,15 +144,17 @@ function Editor() {
 
   const generateBatch = async () => {
     if (!draft?.lessons.length || batchRunning || aiLoading || course?.published) return;
-    const candidates = draft.lessons.filter((lesson) => lesson.body.length >= 100).slice(0, 5);
+    const candidates = draft.lessons.map((lesson, index) => ({ lesson, index })).filter(({ lesson }) => lesson.body.length >= 100).slice(0, 5);
     if (!candidates.length) { toast.error("No lessons with enough source text (100 characters)."); return; }
+    if (candidates.some(({ index }) => !designApproved[index])) { toast.error("Approve the learning design for each selected lesson before batch generation."); return; }
     if (!confirm(`Generate AI drafts for ${candidates.length} lessons? Each request uses your daily AI allowance and may incur provider charges.`)) return;
     setBatchRunning(true); setBatchDrafts([]);
     const results: { sourceTitle: string; sourceRefs: string; lessonTitle: string; lessonSummary: string; questions: { question: string; options: string[]; correctIndex: number; sourceQuote: string }[] }[] = [];
     try {
       const { data: session } = await supabase.auth.getSession();
       if (!session.session?.access_token) throw new Error("Please sign in.");
-      for (const [index, lesson] of candidates.entries()) {
+      for (const [index, candidate] of candidates.entries()) {
+        const { lesson } = candidate;
         setBatchProgress(`Generating ${index + 1} of ${candidates.length}: ${lesson.title}`);
         const response = await fetch("/api/course-factory", {
           method: "POST",
