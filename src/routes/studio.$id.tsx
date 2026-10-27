@@ -49,8 +49,8 @@ function Editor() {
 
   const readTextFile = async (file: File | undefined) => {
     if (!file) return;
-    if (!/\\.(txt|md)$/i.test(file.name) || file.size > 1_000_000) {
-      toast.error("Choose a .txt or .md file under 1 MB.");
+    if (!/\.(pdf|docx|pptx|txt|md)$/i.test(file.name)) {
+      toast.error("Choose a PDF, DOCX, PPTX, TXT or MD file.");
       return;
     }
     setReadingFile(true);
