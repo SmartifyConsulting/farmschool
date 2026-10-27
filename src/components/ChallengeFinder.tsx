@@ -28,7 +28,10 @@ export function ChallengeFinder() {
     setBusy(true); setError(""); setResult(null);
     try {
       const response = await fetch("/api/challenge", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` }, body: JSON.stringify(parsed.data), signal: controller.signal });
-      if (!response.ok) { const body = await response.json(); throw new Error(body.message ?? "The search could not be completed."); }
+      if (!response.ok && !response.headers.get("content-type")?.includes("application/x-ndjson")) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.message ?? "The search could not be completed.");
+      }
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No learning suggestions were returned.");
       const decoder = new TextDecoder();

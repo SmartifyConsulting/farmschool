@@ -31,11 +31,18 @@ export async function handleChallenge(request: Request) {
   if (stateError) return Response.json({ message: "AI availability could not be checked. Please try later." }, { status: 503 });
   if (blocked) return Response.json({ message: blocked.denial_message }, { status: 403 });
   const run = createLovableAiGatewayRunIdFetch();
+  let upstreamStatus = 200;
+  let upstreamHeaders: Headers | undefined;
+  let resolveHeaders: () => void = () => {};
+  const headersReady = new Promise<void>((resolve) => { resolveHeaders = resolve; });
   const provider = createOpenAI({
     baseURL: "https://ai.gateway.lovable.dev/v1", apiKey,
     headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
     fetch: async (input, init) => {
-      const response = await run.fetch(input, init);
+      let response: Response;
+      try { response = await run.fetch(input, init); }
+      catch (error) { upstreamStatus = 502; resolveHeaders(); throw error; }
+      upstreamHeaders = response.headers;
       if (!response.ok) {
         const payload = await response.clone().json().catch(() => null);
         const message = payload?.message ?? payload?.error?.message ?? "The AI service could not complete this request.";
@@ -43,8 +50,11 @@ export async function handleChallenge(request: Request) {
         if (response.status === 403 && !["credit_limit_reached", "ai_disabled", "provider_not_available_in_region", "model_requires_retention_consent", "model_vendor_not_enabled"].includes(type)) {
           await supabaseAdmin.from("ai_finder_access_state").upsert({ id: "course-finder", denial_message: message, updated_at: new Date().toISOString() });
         }
+        upstreamStatus = response.status;
+        resolveHeaders();
         throw new FinderError(response.status, message);
       }
+      resolveHeaders();
       return response;
     },
   });
@@ -73,8 +83,9 @@ export async function handleChallenge(request: Request) {
       } catch (err) {
         if (request.signal.aborted) send({ type: "error", status: 499, message: "Search stopped." });
         else send({ type: "error", status: err instanceof FinderError ? err.status : 502, message: err instanceof FinderError ? err.message : "No learning suggestions were returned. Please start a new search." });
-      } finally { controller.close(); }
+      } finally { resolveHeaders(); controller.close(); }
     },
   });
-  return new Response(body, { headers: getLovableAiGatewayResponseHeaders(undefined, { "Content-Type": "application/x-ndjson", "Cache-Control": "no-store, no-transform" }) });
+  await headersReady;
+  return new Response(body, { status: upstreamStatus, headers: getLovableAiGatewayResponseHeaders(upstreamHeaders, { "Content-Type": "application/x-ndjson", "Cache-Control": "no-store, no-transform" }) });
 }
