@@ -46,6 +46,8 @@ function Editor() {
   const [batchProgress, setBatchProgress] = useState("");
   const [batchDrafts, setBatchDrafts] = useState<{ sourceTitle: string; sourceRefs: string; lessonTitle: string; lessonSummary: string; questions: { question: string; options: string[]; correctIndex: number; sourceQuote: string }[] }[]>([]);
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
+  const [showSourceEditor, setShowSourceEditor] = useState(false);
+  const [showCourseSettings, setShowCourseSettings] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", category: STUDIO_CATEGORIES[0] ?? "Farm Management", level: "Beginner", cover_url: "" });
   useEffect(() => { if (course) setForm({ title: course.title, description: course.description, category: course.category, level: course.level, cover_url: course.cover_url ?? "" }); }, [course]);
   const refresh = () => { qc.invalidateQueries({ queryKey: ["studio-course", id] }); qc.invalidateQueries({ queryKey: ["studio-lessons", id] }); qc.invalidateQueries({ queryKey: ["studio-mine"] }); qc.invalidateQueries({ queryKey: ["studio-published"] }); };
@@ -65,7 +67,7 @@ function Editor() {
       setSourcePages(pages);
       setSourceText(text);
       setDraft(null);
-      toast.success("Text loaded. Preview the lessons before importing.");
+      toast.success("Manual extracted. Analyse its structure to preview the course outline.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not read file.");
     } finally {
@@ -251,7 +253,7 @@ function Editor() {
               <select value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} className="rounded-md border border-input bg-background px-2 py-2 text-sm" aria-label="Level">{["Beginner", "Intermediate", "Advanced"].map((c) => <option key={c}>{c}</option>)}</select>
             </div>
             <Input value={form.cover_url} onChange={(e) => setForm({ ...form, cover_url: e.target.value })} placeholder="Cover image link (https://…)" />
-            <Button onClick={saveDetails} className="w-full">Save details</Button>
+            <Button onClick={saveDetails} className="w-full">Save details</Button></div>
             <div className="border-t border-border pt-3">
               {!course.published && <label className="mb-3 flex items-start gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={reviewConfirmed} onChange={(e) => setReviewConfirmed(e.target.checked)} className="mt-0.5" />I have reviewed all lessons, sources and quiz answers for accuracy before publishing.</label>}
               {course.published ? <Button variant="outline" className="w-full" onClick={() => setPublished(false)}>Unpublish</Button>
@@ -267,11 +269,11 @@ function Editor() {
             </label>
             <Input value={sourceName} onChange={(e) => setSourceName(e.target.value)} placeholder="Source document name" aria-label="Source document name" maxLength={160} />
             <Textarea value={sourceText} onChange={(e) => { setSourceText(e.target.value); setSourcePages(null); setDraft(null); }} placeholder={"Module 1: Introduction\\nYour training content..."} rows={6} maxLength={1000000} aria-label="Extracted manual text" />
-            <Button type="button" variant="outline" onClick={previewSource} disabled={!sourceText.trim()}>Preview draft lessons</Button>
+            <Button type="button" variant="outline" onClick={previewSource} disabled={!sourceText.trim()}>Analyse manual & build course outline</Button>
             {draft && <div className="space-y-2 rounded-xl bg-muted/40 p-3">
-              <p className="text-sm font-medium">{draft.lessons.length} draft reading lessons · Human review required</p>
+              <p className="text-sm font-semibold">Proposed course outline · {draft.lessons.length} topics</p><p className="text-xs text-muted-foreground">Review the topics before generating detailed AI lessons. Source references remain attached.</p>
               {draft.warnings.map((warning, i) => <p key={i} className="text-xs text-destructive">{warning}</p>)}
-              <ol className="list-inside list-decimal text-xs text-muted-foreground">{draft.lessons.map((lesson, i) => <li key={i}>{lesson.title} — {lesson.body.length} characters</li>)}</ol>
+              <div className="space-y-2">{draft.lessons.map((lesson, i) => <details key={i} className="rounded-lg border border-border bg-background p-3"><summary className="cursor-pointer text-sm font-medium">{i + 1}. {lesson.title} <span className="text-xs font-normal text-muted-foreground">· {lesson.sourceRefs.length} source pages</span></summary><p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{lesson.body.slice(0, 2500)}{lesson.body.length > 2500 ? "…" : ""}</p><p className="mt-2 text-xs text-muted-foreground">Source: {lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join(", ")}</p></details>)}</div>
               <div className="space-y-2 border-t border-border pt-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <Button type="button" variant="outline" disabled={batchRunning || aiLoading || !!course.published} onClick={generateBatch}>{batchRunning ? "Working…" : "Generate batch (up to 5 lessons)"}</Button>
@@ -306,8 +308,8 @@ function Editor() {
               {course.published && <p className="text-xs text-destructive">Unpublish the course before importing draft material.</p>}
             </div>}
           </section>
-          <section className="min-w-0 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">Lessons</h2>
+          <section className="min-w-0 space-y-3 lg:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-semibold">Course outline</h2><p className="text-xs text-muted-foreground">Expand a lesson to review or edit. Use Preview above to see the learner experience.</p></div>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={() => addLesson("video")}><Video className="h-4 w-4" />Video</Button>
                 <Button size="sm" variant="outline" onClick={() => addLesson("reading")}><FileText className="h-4 w-4" />Reading</Button>
