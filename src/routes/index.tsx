@@ -70,6 +70,10 @@ function Index() {
         </div>
       </div>
       <Sheet>
+        <div className="mb-6 grid gap-3 sm:grid-cols-2">
+          <Link to="/ask" className="rounded-2xl bg-secondary p-4 text-secondary-foreground"><p className="font-semibold">Ask the Farmer AI</p><p className="text-xs opacity-80">Get answers to any farming question.</p></Link>
+          <Link to="/studio" className="rounded-2xl border border-border p-4"><p className="font-semibold">Course Studio</p><p className="text-xs text-muted-foreground">Trainers: build lessons, videos and quizzes.</p></Link>
+        </div>
         <ChallengeFinder />
         {inProgress.length > 0 && <Section title="Continue learning" list={inProgress} />}
         <Section title="Recommended for you" list={courses.slice(0, 6)} />

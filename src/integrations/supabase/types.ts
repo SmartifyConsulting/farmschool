@@ -104,6 +104,33 @@ export type Database = {
         }
         Relationships: []
       }
+      certificates: {
+        Row: {
+          course_ref: string
+          id: string
+          issued_at: string
+          source: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          course_ref: string
+          id?: string
+          issued_at?: string
+          source: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          course_ref?: string
+          id?: string
+          issued_at?: string
+          source?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       lesson_progress: {
         Row: {
           completed: boolean
@@ -161,6 +188,33 @@ export type Database = {
           synced_at?: string
           title?: string
           visible?: boolean
+        }
+        Relationships: []
+      }
+      moodle_enrolments: {
+        Row: {
+          completed: boolean
+          id: string
+          moodle_id: number
+          progress: number
+          synced_at: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean
+          id?: string
+          moodle_id: number
+          progress?: number
+          synced_at?: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean
+          id?: string
+          moodle_id?: number
+          progress?: number
+          synced_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -251,6 +305,155 @@ export type Database = {
         }
         Relationships: []
       }
+      quiz_attempts: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          lesson_id: string
+          passed: boolean
+          score: number
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          lesson_id: string
+          passed: boolean
+          score: number
+          user_id?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          lesson_id?: string
+          passed?: boolean
+          score?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      studio_courses: {
+        Row: {
+          author_id: string
+          category: string
+          cover_url: string | null
+          created_at: string
+          description: string
+          id: string
+          level: string
+          moodle_id: number | null
+          published: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string
+          category?: string
+          cover_url?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          level?: string
+          moodle_id?: number | null
+          published?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          category?: string
+          cover_url?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          level?: string
+          moodle_id?: number | null
+          published?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      studio_lessons: {
+        Row: {
+          body: string
+          course_id: string
+          created_at: string
+          id: string
+          kind: string
+          position: number
+          quiz: Json
+          title: string
+          video_url: string | null
+        }
+        Insert: {
+          body?: string
+          course_id: string
+          created_at?: string
+          id?: string
+          kind?: string
+          position?: number
+          quiz?: Json
+          title: string
+          video_url?: string | null
+        }
+        Update: {
+          body?: string
+          course_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          position?: number
+          quiz?: Json
+          title?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_lessons_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_quiz_answers: {
+        Row: {
+          answers: number[]
+          course_id: string
+          lesson_id: string
+        }
+        Insert: {
+          answers?: number[]
+          course_id: string
+          lesson_id: string
+        }
+        Update: {
+          answers?: number[]
+          course_id?: string
+          lesson_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_quiz_answers_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_quiz_answers_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: true
+            referencedRelation: "studio_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -281,6 +484,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      studio_course_owned: { Args: { _course: string }; Returns: boolean }
+      studio_course_visible: { Args: { _course: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user"

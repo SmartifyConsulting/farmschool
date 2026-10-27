@@ -1,5 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
+import { syncMyMoodle } from "@/lib/learning.functions";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Clock, FileText } from "lucide-react";
@@ -25,6 +28,10 @@ function MyCourses() {
   const { data } = useProgress();
   const { ids } = useBookmarks();
   const { data: moodle } = useQuery({ queryKey: ["moodle-courses"], queryFn: async () => (await supabase.from("moodle_courses").select("moodle_id, title, summary, category, image_url").order("title")).data ?? [] });
+  const { data: enrol, refetch } = useQuery({ queryKey: ["moodle-enrol", user?.id], enabled: !!user, queryFn: async () => (await supabase.from("moodle_enrolments").select("moodle_id, progress, completed")).data ?? [] });
+  const sync = useServerFn(syncMyMoodle);
+  const [syncing, setSyncing] = useState(false);
+  const runSync = async () => { setSyncing(true); try { const r = await sync(); r.ok ? toast.success(r.message) : toast.info(r.message); refetch(); } finally { setSyncing(false); } };
   const list = courses.filter((c) => {
     const p = courseProgress(c, data);
     if (tab === "Saved") return ids.includes(c.id);
@@ -56,13 +63,16 @@ function MyCourses() {
             </Link>); })}
           {list.length === 0 && <p className="col-span-full py-10 text-center text-sm text-muted-foreground">{tab === "Saved" ? "Nothing saved yet — tap the bookmark on any course." : tab === "Completed" ? "No completed courses yet." : "Start a lesson to see it here."}</p>}
         </div>)}
-        {!!moodle?.length && <section className="mt-8"><h2 className="mb-3 font-semibold">From the Mobile School LMS</h2>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{moodle.map((m) => (
+        {user && <section className="mt-8"><div className="mb-3 flex items-center justify-between gap-2"><h2 className="font-semibold">From the Mobile School LMS</h2>
+          <button onClick={runSync} disabled={syncing} className="rounded-full border border-primary px-3 py-1 text-xs text-primary">{syncing ? "Syncing…" : "Sync my Moodle progress"}</button></div>
+          {!moodle?.length && <p className="text-sm text-muted-foreground">No Moodle courses yet.</p>}
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{(moodle ?? []).map((m) => (
             <div key={m.moodle_id} className="min-w-0 rounded-2xl border border-border p-3">
               {m.image_url && <img src={m.image_url} alt="" className="mb-2 h-28 w-full rounded-xl object-cover" />}
               <p className="truncate text-sm font-semibold">{m.title}</p>
               {m.category && <p className="text-xs text-primary">{m.category}</p>}
               <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{m.summary}</p>
+              {(() => { const e = enrol?.find((x) => x.moodle_id === m.moodle_id); return e ? <div className="mt-2"><ProgressBar pct={e.completed ? 100 : e.progress} label={e.completed ? "Completed" : "Enrolled"} /></div> : null; })()}
             </div>))}</div></section>}
       </Sheet>
     </Phone>
