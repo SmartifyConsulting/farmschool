@@ -19,6 +19,7 @@ export async function extractDocument(file: File): Promise<SourcePage[]> {
   }
   if (ext === "pdf") {
     const pdfjs = await import("pdfjs-dist");
+    pdfjs.GlobalWorkerOptions.workerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
     const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), useSystemFonts: true, disableFontFace: true }).promise;
     if (pdf.numPages > 500) throw new Error("PDF exceeds 500 pages.");
     const pages: SourcePage[] = [];
