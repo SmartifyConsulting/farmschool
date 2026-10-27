@@ -417,9 +417,6 @@ function Editor() {
             <Input value={sourceName} onChange={(e) => setSourceName(e.target.value)} placeholder="Source document name" aria-label="Source document name" maxLength={160} />
             <Textarea value={sourceText} onChange={(e) => { setSourceText(e.target.value); setSourcePages(null); setDraft(null); }} placeholder={"Module 1: Introduction\\nYour training content..."} rows={6} maxLength={1000000} aria-label="Extracted manual text" />
             <Button type="button" variant="outline" onClick={previewSource} disabled={!sourceText.trim()}>Analyse manual & build course outline</Button>
-            {draft && <div className="space-y-2 rounded-xl bg-muted/40 p-3">
-              <p className="text-sm font-semibold">Proposed course outline · {draft.lessons.length} topics</p><p className="text-xs text-muted-foreground">Review the topics before generating detailed AI lessons. Source references remain attached.</p>
-              {draft.warnings.map((warning, i) => <p key={i} className="text-xs text-destructive">{warning}</p>)}
               {!!savedDesigns?.length && <div className="space-y-2 rounded-xl border border-border p-4">
                 <h3 className="font-semibold">Saved learning designs in Supabase</h3>
                 <p className="text-xs text-muted-foreground">These records are available across devices. To edit or generate their lesson content, upload the source manual on this device.</p>
@@ -428,6 +425,9 @@ function Editor() {
                   <p className="text-muted-foreground">{item.proposed_methods.join(", ")}</p>
                 </div>)}
               </div>}
+            {draft && <div className="space-y-2 rounded-xl bg-muted/40 p-3">
+              <p className="text-sm font-semibold">Proposed course outline · {draft.lessons.length} topics</p><p className="text-xs text-muted-foreground">Review the topics before generating detailed AI lessons. Source references remain attached.</p>
+              {draft.warnings.map((warning, i) => <p key={i} className="text-xs text-destructive">{warning}</p>)}
               <div className="space-y-3 rounded-xl border border-border bg-background p-4">
                 <h3 className="font-semibold">AI learning design review</h3>
                 <p className="text-xs text-muted-foreground">Suggested teaching and assessment methods are based on topic keywords. These are preliminary recommendations, not AI-generated media or saved course objects. Approve or adjust each lesson before content generation.</p>
