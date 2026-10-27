@@ -420,10 +420,13 @@ function Editor() {
               {!!savedDesigns?.length && <div className="space-y-2 rounded-xl border border-border p-4">
                 <h3 className="font-semibold">Saved learning designs in Supabase</h3>
                 <p className="text-xs text-muted-foreground">These records are available across devices. To edit or generate their lesson content, upload the source manual on this device.</p>
-                {savedDesigns.map((item, index) => <div key={item.lesson_key} className="rounded-lg bg-muted/40 p-2 text-xs">
-                  <p className="font-medium">{index + 1}. {item.lesson_title} · {item.review_status}</p>
-                  <p className="text-muted-foreground">{item.proposed_methods.join(", ")}</p>
-                </div>)}
+                <p className="text-xs font-medium">{savedDesigns.filter(item => item.review_status === "approved").length} of {savedDesigns.length} designs approved</p>
+                {savedDesigns.map((item, index) => <details key={item.lesson_key} className="rounded-lg border border-border bg-background p-3 text-xs">
+                  <summary className="cursor-pointer font-medium">{index + 1}. {item.lesson_title} · {item.review_status === "approved" ? "✓ Approved" : "Needs review"}</summary>
+                  <p className="mt-2 text-muted-foreground"><strong>Teaching methods:</strong> {item.proposed_methods.join(", ") || "Not selected"}</p>
+                  {item.ai_rationale && <p className="mt-2 whitespace-pre-wrap text-muted-foreground"><strong>AI explanation:</strong> {item.ai_rationale}</p>}
+                  <p className="mt-2 text-muted-foreground">To edit methods or generate learning objects, analyse the original source manual on this device.</p>
+                </details>)}
               </div>}
             {draft && <div className="space-y-2 rounded-xl bg-muted/40 p-3">
               <p className="text-sm font-semibold">Proposed course outline · {draft.lessons.length} topics</p><p className="text-xs text-muted-foreground">Review the topics before generating detailed AI lessons. Source references remain attached.</p>
