@@ -50,6 +50,31 @@ function Editor() {
   const [designApproved, setDesignApproved] = useState<Record<number, boolean>>({});
   const [designRationale, setDesignRationale] = useState<Record<number, string>>({});
   const [designLoading, setDesignLoading] = useState<number | null>(null);
+  const [restoredDesign, setRestoredDesign] = useState(false);
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("farmschool:learning-design:" + id);
+      if (saved) {
+        const state = JSON.parse(saved) as { draft?: DraftCourse; sourceText?: string; sourceName?: string; choices?: Record<number, string[]>; approved?: Record<number, boolean>; rationale?: Record<number, string> };
+        if (state.draft?.lessons && Array.isArray(state.draft.lessons)) setDraft(state.draft);
+        if (typeof state.sourceText === "string") setSourceText(state.sourceText);
+        if (typeof state.sourceName === "string") setSourceName(state.sourceName);
+        if (state.choices) setDesignChoices(state.choices);
+        if (state.approved) setDesignApproved(state.approved);
+        if (state.rationale) setDesignRationale(state.rationale);
+      }
+    } catch { toast.error("Saved learning design could not be restored."); }
+    finally { setRestoredDesign(true); }
+  }, [id]);
+  useEffect(() => {
+    if (!restoredDesign) return;
+    try {
+      window.localStorage.setItem("farmschool:learning-design:" + id, JSON.stringify({
+        draft, sourceText, sourceName, choices: designChoices, approved: designApproved, rationale: designRationale,
+      }));
+    } catch { toast.error("Learning design could not be saved in this browser."); }
+  }, [id, restoredDesign, draft, sourceText, sourceName, designChoices, designApproved, designRationale]);
+
   const proposeDesign = async (index: number, lesson: { title: string; body: string; sourceRefs: { sourceId: string }[] }) => {
     if (designLoading !== null || lesson.body.length < 100) return;
     setDesignLoading(index);
@@ -336,7 +361,7 @@ function Editor() {
                     <Button type="button" size="sm" variant={designApproved[i] ? "secondary" : "outline"} disabled={!choicesFor(i, lesson.title, lesson.body).length} onClick={() => setDesignApproved(p => ({ ...p, [i]: !p[i] }))}>{designApproved[i] ? "Reopen review" : "Approve lesson design"}</Button>
                   </div>
                 </details>)}
-                <p className="text-xs text-muted-foreground">{draft.lessons.filter((_, i) => designApproved[i]).length} of {draft.lessons.length} designs approved. Selections remain in this browser session. Approved methods are passed to the generation API; permanent storage is not yet implemented. AI proposals use your daily AI allowance.</p>
+                <p className="text-xs text-muted-foreground">{draft.lessons.filter((_, i) => designApproved[i]).length} of {draft.lessons.length} designs approved. Design plans and approvals are automatically saved in this browser for this course. They are not yet synced across devices or backed up to the database. Approved methods are passed to the generation API. AI proposals use your daily AI allowance.</p>
               </div>
               <div className="space-y-2">{draft.lessons.map((lesson, i) => <details key={i} className="rounded-lg border border-border bg-background p-3"><summary className="cursor-pointer text-sm font-medium">{i + 1}. {lesson.title} <span className="text-xs font-normal text-muted-foreground">· {lesson.sourceRefs.length} source pages</span></summary><p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{lesson.body.slice(0, 2500)}{lesson.body.length > 2500 ? "…" : ""}</p><p className="mt-2 text-xs text-muted-foreground">Source: {lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join(", ")}</p></details>)}</div>
               <div className="space-y-2 border-t border-border pt-3">
