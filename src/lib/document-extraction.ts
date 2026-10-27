@@ -26,7 +26,7 @@ export async function extractDocument(file: File): Promise<SourcePage[]> {
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const text = await page.getTextContent();
-      pages.push({ sourceId: file.name, page: i, text: text.items.map((item) => "str" in item ? item.str : "").join(" ") });
+      pages.push({ sourceId: file.name, page: i, text: text.items.reduce<{ lines: string[]; lastY: number | null }>((acc, item) => { if (!("str" in item) || !item.str.trim()) return acc; const y = "transform" in item && Array.isArray(item.transform) ? Number(item.transform[5]) : null; if (y !== null && acc.lastY !== null && Math.abs(y - acc.lastY) > 3) acc.lines.push("\n"); else if (acc.lines.length) acc.lines.push(" "); acc.lines.push(item.str); acc.lastY = y; return acc; }, { lines: [], lastY: null }).lines.join("") });
     }
     if (pages.every((page) => !page.text.trim())) throw new Error("This PDF appears scanned. OCR is not available yet.");
     return pages;
