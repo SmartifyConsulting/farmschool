@@ -421,6 +421,39 @@ export type Database = {
           },
         ]
       }
+      studio_quiz_answers: {
+        Row: {
+          answers: number[]
+          course_id: string
+          lesson_id: string
+        }
+        Insert: {
+          answers?: number[]
+          course_id: string
+          lesson_id: string
+        }
+        Update: {
+          answers?: number[]
+          course_id?: string
+          lesson_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_quiz_answers_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_quiz_answers_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: true
+            referencedRelation: "studio_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
