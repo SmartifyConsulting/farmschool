@@ -46,6 +46,28 @@ function Editor() {
   const [batchProgress, setBatchProgress] = useState("");
   const [batchDrafts, setBatchDrafts] = useState<{ sourceTitle: string; sourceRefs: string; lessonTitle: string; lessonSummary: string; questions: { question: string; options: string[]; correctIndex: number; sourceQuote: string }[] }[]>([]);
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
+  const [designChoices, setDesignChoices] = useState<Record<number, string[]>>({});
+  const [designApproved, setDesignApproved] = useState<Record<number, boolean>>({});
+  const learningMethods = [
+    { id: "illustrated", label: "Illustrated explanation", detail: "Explain key ideas with diagrams and examples" },
+    { id: "video", label: "Video demonstration", detail: "Suggest a demonstration; trainer supplies or verifies the video" },
+    { id: "steps", label: "Step-by-step practice", detail: "Turn a procedure into an actionable checklist" },
+    { id: "scenario", label: "Scenario exercise", detail: "Apply knowledge to a realistic farming decision" },
+    { id: "quiz", label: "Knowledge check", detail: "Assess comprehension with source-grounded questions" },
+    { id: "visual", label: "Visual identification", detail: "Identify equipment, crops, symptoms or animals" },
+  ];
+  const recommendMethods = (title: string, body: string) => {
+    const content = (title + " " + body).toLowerCase();
+    const picks = ["illustrated", "quiz"];
+    if (/inspect|procedure|step|install|apply|prepare|harvest|plant|handle|maintain|operate/.test(content)) picks.push("steps", "video");
+    if (/identify|recognise|recognize|symptom|diagram|part|species|disease|pest/.test(content)) picks.push("visual");
+    if (/risk|decision|problem|safety|manage|respond|prevent/.test(content)) picks.push("scenario");
+    if (picks.length < 4) picks.push("scenario");
+    return [...new Set(picks)];
+  };
+  const choicesFor = (index: number, title: string, body: string) => designChoices[index] ?? recommendMethods(title, body);
+  const changeDesign = (index: number, choices: string[]) => { setDesignChoices(p => ({ ...p, [index]: choices })); setDesignApproved(p => ({ ...p, [index]: false })); };
+
   const [showSourceEditor, setShowSourceEditor] = useState(false);
   const [showCourseSettings, setShowCourseSettings] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", category: STUDIO_CATEGORIES[0] ?? "Farm Management", level: "Beginner", cover_url: "" });
@@ -77,7 +99,7 @@ function Editor() {
   const previewSource = () => {
     try {
       const next = buildCourseDraft(form.title || course?.title || "Course", sourcePages ?? [{ sourceId: sourceName.trim() || "Pasted source", page: 1, text: sourceText }]);
-      setDraft(next);
+      setDraft(next); setDesignChoices({}); setDesignApproved({});
       if (!next.lessons.length) toast.error("No readable lessons found.");
     } catch (error) { toast.error(error instanceof Error ? error.message : "Could not parse source."); }
   };
@@ -273,6 +295,21 @@ function Editor() {
             {draft && <div className="space-y-2 rounded-xl bg-muted/40 p-3">
               <p className="text-sm font-semibold">Proposed course outline · {draft.lessons.length} topics</p><p className="text-xs text-muted-foreground">Review the topics before generating detailed AI lessons. Source references remain attached.</p>
               {draft.warnings.map((warning, i) => <p key={i} className="text-xs text-destructive">{warning}</p>)}
+              <div className="space-y-3 rounded-xl border border-border bg-background p-4">
+                <h3 className="font-semibold">AI learning design review</h3>
+                <p className="text-xs text-muted-foreground">Suggested teaching and assessment methods are based on topic keywords. These are preliminary recommendations, not AI-generated media or saved course objects. Approve or adjust each lesson before content generation.</p>
+                {draft.lessons.map((lesson, i) => <details key={i} className="rounded-lg border border-border p-3">
+                  <summary className="cursor-pointer text-sm font-medium">{i + 1}. {lesson.title} {designApproved[i] ? "✓ Approved" : "· Needs review"}</summary>
+                  <div className="mt-3 space-y-2">
+                    {learningMethods.map(method => <label key={method.id} className="flex items-start gap-2 text-sm">
+                      <input type="checkbox" className="mt-1" checked={choicesFor(i, lesson.title, lesson.body).includes(method.id)} onChange={e => changeDesign(i, e.target.checked ? [...choicesFor(i, lesson.title, lesson.body), method.id] : choicesFor(i, lesson.title, lesson.body).filter(x => x !== method.id))} />
+                      <span><span className="font-medium">{method.label}</span><span className="block text-xs text-muted-foreground">{method.detail}</span></span>
+                    </label>)}
+                    <Button type="button" size="sm" variant={designApproved[i] ? "secondary" : "outline"} disabled={!choicesFor(i, lesson.title, lesson.body).length} onClick={() => setDesignApproved(p => ({ ...p, [i]: !p[i] }))}>{designApproved[i] ? "Reopen review" : "Approve lesson design"}</Button>
+                  </div>
+                </details>)}
+                <p className="text-xs text-muted-foreground">{draft.lessons.filter((_, i) => designApproved[i]).length} of {draft.lessons.length} designs approved. Selections remain in this browser session; they are not yet persisted or passed to the generation API.</p>
+              </div>
               <div className="space-y-2">{draft.lessons.map((lesson, i) => <details key={i} className="rounded-lg border border-border bg-background p-3"><summary className="cursor-pointer text-sm font-medium">{i + 1}. {lesson.title} <span className="text-xs font-normal text-muted-foreground">· {lesson.sourceRefs.length} source pages</span></summary><p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{lesson.body.slice(0, 2500)}{lesson.body.length > 2500 ? "…" : ""}</p><p className="mt-2 text-xs text-muted-foreground">Source: {lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join(", ")}</p></details>)}</div>
               <div className="space-y-2 border-t border-border pt-3">
                 <div className="flex flex-wrap items-center gap-2">
