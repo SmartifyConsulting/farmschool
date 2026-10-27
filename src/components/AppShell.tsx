@@ -21,7 +21,7 @@ export function Phone({ children }: { children: ReactNode }) {
       <aside className="sticky top-0 hidden h-screen w-20 shrink-0 flex-col border-r border-border bg-card p-3 md:flex lg:w-64 lg:p-5">
         <img src={logo.url} alt="Mobile School" className="mx-auto mb-6 h-[72px] w-auto object-contain lg:h-[168px]" />
         <nav className="space-y-1">
-          {[...tabs, { to: "/ask", icon: Sprout, label: "Ask the Farmer AI" } as const, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const, { to: "/developer", icon: KeyRound, label: "API keys" } as const, { to: "/admin/moodle", icon: KeyRound, label: "Moodle" } as const].map((t) => {
+          {[...tabs, { to: "/ask", icon: Sprout, label: "Ask the Farmer AI" } as const, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const, { to: "/developer", icon: KeyRound, label: "API keys" } as const].map((t) => {
             const active = path === t.to;
             return (
               <Link key={t.to} to={t.to} aria-label={t.label}

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { courses, allLessons } from "@/lib/courses";
+import { parsePassMark } from "@/lib/studio";
 
 /** Grades a studio quiz on the server so answer keys never reach learners. */
 export const submitQuiz = createServerFn({ method: "POST" })
@@ -9,17 +10,18 @@ export const submitQuiz = createServerFn({ method: "POST" })
   .inputValidator((i: unknown) => z.object({ lessonId: z.string().uuid(), answers: z.array(z.number().int().min(-1).max(20)).max(50) }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: lesson } = await context.supabase.from("studio_lessons").select("id, course_id, kind").eq("id", data.lessonId).maybeSingle();
+    const { data: lesson } = await context.supabase.from("studio_lessons").select("id, course_id, kind, body").eq("id", data.lessonId).maybeSingle();
     if (!lesson || lesson.kind !== "quiz") throw new Error("Quiz not found.");
     const { data: key } = await supabaseAdmin.from("studio_quiz_answers").select("answers").eq("lesson_id", lesson.id).maybeSingle();
     const answers = key?.answers ?? [];
     if (!answers.length) throw new Error("This quiz has no questions yet.");
     const correct = answers.filter((a, i) => data.answers[i] === a).length;
     const score = Math.round((correct / answers.length) * 100);
-    const passed = score >= 70;
+    const passMark = parsePassMark(lesson.body);
+    const passed = score >= passMark;
     await supabaseAdmin.from("quiz_attempts").insert({ user_id: context.userId, course_id: lesson.course_id, lesson_id: lesson.id, score, passed });
     if (passed) await context.supabase.from("lesson_progress").upsert({ user_id: context.userId, course_id: lesson.course_id, lesson_id: lesson.id, completed: true, position_seconds: 0, updated_at: new Date().toISOString() }, { onConflict: "user_id,course_id,lesson_id" });
-    return { score, passed, correct: answers.map((a, i) => data.answers[i] === a) };
+    return { score, passed, passMark, correct: answers.map((a, i) => data.answers[i] === a) };
   });
 
 /** Issues a certificate only when every lesson is complete (and studio quizzes were passed on the server). */

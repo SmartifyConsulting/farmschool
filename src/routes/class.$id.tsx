@@ -84,7 +84,7 @@ function ClassPage() {
 
 function Quiz({ lesson, courseId, passed }: { lesson: L; courseId: string; passed: boolean }) {
   const [answers, setAnswers] = useState<number[]>(() => lesson.quiz.map(() => -1));
-  const [result, setResult] = useState<{ score: number; passed: boolean; correct: boolean[] } | null>(null);
+  const [result, setResult] = useState<{ score: number; passed: boolean; passMark: number; correct: boolean[] } | null>(null);
   const submit = useServerFn(submitQuiz);
   const qc = useQueryClient();
   const { user } = useAuth();
@@ -107,7 +107,7 @@ function Quiz({ lesson, courseId, passed }: { lesson: L; courseId: string; passe
             </label>))}
           {result && <p className={`mt-2 text-xs font-semibold ${result.correct[qi] ? "text-primary" : "text-destructive"}`}>{result.correct[qi] ? "Correct" : "Not quite"}</p>}
         </fieldset>))}
-      {result && <p role="status" className="text-sm font-semibold">{result.passed ? `Passed with ${result.score}% 🎉` : `${result.score}% — you need 70% to pass. Try again.`}</p>}
+      {result && <p role="status" className="text-sm font-semibold">{result.passed ? `Passed with ${result.score}% 🎉` : `${result.score}% — you need ${result.passMark}% to pass. Try again.`}</p>}
       <Button type="submit">Submit answers</Button>
       <input type="hidden" value={courseId} readOnly />
     </form>
