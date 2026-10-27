@@ -15,6 +15,13 @@
       "when": 1793127458942,
       "tag": "0001_ai_finder_access_state",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793129867792,
+      "tag": "0002_studio_moodle_progress_certificates",
+      "breakpoints": true
     }
   ]
 }
