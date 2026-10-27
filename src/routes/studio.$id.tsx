@@ -1,15 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Plus, Trash2, Video, FileText, HelpCircle, Upload, Eye } from "lucide-react";
-import { useServerFn } from "@tanstack/react-start";
+import { ArrowLeft, Plus, Trash2, Video, FileText, HelpCircle, Eye } from "lucide-react";
 import { Phone, Header, Sheet } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { publishToMoodle } from "@/lib/learning.functions";
-import { STUDIO_CATEGORIES } from "@/lib/studio";
+import { STUDIO_CATEGORIES, PASS_MARKS, parsePassMark } from "@/lib/studio";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/studio/$id")({
@@ -31,7 +29,6 @@ function Editor() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
   const nav = useNavigate();
-  const push = useServerFn(publishToMoodle);
   const { data: course, isLoading } = useQuery({ queryKey: ["studio-course", id], queryFn: async () => (await supabase.from("studio_courses").select("*").eq("id", id).maybeSingle()).data });
   const { data: lessons } = useQuery({ queryKey: ["studio-lessons", id], queryFn: async () => ((await supabase.from("studio_lessons").select("*").eq("course_id", id).order("position")).data ?? []) as LessonRow[] });
   const [form, setForm] = useState({ title: "", description: "", category: STUDIO_CATEGORIES[0] ?? "Farm Management", level: "Beginner", cover_url: "" });
@@ -79,9 +76,6 @@ function Editor() {
             <div className="border-t border-border pt-3">
               {course.published ? <Button variant="outline" className="w-full" onClick={() => setPublished(false)}>Unpublish</Button>
                 : <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setPublished(true)}>Publish to catalogue</Button>}
-              <Button variant="outline" className="mt-2 w-full" disabled={!course.published || !!course.moodle_id} onClick={async () => { const r = await push({ data: { courseId: id } }); r.ok ? toast.success(r.message) : toast.info(r.message); refresh(); }}>
-                <Upload className="h-4 w-4" />{course.moodle_id ? "Sent to Moodle" : "Send to Moodle"}
-              </Button>
               <Button variant="ghost" className="mt-2 w-full text-destructive" onClick={remove}><Trash2 className="h-4 w-4" />Delete course</Button>
             </div>
           </section>
@@ -106,6 +100,7 @@ function LessonEditor({ lesson, index, onChange }: { lesson: LessonRow; index: n
   const [video, setVideo] = useState(lesson.video_url ?? "");
   const [body, setBody] = useState(lesson.body);
   const [qs, setQs] = useState<Q[]>(() => ((lesson.quiz as { q: string; options: string[] }[]) ?? []).map((x) => ({ ...x, answer: 0 })));
+  const [passMark, setPassMark] = useState(() => parsePassMark(lesson.body));
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open || lesson.kind !== "quiz") return;
@@ -117,7 +112,7 @@ function LessonEditor({ lesson, index, onChange }: { lesson: LessonRow; index: n
   const save = async () => {
     if (video && !/^https:\/\//.test(video)) { toast.error("Video link must start with https://"); return; }
     const clean = qs.filter((q) => q.q.trim() && q.options.filter((o) => o.trim()).length >= 2);
-    const { error } = await supabase.from("studio_lessons").update({ title, video_url: video || null, body, quiz: clean.map(({ q, options }) => ({ q, options })) }).eq("id", lesson.id);
+    const { error } = await supabase.from("studio_lessons").update({ title, video_url: video || null, body: lesson.kind === "quiz" ? `pass:${passMark}` : body, quiz: clean.map(({ q, options }) => ({ q, options })) }).eq("id", lesson.id);
     if (error) { toast.error("Could not save lesson."); return; }
     if (lesson.kind === "quiz") {
       const { error: e2 } = await supabase.from("studio_quiz_answers").upsert({ lesson_id: lesson.id, course_id: (await supabase.from("studio_lessons").select("course_id").eq("id", lesson.id).single()).data!.course_id, answers: clean.map((q) => q.answer) });
@@ -149,7 +144,8 @@ function LessonEditor({ lesson, index, onChange }: { lesson: LessonRow; index: n
                 </label>))}
             </div>))}
           <Button size="sm" variant="outline" onClick={() => setQs([...qs, { q: "", options: ["", "", "", ""], answer: 0 }])}><Plus className="h-4 w-4" />Add question</Button>
-          <p className="text-xs text-muted-foreground">Tick the correct option. Learners need 70% to pass.</p>
+          <label className="flex items-center gap-2 text-sm">Pass mark<select value={passMark} onChange={(e) => setPassMark(Number(e.target.value))} className="rounded-md border border-input bg-background px-2 py-1 text-sm" aria-label="Pass mark">{PASS_MARKS.map((m) => <option key={m} value={m}>{m}%</option>)}</select></label>
+          <p className="text-xs text-muted-foreground">Tick the correct option. Learners need {passMark}% to pass.</p>
         </div>}
         <div className="flex gap-2"><Button size="sm" onClick={save}>Save lesson</Button><Button size="sm" variant="ghost" className="text-destructive" onClick={del}>Delete</Button></div>
       </div>}

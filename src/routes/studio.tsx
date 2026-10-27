@@ -32,7 +32,7 @@ function Studio() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["studio-mine", user?.id], enabled: !!user, queryFn: async () =>
-    (await supabase.from("studio_courses").select("id, title, published, category, moodle_id, studio_lessons(count)").eq("author_id", user!.id).order("updated_at", { ascending: false })).data ?? [] });
+    (await supabase.from("studio_courses").select("id, title, published, category, studio_lessons(count)").eq("author_id", user!.id).order("updated_at", { ascending: false })).data ?? [] });
   const create = async () => {
     if (title.trim().length < 3) { toast.error("Give your course a title of at least 3 letters."); return; }
     const { data: c, error } = await supabase.from("studio_courses").insert({ title: title.trim(), author_id: user!.id }).select("id").single();
@@ -56,7 +56,6 @@ function Studio() {
                 <p className="mt-1 text-xs text-muted-foreground">{c.category} · {(c.studio_lessons as unknown as { count: number }[])[0]?.count ?? 0} lessons</p>
                 <div className="mt-2 flex gap-2 text-[11px]">
                   <span className={`rounded-full px-2 py-0.5 ${c.published ? "bg-secondary text-secondary-foreground" : "bg-muted text-muted-foreground"}`}>{c.published ? "Published" : "Draft"}</span>
-                  {c.moodle_id && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">In Moodle</span>}
                 </div>
               </Link>))}
             {data?.length === 0 && <p className="col-span-full py-8 text-center text-sm text-muted-foreground">No courses yet — type a title above to start.</p>}
