@@ -40,6 +40,8 @@ function Editor() {
   const [draft, setDraft] = useState<DraftCourse | null>(null);
   const [importing, setImporting] = useState(false);
   const [readingFile, setReadingFile] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiDraft, setAiDraft] = useState<{ lessonTitle: string; lessonSummary: string; questions: { question: string; options: string[]; correctIndex: number; sourceQuote: string }[]; droppedUnsupportedQuestions: number } | null>(null);
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", category: STUDIO_CATEGORIES[0] ?? "Farm Management", level: "Beginner", cover_url: "" });
   useEffect(() => { if (course) setForm({ title: course.title, description: course.description, category: course.category, level: course.level, cover_url: course.cover_url ?? "" }); }, [course]);
@@ -90,6 +92,25 @@ function Editor() {
       setDraft(null); setSourceText(""); refresh();
     } catch (error) { toast.error(error instanceof Error ? error.message : "Import failed."); }
     finally { setImporting(false); }
+  };
+
+  const generateAiDraft = async () => {
+    if (!draft?.lessons.length || aiLoading || course?.published) return;
+    const lesson = draft.lessons[0];
+    setAiLoading(true); setAiDraft(null);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session?.access_token) throw new Error("Please sign in.");
+      const response = await fetch("/api/course-factory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.session.access_token}` },
+        body: JSON.stringify({ courseId: id, title: lesson.title, sourceId: lesson.sourceRefs[0]?.sourceId ?? sourceName, sourceText: lesson.body.slice(0, 12000) }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message ?? "AI generation failed.");
+      setAiDraft(payload);
+    } catch (error) { toast.error(error instanceof Error ? error.message : "AI generation failed."); }
+    finally { setAiLoading(false); }
   };
 
   const saveDetails = async () => {
@@ -155,6 +176,20 @@ function Editor() {
               {draft.warnings.map((warning, i) => <p key={i} className="text-xs text-destructive">{warning}</p>)}
               <ol className="list-inside list-decimal text-xs text-muted-foreground">{draft.lessons.map((lesson, i) => <li key={i}>{lesson.title} — {lesson.body.length} characters</li>)}</ol>
               <div className="space-y-2 border-t border-border pt-3">
+                <Button type="button" variant="outline" disabled={aiLoading || !draft.lessons.length || !!course.published || draft.lessons[0].body.length < 100} onClick={generateAiDraft}>{aiLoading ? "Generating…" : "Generate AI lesson and quiz preview (first lesson)"}</Button>
+                {aiDraft && <div className="space-y-2 rounded-lg border border-border p-3 text-xs">
+                  <p className="font-semibold">AI draft — verify against your manual before using</p>
+                  <p className="font-medium">{aiDraft.lessonTitle}</p>
+                  <p className="whitespace-pre-wrap">{aiDraft.lessonSummary}</p>
+                  {aiDraft.questions.map((q, i) => <div key={i} className="space-y-1 border-t border-border pt-2">
+                    <p className="font-medium">{i + 1}. {q.question}</p>
+                    {q.options.map((option, j) => <p key={j}>{j === q.correctIndex ? "✓ " : "○ "}{option}</p>)}
+                    <p className="italic text-muted-foreground">Source quote: {q.sourceQuote}</p>
+                  </div>)}
+                  {!!aiDraft.droppedUnsupportedQuestions && <p>{aiDraft.droppedUnsupportedQuestions} question(s) removed because their source quotes were not found.</p>}
+                  <p className="text-muted-foreground">Preview only. Nothing is saved or published automatically.</p>
+                </div>}
+
                 <h3 className="text-sm font-medium">Suggested knowledge checks</h3>
                 <p className="text-xs text-muted-foreground">These are source-based question prompts, not AI-generated multiple-choice quizzes. Review the suggested answer and create verified options using the Quiz editor below.</p>
                 {suggestReviewQuestions(draft, 8).map((item, i) => <div key={i} className="rounded-lg border border-border p-2 text-xs">
