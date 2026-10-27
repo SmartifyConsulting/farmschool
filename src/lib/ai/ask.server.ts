@@ -10,7 +10,7 @@ const NON_DENIAL = ["credit_limit_reached", "ai_disabled", "provider_not_availab
 export async function handleAsk(request: Request) {
   const token = request.headers.get("authorization")?.replace(/^Bearer /, "");
   if (!token || token.split(".").length !== 3) return Response.json({ message: "Sign in to ask the Farmer AI." }, { status: 401 });
-  const url = process.env["SUPABASE_URL"], publicKey = process.env["SUPABASE_PUBLISHABLE_KEY"], apiKey = process.env["LOVABLE_API_KEY"];
+  const url = process.env["SUPABASE_URL"], publicKey = process.env["SUPABASE_PUBLISHABLE_KEY"], apiKey = process.env["OPENAI_API_KEY"];
   if (!url || !publicKey || !apiKey) return Response.json({ message: "The AI connection is not configured yet." }, { status: 503 });
   const auth = createClient(url, publicKey, { auth: { persistSession: false }, global: { fetch: (input, init) => {
     const h = new Headers(init?.headers);
@@ -36,8 +36,7 @@ export async function handleAsk(request: Request) {
 
   const run = createLovableAiGatewayRunIdFetch(getLovableAiGatewayRunId(request));
   const provider = createOpenAI({
-    baseURL: "https://ai.gateway.lovable.dev/v1", apiKey,
-    headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
+    apiKey,
     fetch: async (input, init) => {
       const res = await run.fetch(input, init);
       if (res.status === 403) {
@@ -50,10 +49,10 @@ export async function handleAsk(request: Request) {
   });
   const catalogue = [...courses.map((c) => `${c.title} (/course/${c.id})`), ...(studio ?? []).map((c) => `${c.title} (/class/${c.id})`)].join("; ");
   const result = streamText({
-    model: provider.responses("openai/gpt-6-astra"), maxRetries: 0, abortSignal: request.signal,
+    model: provider.responses("gpt-5-mini"), maxRetries: 0, abortSignal: request.signal,
     instructions: `You are "Ask the Farmer", the Mobile School agricultural assistant for smallholder and commercial farmers, mostly in Africa. Answer practical farming questions (crops, soil, livestock, poultry, irrigation, aquaponics, pests, post-harvest, markets, farm business) clearly and briefly, with steps where useful. Reply in the farmer's language. Never give pesticide or veterinary drug dosages, withdrawal periods or prescriptions — tell them to follow the product label and consult a local extension officer or vet. Flag urgent animal-health or chemical-safety situations. Say when you are unsure; local conditions vary. When relevant, suggest Mobile School courses ONLY from this list, using its path as a markdown link: ${catalogue}. You work independently of Moodle.`,
     messages: await convertToModelMessages(messages),
-    providerOptions: { openai: { forceReasoning: true, reasoningEffort: "low", reasoningSummary: "auto", store: false, include: ["reasoning.encrypted_content"] } },
+    providerOptions: { openai: { reasoningEffort: "low", reasoningSummary: "auto", store: false, include: ["reasoning.encrypted_content"] } },
   });
   return withLovableAiGatewayRunIdHeader(result.toUIMessageStreamResponse({
     originalMessages: messages,
