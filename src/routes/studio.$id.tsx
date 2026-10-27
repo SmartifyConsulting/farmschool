@@ -253,7 +253,7 @@ function Editor() {
               <select value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} className="rounded-md border border-input bg-background px-2 py-2 text-sm" aria-label="Level">{["Beginner", "Intermediate", "Advanced"].map((c) => <option key={c}>{c}</option>)}</select>
             </div>
             <Input value={form.cover_url} onChange={(e) => setForm({ ...form, cover_url: e.target.value })} placeholder="Cover image link (https://…)" />
-            <Button onClick={saveDetails} className="w-full">Save details</Button></div>
+            <Button onClick={saveDetails} className="w-full">Save details</Button>
             <div className="border-t border-border pt-3">
               {!course.published && <label className="mb-3 flex items-start gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={reviewConfirmed} onChange={(e) => setReviewConfirmed(e.target.checked)} className="mt-0.5" />I have reviewed all lessons, sources and quiz answers for accuracy before publishing.</label>}
               {course.published ? <Button variant="outline" className="w-full" onClick={() => setPublished(false)}>Unpublish</Button>
