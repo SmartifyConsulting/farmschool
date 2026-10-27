@@ -38,12 +38,25 @@ export async function handleCourseFactoryGenerate(request: Request): Promise<Res
   let input: z.infer<typeof inputSchema>;
   try { input = inputSchema.parse(await request.json()); }
   catch { return Response.json({ message: "Provide a course, title and source excerpt (100–12,000 characters)." }, { status: 400 }); }
-  const { data: course, error: courseError } = await auth.from("studio_courses")
+  const userDb = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      headers: { Authorization: `Bearer ${token}` },
+      fetch: (input, init) => {
+        const headers = new Headers(init?.headers);
+        if (key.startsWith("sb_") && headers.get("Authorization") === `Bearer ${key}`) headers.delete("Authorization");
+        headers.set("apikey", key);
+        headers.set("Authorization", `Bearer ${token}`);
+        return fetch(input, { ...init, headers });
+      },
+    },
+  });
+  const { data: course, error: courseError } = await userDb.from("studio_courses")
     .select("id,author_id,published").eq("id", input.courseId).maybeSingle();
   if (courseError || !course || course.author_id !== claims.claims.sub || course.published) {
     return Response.json({ message: "Only the owner of an unpublished course can generate draft content." }, { status: 403 });
   }
-  const { data: quotaCount, error: quotaError } = await auth.rpc("course_factory_reserve_ai_request" as never);
+  const { data: quotaCount, error: quotaError } = await userDb.rpc("course_factory_reserve_ai_request" as never);
   if (quotaError) {
     const limitReached = quotaError.message.includes("Daily AI generation limit reached");
     return Response.json({ message: limitReached ? "Daily AI limit reached (20 requests). Try again tomorrow (UTC)." : "AI quota is not configured or could not be checked." }, { status: limitReached ? 429 : 503 });
