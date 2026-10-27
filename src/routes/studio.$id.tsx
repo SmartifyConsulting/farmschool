@@ -114,6 +114,35 @@ function Editor() {
     finally { setAiLoading(false); }
   };
 
+  const saveAiDraft = async () => {
+    if (!aiDraft || course?.published || aiLoading) return;
+    if (!aiDraft.questions.length) { toast.error("No source-verified questions to save."); return; }
+    setAiLoading(true);
+    try {
+      const position = lessons?.length ?? 0;
+      const { error: readingError } = await supabase.from("studio_lessons").insert({
+        course_id: id, kind: "reading", position,
+        title: aiDraft.lessonTitle,
+        body: `${aiDraft.lessonSummary}\n\nSource: ${draft?.lessons[0]?.sourceRefs.map((ref) => `${ref.sourceId}, page ${ref.page}`).join("; ") ?? sourceName}\nReview required before publishing.`,
+      });
+      if (readingError) throw readingError;
+      const { data: quiz, error: quizError } = await supabase.from("studio_lessons").insert({
+        course_id: id, kind: "quiz", position: position + 1,
+        title: `Knowledge check: ${aiDraft.lessonTitle}`, body: "pass:80",
+        quiz: aiDraft.questions.map((q) => ({ q: q.question, options: q.options })),
+      }).select("id").single();
+      if (quizError || !quiz) throw quizError ?? new Error("Quiz insert failed.");
+      const { error: answerError } = await supabase.from("studio_quiz_answers").upsert({
+        lesson_id: quiz.id, course_id: id, answers: aiDraft.questions.map((q) => q.correctIndex),
+      });
+      if (answerError) throw answerError;
+      setAiDraft(null);
+      toast.success("AI reading and quiz saved as drafts. Verify all content before publishing.");
+      refresh();
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not save AI draft."); }
+    finally { setAiLoading(false); }
+  };
+
   const saveDetails = async () => {
     if (form.cover_url && !/^https:\/\//.test(form.cover_url)) { toast.error("Cover image link must start with https://"); return; }
     const { error } = await supabase.from("studio_courses").update({ ...form, cover_url: form.cover_url || null }).eq("id", id);
@@ -188,7 +217,8 @@ function Editor() {
                     <p className="italic text-muted-foreground">Source quote: {q.sourceQuote}</p>
                   </div>)}
                   {!!aiDraft.droppedUnsupportedQuestions && <p>{aiDraft.droppedUnsupportedQuestions} question(s) removed because their source quotes were not found.</p>}
-                  <p className="text-muted-foreground">Preview only. Nothing is saved or published automatically.</p>
+                  <p className="text-muted-foreground">Review all answers and citations. Saving does not publish the course.</p>
+                  <Button type="button" size="sm" disabled={aiLoading || !aiDraft.questions.length || !!course.published} onClick={saveAiDraft}>Save AI lesson and quiz as drafts</Button>
                 </div>}
 
                 <h3 className="text-sm font-medium">Suggested knowledge checks</h3>
