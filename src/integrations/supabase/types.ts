@@ -131,6 +131,24 @@ export type Database = {
         }
         Relationships: []
       }
+      course_factory_ai_usage: {
+        Row: {
+          requests: number
+          usage_day: string
+          user_id: string
+        }
+        Insert: {
+          requests?: number
+          usage_day: string
+          user_id: string
+        }
+        Update: {
+          requests?: number
+          usage_day?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       lesson_progress: {
         Row: {
           completed: boolean
@@ -454,6 +472,32 @@ export type Database = {
           },
         ]
       }
+      studio_review_approvals: {
+        Row: {
+          approved_at: string
+          course_id: string
+          reviewer_id: string
+        }
+        Insert: {
+          approved_at?: string
+          course_id: string
+          reviewer_id: string
+        }
+        Update: {
+          approved_at?: string
+          course_id?: string
+          reviewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_review_approvals_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: true
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -477,12 +521,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      course_factory_reserve_ai_request: { Args: never; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      studio_approve_review: {
+        Args: { _course_id: string }
+        Returns: undefined
       }
       studio_course_owned: { Args: { _course: string }; Returns: boolean }
       studio_course_visible: { Args: { _course: string }; Returns: boolean }
