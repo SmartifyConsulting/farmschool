@@ -34,12 +34,12 @@ function Editor() {
   const push = useServerFn(publishToMoodle);
   const { data: course, isLoading } = useQuery({ queryKey: ["studio-course", id], queryFn: async () => (await supabase.from("studio_courses").select("*").eq("id", id).maybeSingle()).data });
   const { data: lessons } = useQuery({ queryKey: ["studio-lessons", id], queryFn: async () => ((await supabase.from("studio_lessons").select("*").eq("course_id", id).order("position")).data ?? []) as LessonRow[] });
-  const [form, setForm] = useState({ title: "", description: "", category: STUDIO_CATEGORIES[0], level: "Beginner", cover_url: "" });
+  const [form, setForm] = useState({ title: "", description: "", category: STUDIO_CATEGORIES[0] ?? "Farm Management", level: "Beginner", cover_url: "" });
   useEffect(() => { if (course) setForm({ title: course.title, description: course.description, category: course.category, level: course.level, cover_url: course.cover_url ?? "" }); }, [course]);
   const refresh = () => { qc.invalidateQueries({ queryKey: ["studio-course", id] }); qc.invalidateQueries({ queryKey: ["studio-lessons", id] }); qc.invalidateQueries({ queryKey: ["studio-mine"] }); qc.invalidateQueries({ queryKey: ["studio-published"] }); };
 
   const saveDetails = async () => {
-    if (form.cover_url && !/^https:\/\//.test(form.cover_url)) return toast.error("Cover image link must start with https://");
+    if (form.cover_url && !/^https:\/\//.test(form.cover_url)) { toast.error("Cover image link must start with https://"); return; }
     const { error } = await supabase.from("studio_courses").update({ ...form, cover_url: form.cover_url || null }).eq("id", id);
     if (error) toast.error("Could not save — check the title is 3–120 letters."); else { toast.success("Saved"); refresh(); }
   };
@@ -48,7 +48,7 @@ function Editor() {
     if (error) toast.error("Could not add lesson."); else refresh();
   };
   const setPublished = async (published: boolean) => {
-    if (published && !lessons?.length) return toast.error("Add at least one lesson before publishing.");
+    if (published && !lessons?.length) { toast.error("Add at least one lesson before publishing."); return; }
     await supabase.from("studio_courses").update({ published }).eq("id", id); refresh();
     toast.success(published ? "Published — it now appears in the catalogue." : "Moved back to draft.");
   };
@@ -115,13 +115,13 @@ function LessonEditor({ lesson, index, onChange }: { lesson: LessonRow; index: n
   }, [open, lesson.id, lesson.kind]);
   const Icon = lesson.kind === "video" ? Video : lesson.kind === "quiz" ? HelpCircle : FileText;
   const save = async () => {
-    if (video && !/^https:\/\//.test(video)) return toast.error("Video link must start with https://");
+    if (video && !/^https:\/\//.test(video)) { toast.error("Video link must start with https://"); return; }
     const clean = qs.filter((q) => q.q.trim() && q.options.filter((o) => o.trim()).length >= 2);
     const { error } = await supabase.from("studio_lessons").update({ title, video_url: video || null, body, quiz: clean.map(({ q, options }) => ({ q, options })) }).eq("id", lesson.id);
-    if (error) return toast.error("Could not save lesson.");
+    if (error) { toast.error("Could not save lesson."); return; }
     if (lesson.kind === "quiz") {
       const { error: e2 } = await supabase.from("studio_quiz_answers").upsert({ lesson_id: lesson.id, course_id: (await supabase.from("studio_lessons").select("course_id").eq("id", lesson.id).single()).data!.course_id, answers: clean.map((q) => q.answer) });
-      if (e2) return toast.error("Could not save answers.");
+      if (e2) { toast.error("Could not save answers."); return; }
     }
     toast.success("Lesson saved"); onChange();
   };

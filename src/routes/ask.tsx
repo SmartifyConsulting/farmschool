@@ -25,7 +25,7 @@ const examples = ["My maize leaves are turning yellow — what should I check?",
 function renderText(text: string) {
   return text.split(/(\[[^\]]+\]\([^)]+\))/g).map((part, i) => {
     const m = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-    if (m && m[2].startsWith("/")) return <a key={i} href={m[2]} className="font-semibold text-primary underline">{m[1]}</a>;
+    if (m && m[2]?.startsWith("/")) return <a key={i} href={m[2]} className="font-semibold text-primary underline">{m[1]}</a>;
     return <span key={i}>{part.replace(/\*\*/g, "")}</span>;
   });
 }

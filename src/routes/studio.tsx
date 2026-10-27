@@ -34,9 +34,9 @@ function Studio() {
   const { data } = useQuery({ queryKey: ["studio-mine", user?.id], enabled: !!user, queryFn: async () =>
     (await supabase.from("studio_courses").select("id, title, published, category, moodle_id, studio_lessons(count)").eq("author_id", user!.id).order("updated_at", { ascending: false })).data ?? [] });
   const create = async () => {
-    if (title.trim().length < 3) return toast.error("Give your course a title of at least 3 letters.");
+    if (title.trim().length < 3) { toast.error("Give your course a title of at least 3 letters."); return; }
     const { data: c, error } = await supabase.from("studio_courses").insert({ title: title.trim(), author_id: user!.id }).select("id").single();
-    if (error) return toast.error("Could not create the course.");
+    if (error) { toast.error("Could not create the course."); return; }
     qc.invalidateQueries({ queryKey: ["studio-mine"] });
     nav({ to: "/studio/$id", params: { id: c.id } });
   };

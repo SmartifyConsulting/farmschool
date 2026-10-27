@@ -43,7 +43,7 @@ function ClassPage() {
 
   if (isLoading) return <Phone><Header title="Loading…" /></Phone>;
   if (!course) return <Phone><Header title="Course not found" /><Sheet><Link to="/search" className="text-primary">Browse the catalogue</Link></Sheet></Phone>;
-  const markDone = () => { if (!user) return toast.error("Sign in to track progress."); save.mutate({ course_id: id, lesson_id: lesson!.id, completed: true }); if (idx < total - 1) setIdx(idx + 1); };
+  const markDone = () => { if (!user) { toast.error("Sign in to track progress."); return; } save.mutate({ course_id: id, lesson_id: lesson!.id, completed: true }); if (idx < total - 1) setIdx(idx + 1); };
 
   return (
     <Phone>
@@ -92,8 +92,8 @@ function Quiz({ lesson, courseId, passed }: { lesson: L; courseId: string; passe
   return (
     <form className="space-y-4" onSubmit={async (e) => {
       e.preventDefault();
-      if (!user) return toast.error("Sign in to take the quiz.");
-      if (answers.includes(-1)) return toast.error("Answer every question first.");
+      if (!user) { toast.error("Sign in to take the quiz."); return; }
+      if (answers.includes(-1)) { toast.error("Answer every question first."); return; }
       try { const r = await submit({ data: { lessonId: lesson.id, answers } }); setResult(r); qc.invalidateQueries({ queryKey: ["progress"] }); }
       catch (err) { toast.error(err instanceof Error ? err.message : "Could not grade quiz."); }
     }}>

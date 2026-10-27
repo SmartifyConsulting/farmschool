@@ -66,7 +66,7 @@ function MyCourses() {
         {user && <section className="mt-8"><div className="mb-3 flex items-center justify-between gap-2"><h2 className="font-semibold">From the Mobile School LMS</h2>
           <button onClick={runSync} disabled={syncing} className="rounded-full border border-primary px-3 py-1 text-xs text-primary">{syncing ? "Syncing…" : "Sync my Moodle progress"}</button></div>
           {!moodle?.length && <p className="text-sm text-muted-foreground">No Moodle courses yet.</p>}
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{moodle.map((m) => (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{(moodle ?? []).map((m) => (
             <div key={m.moodle_id} className="min-w-0 rounded-2xl border border-border p-3">
               {m.image_url && <img src={m.image_url} alt="" className="mb-2 h-28 w-full rounded-xl object-cover" />}
               <p className="truncate text-sm font-semibold">{m.title}</p>

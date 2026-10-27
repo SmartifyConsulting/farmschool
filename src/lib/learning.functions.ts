@@ -70,7 +70,7 @@ export const syncMyMoodle = createServerFn({ method: "POST" })
     try {
       const users = await callMoodle<{ id: number }[]>(base, "core_user_get_users_by_field", { field: "email", "values[0]": email });
       if (!users.length) return { ok: false, message: "No Moodle account uses your email yet." };
-      const enrolled = await callMoodle<{ id: number; fullname: string; progress?: number | null; completed?: boolean }[]>(base, "core_enrol_get_users_courses", { userid: String(users[0].id) });
+      const enrolled = await callMoodle<{ id: number; fullname: string; progress?: number | null; completed?: boolean }[]>(base, "core_enrol_get_users_courses", { userid: String(users[0]!.id) });
       const now = new Date().toISOString();
       const rows = enrolled.map((c) => ({ user_id: context.userId, moodle_id: c.id, progress: Math.round(c.progress ?? 0), completed: !!c.completed, synced_at: now }));
       if (rows.length) await supabaseAdmin.from("moodle_enrolments").upsert(rows, { onConflict: "user_id,moodle_id" });
@@ -98,7 +98,7 @@ export const publishToMoodle = createServerFn({ method: "POST" })
       const res = await callMoodle<{ id: number }[]>(base, "core_course_create_courses", {
         "courses[0][fullname]": c.title, "courses[0][shortname]": `MS-${c.id.slice(0, 8)}`, "courses[0][categoryid]": "1", "courses[0][summary]": c.description,
       });
-      await context.supabase.from("studio_courses").update({ moodle_id: res[0].id }).eq("id", c.id);
+      await context.supabase.from("studio_courses").update({ moodle_id: res[0]!.id }).eq("id", c.id);
       return { ok: true, message: "Course created in Moodle." };
     } catch (e) {
       return { ok: false, message: e instanceof Error ? e.message : "Moodle could not be reached." };
