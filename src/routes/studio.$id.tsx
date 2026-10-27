@@ -97,6 +97,7 @@ function Editor() {
   const generateAiDraft = async () => {
     if (!draft?.lessons.length || aiLoading || course?.published) return;
     const lesson = draft.lessons[0];
+    if (!lesson) return;
     setAiLoading(true); setAiDraft(null);
     try {
       const { data: session } = await supabase.auth.getSession();
@@ -176,7 +177,7 @@ function Editor() {
               {draft.warnings.map((warning, i) => <p key={i} className="text-xs text-destructive">{warning}</p>)}
               <ol className="list-inside list-decimal text-xs text-muted-foreground">{draft.lessons.map((lesson, i) => <li key={i}>{lesson.title} — {lesson.body.length} characters</li>)}</ol>
               <div className="space-y-2 border-t border-border pt-3">
-                <Button type="button" variant="outline" disabled={aiLoading || !draft.lessons.length || !!course.published || draft.lessons[0].body.length < 100} onClick={generateAiDraft}>{aiLoading ? "Generating…" : "Generate AI lesson and quiz preview (first lesson)"}</Button>
+                <Button type="button" variant="outline" disabled={aiLoading || !draft.lessons.length || !!course.published || (draft.lessons[0]?.body.length ?? 0) < 100} onClick={generateAiDraft}>{aiLoading ? "Generating…" : "Generate AI lesson and quiz preview (first lesson)"}</Button>
                 {aiDraft && <div className="space-y-2 rounded-lg border border-border p-3 text-xs">
                   <p className="font-semibold">AI draft — verify against your manual before using</p>
                   <p className="font-medium">{aiDraft.lessonTitle}</p>
