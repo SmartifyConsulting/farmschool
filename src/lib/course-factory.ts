@@ -56,7 +56,7 @@ export function buildCourseDraft(title: string, pages: SourcePage[]): DraftCours
     const text = normalise(page.text);
     if (!text) { warnings.push(`Empty text on ${page.sourceId}, page ${page.page}; check whether OCR is required.`); continue; }
     const lines = text.split("\n").map((line) => line.trim()).filter(Boolean);
-    if (!foundHeading && looksLikeContents(lines)) { skippedIntro++; continue; }
+    if (!foundHeading && pages.length > 1 && looksLikeContents(lines) && lines.length < 65) { skippedIntro++; continue; }
     for (const line of lines) {
       if (heading.test(line) && !frontMatter.test(line)) {
         if (!foundHeading && !moduleHeading.test(line) && body.length === 0) continue;
@@ -70,6 +70,23 @@ export function buildCourseDraft(title: string, pages: SourcePage[]): DraftCours
     }
   }
   flush();
+  if (!lessons.length && pages.some(page => page.text.trim().length >= 100)) {
+    const allText = pages.map(page => page.text).join("\\n");
+    const modulePattern = /(?:^|\\n)\\s*(MODULE\\s+\\d+\\s*[-–:]\\s*[^\\n]{4,100})/gi;
+    const matches = [...allText.matchAll(modulePattern)];
+    if (matches.length) {
+      for (let index = 0; index < matches.length; index++) {
+        const match = matches[index];
+        const start = (match.index ?? 0) + match[0].length;
+        const end = matches[index + 1]?.index ?? allText.length;
+        const content = allText.slice(start, end).trim();
+        if (content.length >= 80 && !/^\\.{3,}/.test(content)) {
+          lessons.push({ title: match[1].trim(), body: content, sourceRefs: pages.map(page => ({ sourceId: page.sourceId, page: page.page })), reviewRequired: true });
+        }
+      }
+    }
+    if (!lessons.length) warnings.push("Could not reliably identify instructional modules. Check the source text or re-upload the original PDF to retain page references.");
+  }
   if (skippedIntro) warnings.push("Introductory, cover or contents material was skipped; check the proposed lesson boundaries against the source.");
   if (!lessons.length) warnings.push("No substantial readable content was found. Check source extraction before publishing.");
   if (lessons.length === 1 && pages.length > 3) warnings.push("Only one topic was detected; review headings and document structure before generating AI lessons.");
