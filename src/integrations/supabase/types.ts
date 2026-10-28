@@ -14,45 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      studio_learning_activities: {
-        Row: {
-          id: string
-          course_id: string
-          activity_key: string
-          lesson_title: string
-          kind: string
-          prompt: string
-          evidence: string
-          source_refs: Json
-          approved: boolean
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          course_id: string
-          activity_key: string
-          lesson_title: string
-          kind: string
-          prompt: string
-          evidence?: string
-          source_refs?: Json
-          approved?: boolean
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          course_id?: string
-          activity_key?: string
-          lesson_title?: string
-          kind?: string
-          prompt?: string
-          evidence?: string
-          source_refs?: Json
-          approved?: boolean
-          updated_at?: string
-        }
-        Relationships: []
-      }
       ai_finder_access_state: {
         Row: {
           denial_message: string
@@ -184,6 +145,42 @@ export type Database = {
         Update: {
           requests?: number
           usage_day?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      creator_applications: {
+        Row: {
+          display_name: string
+          expertise: string
+          industry: string
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_at: string
+          user_id: string
+        }
+        Insert: {
+          display_name: string
+          expertise: string
+          industry: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_at?: string
+          user_id: string
+        }
+        Update: {
+          display_name?: string
+          expertise?: string
+          industry?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_at?: string
           user_id?: string
         }
         Relationships: []
@@ -392,6 +389,41 @@ export type Database = {
         }
         Relationships: []
       }
+      studio_course_source_drafts: {
+        Row: {
+          course_id: string
+          draft: Json | null
+          source_name: string
+          source_pages: Json | null
+          source_text: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          draft?: Json | null
+          source_name?: string
+          source_pages?: Json | null
+          source_text?: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          draft?: Json | null
+          source_name?: string
+          source_pages?: Json | null
+          source_text?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_course_source_drafts_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: true
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       studio_courses: {
         Row: {
           author_id: string
@@ -433,6 +465,109 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      studio_learning_activities: {
+        Row: {
+          activity_key: string
+          approved: boolean
+          course_id: string
+          evidence: string
+          id: string
+          kind: string
+          lesson_title: string
+          prompt: string
+          source_refs: Json
+          updated_at: string
+        }
+        Insert: {
+          activity_key: string
+          approved?: boolean
+          course_id: string
+          evidence?: string
+          id?: string
+          kind: string
+          lesson_title: string
+          prompt: string
+          source_refs?: Json
+          updated_at?: string
+        }
+        Update: {
+          activity_key?: string
+          approved?: boolean
+          course_id?: string
+          evidence?: string
+          id?: string
+          kind?: string
+          lesson_title?: string
+          prompt?: string
+          source_refs?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_learning_activities_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_learning_designs: {
+        Row: {
+          ai_rationale: string | null
+          approved_at: string | null
+          approved_by: string | null
+          approved_methods: string[]
+          course_id: string
+          created_at: string
+          id: string
+          lesson_key: string
+          lesson_title: string
+          proposed_methods: string[]
+          review_status: string
+          source_references: Json
+          updated_at: string
+        }
+        Insert: {
+          ai_rationale?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_methods?: string[]
+          course_id: string
+          created_at?: string
+          id?: string
+          lesson_key: string
+          lesson_title: string
+          proposed_methods?: string[]
+          review_status?: string
+          source_references?: Json
+          updated_at?: string
+        }
+        Update: {
+          ai_rationale?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_methods?: string[]
+          course_id?: string
+          created_at?: string
+          id?: string
+          lesson_key?: string
+          lesson_title?: string
+          proposed_methods?: string[]
+          review_status?: string
+          source_references?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_learning_designs_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       studio_lessons: {
         Row: {
@@ -561,6 +696,14 @@ export type Database = {
     }
     Functions: {
       course_factory_reserve_ai_request: { Args: never; Returns: number }
+      creator_review_application: {
+        Args: { _approve: boolean; _notes?: string; _user_id: string }
+        Returns: undefined
+      }
+      creator_submit_application: {
+        Args: { _display_name: string; _expertise: string; _industry: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
