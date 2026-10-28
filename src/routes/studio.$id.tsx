@@ -13,6 +13,29 @@ import { buildCourseDraft, type DraftCourse, type SourcePage } from "@/lib/cours
 import { extractDocument } from "@/lib/document-extraction";
 import { suggestReviewQuestions } from "@/lib/course-quiz-suggestions";
 
+function groupDraftLessons(lessons: DraftCourse["lessons"]) {
+  const groups: { title: string; items: { lesson: DraftCourse["lessons"][number]; index: number }[] }[] = [];
+  let active: (typeof groups)[number] | undefined;
+  for (const [index, lesson] of lessons.entries()) {
+    const match = lesson.title.match(/^MODULE\s+(\d+)\b(?:\s*[-–:]\s*(.*))?/i);
+    if (match) {
+      const number = match[1];
+      const label = match[2]?.trim();
+      active = groups.find(group => group.title.startsWith(`Module ${number} ·`));
+      if (!active) {
+        active = { title: `Module ${number} · ${label || "Topic to review"}`, items: [] };
+        groups.push(active);
+      }
+    }
+    if (!active) {
+      active = { title: "Introduction · Review source grouping", items: [] };
+      groups.push(active);
+    }
+    active.items.push({ lesson, index });
+  }
+  return groups;
+}
+
 function FormattedLesson({ content }: { content: string }) {
   return <div className="space-y-3 text-sm leading-relaxed">{content.split(/\n\s*\n/).filter(Boolean).map((block, index) => {
     const line = block.trim();
@@ -559,6 +582,20 @@ function Editor() {
                   </div>
                 </details>)}
                 <p className="text-xs text-muted-foreground">{draft.lessons.filter((_, i) => designApproved[i]).length} of {draft.lessons.length} designs approved. Design approvals and selected methods are saved to Supabase for cross-device access. The imported manual text and draft outline remain cached in this browser. Approved methods are passed to the generation API. AI proposals use your daily AI allowance.</p>
+              </div>
+              <div className="space-y-3 rounded-xl border border-border bg-background p-4">
+                <h3 className="font-semibold">Course structure · modules and lessons</h3>
+                <p className="text-xs text-muted-foreground">Provisional grouping based on detected module headings. Check every lesson against its source pages; activities and assessments are generated only after trainer approval.</p>
+                {groupDraftLessons(draft.lessons).map((group, groupIndex) => <details key={groupIndex} open={groupIndex === 0} className="rounded-lg border border-border p-3">
+                  <summary className="cursor-pointer font-medium">{group.title} <span className="text-xs font-normal text-muted-foreground">· {group.items.length} source sections</span></summary>
+                  <ol className="mt-3 space-y-2 pl-5 text-sm list-decimal">
+                    {group.items.map(({ lesson, index }) => <li key={index}>
+                      <span className="font-medium">{lesson.title}</span>
+                      <span className="ml-2 text-xs text-muted-foreground">{designApproved[index] ? "Design approved" : "Needs trainer review"}</span>
+                      <p className="text-xs text-muted-foreground">{lesson.sourceRefs.map(ref => `p.${ref.page}`).join(", ")}</p>
+                    </li>)}
+                  </ol>
+                </details>)}
               </div>
               <div className="space-y-2">{draft.lessons.map((lesson, i) => <details key={i} className="rounded-lg border border-border bg-background p-3"><summary className="cursor-pointer text-sm font-medium">{i + 1}. {lesson.title} <span className="text-xs font-normal text-muted-foreground">· {lesson.sourceRefs.length} source pages</span></summary><p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{lesson.body.slice(0, 2500)}{lesson.body.length > 2500 ? "…" : ""}</p><p className="mt-2 text-xs text-muted-foreground">Source: {lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join(", ")}</p></details>)}</div>
               <div className="space-y-2 border-t border-border pt-3">
