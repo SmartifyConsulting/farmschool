@@ -13,6 +13,19 @@ import { buildCourseDraft, type DraftCourse, type SourcePage } from "@/lib/cours
 import { extractDocument } from "@/lib/document-extraction";
 import { suggestReviewQuestions } from "@/lib/course-quiz-suggestions";
 
+function FormattedLesson({ content }: { content: string }) {
+  return <div className="space-y-3 text-sm leading-relaxed">{content.split(/\n\s*\n/).filter(Boolean).map((block, index) => {
+    const line = block.trim();
+    if (/^###\s+/.test(line)) return <h4 key={index} className="pt-2 text-base font-semibold">{line.replace(/^###\s+/, "")}</h4>;
+    if (/^##\s+/.test(line)) return <h3 key={index} className="pt-3 text-lg font-semibold">{line.replace(/^##\s+/, "")}</h3>;
+    if (/^#\s+/.test(line)) return <h2 key={index} className="pt-3 text-xl font-bold">{line.replace(/^#\s+/, "")}</h2>;
+    const lines = line.split("\n");
+    if (lines.every(item => /^[-*]\s+/.test(item))) return <ul key={index} className="list-disc space-y-1 pl-5">{lines.map((item, i) => <li key={i}>{item.replace(/^[-*]\s+/, "")}</li>)}</ul>;
+    if (lines.every(item => /^\d+[.)]\s+/.test(item))) return <ol key={index} className="list-decimal space-y-1 pl-5">{lines.map((item, i) => <li key={i}>{item.replace(/^\d+[.)]\s+/, "")}</li>)}</ol>;
+    return <p key={index} className="whitespace-pre-line">{line}</p>;
+  })}</div>;
+}
+
 export const Route = createFileRoute("/studio/$id")({
   head: () => ({ meta: [
     { title: "Edit course — Mobile School Studio" },
@@ -559,7 +572,7 @@ function Editor() {
                 {aiDraft && <div className="space-y-2 rounded-lg border border-border p-3 text-xs">
                   <p className="font-semibold">AI draft — verify against your manual before using</p>
                   <p className="font-medium">{aiDraft.lessonTitle}</p>
-                  <p className="whitespace-pre-wrap">{aiDraft.lessonSummary}</p>
+                  <FormattedLesson content={aiDraft.lessonSummary} />
                   {aiDraft.questions.map((q, i) => <div key={i} className="space-y-1 border-t border-border pt-2">
                     <p className="font-medium">{i + 1}. {q.question}</p>
                     {q.options.map((option, j) => <p key={j}>{j === q.correctIndex ? "✓ " : "○ "}{option}</p>)}
