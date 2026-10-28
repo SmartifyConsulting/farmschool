@@ -45,7 +45,7 @@ const activityLabels: Record<string, { title: string; description: string }> = {
   visual: { title: "Visual summary", description: "Review an infographic or labelled visual derived from the source." },
 };
 
-function SourceActivity({ method, lesson, courseId }: { method: string; lesson: DraftCourse["lessons"][number]; courseId: string }) {
+function SourceActivity({ method, lesson, courseId, published }: { method: string; lesson: DraftCourse["lessons"][number]; courseId: string; published: boolean }) {
   const evidence = lesson.body.split(/(?<=[.!?])\\s+|\\n+/).map(value => value.trim())
     .find(value => value.length >= 65 && value.length <= 450 && /[.!?]$/.test(value));
   const suggested = method === "steps"
@@ -54,6 +54,7 @@ function SourceActivity({ method, lesson, courseId }: { method: string; lesson: 
   const key = `farmschool:activity:${courseId}:${lesson.sourceRefs[0]?.sourceId ?? "source"}:${lesson.title}:${method}`;
   const [activity, setActivity] = useState(suggested);
   const [saved, setSaved] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(key);
@@ -63,6 +64,13 @@ function SourceActivity({ method, lesson, courseId }: { method: string; lesson: 
       }
     } catch { /* Storage may be disabled; editing remains available. */ }
   }, [key]);
+  useEffect(() => {
+    let active = true;
+    void supabase.from("studio_learning_activities").select("prompt").eq("course_id", courseId).eq("activity_key", key).maybeSingle().then(({ data, error }) => {
+      if (active && !error && data && typeof data.prompt === "string") { setActivity(data.prompt); setSaved(true); }
+    });
+    return () => { active = false; };
+  }, [courseId, key]);
   if (method !== "steps" && method !== "scenario") return null;
   if (!evidence) return <p className="mt-2 text-xs text-amber-700">Insufficient explanatory source text to draft this activity. Trainer must supply verified content.</p>;
   return <div className="mt-3 space-y-2 rounded-md border border-border bg-background p-3">
@@ -71,15 +79,24 @@ function SourceActivity({ method, lesson, courseId }: { method: string; lesson: 
     <blockquote className="border-l-2 border-primary pl-3 text-xs text-muted-foreground">{evidence}</blockquote>
     <p className="text-xs text-muted-foreground">Evidence: {lesson.sourceRefs.map(ref => `${ref.sourceId}, p.${ref.page}`).join("; ")}. No model answer is asserted without trainer verification.</p>
     <div className="flex flex-wrap items-center gap-2">
-      <Button type="button" variant="outline" size="sm" disabled={!activity.trim()} onClick={() => {
+      <Button type="button" variant="outline" size="sm" disabled={!activity.trim() || syncing || published} onClick={async () => {
+        setSyncing(true);
         try {
+          const { error } = await supabase.from("studio_learning_activities").upsert({
+            course_id: courseId, activity_key: key, lesson_title: lesson.title,
+            kind: method, prompt: activity, evidence, source_refs: lesson.sourceRefs,
+            approved: false, updated_at: new Date().toISOString(),
+          }, { onConflict: "course_id,activity_key" });
+          if (error) throw error;
           window.localStorage.setItem(key, JSON.stringify({ kind: method, prompt: activity, evidence, sourceRefs: lesson.sourceRefs, reviewRequired: true }));
           setSaved(true);
-          toast.success("Draft saved in this browser.");
-        } catch { toast.error("Browser storage unavailable. Copy your draft instead."); }
+          toast.success("Activity saved to Supabase.");
+        } catch {
+          toast.error("Cloud save failed. Run migration 0009 in Supabase SQL Editor, then retry.");
+        } finally { setSyncing(false); }
       }}>Save draft</Button>
       <Button type="button" variant="outline" size="sm" onClick={() => void navigator.clipboard.writeText(`${activity}\\n\\nSource evidence: ${evidence}\\nSource pages: ${lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join("; ")}`).then(() => toast.success("Activity copied."), () => toast.error("Could not copy activity."))}>Copy</Button>
-      {saved && <span className="text-xs text-muted-foreground">Saved locally · not published</span>}
+      {saved && <span className="text-xs text-muted-foreground">Saved to cloud · not published</span>}
     </div>
   </div>;
 }
@@ -655,7 +672,7 @@ function Editor() {
                     {choicesFor(index, lesson.title, lesson.body).map((method, methodIndex) => <div key={method} className="rounded-lg bg-muted/40 p-3 text-sm">
                       <strong>{methodIndex + 2}. {activityLabels[method]?.title ?? method}</strong>
                       <p className="text-xs text-muted-foreground">{activityLabels[method]?.description ?? "Trainer review required."}</p>
-                      <SourceActivity method={method} lesson={lesson} courseId={id} />
+                      <SourceActivity method={method} lesson={lesson} courseId={id} published={!!course.published} />
                     </div>)}
                     <p className="text-xs text-muted-foreground">Source: {lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join(", ")}</p>
                   </div>
