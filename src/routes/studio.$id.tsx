@@ -55,10 +55,11 @@ function Editor() {
     try {
       const saved = window.localStorage.getItem("farmschool:learning-design:" + id);
       if (saved) {
-        const state = JSON.parse(saved) as { draft?: DraftCourse; sourceText?: string; sourceName?: string; choices?: Record<number, string[]>; approved?: Record<number, boolean>; rationale?: Record<number, string> };
+        const state = JSON.parse(saved) as { draft?: DraftCourse; sourceText?: string; sourceName?: string; sourcePages?: SourcePage[]; choices?: Record<number, string[]>; approved?: Record<number, boolean>; rationale?: Record<number, string> };
         if (state.draft?.lessons && Array.isArray(state.draft.lessons)) setDraft(state.draft);
         if (typeof state.sourceText === "string") setSourceText(state.sourceText);
         if (typeof state.sourceName === "string") setSourceName(state.sourceName);
+        if (Array.isArray(state.sourcePages)) setSourcePages(state.sourcePages);
         if (state.choices) setDesignChoices(state.choices);
         if (state.approved) setDesignApproved(state.approved);
         if (state.rationale) setDesignRationale(state.rationale);
@@ -70,10 +71,10 @@ function Editor() {
     if (!restoredDesign) return;
     try {
       window.localStorage.setItem("farmschool:learning-design:" + id, JSON.stringify({
-        draft, sourceText, sourceName, choices: designChoices, approved: designApproved, rationale: designRationale,
+        draft, sourceText, sourceName, sourcePages, choices: designChoices, approved: designApproved, rationale: designRationale,
       }));
     } catch { toast.error("Learning design could not be saved in this browser."); }
-  }, [id, restoredDesign, draft, sourceText, sourceName, designChoices, designApproved, designRationale]);
+  }, [id, restoredDesign, draft, sourceText, sourceName, sourcePages, designChoices, designApproved, designRationale]);
 
   const proposeDesign = async (index: number, lesson: { title: string; body: string; sourceRefs: { sourceId: string }[] }) => {
     if (designLoading !== null || lesson.body.length < 100) return;
