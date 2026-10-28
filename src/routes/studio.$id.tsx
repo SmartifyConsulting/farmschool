@@ -589,6 +589,7 @@ function Editor() {
         <div className="mt-3 flex flex-wrap gap-2">
           <Link to="/studio" className="flex items-center gap-1 rounded-full border border-primary-foreground/50 px-3 py-1 text-xs"><ArrowLeft className="h-3 w-3" />All my courses</Link>
           <Link to="/class/$id" params={{ id }} className="flex items-center gap-1 rounded-full border border-primary-foreground/50 px-3 py-1 text-xs"><Eye className="h-3 w-3" />Preview</Link>
+          {course.published && <Link to="/learning-activities/$courseId" params={{ courseId: id }} className="flex items-center gap-1 rounded-full border border-primary-foreground/50 px-3 py-1 text-xs">Learner activities</Link>}
         </div>
       </Header>
       <Sheet wide>
