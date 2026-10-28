@@ -45,20 +45,42 @@ const activityLabels: Record<string, { title: string; description: string }> = {
   visual: { title: "Visual summary", description: "Review an infographic or labelled visual derived from the source." },
 };
 
-function SourceActivity({ method, lesson }: { method: string; lesson: DraftCourse["lessons"][number] }) {
-  if (method !== "steps" && method !== "scenario") return null;
-  const evidence = lesson.body.split(/(?<=[.!?])\s+|\n+/).map(value => value.trim())
+function SourceActivity({ method, lesson, courseId }: { method: string; lesson: DraftCourse["lessons"][number]; courseId: string }) {
+  const evidence = lesson.body.split(/(?<=[.!?])\\s+|\\n+/).map(value => value.trim())
     .find(value => value.length >= 65 && value.length <= 450 && /[.!?]$/.test(value));
+  const suggested = method === "steps"
+    ? "Practical exercise: Using the evidence below, outline the steps you would follow and explain how you would check each step. Do not add procedures the source does not describe."
+    : "Applied scenario: Apply the principle described below in a real farming situation. Explain what information you would check and what decision you would make, using the supplied evidence.";
+  const key = `farmschool:activity:${courseId}:${lesson.sourceRefs[0]?.sourceId ?? "source"}:${lesson.title}:${method}`;
+  const [activity, setActivity] = useState(suggested);
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(key);
+      if (stored) {
+        const parsed = JSON.parse(stored) as { prompt?: string };
+        if (typeof parsed.prompt === "string") { setActivity(parsed.prompt); setSaved(true); }
+      }
+    } catch { /* Storage may be disabled; editing remains available. */ }
+  }, [key]);
+  if (method !== "steps" && method !== "scenario") return null;
   if (!evidence) return <p className="mt-2 text-xs text-amber-700">Insufficient explanatory source text to draft this activity. Trainer must supply verified content.</p>;
-  const prompt = method === "steps"
-    ? `Practical exercise: Using the lesson evidence below, outline the steps you would follow and explain how you would check each step. Do not add procedures that the source does not describe.`
-    : `Applied scenario: A learner needs to apply the principle described below in a real farming situation. Explain what information you would check and what decision you would make, using only the supplied evidence.`;
   return <div className="mt-3 space-y-2 rounded-md border border-border bg-background p-3">
-    <p className="text-xs font-semibold">Source-grounded activity draft · trainer review required</p>
-    <p className="text-sm">{prompt}</p>
+    <p className="text-xs font-semibold">Editable activity draft · trainer review required</p>
+    <Textarea aria-label="Activity instructions" value={activity} onChange={event => { setActivity(event.target.value); setSaved(false); }} rows={4} />
     <blockquote className="border-l-2 border-primary pl-3 text-xs text-muted-foreground">{evidence}</blockquote>
     <p className="text-xs text-muted-foreground">Evidence: {lesson.sourceRefs.map(ref => `${ref.sourceId}, p.${ref.page}`).join("; ")}. No model answer is asserted without trainer verification.</p>
-    <Button type="button" variant="outline" size="sm" onClick={() => void navigator.clipboard.writeText(`${prompt}\n\nSource evidence: ${evidence}\nSource pages: ${lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join("; ")}`).then(() => toast.success("Activity copied for trainer editing."), () => toast.error("Could not copy activity."))}>Copy activity draft</Button>
+    <div className="flex flex-wrap items-center gap-2">
+      <Button type="button" variant="outline" size="sm" disabled={!activity.trim()} onClick={() => {
+        try {
+          window.localStorage.setItem(key, JSON.stringify({ kind: method, prompt: activity, evidence, sourceRefs: lesson.sourceRefs, reviewRequired: true }));
+          setSaved(true);
+          toast.success("Draft saved in this browser.");
+        } catch { toast.error("Browser storage unavailable. Copy your draft instead."); }
+      }}>Save draft</Button>
+      <Button type="button" variant="outline" size="sm" onClick={() => void navigator.clipboard.writeText(`${activity}\\n\\nSource evidence: ${evidence}\\nSource pages: ${lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join("; ")}`).then(() => toast.success("Activity copied."), () => toast.error("Could not copy activity."))}>Copy</Button>
+      {saved && <span className="text-xs text-muted-foreground">Saved locally · not published</span>}
+    </div>
   </div>;
 }
 
@@ -633,7 +655,7 @@ function Editor() {
                     {choicesFor(index, lesson.title, lesson.body).map((method, methodIndex) => <div key={method} className="rounded-lg bg-muted/40 p-3 text-sm">
                       <strong>{methodIndex + 2}. {activityLabels[method]?.title ?? method}</strong>
                       <p className="text-xs text-muted-foreground">{activityLabels[method]?.description ?? "Trainer review required."}</p>
-                      <SourceActivity method={method} lesson={lesson} />
+                      <SourceActivity method={method} lesson={lesson} courseId={id} />
                     </div>)}
                     <p className="text-xs text-muted-foreground">Source: {lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join(", ")}</p>
                   </div>
