@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      studio_learning_activities: {
+        Row: {
+          id: string
+          course_id: string
+          activity_key: string
+          lesson_title: string
+          kind: string
+          prompt: string
+          evidence: string
+          source_refs: Json
+          approved: boolean
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          course_id: string
+          activity_key: string
+          lesson_title: string
+          kind: string
+          prompt: string
+          evidence?: string
+          source_refs?: Json
+          approved?: boolean
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          course_id?: string
+          activity_key?: string
+          lesson_title?: string
+          kind?: string
+          prompt?: string
+          evidence?: string
+          source_refs?: Json
+          approved?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_finder_access_state: {
         Row: {
           denial_message: string
