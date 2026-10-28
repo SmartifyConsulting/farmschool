@@ -55,6 +55,8 @@ function SourceActivity({ method, lesson, courseId, published }: { method: strin
   const [activity, setActivity] = useState(suggested);
   const [saved, setSaved] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [approved, setApproved] = useState(false);
+  const [verified, setVerified] = useState(false);
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(key);
@@ -66,8 +68,8 @@ function SourceActivity({ method, lesson, courseId, published }: { method: strin
   }, [key]);
   useEffect(() => {
     let active = true;
-    void supabase.from("studio_learning_activities").select("prompt").eq("course_id", courseId).eq("activity_key", key).maybeSingle().then(({ data, error }) => {
-      if (active && !error && data && typeof data.prompt === "string") { setActivity(data.prompt); setSaved(true); }
+    void supabase.from("studio_learning_activities").select("prompt,approved").eq("course_id", courseId).eq("activity_key", key).maybeSingle().then(({ data, error }) => {
+      if (active && !error && data && typeof data.prompt === "string") { setActivity(data.prompt); setSaved(true); setApproved(!!data.approved); }
     });
     return () => { active = false; };
   }, [courseId, key]);
@@ -75,7 +77,7 @@ function SourceActivity({ method, lesson, courseId, published }: { method: strin
   if (!evidence) return <p className="mt-2 text-xs text-amber-700">Insufficient explanatory source text to draft this activity. Trainer must supply verified content.</p>;
   return <div className="mt-3 space-y-2 rounded-md border border-border bg-background p-3">
     <p className="text-xs font-semibold">Editable activity draft · trainer review required</p>
-    <Textarea aria-label="Activity instructions" value={activity} onChange={event => { setActivity(event.target.value); setSaved(false); }} rows={4} />
+    <Textarea aria-label="Activity instructions" value={activity} onChange={event => { setActivity(event.target.value); setSaved(false); setApproved(false); setVerified(false); }} rows={4} />
     <blockquote className="border-l-2 border-primary pl-3 text-xs text-muted-foreground">{evidence}</blockquote>
     <p className="text-xs text-muted-foreground">Evidence: {lesson.sourceRefs.map(ref => `${ref.sourceId}, p.${ref.page}`).join("; ")}. No model answer is asserted without trainer verification.</p>
     <div className="flex flex-wrap items-center gap-2">
@@ -90,13 +92,25 @@ function SourceActivity({ method, lesson, courseId, published }: { method: strin
           if (error) throw error;
           window.localStorage.setItem(key, JSON.stringify({ kind: method, prompt: activity, evidence, sourceRefs: lesson.sourceRefs, reviewRequired: true }));
           setSaved(true);
+          setApproved(false);
+          setVerified(false);
           toast.success("Activity saved to Supabase.");
         } catch {
           toast.error("Cloud save failed. Run migration 0009 in Supabase SQL Editor, then retry.");
         } finally { setSyncing(false); }
       }}>Save draft</Button>
       <Button type="button" variant="outline" size="sm" onClick={() => void navigator.clipboard.writeText(`${activity}\\n\\nSource evidence: ${evidence}\\nSource pages: ${lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join("; ")}`).then(() => toast.success("Activity copied."), () => toast.error("Could not copy activity."))}>Copy</Button>
-      {saved && <span className="text-xs text-muted-foreground">Saved to cloud · not published</span>}
+      {saved && <span className="text-xs text-muted-foreground">{approved ? "Trainer approved · not published" : "Saved to cloud · pending approval"}</span>}
+      {saved && !approved && <label className="flex w-full items-center gap-2 text-xs"><input type="checkbox" checked={verified} onChange={event => setVerified(event.target.checked)} disabled={published || syncing} />I have verified this activity against its source and approved its wording.</label>}
+      {saved && <Button type="button" size="sm" variant="outline" disabled={syncing || published || (!approved && !verified)} onClick={async () => {
+        setSyncing(true);
+        const { data, error } = await supabase.from("studio_learning_activities").update({ approved: !approved }).eq("course_id", courseId).eq("activity_key", key).select("approved").single();
+        setSyncing(false);
+        if (error || !data) { toast.error("Could not update activity approval."); return; }
+        setApproved(data.approved);
+        setVerified(false);
+        toast.success(data.approved ? "Activity approved for future publication." : "Activity returned to review.");
+      }}>{approved ? "Reopen review" : "Approve activity"}</Button>
     </div>
   </div>;
 }
