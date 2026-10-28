@@ -64,6 +64,7 @@ export function CourseWizard() {
     } catch (err) {
       if (!abort.signal.aborted) setError(friendlyError(err, "The draft could not be generated. Nothing has been saved."));
       else setProgress("Generation stopped. Nothing has been saved.");
+      if (!abort.signal.aborted) setProgress("");
     } finally { if (controller.current === abort) { setBusy(false); controller.current = null; } }
   };
   const saveDraft = async () => {

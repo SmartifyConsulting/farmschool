@@ -3,10 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useLearning";
 import { supabase } from "@/integrations/supabase/client";
 import { Phone, Header, Sheet } from "@/components/AppShell";
+import { pageMeta } from "@/lib/page-meta";
 
 export const Route = createFileRoute("/admin/")({
   component: AdminHome,
-  head: () => ({ meta: [{ title: "Administration — Mobile School" }] }),
+  head: () => pageMeta("Administration — Mobile School", "Manage course creators and learning platform connections."),
 });
 
 function AdminHome() {

@@ -6,12 +6,10 @@ import { BookOpen, Search, X } from "lucide-react";
 import { Phone, Header, Sheet } from "@/components/AppShell";
 import { courses } from "@/lib/courses";
 import { courseIndustry } from "@/lib/industries";
+import { pageMeta } from "@/lib/page-meta";
 
 export const Route = createFileRoute("/search")({
-  head: () => ({ meta: [
-    { title: "Course Catalogue — Mobile School" },
-    { name: "description", content: "Discover courses from creators across industries." },
-  ] }),
+  head: () => pageMeta("Course Catalogue — Mobile School", "Discover courses from creators across industries."),
   component: SearchPage,
 });
 

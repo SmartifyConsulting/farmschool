@@ -6,12 +6,10 @@ import { Phone, Header, SearchBox, Sheet, ProgressBar } from "@/components/AppSh
 import { supabase } from "@/integrations/supabase/client";
 import { courses } from "@/lib/courses";
 import { useAuth, useProgress, useBookmarks, courseProgress } from "@/hooks/useLearning";
+import { pageMeta } from "@/lib/page-meta";
 
 export const Route = createFileRoute("/courses")({
-  head: () => ({ meta: [
-    { title: "My Courses — Mobile School" },
-    { name: "description", content: "Continue learning and track completed or saved courses." },
-  ] }),
+  head: () => pageMeta("My Courses — Mobile School", "Continue learning and track completed or saved courses."),
   component: MyCourses,
 });
 
