@@ -13,3 +13,4 @@
 - [x] Moodle progress pull, certificates, push course to Moodle (built; live once Moodle is activated)
 - [x] In-app Course Studio (videos, readings, quizzes) in catalogue
 - [x] Ask the Farmer AI assistant
+- [ ] Native AI course wizard: prompt, streamed generation, review, atomic draft save, browser verification
