@@ -13,6 +13,8 @@ create table if not exists public.creator_applications (
 alter table public.creator_applications enable row level security;
 create policy "creators read own application" on public.creator_applications
   for select to authenticated using (user_id = (select auth.uid()));
+create policy "admins read creator applications" on public.creator_applications
+  for select to authenticated using (public.has_role((select auth.uid()), 'admin'));
 create policy "creators submit own application" on public.creator_applications
   for insert to authenticated with check (
     user_id = (select auth.uid()) and status = 'pending'
@@ -47,7 +49,7 @@ begin
     raise exception 'Administrator permission required'; end if;
   update public.creator_applications
     set status = case when _approve then 'approved' else 'rejected' end,
-        reviewed_at=now(), reviewed_by=auth.uid(), review_notes=left(_notes,2000)
+        reviewed_at=now(), reviewed_by=auth.uid(), review_notes=left(coalesce(_notes,''),2000)
     where user_id=_user_id and status='pending';
   if not found then raise exception 'Pending application not found'; end if;
 end $$;
