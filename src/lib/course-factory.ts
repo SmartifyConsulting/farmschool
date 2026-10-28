@@ -60,7 +60,13 @@ export function buildCourseDraft(title: string, pages: SourcePage[]): DraftCours
     for (const line of lines) {
       if (heading.test(line) && !frontMatter.test(line)) {
         if (!foundHeading && !moduleHeading.test(line) && body.length === 0) continue;
-        if (foundHeading && body.length === 0) {\n          // A bare "MODULE 1" followed by a descriptive heading is one unit, not two lessons.\n          if (/^(?:module|chapter|unit)\\s+\\d+$/i.test(currentTitle)) currentTitle = `${currentTitle}: ${line}`.slice(0, 120);\n          else currentTitle = line;\n          continue;\n        }\n        flush(); currentTitle = line; foundHeading = true; continue;
+        if (foundHeading && body.length === 0) { 
+          // A bare "MODULE 1" followed by a descriptive heading is one unit, not two lessons. 
+          if (/^(?:module|chapter|unit)\\s+\\d+$/i.test(currentTitle)) currentTitle = `${currentTitle}: ${line}`.slice(0, 120); 
+          else currentTitle = line; 
+          continue; 
+        } 
+        flush(); currentTitle = line; foundHeading = true; continue;
       }
       if (!foundHeading && (frontMatter.test(line) || coverMarker.test(line) || contentsEntry.test(line) || line.length < 30)) { skippedIntro++; continue; }
       if (frontMatter.test(line) && body.length === 0) continue;
