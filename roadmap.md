@@ -16,3 +16,4 @@
 - [x] Native AI course wizard: prompt, streamed generation, review, atomic draft save, browser verification
 - [x] Inline AI lesson & quiz assistant in Course Studio
 - [x] Trainer course performance & learner roster
+- [x] Access Agriculture video library: providers, manual/CSV import, duplicate detection, studio picker, embed/link-out playback, course usage + link check
