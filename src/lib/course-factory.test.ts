@@ -27,7 +27,7 @@ describe("Course Factory draft builder", () => {
       { sourceId: "manual", page: 3, text: ["MODULE 1 - KNOWING THE BEE", "Honeybees live in organised colonies. Workers forage for food."].join("\n") },
     ]);
     expect(draft.lessons.map(x => x.title)).toEqual(["MODULE 1 - KNOWING THE BEE"]);
-    expect(draft.lessons[0].sourceRefs).toEqual([{ sourceId: "manual", page: 3 }]);
+    expect(draft.lessons[0]?.sourceRefs).toEqual([{ sourceId: "manual", page: 3 }]);
   });
 
   it("rejects invalid provenance", () => {
