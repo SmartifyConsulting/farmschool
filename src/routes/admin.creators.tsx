@@ -8,10 +8,11 @@ import { Phone, Header, Sheet } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { pageMeta } from "@/lib/page-meta";
 
 export const Route = createFileRoute("/admin/creators")({
   component: CreatorReview,
-  head: () => ({ meta: [{ title: "Creator approvals — Mobile School" }] }),
+  head: () => pageMeta("Creator approvals — Mobile School", "Review creator applications and manage publishing permissions."),
 });
 
 type Application = {

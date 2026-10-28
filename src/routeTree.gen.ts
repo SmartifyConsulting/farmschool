@@ -27,6 +27,7 @@ import { Route as AdminMoodleRouteImport } from './routes/admin.moodle'
 import { Route as ApiAskRouteImport } from './routes/api/ask'
 import { Route as ApiChallengeRouteImport } from './routes/api/challenge'
 import { Route as ApiCourseFactoryRouteImport } from './routes/api/course-factory'
+import { Route as ApiCourseWizardRouteImport } from './routes/api/course-wizard'
 import { Route as ClassIdRouteImport } from './routes/class.$id'
 import { Route as CourseIdRouteImport } from './routes/course.$id'
 import { Route as LearningActivitiesCourseIdRouteImport } from './routes/learning-activities.$courseId'
@@ -125,6 +126,11 @@ const ApiCourseFactoryRoute = ApiCourseFactoryRouteImport.update({
   path: '/api/course-factory',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCourseWizardRoute = ApiCourseWizardRouteImport.update({
+  id: '/api/course-wizard',
+  path: '/api/course-wizard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClassIdRoute = ClassIdRouteImport.update({
   id: '/class/$id',
   path: '/class/$id',
@@ -180,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/api/ask': typeof ApiAskRoute
   '/api/challenge': typeof ApiChallengeRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
+  '/api/course-wizard': typeof ApiCourseWizardRoute
   '/class/$id': typeof ClassIdRoute
   '/course/$id': typeof CourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
@@ -207,6 +214,7 @@ export interface FileRoutesByTo {
   '/api/ask': typeof ApiAskRoute
   '/api/challenge': typeof ApiChallengeRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
+  '/api/course-wizard': typeof ApiCourseWizardRoute
   '/class/$id': typeof ClassIdRoute
   '/course/$id': typeof CourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
@@ -235,6 +243,7 @@ export interface FileRoutesById {
   '/api/ask': typeof ApiAskRoute
   '/api/challenge': typeof ApiChallengeRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
+  '/api/course-wizard': typeof ApiCourseWizardRoute
   '/class/$id': typeof ClassIdRoute
   '/course/$id': typeof CourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
@@ -264,6 +273,7 @@ export interface FileRouteTypes {
     | '/api/ask'
     | '/api/challenge'
     | '/api/course-factory'
+    | '/api/course-wizard'
     | '/class/$id'
     | '/course/$id'
     | '/learning-activities/$courseId'
@@ -291,6 +301,7 @@ export interface FileRouteTypes {
     | '/api/ask'
     | '/api/challenge'
     | '/api/course-factory'
+    | '/api/course-wizard'
     | '/class/$id'
     | '/course/$id'
     | '/learning-activities/$courseId'
@@ -318,6 +329,7 @@ export interface FileRouteTypes {
     | '/api/ask'
     | '/api/challenge'
     | '/api/course-factory'
+    | '/api/course-wizard'
     | '/class/$id'
     | '/course/$id'
     | '/learning-activities/$courseId'
@@ -346,6 +358,7 @@ export interface RootRouteChildren {
   ApiAskRoute: typeof ApiAskRoute
   ApiChallengeRoute: typeof ApiChallengeRoute
   ApiCourseFactoryRoute: typeof ApiCourseFactoryRoute
+  ApiCourseWizardRoute: typeof ApiCourseWizardRoute
   ClassIdRoute: typeof ClassIdRoute
   CourseIdRoute: typeof CourseIdRoute
   LearningActivitiesCourseIdRoute: typeof LearningActivitiesCourseIdRoute
@@ -483,6 +496,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCourseFactoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/course-wizard': {
+      id: '/api/course-wizard'
+      path: '/api/course-wizard'
+      fullPath: '/api/course-wizard'
+      preLoaderRoute: typeof ApiCourseWizardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/class/$id': {
       id: '/class/$id'
       path: '/class/$id'
@@ -564,6 +584,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAskRoute: ApiAskRoute,
   ApiChallengeRoute: ApiChallengeRoute,
   ApiCourseFactoryRoute: ApiCourseFactoryRoute,
+  ApiCourseWizardRoute: ApiCourseWizardRoute,
   ClassIdRoute: ClassIdRoute,
   CourseIdRoute: CourseIdRoute,
   LearningActivitiesCourseIdRoute: LearningActivitiesCourseIdRoute,

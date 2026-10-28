@@ -2,8 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Phone } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
+import { pageMeta } from "@/lib/page-meta";
 
 export const Route = createFileRoute("/learning-activities/$courseId")({
+  head: () => pageMeta("Learning activities — Mobile School", "Practice your skills with trainer-approved course exercises and scenarios."),
   component: PublishedLearningActivities,
 });
 

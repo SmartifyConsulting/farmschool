@@ -718,6 +718,15 @@ export type Database = {
       studio_course_owned: { Args: { _course: string }; Returns: boolean }
       studio_course_visible: { Args: { _course: string }; Returns: boolean }
       studio_delete_draft: { Args: { _course_id: string }; Returns: string }
+      studio_save_generated_course: {
+        Args: {
+          _course_id: string
+          _draft: Json
+          _level: string
+          _pass_mark: number
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "user"

@@ -10,10 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { pageMeta } from "@/lib/page-meta";
 
 export const Route = createFileRoute("/creator-application")({
   component: CreatorApplication,
-  head: () => ({ meta: [{ title: "Become a creator — Mobile School" }] }),
+  head: () => pageMeta("Become a creator — Mobile School", "Apply to share your expertise and publish courses on Mobile School."),
 });
 
 function CreatorApplication() {
