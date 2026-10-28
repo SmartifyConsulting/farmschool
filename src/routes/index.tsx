@@ -33,7 +33,7 @@ export function CourseCard({ c }: { c: Course }) {
         <p className="line-clamp-2 text-xs sm:text-sm font-semibold leading-snug">{c.title}</p>
         <div className="mt-2 flex items-center justify-between text-xs">
           <span className="flex items-center gap-1 text-muted-foreground"><Star className="h-3 w-3 fill-accent text-accent" />{c.rating} ({c.reviews})</span>
-          <span className="font-bold">${c.price}</span>
+          <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-semibold text-muted-foreground">Sample course</span>
         </div>
         {p.started && <div className="mt-2"><ProgressBar pct={p.pct} label={`${p.done}/${p.total} lessons`} /></div>}
       </div>
