@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -51,7 +52,7 @@ function CreatorReview() {
       _user_id: id, _approve: approve, _notes: notes[id] || null,
     } as never);
     setBusyId(null);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(friendlyError(error)); return; }
     toast.success(approve ? "Creator approved." : "Application rejected.");
     qc.invalidateQueries({ queryKey: ["creator-applications"] });
   };

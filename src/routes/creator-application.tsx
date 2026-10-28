@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -42,7 +43,7 @@ function CreatorApplication() {
       _display_name: name.trim(), _expertise: expertise.trim(), _industry: industry,
     } as never);
     setBusy(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(friendlyError(error)); return; }
     toast.success("Application submitted for review.");
     qc.invalidateQueries({ queryKey: ["creator-application"] });
   };

@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
@@ -69,7 +70,7 @@ function Ask() {
               <div className="min-w-0 whitespace-pre-wrap leading-relaxed">{m.parts.map((p, i) => p.type === "text" ? <span key={i}>{renderText(p.text)}</span> : null)}</div>
             </div>))}
           {status === "submitted" && <p className="flex items-center gap-2 text-sm text-muted-foreground"><Sprout className="h-4 w-4 animate-pulse text-primary" />Thinking…</p>}
-          {error && <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{error.message}</p>}
+          {error && <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{friendlyError(error, "The assistant couldn't answer just now. Please try again.")}</p>}
           <div ref={end} />
           <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="sticky bottom-24 flex items-end gap-2 rounded-2xl border border-border bg-card p-2 shadow-md md:bottom-4">
             <textarea ref={box} value={input} onChange={(e) => setInput(e.target.value)} maxLength={2000} rows={2} placeholder="Type your farming question…" aria-label="Your question"

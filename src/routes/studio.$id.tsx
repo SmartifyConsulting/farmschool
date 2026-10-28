@@ -1,3 +1,5 @@
+import { useConfirm } from "@/components/ConfirmDialog";
+import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -148,6 +150,7 @@ function Editor() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
   const nav = useNavigate();
+  const confirm = useConfirm();
   const { data: course, isLoading } = useQuery({ queryKey: ["studio-course", id], queryFn: async () => (await supabase.from("studio_courses").select("*").eq("id", id).maybeSingle()).data });
   const { data: lessons } = useQuery({ queryKey: ["studio-lessons", id], queryFn: async () => ((await supabase.from("studio_lessons").select("*").eq("course_id", id).order("position")).data ?? []) as LessonRow[] });
   const [sourceText, setSourceText] = useState("");
@@ -210,7 +213,7 @@ function Editor() {
       setDesignApproved(p => ({ ...p, [index]: false }));
       setDesignRationale(p => ({ ...p, [index]: payload.rationale }));
       toast.success("AI proposal ready for review.");
-    } catch (error) { toast.error(error instanceof Error ? error.message : "AI proposal failed."); }
+    } catch (error) { toast.error(friendlyError(error, "AI proposal failed.")); }
     finally { setDesignLoading(null); }
   };
 
@@ -225,7 +228,7 @@ function Editor() {
       const { data, error } = await sourceDraftTable().select("*").eq("course_id", id).maybeSingle();
       if (cancelled) return;
       if (error) {
-        if (!["PGRST205", "42P01"].includes(error.code ?? "")) toast.error("Cloud draft could not be loaded: " + error.message);
+        if (!["PGRST205", "42P01"].includes(error.code ?? "")) toast.error(friendlyError(error, "Cloud draft could not be loaded. Please try again."));
         setCloudSaveStatus("unavailable");
         setCloudDraftReady(true);
         return;
@@ -255,7 +258,7 @@ function Editor() {
         course_id: id, source_name: sourceName, source_text: sourceText, source_pages: sourcePages, draft,
       } as never, { onConflict: "course_id" });
       if (cancelled) return;
-      if (error) { setCloudSaveStatus("error"); toast.error("Cloud draft autosave failed: " + error.message); }
+      if (error) { setCloudSaveStatus("error"); toast.error(friendlyError(error, "Cloud draft autosave failed. Please try again.")); }
       else setCloudSaveStatus("saved");
     }, 1500);
     return () => { cancelled = true; clearTimeout(timer); };
@@ -279,7 +282,7 @@ function Editor() {
     const restore = async () => {
       const { data, error } = await designTable().select("*").eq("course_id", id);
       if (cancelled) return;
-      if (error) { toast.error("Could not load saved learning designs: " + error.message); return; }
+      if (error) { toast.error(friendlyError(error, "Could not load saved learning designs. Please try again.")); return; }
       const rows = (data ?? []) as unknown as Array<{ lesson_key: string; proposed_methods: string[]; review_status: string; ai_rationale: string | null }>;
       const choices: Record<number, string[]> = {};
       const approved: Record<number, boolean> = {};
@@ -333,7 +336,7 @@ function Editor() {
       });
       await refetchSavedDesigns();
       toast.success("Teaching methods saved; approval reset for review.");
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not update teaching methods."); }
+    } catch (error) { toast.error(friendlyError(error, "Could not update teaching methods.")); }
     finally { setDesignSyncing(false); }
   };
   const updateSavedApproval = async (lessonKeyValue: string, approved: boolean) => {
@@ -346,7 +349,7 @@ function Editor() {
       if (error) throw error;
       await refetchSavedDesigns();
       toast.success(approved ? "Saved design approved." : "Saved design reopened for review.");
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not update saved design."); }
+    } catch (error) { toast.error(friendlyError(error, "Could not update saved design.")); }
     finally { setDesignSyncing(false); }
   };
   const saveDesignSelection = async (index: number, methods: string[]) => {
@@ -356,7 +359,7 @@ function Editor() {
       await persistDesign(index, methods, false);
       setDesignChoices(p => ({ ...p, [index]: methods }));
       setDesignApproved(p => ({ ...p, [index]: false }));
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not save design."); }
+    } catch (error) { toast.error(friendlyError(error, "Could not save design.")); }
     finally { setDesignSyncing(false); }
   };
   const toggleDesignApproval = async (index: number, lesson: { title: string; body: string }) => {
@@ -369,7 +372,7 @@ function Editor() {
       await persistDesign(index, methods, next);
       setDesignApproved(p => ({ ...p, [index]: next }));
       toast.success(next ? "Learning design approved and saved." : "Learning design reopened.");
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not update approval."); }
+    } catch (error) { toast.error(friendlyError(error, "Could not update approval.")); }
     finally { setDesignSyncing(false); }
   };
 
@@ -417,7 +420,7 @@ function Editor() {
       setDraft(null);
       toast.success("Manual extracted. Analyse its structure to preview the course outline.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not read file.");
+      toast.error(friendlyError(error, "Could not read file."));
     } finally {
       setReadingFile(false);
     }
@@ -427,7 +430,7 @@ function Editor() {
       const next = buildCourseDraft(form.title || course?.title || "Course", sourcePages ?? [{ sourceId: sourceName.trim() || "Pasted source", page: 1, text: sourceText }]);
       setDraft(next); setDesignChoices({}); setDesignApproved({}); setDesignRationale({});
       if (!next.lessons.length) toast.error("No readable lessons found.");
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not parse source."); }
+    } catch (error) { toast.error(friendlyError(error, "Could not parse source.")); }
   };
   const importDraft = async () => {
     if (!draft?.lessons.length || importing || course?.published) return;
@@ -443,7 +446,7 @@ function Editor() {
       if (error) throw error;
       toast.success(`Imported ${rows.length} reading lessons for review.`);
       setDraft(null); setSourceText(""); refresh();
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Import failed."); }
+    } catch (error) { toast.error(friendlyError(error, "Import failed.")); }
     finally { setImporting(false); }
   };
 
@@ -464,7 +467,7 @@ function Editor() {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message ?? "AI generation failed.");
       setAiDraft(payload);
-    } catch (error) { toast.error(error instanceof Error ? error.message : "AI generation failed."); }
+    } catch (error) { toast.error(friendlyError(error, "AI generation failed.")); }
     finally { setAiLoading(false); }
   };
 
@@ -473,7 +476,7 @@ function Editor() {
     const candidates = draft.lessons.map((lesson, index) => ({ lesson, index })).filter(({ lesson }) => lesson.body.length >= 100).slice(0, 5);
     if (!candidates.length) { toast.error("No lessons with enough source text (100 characters)."); return; }
     if (candidates.some(({ index }) => !designApproved[index])) { toast.error("Approve the learning design for each selected lesson before batch generation."); return; }
-    if (!confirm(`Generate AI drafts for ${candidates.length} lessons? Each request uses your daily AI allowance and may incur provider charges.`)) return;
+    if (!(await confirm({ title: `Generate ${candidates.length} AI lesson drafts?`, description: "Each lesson uses part of your daily AI allowance. You can review every draft before saving.", confirmLabel: "Generate drafts" }))) return;
     setBatchRunning(true); setBatchDrafts([]);
     const results: { sourceTitle: string; sourceRefs: string; lessonTitle: string; lessonSummary: string; questions: { question: string; options: string[]; correctIndex: number; sourceQuote: string }[] }[] = [];
     try {
@@ -493,7 +496,7 @@ function Editor() {
         setBatchDrafts([...results]);
       }
       toast.success(`Generated ${results.length} draft lessons. Review before saving.`);
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Batch generation stopped."); }
+    } catch (error) { toast.error(friendlyError(error, "Batch generation stopped.")); }
     finally { setBatchProgress(""); setBatchRunning(false); }
   };
 
@@ -526,7 +529,7 @@ function Editor() {
       toast.success(`Saved ${saved} AI lesson drafts. Review each lesson and quiz before publishing.`);
     } catch (error) {
       setBatchDrafts((current) => current.slice(saved));
-      toast.error(error instanceof Error ? error.message : "Batch save interrupted. Review saved lessons.");
+      toast.error(friendlyError(error, "Batch save interrupted. Review saved lessons."));
     } finally { setBatchRunning(false); refresh(); }
   };
 
@@ -555,7 +558,7 @@ function Editor() {
       setAiDraft(null);
       toast.success("AI reading and quiz saved as drafts. Verify all content before publishing.");
       refresh();
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not save AI draft."); }
+    } catch (error) { toast.error(friendlyError(error, "Could not save AI draft.")); }
     finally { setAiLoading(false); }
   };
 
@@ -583,14 +586,32 @@ function Editor() {
     if (published && lessons?.some((lesson) => lesson.body.includes("Review required before publishing."))) { toast.error("Imported lessons still need review. Edit each imported lesson and remove the review notice after verifying the content."); return; }
     if (published) {
       const { error: approvalError } = await supabase.rpc("studio_approve_review" as never, { _course_id: id } as never);
-      if (approvalError) { toast.error(approvalError.message || "Could not record trainer approval."); return; }
+      if (approvalError) { toast.error(friendlyError(approvalError, "We couldn't record your review. Please try again.")); return; }
     }
     const { error } = await supabase.from("studio_courses").update({ published }).eq("id", id);
-    if (error) { toast.error("Could not change publishing status."); return; }
+    if (error) { toast.error(/creator|approv/i.test(error.message) ? "Your creator application must be approved before you can publish." : "We couldn't change the publishing status. Please try again.", /creator|approv/i.test(error.message) ? { action: { label: "Apply", onClick: () => nav({ to: "/creator-application" }) } } : undefined); return; }
     setReviewConfirmed(false); refresh();
     toast.success(published ? "Published — it now appears in the catalogue." : "Moved back to draft.");
   };
-  const remove = async () => { if (!confirm("Delete this course and all its lessons?")) return; await supabase.from("studio_courses").delete().eq("id", id); refresh(); nav({ to: "/studio" }); };
+  const [deleting, setDeleting] = useState(false);
+  const remove = async () => {
+    if (!course || deleting) return;
+    if (course.published) { toast.warning("Unpublish this course before deleting it.", { description: "Published courses can't be deleted while learners can see them." }); return; }
+    const ok = await confirm({
+      tone: "danger", title: "Delete this draft course?", confirmLabel: "Delete course", cancelLabel: "Keep course",
+      description: <><p>You're about to permanently delete <strong className="text-foreground">{course.title}</strong>, including all of its lessons, quizzes and saved import work.</p><p>This can't be undone.</p></>,
+    });
+    if (!ok) return;
+    setDeleting(true);
+    const { data, error } = await supabase.rpc("studio_delete_draft", { _course_id: id });
+    setDeleting(false);
+    const result = error ? "error" : data;
+    if (result === "deleted") { toast.success(`"${course.title}" was deleted.`); refresh(); nav({ to: "/studio" }); return; }
+    toast.error(result === "published" ? "Unpublish this course before deleting it."
+      : result === "not_owner" ? "Only the trainer who created this course can delete it."
+      : result === "not_signed_in" ? "Your session has ended. Please sign in again."
+      : result === "not_found" ? "This course no longer exists." : "We couldn't delete the course. Please try again.");
+  };
 
   if (isLoading) return <Phone><Header title="Loading…" /></Phone>;
   if (!course) return <Phone><Header title="Course not found" /><Sheet><Link to="/studio" className="text-primary">Back to Studio</Link></Sheet></Phone>;
@@ -649,7 +670,7 @@ function Editor() {
               {!course.published && <label className="mb-3 flex items-start gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={reviewConfirmed} onChange={(e) => setReviewConfirmed(e.target.checked)} className="mt-0.5" />I have reviewed all lessons, sources and quiz answers for accuracy before publishing.</label>}
               {course.published ? <Button variant="outline" className="w-full" onClick={() => setPublished(false)}>Unpublish</Button>
                 : <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={!readyToPublish} onClick={() => setPublished(true)}>Publish to catalogue</Button>}
-              <Button variant="ghost" className="mt-2 w-full text-destructive" onClick={remove}><Trash2 className="h-4 w-4" />Delete course</Button>
+              <Button variant="ghost" className="mt-2 w-full text-destructive" onClick={remove} disabled={deleting}><Trash2 className="h-4 w-4" />{deleting ? "Deleting…" : "Delete course"}</Button>
             </div>
           </section>
           </div>

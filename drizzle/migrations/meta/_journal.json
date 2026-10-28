@@ -29,6 +29,13 @@
       "when": 1793129894132,
       "tag": "0003_quiz_answer_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793199530020,
+      "tag": "0004_studio_safe_draft_delete",
+      "breakpoints": true
     }
   ]
 }
