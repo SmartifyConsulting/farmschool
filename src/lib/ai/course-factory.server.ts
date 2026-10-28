@@ -58,6 +58,20 @@ export async function handleCourseFactoryGenerate(request: Request): Promise<Res
   if (courseError || !course || course.author_id !== claims.claims.sub || course.published) {
     return Response.json({ message: "Only the owner of an unpublished course can generate draft content." }, { status: 403 });
   }
+  // Refuse index/contents excerpts before charging the user's AI quota.
+  const sourceLines = input.sourceText.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const contentsSignals = sourceLines.filter(line =>
+    /^(?:table of contents|contents)$/i.test(line) ||
+    /^(?:module|chapter|unit|lesson|section)\s+\d+\s*[-–:.]/i.test(line) ||
+    /\.{3,}\s*\d{1,3}\s*$/.test(line)
+  ).length;
+  const instructionalSentences = (input.sourceText.match(/[^.!?\n]{65,}[.!?](?=\s|$)/g) ?? [])
+    .filter(sentence => sentence.trim().split(/\s+/).length >= 12).length;
+  if ((contentsSignals >= 3 && instructionalSentences < 3) || (contentsSignals >= 5 && contentsSignals > instructionalSentences * 2)) {
+    return Response.json({
+      message: "This excerpt appears to be a table of contents rather than teaching material. Select the actual module pages before generating a lesson.",
+    }, { status: 422 });
+  }
   const { data: quotaCount, error: quotaError } = await userDb.rpc("course_factory_reserve_ai_request" as never);
   if (quotaError) {
     const limitReached = quotaError.message.includes("Daily AI generation limit reached");
