@@ -45,6 +45,23 @@ const activityLabels: Record<string, { title: string; description: string }> = {
   visual: { title: "Visual summary", description: "Review an infographic or labelled visual derived from the source." },
 };
 
+function SourceActivity({ method, lesson }: { method: string; lesson: DraftCourse["lessons"][number] }) {
+  if (method !== "steps" && method !== "scenario") return null;
+  const evidence = lesson.body.split(/(?<=[.!?])\s+|\n+/).map(value => value.trim())
+    .find(value => value.length >= 65 && value.length <= 450 && /[.!?]$/.test(value));
+  if (!evidence) return <p className="mt-2 text-xs text-amber-700">Insufficient explanatory source text to draft this activity. Trainer must supply verified content.</p>;
+  const prompt = method === "steps"
+    ? `Practical exercise: Using the lesson evidence below, outline the steps you would follow and explain how you would check each step. Do not add procedures that the source does not describe.`
+    : `Applied scenario: A learner needs to apply the principle described below in a real farming situation. Explain what information you would check and what decision you would make, using only the supplied evidence.`;
+  return <div className="mt-3 space-y-2 rounded-md border border-border bg-background p-3">
+    <p className="text-xs font-semibold">Source-grounded activity draft · trainer review required</p>
+    <p className="text-sm">{prompt}</p>
+    <blockquote className="border-l-2 border-primary pl-3 text-xs text-muted-foreground">{evidence}</blockquote>
+    <p className="text-xs text-muted-foreground">Evidence: {lesson.sourceRefs.map(ref => `${ref.sourceId}, p.${ref.page}`).join("; ")}. No model answer is asserted without trainer verification.</p>
+    <Button type="button" variant="outline" size="sm" onClick={() => void navigator.clipboard.writeText(`${prompt}\n\nSource evidence: ${evidence}\nSource pages: ${lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join("; ")}`).then(() => toast.success("Activity copied for trainer editing."), () => toast.error("Could not copy activity."))}>Copy activity draft</Button>
+  </div>;
+}
+
 function FormattedLesson({ content }: { content: string }) {
   return <div className="space-y-3 text-sm leading-relaxed">{content.split(/\n\s*\n/).filter(Boolean).map((block, index) => {
     const line = block.trim();
@@ -616,6 +633,7 @@ function Editor() {
                     {choicesFor(index, lesson.title, lesson.body).map((method, methodIndex) => <div key={method} className="rounded-lg bg-muted/40 p-3 text-sm">
                       <strong>{methodIndex + 2}. {activityLabels[method]?.title ?? method}</strong>
                       <p className="text-xs text-muted-foreground">{activityLabels[method]?.description ?? "Trainer review required."}</p>
+                      <SourceActivity method={method} lesson={lesson} />
                     </div>)}
                     <p className="text-xs text-muted-foreground">Source: {lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join(", ")}</p>
                   </div>
