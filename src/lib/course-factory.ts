@@ -47,7 +47,7 @@ export function buildCourseDraft(title: string, pages: SourcePage[]): DraftCours
   let refs: { sourceId: string; page: number }[] = [];
   const flush = () => {
     const content = body.join("\n\n").trim();
-    if (content.length >= 40 && (foundHeading || content.length >= 250)) lessons.push({ title: currentTitle.slice(0, 120), body: content, sourceRefs: [...refs], reviewRequired: true });
+    if (content.length > 0 && (foundHeading || content.length >= 250)) lessons.push({ title: currentTitle.slice(0, 120), body: content, sourceRefs: [...refs], reviewRequired: true });
 
     body = []; refs = [];
   };
