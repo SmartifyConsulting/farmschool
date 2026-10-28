@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import { buildCourseDraft, type DraftCourse, type SourcePage } from "@/lib/course-factory";
 import { extractDocument } from "@/lib/document-extraction";
 import { suggestReviewQuestions } from "@/lib/course-quiz-suggestions";
+import { CourseAnalytics } from "@/components/CourseAnalytics";
+import { LessonAssistant } from "@/components/LessonAssistant";
 
 function groupDraftLessons(lessons: DraftCourse["lessons"]) {
   const groups: { title: string; items: { lesson: DraftCourse["lessons"][number]; index: number }[] }[] = [];
@@ -682,7 +684,7 @@ function Editor() {
                 <Button size="sm" variant="outline" onClick={() => addLesson("reading")}><FileText className="h-4 w-4" />Reading</Button>
                 <Button size="sm" variant="outline" onClick={() => addLesson("quiz")}><HelpCircle className="h-4 w-4" />Quiz</Button>
               </div></div>
-            {lessons?.map((l, i) => <LessonEditor key={l.id} lesson={l} index={i} onChange={refresh} />)}
+            {lessons?.map((l, i) => <LessonEditor key={l.id} lesson={l} index={i} onChange={refresh} courseId={id} sourceText={lessons.slice(0, i).reverse().find((p) => p.kind !== "quiz" && p.body.trim().length > 0)?.body ?? ""} />)}
             {lessons?.length === 0 && <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Add your first video, reading or quiz.</p>}
           </section>
           <section className="space-y-3 rounded-2xl border border-border p-4">
@@ -805,6 +807,7 @@ function Editor() {
           </div>
           <div className="min-w-0 space-y-6 lg:col-start-2 xl:col-start-3 xl:sticky xl:top-6">
           <aside className="hidden space-y-3 lg:block rounded-2xl border border-border p-4"><h2 className="font-semibold">Course navigation</h2><p className="text-xs text-muted-foreground">{lessons?.length ?? 0} learning objects</p><nav aria-label="Course lessons" className="space-y-2">{lessons?.map((lesson, index) => <a key={lesson.id} href={`#lesson-${lesson.id}`} className="block rounded-lg border border-border px-3 py-2 text-xs hover:bg-muted"><span className="font-semibold">{index + 1}. {lesson.title}</span><span className="mt-1 block capitalize text-muted-foreground">{lesson.kind}</span></a>)}</nav></aside>
+          <CourseAnalytics courseId={id} />
           <aside className="space-y-3 rounded-2xl border border-border p-4"><h2 className="font-semibold">Trainer review</h2><p className="text-sm text-muted-foreground">Check the source evidence, lesson content and assessments before publishing.</p><div className="rounded-lg bg-muted/40 p-3 text-xs"><p className="font-medium">AI learning design</p><p className="mt-1 text-muted-foreground">Proposed teaching and assessment methods with trainer approval are planned, not yet active.</p></div><Link to="/class/$id" params={{ id }} className="inline-flex items-center gap-2 text-sm font-medium text-primary"><Eye className="h-4 w-4" />Preview as learner</Link></aside>
           </div>
         </div>
@@ -813,7 +816,7 @@ function Editor() {
   );
 }
 
-function LessonEditor({ lesson, index, onChange }: { lesson: LessonRow; index: number; onChange: () => void }) {
+function LessonEditor({ lesson, index, onChange, courseId, sourceText }: { lesson: LessonRow; index: number; onChange: () => void; courseId: string; sourceText: string }) {
   const [title, setTitle] = useState(lesson.title);
   const [video, setVideo] = useState(lesson.video_url ?? "");
   const [body, setBody] = useState(lesson.body);
@@ -850,6 +853,7 @@ function LessonEditor({ lesson, index, onChange }: { lesson: LessonRow; index: n
         <Input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Lesson title" maxLength={120} />
         {lesson.kind === "video" && <Input value={video} onChange={(e) => setVideo(e.target.value)} placeholder="Video link (https://… .mp4 or YouTube)" />}
         {lesson.kind !== "quiz" && <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} placeholder="Lesson notes, steps or checklist" maxLength={20000} />}
+        <LessonAssistant courseId={courseId} title={title} kind={lesson.kind} text={lesson.kind === "quiz" ? sourceText : body} onText={setBody} onQuestions={(n) => setQs((cur) => [...cur.filter((q) => q.q.trim()), ...n])} />
         {lesson.kind === "quiz" && <div className="space-y-3">
           {qs.map((q, qi) => (
             <div key={qi} className="space-y-1.5 rounded-xl bg-muted/50 p-2">
