@@ -62,7 +62,7 @@ export function buildCourseDraft(title: string, pages: SourcePage[]): DraftCours
         if (!foundHeading && !moduleHeading.test(line) && body.length === 0) continue;
         if (foundHeading && body.length === 0) { 
           // A bare "MODULE 1" followed by a descriptive heading is one unit, not two lessons. 
-          if (/^(?:module|chapter|unit)\\s+\\d+$/i.test(currentTitle)) currentTitle = `${currentTitle}: ${line}`.slice(0, 120); 
+          if (/^(?:module|chapter|unit)\s+\d+$/i.test(currentTitle)) currentTitle = `${currentTitle}: ${line}`.slice(0, 120); 
           else currentTitle = line; 
           continue; 
         } 
