@@ -150,6 +150,7 @@ function Editor() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
   const nav = useNavigate();
+  const confirm = useConfirm();
   const { data: course, isLoading } = useQuery({ queryKey: ["studio-course", id], queryFn: async () => (await supabase.from("studio_courses").select("*").eq("id", id).maybeSingle()).data });
   const { data: lessons } = useQuery({ queryKey: ["studio-lessons", id], queryFn: async () => ((await supabase.from("studio_lessons").select("*").eq("course_id", id).order("position")).data ?? []) as LessonRow[] });
   const [sourceText, setSourceText] = useState("");
@@ -605,7 +606,7 @@ function Editor() {
     const { data, error } = await supabase.rpc("studio_delete_draft", { _course_id: id });
     setDeleting(false);
     const result = error ? "error" : data;
-    if (result === "deleted") { toast.success(`"${course.title}" was deleted.`); await qc.invalidateQueries({ queryKey: ["studio"] }); nav({ to: "/studio" }); return; }
+    if (result === "deleted") { toast.success(`"${course.title}" was deleted.`); refresh(); nav({ to: "/studio" }); return; }
     toast.error(result === "published" ? "Unpublish this course before deleting it."
       : result === "not_owner" ? "Only the trainer who created this course can delete it."
       : result === "not_signed_in" ? "Your session has ended. Please sign in again."

@@ -1,3 +1,4 @@
+import { useConfirm } from "@/components/ConfirmDialog";
 import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -50,6 +51,7 @@ function ScopePicker({ value, onChange }: { value: string[]; onChange: (v: strin
 function Developer() {
   const { user, ready } = useAuth();
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const [name, setName] = useState("");
   const [scopes, setScopes] = useState<string[]>(["courses:read"]);
   const [limit, setLimit] = useState(1000);
@@ -74,13 +76,13 @@ function Developer() {
       { setShown({ key: k.key, label: "New key created" }); setCopied(false); setName(""); }
   };
   const rotate = async (id: string) => {
-    if (!confirm("Rotate this key? The old key stops working immediately.")) return;
+    if (!(await confirm({ title: "Rotate this key?", description: "The old key stops working straight away. Update any app that uses it.", confirmLabel: "Rotate key" }))) return;
     const k = await newKey();
     if (await run(supabase.from("api_keys").update({ key_hash: k.hash, prefix: k.prefix, rotated_at: new Date().toISOString() }).eq("id", id)))
       { setShown({ key: k.key, label: "Key rotated — update your apps" }); setCopied(false); }
   };
-  const revoke = (id: string) => confirm("Revoke this key? It will stop working immediately and can't be restored.") && run(supabase.from("api_keys").update({ revoked_at: new Date().toISOString() }).eq("id", id));
-  const remove = (id: string) => confirm("Delete this revoked key from the list?") && run(supabase.from("api_keys").delete().eq("id", id));
+  const revoke = async (id: string) => (await confirm({ tone: "danger", title: "Revoke this key?", description: "It stops working straight away and can't be restored.", confirmLabel: "Revoke key" })) && run(supabase.from("api_keys").update({ revoked_at: new Date().toISOString() }).eq("id", id));
+  const remove = async (id: string) => (await confirm({ tone: "danger", title: "Remove this revoked key?", description: "It will be removed from your list. This can't be undone.", confirmLabel: "Remove" })) && run(supabase.from("api_keys").delete().eq("id", id));
   const saveEdit = async (id: string) => {
     if (!edit.scopes.length) return setErr("Pick at least one scope.");
     if (await run(supabase.from("api_keys").update({ scopes: edit.scopes, daily_limit: edit.limit }).eq("id", id))) setEditing(null);
