@@ -110,7 +110,7 @@ function SourceActivity({ method, lesson, courseId, published }: { method: strin
         setApproved(data.approved);
         setVerified(false);
         toast.success(data.approved ? "Activity approved for future publication." : "Activity returned to review.");
-      }}>{approved ? "Reopen review" : "Approve activity"}</Button>
+      }}>{approved ? "Reopen review" : "Approve activity"}</Button>}
     </div>
   </div>;
 }
