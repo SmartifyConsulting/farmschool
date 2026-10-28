@@ -77,6 +77,7 @@ export function buildCourseDraft(title: string, pages: SourcePage[]): DraftCours
     if (matches.length) {
       for (let index = 0; index < matches.length; index++) {
         const match = matches[index];
+        if (!match || !match[1]) continue;
         const start = (match.index ?? 0) + match[0].length;
         const end = matches[index + 1]?.index ?? allText.length;
         const content = allText.slice(start, end).trim();
