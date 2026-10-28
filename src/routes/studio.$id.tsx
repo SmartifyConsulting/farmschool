@@ -36,6 +36,15 @@ function groupDraftLessons(lessons: DraftCourse["lessons"]) {
   return groups;
 }
 
+const activityLabels: Record<string, { title: string; description: string }> = {
+  illustrated: { title: "Illustrated explanation", description: "Trainer selects or verifies diagrams and captions before publishing." },
+  video: { title: "Video demonstration", description: "Attach a relevant, verified video; no video is generated automatically." },
+  steps: { title: "Step-by-step practice", description: "Turn source-supported procedures into a guided activity." },
+  scenario: { title: "Applied scenario", description: "Create a source-grounded situation and ask learners to decide what to do." },
+  quiz: { title: "Knowledge check", description: "Generate and verify questions, answers and supporting source references." },
+  visual: { title: "Visual summary", description: "Review an infographic or labelled visual derived from the source." },
+};
+
 function FormattedLesson({ content }: { content: string }) {
   return <div className="space-y-3 text-sm leading-relaxed">{content.split(/\n\s*\n/).filter(Boolean).map((block, index) => {
     const line = block.trim();
@@ -595,6 +604,21 @@ function Editor() {
                       <p className="text-xs text-muted-foreground">{lesson.sourceRefs.map(ref => `p.${ref.page}`).join(", ")}</p>
                     </li>)}
                   </ol>
+                </details>)}
+              </div>
+              <div className="space-y-3 rounded-xl border border-border bg-background p-4">
+                <h3 className="font-semibold">Learning activity storyboard</h3>
+                <p className="text-xs text-muted-foreground">Preview the mix of presentation and assessment methods. These are activity plans, not generated videos, images or quizzes.</p>
+                {draft.lessons.map((lesson, index) => <details key={index} className="rounded-lg border border-border p-3">
+                  <summary className="cursor-pointer text-sm font-medium">{index + 1}. {lesson.title} · {designApproved[index] ? "Approved design" : "Pending design approval"}</summary>
+                  <div className="mt-3 space-y-2">
+                    <div className="rounded-lg bg-muted/40 p-3 text-sm"><strong>1. Lesson introduction</strong><p className="text-xs text-muted-foreground">Introduce the learning objective and connect it to the original manual.</p></div>
+                    {choicesFor(index, lesson.title, lesson.body).map((method, methodIndex) => <div key={method} className="rounded-lg bg-muted/40 p-3 text-sm">
+                      <strong>{methodIndex + 2}. {activityLabels[method]?.title ?? method}</strong>
+                      <p className="text-xs text-muted-foreground">{activityLabels[method]?.description ?? "Trainer review required."}</p>
+                    </div>)}
+                    <p className="text-xs text-muted-foreground">Source: {lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join(", ")}</p>
+                  </div>
                 </details>)}
               </div>
               <div className="space-y-2">{draft.lessons.map((lesson, i) => <details key={i} className="rounded-lg border border-border bg-background p-3"><summary className="cursor-pointer text-sm font-medium">{i + 1}. {lesson.title} <span className="text-xs font-normal text-muted-foreground">· {lesson.sourceRefs.length} source pages</span></summary><p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{lesson.body.slice(0, 2500)}{lesson.body.length > 2500 ? "…" : ""}</p><p className="mt-2 text-xs text-muted-foreground">Source: {lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join(", ")}</p></details>)}</div>
