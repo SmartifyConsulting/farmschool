@@ -20,8 +20,7 @@ type Listing = {
   category: string;
   description: string;
   cover: string | null;
-  href: string;
-  source: "studio" | "sample";
+    source: "studio" | "sample";
 };
 
 function SearchPage() {
@@ -43,12 +42,12 @@ function SearchPage() {
     ...published.map((c) => ({
       id: c.id, title: c.title, category: c.category || "General",
       description: c.description || "", cover: c.cover_url,
-      href: `/class/${c.id}`, source: "studio" as const,
+      source: "studio" as const,
     })),
     ...courses.map((c) => ({
       id: c.id, title: c.title, category: c.category,
       description: c.description, cover: c.image,
-      href: `/course/${c.id}`, source: "sample" as const,
+      source: "sample" as const,
     })),
   ], [published]);
 
@@ -92,7 +91,7 @@ function SearchPage() {
           {error && <p role="alert" className="text-sm text-destructive">Could not load creator courses. Please try again.</p>}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {visible.map((c) => (
-              <Link key={`${c.source}-${c.id}`} to={c.href}
+              <Link key={`${c.source}-${c.id}`} to={c.source === "studio" ? "/class/$id" : "/course/$id"} params={{ id: c.id }}
                 className="overflow-hidden rounded-2xl border border-border bg-card transition hover:border-primary/50">
                 {c.cover ? <img src={c.cover} alt="" loading="lazy" className="h-36 w-full object-cover" /> :
                   <div className="grid h-36 place-items-center bg-muted"><BookOpen className="h-9 w-9 text-primary" /></div>}
