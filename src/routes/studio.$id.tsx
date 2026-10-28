@@ -568,7 +568,16 @@ function Editor() {
     const { error } = await supabase.from("studio_lessons").insert({ course_id: id, kind, position: lessons?.length ?? 0, title: kind === "quiz" ? "Knowledge check" : kind === "video" ? "New video lesson" : "New reading" });
     if (error) toast.error("Could not add lesson."); else refresh();
   };
+  const readiness = [
+    { label: "Course title and description", ready: form.title.trim().length >= 3 && form.description.trim().length >= 30 },
+    { label: "Industry and topic selected", ready: !!form.category.trim() && !form.category.endsWith(" / General") && !form.category.endsWith(" / ") },
+    { label: "At least one lesson", ready: (lessons?.length ?? 0) > 0 },
+    { label: "Imported lessons reviewed", ready: !(lessons ?? []).some((lesson) => lesson.body.includes("Review required before publishing.")) },
+  ];
+  const readyToPublish = readiness.every((item) => item.ready);
+
   const setPublished = async (published: boolean) => {
+    if (published && !readyToPublish) { toast.error("Complete the publishing checklist and save your course details first."); return; }
     if (published && !reviewConfirmed) { toast.error("Confirm that you have reviewed the course and its quizzes."); return; }
     if (published && !lessons?.length) { toast.error("Add at least one lesson before publishing."); return; }
     if (published && lessons?.some((lesson) => lesson.body.includes("Review required before publishing."))) { toast.error("Imported lessons still need review. Edit each imported lesson and remove the review notice after verifying the content."); return; }
@@ -627,10 +636,18 @@ function Editor() {
             </div>
             <Input value={form.cover_url} onChange={(e) => setForm({ ...form, cover_url: e.target.value })} placeholder="Cover image link (https://…)" />
             <Button onClick={saveDetails} className="w-full">Save details</Button>
-            <div className="border-t border-border pt-3">
+            <div className="border-t border-border pt-3 space-y-2">
+              <h3 className="text-sm font-semibold">Publishing checklist</h3>
+              <p className="text-xs text-muted-foreground">Finish these steps before making your course visible to learners. This is a trainer self-review, not marketplace verification.</p>
+              <ul className="space-y-1.5">
+                {readiness.map((item) => <li key={item.label} className="flex items-start gap-2 text-xs">
+                  <span aria-hidden="true" className={item.ready ? "text-primary" : "text-muted-foreground"}>{item.ready ? "✓" : "○"}</span>
+                  <span>{item.label}</span>
+                </li>)}
+              </ul>
               {!course.published && <label className="mb-3 flex items-start gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={reviewConfirmed} onChange={(e) => setReviewConfirmed(e.target.checked)} className="mt-0.5" />I have reviewed all lessons, sources and quiz answers for accuracy before publishing.</label>}
               {course.published ? <Button variant="outline" className="w-full" onClick={() => setPublished(false)}>Unpublish</Button>
-                : <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setPublished(true)}>Publish to catalogue</Button>}
+                : <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={!readyToPublish} onClick={() => setPublished(true)}>Publish to catalogue</Button>}
               <Button variant="ghost" className="mt-2 w-full text-destructive" onClick={remove}><Trash2 className="h-4 w-4" />Delete course</Button>
             </div>
           </section>
