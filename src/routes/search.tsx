@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { BookOpen, Search, X } from "lucide-react";
 import { Phone, Header, Sheet } from "@/components/AppShell";
 import { courses } from "@/lib/courses";
+import { courseIndustry } from "@/lib/industries";
 
 export const Route = createFileRoute("/search")({
   head: () => ({ meta: [
@@ -18,14 +19,16 @@ type Listing = {
   id: string;
   title: string;
   category: string;
+  industry: string;
   description: string;
   cover: string | null;
-    source: "studio" | "sample";
+  source: "studio" | "sample";
 };
 
 function SearchPage() {
   const [query, setQuery] = useState("");
   const [industry, setIndustry] = useState("All");
+  const [category, setCategory] = useState("All");
   const { data: published = [], isLoading, error } = useQuery({
     queryKey: ["catalogue-published"],
     queryFn: async () => {
@@ -41,24 +44,25 @@ function SearchPage() {
   const listings: Listing[] = useMemo(() => [
     ...published.map((c) => ({
       id: c.id, title: c.title, category: c.category || "General",
+      industry: courseIndustry(c.category || ""),
       description: c.description || "", cover: c.cover_url,
       source: "studio" as const,
     })),
     ...courses.map((c) => ({
       id: c.id, title: c.title, category: c.category,
+      industry: courseIndustry(c.category),
       description: c.description, cover: c.image,
       source: "sample" as const,
     })),
   ], [published]);
 
-  const categories = useMemo(() =>
-    ["All", ...Array.from(new Set(listings.map((c) => c.category))).sort()],
-    [listings],
-  );
+  const industries = useMemo(() => ["All", ...Array.from(new Set(listings.map((c) => c.industry))).sort()], [listings]);
+  const categories = useMemo(() => ["All", ...Array.from(new Set(listings.filter((c) => industry === "All" || c.industry === industry).map((c) => c.category))).sort()], [listings, industry]);
   const visible = listings.filter((c) => {
-    const matchesCategory = industry === "All" || c.category === industry;
+    const matchesIndustry = industry === "All" || c.industry === industry;
+    const matchesCategory = category === "All" || c.category === category;
     const matchesSearch = `${c.title} ${c.category} ${c.description}`.toLowerCase().includes(query.trim().toLowerCase());
-    return matchesCategory && matchesSearch;
+    return matchesIndustry && matchesCategory && matchesSearch;
   });
 
   return (
@@ -74,14 +78,23 @@ function SearchPage() {
             {query && <button type="button" aria-label="Clear search" onClick={() => setQuery("")}
               className="absolute right-3 top-3"><X className="h-4 w-4" /></button>}
           </div>
-          <div className="flex flex-wrap gap-2" aria-label="Course categories">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground">Industry</p>
+            <div className="flex flex-wrap gap-2" aria-label="Industries">
+              {industries.map((name) => <button key={name} type="button" aria-pressed={industry === name}
+                onClick={() => { setIndustry(name); setCategory("All"); }}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium ${industry === name ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted"}`}>{name}</button>)}
+            </div>
+            <p className="text-xs font-semibold text-muted-foreground">Topic</p>
+            <div className="flex flex-wrap gap-2" aria-label="Course categories">
             {categories.map((cat) => (
-              <button key={cat} type="button" onClick={() => setIndustry(cat)}
-                aria-pressed={industry === cat}
-                className={`rounded-full border px-3 py-1.5 text-xs font-medium ${industry === cat ? "border-primary bg-primary text-primary-foreground" : "border-border text-foreground hover:bg-muted"}`}>
+              <button key={cat} type="button" onClick={() => setCategory(cat)}
+                aria-pressed={category === cat}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium ${category === cat ? "border-primary bg-primary text-primary-foreground" : "border-border text-foreground hover:bg-muted"}`}>
                 {cat}
               </button>
             ))}
+            </div>
           </div>
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Explore courses</h2>
@@ -96,7 +109,7 @@ function SearchPage() {
                 {c.cover ? <img src={c.cover} alt="" loading="lazy" className="h-36 w-full object-cover" /> :
                   <div className="grid h-36 place-items-center bg-muted"><BookOpen className="h-9 w-9 text-primary" /></div>}
                 <div className="space-y-2 p-4">
-                  <span className="text-xs text-muted-foreground">{c.category}</span>
+                  <span className="text-xs text-muted-foreground">{c.industry} · {c.category}</span>
                   <h3 className="line-clamp-2 text-sm font-semibold">{c.title}</h3>
                   <p className="line-clamp-2 text-xs text-muted-foreground">{c.description || "Explore this course on Mobile School."}</p>
                   {c.source === "sample" && <span className="inline-block rounded-full bg-muted px-2 py-1 text-[11px] text-muted-foreground">Sample course · Payments not enabled</span>}
