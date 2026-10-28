@@ -1,69 +1,114 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { Fish, Droplets, Tractor, Store, Gauge, X } from "lucide-react";
-import { Phone } from "@/components/AppShell";
-import { categories, courses } from "@/lib/courses";
-import { useProgress, courseProgress } from "@/hooks/useLearning";
-import { BookmarkButton, ProgressBar } from "@/components/AppShell";
-
-const icons = { Fish, Droplets, Tractor, Store, Gauge };
+import { useMemo, useState } from "react";
+import { BookOpen, Search, X } from "lucide-react";
+import { Phone, Header, Sheet } from "@/components/AppShell";
+import { courses } from "@/lib/courses";
 
 export const Route = createFileRoute("/search")({
   head: () => ({ meta: [
-    { title: "Search Courses — Mobile School" },
-    { name: "description", content: "Find agricultural courses by topic or category." },
-    { property: "og:title", content: "Search — Mobile School" },
-    { property: "og:description", content: "Find your next agricultural course." },
-    { property: "og:type", content: "website" },
-    { name: "twitter:card", content: "summary_large_image" },
+    { title: "Course Catalogue — Mobile School" },
+    { name: "description", content: "Discover courses from creators across industries." },
   ] }),
   component: SearchPage,
 });
 
+type Listing = {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  cover: string | null;
+  href: string;
+  source: "studio" | "sample";
+};
+
 function SearchPage() {
-  const [q, setQ] = useState("");
-  const { data } = useProgress();
-  const [recent, setRecent] = useState(["aquaponics", "ph testing", "pricing produce", "sensors", "fish feed", "irrigation"]);
-  const { data: studio } = useQuery({ queryKey: ["studio-published"], queryFn: async () => (await supabase.from("studio_courses").select("id, title, category, level, cover_url").eq("published", true).order("updated_at", { ascending: false })).data ?? [] });
-  const studioResults = (studio ?? []).filter((c) => q === "*" || (c.title + c.category).toLowerCase().includes(q.toLowerCase()));
-  const results = q === "*" ? courses : q ? courses.filter((c) => (c.title + c.category).toLowerCase().includes(q.toLowerCase())) : [];
+  const [query, setQuery] = useState("");
+  const [industry, setIndustry] = useState("All");
+  const { data: published = [], isLoading, error } = useQuery({
+    queryKey: ["catalogue-published"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("studio_courses")
+        .select("id,title,description,category,cover_url")
+        .eq("published", true)
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const listings: Listing[] = useMemo(() => [
+    ...published.map((c) => ({
+      id: c.id, title: c.title, category: c.category || "General",
+      description: c.description || "", cover: c.cover_url,
+      href: `/class/${c.id}`, source: "studio" as const,
+    })),
+    ...courses.map((c) => ({
+      id: c.id, title: c.title, category: c.category,
+      description: c.description, cover: c.image,
+      href: `/course/${c.id}`, source: "sample" as const,
+    })),
+  ], [published]);
+
+  const categories = useMemo(() =>
+    ["All", ...Array.from(new Set(listings.map((c) => c.category))).sort()],
+    [listings],
+  );
+  const visible = listings.filter((c) => {
+    const matchesCategory = industry === "All" || c.category === industry;
+    const matchesSearch = `${c.title} ${c.category} ${c.description}`.toLowerCase().includes(query.trim().toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
   return (
     <Phone>
-      <div className="bg-primary px-5 pb-5 pt-8 md:px-10"><div className="mx-auto max-w-6xl">
-        <label className="flex items-center gap-2 rounded-xl bg-card px-3 py-2.5">
-          <input value={q === "*" ? "" : q} onChange={(e) => setQ(e.target.value)} placeholder="What do you want to learn?" className="w-full bg-transparent text-sm outline-none" />
-          {q && <button onClick={() => setQ("")} aria-label="Clear"><X className="h-4 w-4 text-muted-foreground" /></button>}
-        </label>
-      </div></div>
-      <div className="mx-auto max-w-6xl px-5 pt-5 md:px-10">
-        {q ? (
-          <div className="grid gap-3 md:grid-cols-2">
-            {results.map((c) => (
-              <Link key={c.id} to="/course/$id" params={{ id: c.id }} className="flex items-center gap-3 rounded-xl border border-border p-2">
-                <img src={c.image} alt="" className="h-14 w-14 rounded-lg object-cover" />
-                <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{c.title}</p><p className="text-xs text-muted-foreground">{c.category} · ${c.price}</p>{courseProgress(c, data).started && <div className="mt-1"><ProgressBar pct={courseProgress(c, data).pct} /></div>}</div><BookmarkButton courseId={c.id} />
-              </Link>))}
-            {studioResults.map((c) => (
-              <Link key={c.id} to="/class/$id" params={{ id: c.id }} className="flex items-center gap-3 rounded-xl border border-border p-2">
-                {c.cover_url ? <img src={c.cover_url} alt="" className="h-14 w-14 rounded-lg object-cover" /> : <span className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-secondary text-xs font-bold text-secondary-foreground">NEW</span>}
-                <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{c.title}</p><p className="text-xs text-muted-foreground">{c.category} · {c.level} · By a Mobile School trainer</p></div>
-              </Link>))}
-            {results.length === 0 && studioResults.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">No courses match “{q}”.</p>}
+      <Header greeting="Explore learning" title="Course catalogue" />
+      <Sheet>
+        <div className="space-y-5 pb-10">
+          <div className="relative">
+            <Search aria-hidden="true" className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <input aria-label="Search courses" value={query} onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search courses, topics and skills"
+              className="w-full rounded-xl border border-border bg-background py-2.5 pl-10 pr-10 text-sm outline-none focus:ring-2 focus:ring-primary" />
+            {query && <button type="button" aria-label="Clear search" onClick={() => setQuery("")}
+              className="absolute right-3 top-3"><X className="h-4 w-4" /></button>}
           </div>
-        ) : (<>
-          <div className="flex justify-between"><h2 className="font-semibold">Recent Search</h2><button onClick={() => setRecent([])} className="text-xs text-muted-foreground">Clear</button></div>
-          <div className="mt-3 flex flex-wrap gap-2">{recent.map((r) => <button key={r} onClick={() => setQ(r.split(" ")[0] ?? r)} className="rounded-full border border-border px-3 py-1 text-xs text-primary">{r}</button>)}</div>
-          <button onClick={() => setQ("*")} className="mt-6 w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground">Browse full catalogue</button>
-          <h2 className="mt-6 font-semibold">Categories</h2>
-          <div className="mt-3 space-y-4">{categories.map((cat) => { const I = icons[cat.icon]; return (
-            <button key={cat.name} onClick={() => setQ(cat.name)} className="flex w-full items-center gap-3 text-left">
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-secondary text-primary"><I className="h-4 w-4" /></span>
-              <span><span className="block text-sm font-medium">{cat.name}</span><span className="text-xs text-muted-foreground">{courses.filter((c) => c.category === cat.name).length} courses</span></span>
-            </button>); })}</div>
-        </>)}
-      </div>
+          <div className="flex flex-wrap gap-2" aria-label="Course categories">
+            {categories.map((cat) => (
+              <button key={cat} type="button" onClick={() => setIndustry(cat)}
+                aria-pressed={industry === cat}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium ${industry === cat ? "border-primary bg-primary text-primary-foreground" : "border-border text-foreground hover:bg-muted"}`}>
+                {cat}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Explore courses</h2>
+            <span className="text-xs text-muted-foreground">{visible.length} courses</span>
+          </div>
+          {isLoading && <p className="text-sm text-muted-foreground">Loading published courses…</p>}
+          {error && <p role="alert" className="text-sm text-destructive">Could not load creator courses. Please try again.</p>}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {visible.map((c) => (
+              <Link key={`${c.source}-${c.id}`} to={c.href}
+                className="overflow-hidden rounded-2xl border border-border bg-card transition hover:border-primary/50">
+                {c.cover ? <img src={c.cover} alt="" loading="lazy" className="h-36 w-full object-cover" /> :
+                  <div className="grid h-36 place-items-center bg-muted"><BookOpen className="h-9 w-9 text-primary" /></div>}
+                <div className="space-y-2 p-4">
+                  <span className="text-xs text-muted-foreground">{c.category}</span>
+                  <h3 className="line-clamp-2 text-sm font-semibold">{c.title}</h3>
+                  <p className="line-clamp-2 text-xs text-muted-foreground">{c.description || "Explore this course on Mobile School."}</p>
+                  {c.source === "sample" && <span className="inline-block rounded-full bg-muted px-2 py-1 text-[11px] text-muted-foreground">Sample course · Payments not enabled</span>}
+                </div>
+              </Link>
+            ))}
+          </div>
+          {!isLoading && visible.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">No courses match your search. Try another topic or category.</p>}
+          <p className="text-xs text-muted-foreground">Course purchases are not yet enabled. Sample courses are provided for demonstration and are not paid offers.</p>
+        </div>
+      </Sheet>
     </Phone>
   );
 }
