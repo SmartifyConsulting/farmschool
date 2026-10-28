@@ -6,7 +6,7 @@ import { Phone, Header, Sheet } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useLearning";
 import { inputCls } from "@/components/PasswordInput";
-import { getMyAdminState, claimFirstAdmin, saveMoodleSettings, testMoodleConnection, syncMoodleCatalogue } from "@/lib/moodle.functions";
+import { getMyAdminState, saveMoodleSettings, testMoodleConnection, syncMoodleCatalogue } from "@/lib/moodle.functions";
 
 export const Route = createFileRoute("/admin/moodle")({
   head: () => ({ meta: [
@@ -26,7 +26,6 @@ function MoodleAdmin() {
   const { user, ready } = useAuth();
   const qc = useQueryClient();
   const stateFn = useServerFn(getMyAdminState);
-  const claim = useServerFn(claimFirstAdmin);
   const save = useServerFn(saveMoodleSettings);
   const test = useServerFn(testMoodleConnection);
   const sync = useServerFn(syncMoodleCatalogue);
@@ -55,8 +54,7 @@ function MoodleAdmin() {
         : st && !st.isAdmin ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
             {st.adminExists ? <p>Only administrators can view this page.</p> : <>
-              <p className="mb-3">No administrator has been set up yet.</p>
-              <button disabled={busy} onClick={() => act(() => claim(), "You are now the administrator")} className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground">Become administrator</button>
+              <p className="mb-3">No administrator has been assigned. Ask the platform owner to assign one securely through Supabase.</p>
             </>}
             {msg && <p className="mt-3">{msg}</p>}
           </div>
