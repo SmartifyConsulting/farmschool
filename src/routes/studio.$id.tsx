@@ -113,10 +113,11 @@ function Editor() {
         setCloudDraftReady(true);
         return;
       }
-      const row = data as unknown as { source_name: string; source_text: string; draft: DraftCourse | null } | null;
+      const row = data as unknown as { source_name: string; source_text: string; source_pages: SourcePage[] | null; draft: DraftCourse | null } | null;
       if (row) {
         setSourceName(row.source_name);
         setSourceText(row.source_text);
+        setSourcePages(Array.isArray(row.source_pages) ? row.source_pages : null);
         if (row.draft?.lessons && Array.isArray(row.draft.lessons)) setDraft(row.draft);
       }
       setCloudDraftEnabled(true);
@@ -134,14 +135,14 @@ function Editor() {
       if (cancelled) return;
       setCloudSaveStatus("saving");
       const { error } = await sourceDraftTable().upsert({
-        course_id: id, source_name: sourceName, source_text: sourceText, draft,
+        course_id: id, source_name: sourceName, source_text: sourceText, source_pages: sourcePages, draft,
       } as never, { onConflict: "course_id" });
       if (cancelled) return;
       if (error) { setCloudSaveStatus("error"); toast.error("Cloud draft autosave failed: " + error.message); }
       else setCloudSaveStatus("saved");
     }, 1500);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [id, cloudDraftReady, cloudDraftEnabled, restoredDesign, sourceName, sourceText, draft, course?.published]);
+  }, [id, cloudDraftReady, cloudDraftEnabled, restoredDesign, sourceName, sourceText, sourcePages, draft, course?.published]);
 
   const lessonKey = (index: number, lesson: { title: string; sourceRefs: { sourceId: string; page: number }[] }) =>
     JSON.stringify([index, lesson.title, lesson.sourceRefs]);
