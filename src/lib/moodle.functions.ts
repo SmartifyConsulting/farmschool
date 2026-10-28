@@ -23,15 +23,12 @@ export const getMyAdminState = createServerFn({ method: "GET" })
   });
 
 /** Bootstrap: the first signed-in user may claim admin only while no admin exists. */
+/** Public first-user administrator claiming is intentionally disabled.
+ * Provision the first admin through a trusted database administrator instead. */
 export const claimFirstAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { count } = await supabaseAdmin.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "admin");
-    if ((count ?? 0) > 0) throw new Error("An administrator already exists.");
-    const { error } = await supabaseAdmin.from("user_roles").insert({ user_id: context.userId, role: "admin" });
-    if (error) throw new Error("Could not assign admin role.");
-    return { ok: true };
+  .handler(async () => {
+    throw new Error("Administrator setup requires a trusted database administrator.");
   });
 
 export const saveMoodleSettings = createServerFn({ method: "POST" })
