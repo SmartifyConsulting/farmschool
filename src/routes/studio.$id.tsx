@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { STUDIO_CATEGORIES, PASS_MARKS, parsePassMark } from "@/lib/studio";
+import { INDUSTRIES, courseIndustry } from "@/lib/industries";
 import { toast } from "sonner";
 import { buildCourseDraft, type DraftCourse, type SourcePage } from "@/lib/course-factory";
 import { extractDocument } from "@/lib/document-extraction";
@@ -394,6 +395,7 @@ function Editor() {
 
   const [showSourceEditor, setShowSourceEditor] = useState(false);
   const [showCourseSettings, setShowCourseSettings] = useState(false);
+  const [newTopic, setNewTopic] = useState("");
   const [form, setForm] = useState({ title: "", description: "", category: STUDIO_CATEGORIES[0] ?? "Farm Management", level: "Beginner", cover_url: "" });
   useEffect(() => { if (course) setForm({ title: course.title, description: course.description, category: course.category, level: course.level, cover_url: course.cover_url ?? "" }); }, [course]);
   const refresh = () => { qc.invalidateQueries({ queryKey: ["studio-course", id] }); qc.invalidateQueries({ queryKey: ["studio-lessons", id] }); qc.invalidateQueries({ queryKey: ["studio-mine"] }); qc.invalidateQueries({ queryKey: ["studio-published"] }); };
@@ -597,9 +599,30 @@ function Editor() {
           <section className="space-y-3 rounded-2xl border border-border p-4">
             <h2 className="font-semibold">Course details</h2>
             <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} aria-label="Title" maxLength={120} />
-            <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What will farmers learn?" rows={4} maxLength={4000} />
+            <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What will learners gain from this course?" rows={4} maxLength={4000} />
             <div className="grid grid-cols-2 gap-2">
-              <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="rounded-md border border-input bg-background px-2 py-2 text-sm" aria-label="Category">{STUDIO_CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select>
+              <div className="col-span-2 space-y-2">
+                <label className="block text-xs font-medium">Industry</label>
+                <select value={courseIndustry(form.category)} onChange={(e) => {
+                  const selected = e.target.value;
+                  setForm({ ...form, category: selected === "Agriculture" ? "Farm Management" : selected + " / General" });
+                  setNewTopic("");
+                }} className="w-full rounded-md border border-input bg-background px-2 py-2 text-sm" aria-label="Industry">
+                  {INDUSTRIES.map((name) => <option key={name} value={name}>{name}</option>)}
+                </select>
+                <label className="block text-xs font-medium">Topic</label>
+                {courseIndustry(form.category) === "Agriculture" ? (
+                  <select value={STUDIO_CATEGORIES.includes(form.category) ? form.category : ""} onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    className="w-full rounded-md border border-input bg-background px-2 py-2 text-sm" aria-label="Topic">
+                    {!STUDIO_CATEGORIES.includes(form.category) && <option value="">Select a topic</option>}
+                    {STUDIO_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                  </select>
+                ) : (
+                  <Input value={newTopic || form.category.split(" / ").slice(1).join(" / ")}
+                    onChange={(e) => { setNewTopic(e.target.value); setForm({ ...form, category: courseIndustry(form.category) + " / " + e.target.value }); }}
+                    aria-label="Topic" placeholder="e.g. Patient care, Retail operations" maxLength={100} />
+                )}
+              </div>
               <select value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} className="rounded-md border border-input bg-background px-2 py-2 text-sm" aria-label="Level">{["Beginner", "Intermediate", "Advanced"].map((c) => <option key={c}>{c}</option>)}</select>
             </div>
             <Input value={form.cover_url} onChange={(e) => setForm({ ...form, cover_url: e.target.value })} placeholder="Cover image link (https://…)" />
