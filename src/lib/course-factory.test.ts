@@ -22,9 +22,9 @@ describe("Course Factory draft builder", () => {
 
   it("skips cover and table-of-contents pages before actual module content", () => {
     const draft = buildCourseDraft("Beekeeping", [
-      { sourceId: "manual", page: 1, text: "Birds and Bees\nSHORT LEARNING PROGRAMME\nentrepreneurship\ncapacity\npollinators" },
-      { sourceId: "manual", page: 2, text: "TABLE OF CONTENTS\nMODULE 1 - KNOWING THE BEE\nMODULE 2 - THE HONEYBEE COLONY\nMODULE 3 - BEEKEEPING\nMODULE 4 - BEE HEALTH" },
-      { sourceId: "manual", page: 3, text: "MODULE 1 - KNOWING THE BEE\nHoneybees live in organised colonies. Workers forage for food." },
+      { sourceId: "manual", page: 1, text: ["Birds and Bees", "SHORT LEARNING PROGRAMME", "entrepreneurship", "capacity", "pollinators"].join("\n") },
+      { sourceId: "manual", page: 2, text: ["TABLE OF CONTENTS", "MODULE 1 - KNOWING THE BEE", "MODULE 2 - THE HONEYBEE COLONY", "MODULE 3 - BEEKEEPING", "MODULE 4 - BEE HEALTH"].join("\n") },
+      { sourceId: "manual", page: 3, text: ["MODULE 1 - KNOWING THE BEE", "Honeybees live in organised colonies. Workers forage for food."].join("\n") },
     ]);
     expect(draft.lessons.map(x => x.title)).toEqual(["MODULE 1 - KNOWING THE BEE"]);
     expect(draft.lessons[0].sourceRefs).toEqual([{ sourceId: "manual", page: 3 }]);
