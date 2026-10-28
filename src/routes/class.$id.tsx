@@ -28,8 +28,18 @@ type L = { id: string; kind: string; title: string; video_url: string | null; bo
 function ClassPage() {
   const { id } = Route.useParams();
   const { user } = useAuth();
-  const { data: course, isLoading } = useQuery({ queryKey: ["class", id], queryFn: async () => (await supabase.from("studio_courses").select("id, title, description, category, level, cover_url").eq("id", id).maybeSingle()).data });
+  const { data: course, isLoading } = useQuery({ queryKey: ["class", id], queryFn: async () => (await supabase.from("studio_courses").select("id, title, description, category, level, cover_url, published, author_id").eq("id", id).maybeSingle()).data });
   const { data: lessons } = useQuery({ queryKey: ["class-lessons", id], queryFn: async () => ((await supabase.from("studio_lessons").select("id, kind, title, video_url, body, quiz").eq("course_id", id).order("position")).data ?? []) as unknown as L[] });
+  const { data: activities = [] } = useQuery({
+    queryKey: ["class-approved-activities", id],
+    enabled: !!course?.published,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("studio_learning_activities")
+        .select("id,lesson_title,kind,prompt").eq("course_id", id).eq("approved", true).order("lesson_title");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
   const { data: progress } = useProgress();
   const save = useSaveProgress();
   const claim = useServerFn(claimCertificate);
@@ -60,6 +70,14 @@ function ClassPage() {
               {lesson.kind === "quiz" ? <Quiz key={lesson.id} lesson={lesson} courseId={id} passed={done.has(lesson.id)} />
                 : <Button onClick={markDone} disabled={done.has(lesson.id)}>{done.has(lesson.id) ? "Completed" : "Mark as complete"}</Button>}
             </>) : <p className="text-sm text-muted-foreground">This course has no lessons yet.</p>}
+            {course.published && activities.length > 0 && <section className="space-y-3" aria-label="Trainer-approved learning activities">
+              <h2 className="text-lg font-semibold">Practical activities</h2>
+              {activities.map(activity => <article key={activity.id} className="rounded-xl border border-border p-4">
+                <p className="text-xs text-muted-foreground">{activity.kind === "steps" ? "Practical exercise" : "Applied scenario"}</p>
+                <h3 className="mt-1 font-semibold">{activity.lesson_title}</h3>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{activity.prompt}</p>
+              </article>)}
+            </section>}
             {course.description && <div className="rounded-2xl bg-muted/50 p-4 text-sm"><h3 className="mb-1 font-semibold">About this course</h3><p className="whitespace-pre-wrap text-muted-foreground">{course.description}</p></div>}
           </div>
           <aside className="space-y-3">
