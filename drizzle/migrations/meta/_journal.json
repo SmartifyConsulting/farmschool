@@ -43,6 +43,13 @@
       "when": 1793201362409,
       "tag": "0005_studio_save_generated_course",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793205975509,
+      "tag": "0006_external_content_library",
+      "breakpoints": true
     }
   ]
 }

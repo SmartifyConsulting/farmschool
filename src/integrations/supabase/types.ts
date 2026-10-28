@@ -131,6 +131,55 @@ export type Database = {
         }
         Relationships: []
       }
+      course_external_content: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          item_id: string
+          lesson_id: string
+          objectives: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          item_id: string
+          lesson_id: string
+          objectives?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+          lesson_id?: string
+          objectives?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_external_content_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_external_content_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "external_content_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_external_content_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: true
+            referencedRelation: "studio_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_factory_ai_usage: {
         Row: {
           requests: number
@@ -182,6 +231,160 @@ export type Database = {
           status?: string
           submitted_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      external_content_imports: {
+        Row: {
+          created_at: string
+          created_by: string
+          created_count: number
+          duplicate_count: number
+          error_count: number
+          errors: Json
+          id: string
+          method: string
+          provider_id: string | null
+          total: number
+          updated_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          created_count?: number
+          duplicate_count?: number
+          error_count?: number
+          errors?: Json
+          id?: string
+          method: string
+          provider_id?: string | null
+          total?: number
+          updated_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          created_count?: number
+          duplicate_count?: number
+          error_count?: number
+          errors?: Json
+          id?: string
+          method?: string
+          provider_id?: string | null
+          total?: number
+          updated_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_content_imports_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "external_content_providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      external_content_items: {
+        Row: {
+          canonical_key: string
+          category: string
+          created_at: string
+          description: string
+          duration_seconds: number | null
+          embed_url: string | null
+          id: string
+          import_status: string
+          is_sample: boolean
+          language: string
+          last_synced_at: string
+          original_url: string
+          provider_id: string
+          published_on: string | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          canonical_key: string
+          category?: string
+          created_at?: string
+          description?: string
+          duration_seconds?: number | null
+          embed_url?: string | null
+          id?: string
+          import_status?: string
+          is_sample?: boolean
+          language?: string
+          last_synced_at?: string
+          original_url: string
+          provider_id: string
+          published_on?: string | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          canonical_key?: string
+          category?: string
+          created_at?: string
+          description?: string
+          duration_seconds?: number | null
+          embed_url?: string | null
+          id?: string
+          import_status?: string
+          is_sample?: boolean
+          language?: string
+          last_synced_at?: string
+          original_url?: string
+          provider_id?: string
+          published_on?: string | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_content_items_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "external_content_providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      external_content_providers: {
+        Row: {
+          attribution: string
+          created_at: string
+          enabled: boolean
+          id: string
+          integration_methods: string[]
+          name: string
+          slug: string
+          updated_at: string
+          website: string
+        }
+        Insert: {
+          attribution?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          integration_methods?: string[]
+          name: string
+          slug: string
+          updated_at?: string
+          website: string
+        }
+        Update: {
+          attribution?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          integration_methods?: string[]
+          name?: string
+          slug?: string
+          updated_at?: string
+          website?: string
         }
         Relationships: []
       }
@@ -704,6 +907,11 @@ export type Database = {
         Args: { _display_name: string; _expertise: string; _industry: string }
         Returns: undefined
       }
+      external_item_in_visible_course: {
+        Args: { _item: string }
+        Returns: boolean
+      }
+      external_library_reader: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

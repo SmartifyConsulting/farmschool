@@ -23,6 +23,7 @@ import { Route as SearchRouteImport } from './routes/search'
 import { Route as StudioRouteImport } from './routes/studio'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminCreatorsRouteImport } from './routes/admin.creators'
+import { Route as AdminExternalContentRouteImport } from './routes/admin.external-content'
 import { Route as AdminMoodleRouteImport } from './routes/admin.moodle'
 import { Route as ApiAskRouteImport } from './routes/api/ask'
 import { Route as ApiChallengeRouteImport } from './routes/api/challenge'
@@ -106,6 +107,11 @@ const AdminCreatorsRoute = AdminCreatorsRouteImport.update({
   path: '/admin/creators',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminExternalContentRoute = AdminExternalContentRouteImport.update({
+  id: '/admin/external-content',
+  path: '/admin/external-content',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminMoodleRoute = AdminMoodleRouteImport.update({
   id: '/admin/moodle',
   path: '/admin/moodle',
@@ -182,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/search': typeof SearchRoute
   '/studio': typeof StudioRouteWithChildren
   '/admin/creators': typeof AdminCreatorsRoute
+  '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/moodle': typeof AdminMoodleRoute
   '/api/ask': typeof ApiAskRoute
   '/api/challenge': typeof ApiChallengeRoute
@@ -210,6 +217,7 @@ export interface FileRoutesByTo {
   '/search': typeof SearchRoute
   '/studio': typeof StudioRouteWithChildren
   '/admin/creators': typeof AdminCreatorsRoute
+  '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/moodle': typeof AdminMoodleRoute
   '/api/ask': typeof ApiAskRoute
   '/api/challenge': typeof ApiChallengeRoute
@@ -239,6 +247,7 @@ export interface FileRoutesById {
   '/search': typeof SearchRoute
   '/studio': typeof StudioRouteWithChildren
   '/admin/creators': typeof AdminCreatorsRoute
+  '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/moodle': typeof AdminMoodleRoute
   '/api/ask': typeof ApiAskRoute
   '/api/challenge': typeof ApiChallengeRoute
@@ -269,6 +278,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/studio'
     | '/admin/creators'
+    | '/admin/external-content'
     | '/admin/moodle'
     | '/api/ask'
     | '/api/challenge'
@@ -297,6 +307,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/studio'
     | '/admin/creators'
+    | '/admin/external-content'
     | '/admin/moodle'
     | '/api/ask'
     | '/api/challenge'
@@ -325,6 +336,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/studio'
     | '/admin/creators'
+    | '/admin/external-content'
     | '/admin/moodle'
     | '/api/ask'
     | '/api/challenge'
@@ -354,6 +366,7 @@ export interface RootRouteChildren {
   SearchRoute: typeof SearchRoute
   StudioRoute: typeof StudioRouteWithChildren
   AdminCreatorsRoute: typeof AdminCreatorsRoute
+  AdminExternalContentRoute: typeof AdminExternalContentRoute
   AdminMoodleRoute: typeof AdminMoodleRoute
   ApiAskRoute: typeof ApiAskRoute
   ApiChallengeRoute: typeof ApiChallengeRoute
@@ -468,6 +481,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCreatorsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/external-content': {
+      id: '/admin/external-content'
+      path: '/admin/external-content'
+      fullPath: '/admin/external-content'
+      preLoaderRoute: typeof AdminExternalContentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/moodle': {
       id: '/admin/moodle'
       path: '/admin/moodle'
@@ -580,6 +600,7 @@ const rootRouteChildren: RootRouteChildren = {
   SearchRoute: SearchRoute,
   StudioRoute: StudioRouteWithChildren,
   AdminCreatorsRoute: AdminCreatorsRoute,
+  AdminExternalContentRoute: AdminExternalContentRoute,
   AdminMoodleRoute: AdminMoodleRoute,
   ApiAskRoute: ApiAskRoute,
   ApiChallengeRoute: ApiChallengeRoute,

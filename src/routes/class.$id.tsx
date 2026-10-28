@@ -11,6 +11,7 @@ import { useAuth, useProgress, useSaveProgress } from "@/hooks/useLearning";
 import { submitQuiz, claimCertificate } from "@/lib/learning.functions";
 import { youtubeEmbed } from "@/lib/studio";
 import { toast } from "sonner";
+import { ExternalVideo, LINKED_VIDEO_SELECT, type LinkedVideo } from "@/components/ExternalVideo";
 
 export const Route = createFileRoute("/class/$id")({
   head: () => ({ meta: [
@@ -41,6 +42,7 @@ function ClassPage() {
       return data ?? [];
     },
   });
+  const { data: linked = [] } = useQuery({ queryKey: ["class-videos", id], queryFn: async () => ((await supabase.from("course_external_content").select(LINKED_VIDEO_SELECT).eq("course_id", id)).data ?? []) as unknown as LinkedVideo[] });
   const { data: progress } = useProgress();
   const save = useSaveProgress();
   const claim = useServerFn(claimCertificate);
@@ -63,7 +65,7 @@ function ClassPage() {
         <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           <div className="min-w-0 space-y-4">
             {lesson ? (<>
-              {lesson.kind === "video" && lesson.video_url && (youtubeEmbed(lesson.video_url)
+              {linked.find((v) => v.lesson_id === lesson.id) ? <ExternalVideo video={linked.find((v) => v.lesson_id === lesson.id)!} /> : lesson.kind === "video" && lesson.video_url && (youtubeEmbed(lesson.video_url)
                 ? <iframe src={youtubeEmbed(lesson.video_url)!} title={lesson.title} className="aspect-video w-full rounded-2xl" allow="accelerometer; encrypted-media; picture-in-picture" allowFullScreen />
                 : <video src={lesson.video_url} controls playsInline className="aspect-video w-full rounded-2xl bg-foreground" onEnded={markDone} />)}
               <h2 className="text-lg font-semibold">{lesson.title}</h2>

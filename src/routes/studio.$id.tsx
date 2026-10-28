@@ -17,6 +17,9 @@ import { extractDocument } from "@/lib/document-extraction";
 import { suggestReviewQuestions } from "@/lib/course-quiz-suggestions";
 import { CourseAnalytics } from "@/components/CourseAnalytics";
 import { LessonAssistant } from "@/components/LessonAssistant";
+import { VideoLibraryPicker } from "@/components/VideoLibraryPicker";
+
+type VideoLink = { id: string; lesson_id: string; item_id: string; objectives: string; item: { title: string; provider: { name: string } | null } | null };
 
 function groupDraftLessons(lessons: DraftCourse["lessons"]) {
   const groups: { title: string; items: { lesson: DraftCourse["lessons"][number]; index: number }[] }[] = [];
@@ -569,6 +572,10 @@ function Editor() {
     const { error } = await supabase.from("studio_courses").update({ ...form, cover_url: form.cover_url || null }).eq("id", id);
     if (error) toast.error("Could not save — check the title is 3–120 letters."); else { toast.success("Saved"); refresh(); }
   };
+  const { data: videoLinks = [], refetch: refetchLinks } = useQuery({
+    queryKey: ["studio-video-links", id],
+    queryFn: async () => ((await supabase.from("course_external_content").select("id, lesson_id, item_id, objectives, item:external_content_items(title, provider:external_content_providers(name))").eq("course_id", id)).data ?? []) as unknown as VideoLink[],
+  });
   const addLesson = async (kind: string) => {
     const { error } = await supabase.from("studio_lessons").insert({ course_id: id, kind, position: lessons?.length ?? 0, title: kind === "quiz" ? "Knowledge check" : kind === "video" ? "New video lesson" : "New reading" });
     if (error) toast.error("Could not add lesson."); else refresh();
@@ -681,10 +688,11 @@ function Editor() {
             <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-semibold">Course outline</h2><p className="text-xs text-muted-foreground">Expand a lesson to review or edit. Use Preview above to see the learner experience.</p></div>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={() => addLesson("video")}><Video className="h-4 w-4" />Video</Button>
+                <VideoLibraryPicker courseId={id} position={lessons?.length ?? 0} usedItemIds={videoLinks.map((v) => v.item_id)} onAdded={() => { refresh(); void refetchLinks(); }} />
                 <Button size="sm" variant="outline" onClick={() => addLesson("reading")}><FileText className="h-4 w-4" />Reading</Button>
                 <Button size="sm" variant="outline" onClick={() => addLesson("quiz")}><HelpCircle className="h-4 w-4" />Quiz</Button>
               </div></div>
-            {lessons?.map((l, i) => <LessonEditor key={l.id} lesson={l} index={i} onChange={refresh} courseId={id} sourceText={lessons.slice(0, i).reverse().find((p) => p.kind !== "quiz" && p.body.trim().length > 0)?.body ?? ""} />)}
+            {lessons?.map((l, i) => <LessonEditor key={l.id} lesson={l} index={i} link={videoLinks.find((v) => v.lesson_id === l.id)} onChange={() => { refresh(); void refetchLinks(); }} courseId={id} sourceText={lessons.slice(0, i).reverse().find((p) => p.kind !== "quiz" && p.body.trim().length > 0)?.body ?? ""} />)}
             {lessons?.length === 0 && <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Add your first video, reading or quiz.</p>}
           </section>
           <section className="space-y-3 rounded-2xl border border-border p-4">
@@ -816,7 +824,8 @@ function Editor() {
   );
 }
 
-function LessonEditor({ lesson, index, onChange, courseId, sourceText }: { lesson: LessonRow; index: number; onChange: () => void; courseId: string; sourceText: string }) {
+function LessonEditor({ lesson, index, onChange, courseId, sourceText, link }: { lesson: LessonRow; index: number; onChange: () => void; courseId: string; sourceText: string; link?: VideoLink | undefined }) {
+  const [objectives, setObjectives] = useState(link?.objectives ?? "");
   const [title, setTitle] = useState(lesson.title);
   const [video, setVideo] = useState(lesson.video_url ?? "");
   const [body, setBody] = useState(lesson.body);
@@ -835,23 +844,35 @@ function LessonEditor({ lesson, index, onChange, courseId, sourceText }: { lesso
     const clean = qs.filter((q) => q.q.trim() && q.options.filter((o) => o.trim()).length >= 2);
     const { error } = await supabase.from("studio_lessons").update({ title, video_url: video || null, body: lesson.kind === "quiz" ? `pass:${passMark}` : body, quiz: clean.map(({ q, options }) => ({ q, options })) }).eq("id", lesson.id);
     if (error) { toast.error("Could not save lesson."); return; }
+    if (link) {
+      const { error: e3 } = await supabase.from("course_external_content").update({ objectives }).eq("id", link.id);
+      if (e3) { toast.error("Could not save the learning objectives."); return; }
+    }
     if (lesson.kind === "quiz") {
       const { error: e2 } = await supabase.from("studio_quiz_answers").upsert({ lesson_id: lesson.id, course_id: (await supabase.from("studio_lessons").select("course_id").eq("id", lesson.id).single()).data!.course_id, answers: clean.map((q) => q.answer) });
       if (e2) { toast.error("Could not save answers."); return; }
     }
     toast.success("Lesson saved"); onChange();
   };
-  const del = async () => { await supabase.from("studio_lessons").delete().eq("id", lesson.id); onChange(); };
+  const del = async () => {
+    const { error } = await supabase.from("studio_lessons").delete().eq("id", lesson.id);
+    if (error) { toast.error("We couldn't remove that lesson. Please try again."); return; }
+    toast.success(link ? "Video removed from this course. It's still in the shared library." : "Lesson removed.");
+    onChange();
+  };
   return (
     <div className="rounded-2xl border border-border">
       <button onClick={() => setOpen(!open)} className="flex w-full items-center gap-3 p-3 text-left">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><Icon className="h-4 w-4" /></span>
         <span className="min-w-0 flex-1 truncate text-sm font-medium">{index + 1}. {lesson.title}</span>
+        {link && <span className="hidden rounded-full bg-secondary/40 px-2 py-0.5 text-[10px] font-semibold sm:inline">Library</span>}
         <span className="text-xs text-muted-foreground">{open ? "Close" : "Edit"}</span>
       </button>
       {open && <div className="space-y-2 border-t border-border p-3">
         <Input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Lesson title" maxLength={120} />
-        {lesson.kind === "video" && <Input value={video} onChange={(e) => setVideo(e.target.value)} placeholder="Video link (https://… .mp4 or YouTube)" />}
+        {link && <div className="rounded-xl bg-primary/5 p-3 text-xs text-muted-foreground">Library video: <strong className="text-foreground">{link.item?.title}</strong> · {link.item?.provider?.name}. Learners see the provider's player or a Watch Video button.</div>}
+        {link && <Textarea value={objectives} onChange={(e) => setObjectives(e.target.value)} rows={3} maxLength={2000} placeholder="Learning objectives, one per line" aria-label="Learning objectives" />}
+        {lesson.kind === "video" && !link && <Input value={video} onChange={(e) => setVideo(e.target.value)} placeholder="Video link (https://… .mp4 or YouTube)" />}
         {lesson.kind !== "quiz" && <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} placeholder="Lesson notes, steps or checklist" maxLength={20000} />}
         <LessonAssistant courseId={courseId} title={title} kind={lesson.kind} text={lesson.kind === "quiz" ? sourceText : body} onText={setBody} onQuestions={(n) => setQs((cur) => [...cur.filter((q) => q.q.trim()), ...n])} />
         {lesson.kind === "quiz" && <div className="space-y-3">
@@ -869,7 +890,7 @@ function LessonEditor({ lesson, index, onChange, courseId, sourceText }: { lesso
           <label className="flex items-center gap-2 text-sm">Pass mark<select value={passMark} onChange={(e) => setPassMark(Number(e.target.value))} className="rounded-md border border-input bg-background px-2 py-1 text-sm" aria-label="Pass mark">{PASS_MARKS.map((m) => <option key={m} value={m}>{m}%</option>)}</select></label>
           <p className="text-xs text-muted-foreground">Tick the correct option. Learners need {passMark}% to pass.</p>
         </div>}
-        <div className="flex gap-2"><Button size="sm" onClick={save}>Save lesson</Button><Button size="sm" variant="ghost" className="text-destructive" onClick={del}>Delete</Button></div>
+        <div className="flex gap-2"><Button size="sm" onClick={save}>Save lesson</Button><Button size="sm" variant="ghost" className="text-destructive" onClick={del}>{link ? "Remove from course" : "Delete"}</Button></div>
       </div>}
     </div>
   );
