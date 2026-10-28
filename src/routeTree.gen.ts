@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AskRouteImport } from './routes/ask'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CoursesRouteImport } from './routes/courses'
+import { Route as CreatorApplicationRouteImport } from './routes/creator-application'
 import { Route as DeveloperRouteImport } from './routes/developer'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as NotificationsRouteImport } from './routes/notifications'
@@ -20,12 +21,15 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as StudioRouteImport } from './routes/studio'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminCreatorsRouteImport } from './routes/admin.creators'
 import { Route as AdminMoodleRouteImport } from './routes/admin.moodle'
 import { Route as ApiAskRouteImport } from './routes/api/ask'
 import { Route as ApiChallengeRouteImport } from './routes/api/challenge'
 import { Route as ApiCourseFactoryRouteImport } from './routes/api/course-factory'
 import { Route as ClassIdRouteImport } from './routes/class.$id'
 import { Route as CourseIdRouteImport } from './routes/course.$id'
+import { Route as LearningActivitiesCourseIdRouteImport } from './routes/learning-activities.$courseId'
 import { Route as StudioIdRouteImport } from './routes/studio.$id'
 import { Route as LessonCourseIdLessonIdRouteImport } from './routes/lesson.$courseId.$lessonId'
 import { Route as ApiPublicV1CoursesRouteImport } from './routes/api/public/v1/courses'
@@ -49,6 +53,11 @@ const AuthRoute = AuthRouteImport.update({
 const CoursesRoute = CoursesRouteImport.update({
   id: '/courses',
   path: '/courses',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreatorApplicationRoute = CreatorApplicationRouteImport.update({
+  id: '/creator-application',
+  path: '/creator-application',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DeveloperRoute = DeveloperRouteImport.update({
@@ -86,6 +95,16 @@ const StudioRoute = StudioRouteImport.update({
   path: '/studio',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCreatorsRoute = AdminCreatorsRouteImport.update({
+  id: '/admin/creators',
+  path: '/admin/creators',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminMoodleRoute = AdminMoodleRouteImport.update({
   id: '/admin/moodle',
   path: '/admin/moodle',
@@ -116,6 +135,12 @@ const CourseIdRoute = CourseIdRouteImport.update({
   path: '/course/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LearningActivitiesCourseIdRoute =
+  LearningActivitiesCourseIdRouteImport.update({
+    id: '/learning-activities/$courseId',
+    path: '/learning-activities/$courseId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const StudioIdRoute = StudioIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -142,6 +167,7 @@ export interface FileRoutesByFullPath {
   '/ask': typeof AskRoute
   '/auth': typeof AuthRoute
   '/courses': typeof CoursesRoute
+  '/creator-application': typeof CreatorApplicationRoute
   '/developer': typeof DeveloperRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/notifications': typeof NotificationsRoute
@@ -149,13 +175,16 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/studio': typeof StudioRouteWithChildren
+  '/admin/creators': typeof AdminCreatorsRoute
   '/admin/moodle': typeof AdminMoodleRoute
   '/api/ask': typeof ApiAskRoute
   '/api/challenge': typeof ApiChallengeRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/class/$id': typeof ClassIdRoute
   '/course/$id': typeof CourseIdRoute
+  '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/studio/$id': typeof StudioIdRoute
+  '/admin/': typeof AdminIndexRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
   '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
@@ -165,6 +194,7 @@ export interface FileRoutesByTo {
   '/ask': typeof AskRoute
   '/auth': typeof AuthRoute
   '/courses': typeof CoursesRoute
+  '/creator-application': typeof CreatorApplicationRoute
   '/developer': typeof DeveloperRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/notifications': typeof NotificationsRoute
@@ -172,13 +202,16 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/studio': typeof StudioRouteWithChildren
+  '/admin/creators': typeof AdminCreatorsRoute
   '/admin/moodle': typeof AdminMoodleRoute
   '/api/ask': typeof ApiAskRoute
   '/api/challenge': typeof ApiChallengeRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/class/$id': typeof ClassIdRoute
   '/course/$id': typeof CourseIdRoute
+  '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/studio/$id': typeof StudioIdRoute
+  '/admin': typeof AdminIndexRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
   '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
@@ -189,6 +222,7 @@ export interface FileRoutesById {
   '/ask': typeof AskRoute
   '/auth': typeof AuthRoute
   '/courses': typeof CoursesRoute
+  '/creator-application': typeof CreatorApplicationRoute
   '/developer': typeof DeveloperRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/notifications': typeof NotificationsRoute
@@ -196,13 +230,16 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/studio': typeof StudioRouteWithChildren
+  '/admin/creators': typeof AdminCreatorsRoute
   '/admin/moodle': typeof AdminMoodleRoute
   '/api/ask': typeof ApiAskRoute
   '/api/challenge': typeof ApiChallengeRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/class/$id': typeof ClassIdRoute
   '/course/$id': typeof CourseIdRoute
+  '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/studio/$id': typeof StudioIdRoute
+  '/admin/': typeof AdminIndexRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
   '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
@@ -214,6 +251,7 @@ export interface FileRouteTypes {
     | '/ask'
     | '/auth'
     | '/courses'
+    | '/creator-application'
     | '/developer'
     | '/forgot-password'
     | '/notifications'
@@ -221,13 +259,16 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/search'
     | '/studio'
+    | '/admin/creators'
     | '/admin/moodle'
     | '/api/ask'
     | '/api/challenge'
     | '/api/course-factory'
     | '/class/$id'
     | '/course/$id'
+    | '/learning-activities/$courseId'
     | '/studio/$id'
+    | '/admin/'
     | '/lesson/$courseId/$lessonId'
     | '/api/public/v1/courses'
     | '/api/public/v1/progress'
@@ -237,6 +278,7 @@ export interface FileRouteTypes {
     | '/ask'
     | '/auth'
     | '/courses'
+    | '/creator-application'
     | '/developer'
     | '/forgot-password'
     | '/notifications'
@@ -244,13 +286,16 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/search'
     | '/studio'
+    | '/admin/creators'
     | '/admin/moodle'
     | '/api/ask'
     | '/api/challenge'
     | '/api/course-factory'
     | '/class/$id'
     | '/course/$id'
+    | '/learning-activities/$courseId'
     | '/studio/$id'
+    | '/admin'
     | '/lesson/$courseId/$lessonId'
     | '/api/public/v1/courses'
     | '/api/public/v1/progress'
@@ -260,6 +305,7 @@ export interface FileRouteTypes {
     | '/ask'
     | '/auth'
     | '/courses'
+    | '/creator-application'
     | '/developer'
     | '/forgot-password'
     | '/notifications'
@@ -267,13 +313,16 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/search'
     | '/studio'
+    | '/admin/creators'
     | '/admin/moodle'
     | '/api/ask'
     | '/api/challenge'
     | '/api/course-factory'
     | '/class/$id'
     | '/course/$id'
+    | '/learning-activities/$courseId'
     | '/studio/$id'
+    | '/admin/'
     | '/lesson/$courseId/$lessonId'
     | '/api/public/v1/courses'
     | '/api/public/v1/progress'
@@ -284,6 +333,7 @@ export interface RootRouteChildren {
   AskRoute: typeof AskRoute
   AuthRoute: typeof AuthRoute
   CoursesRoute: typeof CoursesRoute
+  CreatorApplicationRoute: typeof CreatorApplicationRoute
   DeveloperRoute: typeof DeveloperRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   NotificationsRoute: typeof NotificationsRoute
@@ -291,12 +341,15 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SearchRoute: typeof SearchRoute
   StudioRoute: typeof StudioRouteWithChildren
+  AdminCreatorsRoute: typeof AdminCreatorsRoute
   AdminMoodleRoute: typeof AdminMoodleRoute
   ApiAskRoute: typeof ApiAskRoute
   ApiChallengeRoute: typeof ApiChallengeRoute
   ApiCourseFactoryRoute: typeof ApiCourseFactoryRoute
   ClassIdRoute: typeof ClassIdRoute
   CourseIdRoute: typeof CourseIdRoute
+  LearningActivitiesCourseIdRoute: typeof LearningActivitiesCourseIdRoute
+  AdminIndexRoute: typeof AdminIndexRoute
   LessonCourseIdLessonIdRoute: typeof LessonCourseIdLessonIdRoute
   ApiPublicV1CoursesRoute: typeof ApiPublicV1CoursesRoute
   ApiPublicV1ProgressRoute: typeof ApiPublicV1ProgressRoute
@@ -330,6 +383,13 @@ declare module '@tanstack/react-router' {
       path: '/courses'
       fullPath: '/courses'
       preLoaderRoute: typeof CoursesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/creator-application': {
+      id: '/creator-application'
+      path: '/creator-application'
+      fullPath: '/creator-application'
+      preLoaderRoute: typeof CreatorApplicationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/developer': {
@@ -381,6 +441,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/creators': {
+      id: '/admin/creators'
+      path: '/admin/creators'
+      fullPath: '/admin/creators'
+      preLoaderRoute: typeof AdminCreatorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/moodle': {
       id: '/admin/moodle'
       path: '/admin/moodle'
@@ -421,6 +495,13 @@ declare module '@tanstack/react-router' {
       path: '/course/$id'
       fullPath: '/course/$id'
       preLoaderRoute: typeof CourseIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/learning-activities/$courseId': {
+      id: '/learning-activities/$courseId'
+      path: '/learning-activities/$courseId'
+      fullPath: '/learning-activities/$courseId'
+      preLoaderRoute: typeof LearningActivitiesCourseIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/studio/$id': {
@@ -470,6 +551,7 @@ const rootRouteChildren: RootRouteChildren = {
   AskRoute: AskRoute,
   AuthRoute: AuthRoute,
   CoursesRoute: CoursesRoute,
+  CreatorApplicationRoute: CreatorApplicationRoute,
   DeveloperRoute: DeveloperRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   NotificationsRoute: NotificationsRoute,
@@ -477,12 +559,15 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SearchRoute: SearchRoute,
   StudioRoute: StudioRouteWithChildren,
+  AdminCreatorsRoute: AdminCreatorsRoute,
   AdminMoodleRoute: AdminMoodleRoute,
   ApiAskRoute: ApiAskRoute,
   ApiChallengeRoute: ApiChallengeRoute,
   ApiCourseFactoryRoute: ApiCourseFactoryRoute,
   ClassIdRoute: ClassIdRoute,
   CourseIdRoute: CourseIdRoute,
+  LearningActivitiesCourseIdRoute: LearningActivitiesCourseIdRoute,
+  AdminIndexRoute: AdminIndexRoute,
   LessonCourseIdLessonIdRoute: LessonCourseIdLessonIdRoute,
   ApiPublicV1CoursesRoute: ApiPublicV1CoursesRoute,
   ApiPublicV1ProgressRoute: ApiPublicV1ProgressRoute,
