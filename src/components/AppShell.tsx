@@ -1,10 +1,12 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Home, BookOpen, Search, Bell, User, LayoutGrid, KeyRound, Bookmark, Sprout, PenSquare } from "lucide-react";
+import { Home, BookOpen, Search, Bell, User, LayoutGrid, KeyRound, Bookmark, Sprout, PenSquare, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import logo from "@/assets/mobile-school-logo.png.asset.json";
 import { useBookmarks, useAuth } from "@/hooks/useLearning";
 import { LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const tabs = [
   { to: "/", icon: Home, label: "Home" },
@@ -14,8 +16,23 @@ const tabs = [
   { to: "/profile", icon: User, label: "Profile" },
 ] as const;
 
+function useIsAdmin() {
+  const { user } = useAuth();
+  const { data } = useQuery({
+    queryKey: ["app-shell-admin", user?.id],
+    enabled: !!user,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("has_role", { _user_id: user!.id, _role: "admin" });
+      return !error && data === true;
+    },
+  });
+  return !!data;
+}
+
 export function Phone({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const isAdmin = useIsAdmin();
   return (
     <div className="min-h-screen bg-muted md:flex">
       <aside className="sticky top-0 hidden h-screen w-20 shrink-0 flex-col border-r border-border bg-card p-3 md:flex lg:w-64 lg:p-5">
@@ -30,10 +47,15 @@ export function Phone({ children }: { children: ReactNode }) {
               </Link>
             );
           })}
+          {isAdmin && <Link to="/admin" aria-label="Administration"
+            className={`flex items-center justify-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium lg:justify-start ${path.startsWith("/admin") ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
+            <ShieldCheck className="h-5 w-5 shrink-0" /><span className="hidden lg:inline">Administration</span>
+          </Link>}
         </nav>
         <AccountLinks />
       </aside>
       <div className="relative mx-auto min-h-screen w-full max-w-md overflow-hidden bg-card pb-28 md:max-w-none md:pb-10">
+        {isAdmin && <div className="px-5 pt-3 md:hidden"><Link to="/admin" className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-2 text-xs font-semibold text-primary"><ShieldCheck className="h-4 w-4" />Administration</Link></div>}
         {children}
         <nav className="fixed bottom-4 left-1/2 z-20 flex w-[calc(100%-2rem)] max-w-[400px] -translate-x-1/2 justify-around rounded-full bg-accent px-4 py-3 shadow-lg md:hidden">
           {tabs.map((t) => {
