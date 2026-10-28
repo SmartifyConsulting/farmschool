@@ -14,3 +14,5 @@
 - [x] In-app Course Studio (videos, readings, quizzes) in catalogue
 - [x] Ask the Farmer AI assistant
 - [x] Native AI course wizard: prompt, streamed generation, review, atomic draft save, browser verification
+- [x] Inline AI lesson & quiz assistant in Course Studio
+- [x] Trainer course performance & learner roster
