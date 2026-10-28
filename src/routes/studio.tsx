@@ -12,9 +12,9 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/studio")({
   head: () => ({ meta: [
     { title: "Course Studio — Mobile School" },
-    { name: "description", content: "Create courses with video lessons, readings and quizzes for farmers." },
+    { name: "description", content: "Create courses with video lessons, readings and quizzes across industries." },
     { property: "og:title", content: "Course Studio — Mobile School" },
-    { property: "og:description", content: "Build and publish farming courses." },
+    { property: "og:description", content: "Build and publish courses across industries." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary_large_image" },
   ] }),
@@ -45,6 +45,7 @@ function Studio() {
       <Header greeting="For trainers" title="Course Studio" />
       <Sheet>
         {ready && !user ? <p className="py-10 text-center text-sm text-muted-foreground"><Link to="/auth" className="font-semibold text-primary">Sign in</Link> to create courses.</p> : (<>
+          <p className="mb-4 text-sm text-muted-foreground">Create and edit courses here. To publish a new course, first <Link to="/creator-application" className="font-semibold text-primary">apply for creator approval</Link>.</p>
           <form onSubmit={(e) => { e.preventDefault(); create(); }} className="flex gap-2 md:max-w-xl">
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New course title, e.g. Raising broilers" maxLength={120} />
             <Button type="submit"><Plus className="h-4 w-4" />Create</Button>
