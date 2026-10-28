@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendly-error";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, BookOpen, LoaderCircle, Sprout, Square, Play } from "lucide-react";
@@ -54,7 +55,7 @@ export function ChallengeFinder() {
       consume(pending);
       if (!received) throw new Error("No learning suggestions were returned. Please start a new search.");
     } catch (err) {
-      setError(controller.signal.aborted ? "Search stopped." : err instanceof Error ? err.message : "The search could not be completed.");
+      setError(controller.signal.aborted ? "Search stopped." : friendlyError(err, "The search could not be completed."));
     } finally { setBusy(false); abort.current = null; }
   }
 

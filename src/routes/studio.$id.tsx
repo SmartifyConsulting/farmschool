@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -210,7 +211,7 @@ function Editor() {
       setDesignApproved(p => ({ ...p, [index]: false }));
       setDesignRationale(p => ({ ...p, [index]: payload.rationale }));
       toast.success("AI proposal ready for review.");
-    } catch (error) { toast.error(error instanceof Error ? error.message : "AI proposal failed."); }
+    } catch (error) { toast.error(friendlyError(error, "AI proposal failed.")); }
     finally { setDesignLoading(null); }
   };
 
@@ -225,7 +226,7 @@ function Editor() {
       const { data, error } = await sourceDraftTable().select("*").eq("course_id", id).maybeSingle();
       if (cancelled) return;
       if (error) {
-        if (!["PGRST205", "42P01"].includes(error.code ?? "")) toast.error("Cloud draft could not be loaded: " + error.message);
+        if (!["PGRST205", "42P01"].includes(error.code ?? "")) toast.error(friendlyError(error, "Cloud draft could not be loaded. Please try again."));
         setCloudSaveStatus("unavailable");
         setCloudDraftReady(true);
         return;
@@ -255,7 +256,7 @@ function Editor() {
         course_id: id, source_name: sourceName, source_text: sourceText, source_pages: sourcePages, draft,
       } as never, { onConflict: "course_id" });
       if (cancelled) return;
-      if (error) { setCloudSaveStatus("error"); toast.error("Cloud draft autosave failed: " + error.message); }
+      if (error) { setCloudSaveStatus("error"); toast.error(friendlyError(error, "Cloud draft autosave failed. Please try again.")); }
       else setCloudSaveStatus("saved");
     }, 1500);
     return () => { cancelled = true; clearTimeout(timer); };
@@ -279,7 +280,7 @@ function Editor() {
     const restore = async () => {
       const { data, error } = await designTable().select("*").eq("course_id", id);
       if (cancelled) return;
-      if (error) { toast.error("Could not load saved learning designs: " + error.message); return; }
+      if (error) { toast.error(friendlyError(error, "Could not load saved learning designs. Please try again.")); return; }
       const rows = (data ?? []) as unknown as Array<{ lesson_key: string; proposed_methods: string[]; review_status: string; ai_rationale: string | null }>;
       const choices: Record<number, string[]> = {};
       const approved: Record<number, boolean> = {};
@@ -333,7 +334,7 @@ function Editor() {
       });
       await refetchSavedDesigns();
       toast.success("Teaching methods saved; approval reset for review.");
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not update teaching methods."); }
+    } catch (error) { toast.error(friendlyError(error, "Could not update teaching methods.")); }
     finally { setDesignSyncing(false); }
   };
   const updateSavedApproval = async (lessonKeyValue: string, approved: boolean) => {
@@ -346,7 +347,7 @@ function Editor() {
       if (error) throw error;
       await refetchSavedDesigns();
       toast.success(approved ? "Saved design approved." : "Saved design reopened for review.");
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not update saved design."); }
+    } catch (error) { toast.error(friendlyError(error, "Could not update saved design.")); }
     finally { setDesignSyncing(false); }
   };
   const saveDesignSelection = async (index: number, methods: string[]) => {
@@ -356,7 +357,7 @@ function Editor() {
       await persistDesign(index, methods, false);
       setDesignChoices(p => ({ ...p, [index]: methods }));
       setDesignApproved(p => ({ ...p, [index]: false }));
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not save design."); }
+    } catch (error) { toast.error(friendlyError(error, "Could not save design.")); }
     finally { setDesignSyncing(false); }
   };
   const toggleDesignApproval = async (index: number, lesson: { title: string; body: string }) => {
@@ -369,7 +370,7 @@ function Editor() {
       await persistDesign(index, methods, next);
       setDesignApproved(p => ({ ...p, [index]: next }));
       toast.success(next ? "Learning design approved and saved." : "Learning design reopened.");
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not update approval."); }
+    } catch (error) { toast.error(friendlyError(error, "Could not update approval.")); }
     finally { setDesignSyncing(false); }
   };
 
@@ -417,7 +418,7 @@ function Editor() {
       setDraft(null);
       toast.success("Manual extracted. Analyse its structure to preview the course outline.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not read file.");
+      toast.error(friendlyError(error, "Could not read file."));
     } finally {
       setReadingFile(false);
     }
@@ -427,7 +428,7 @@ function Editor() {
       const next = buildCourseDraft(form.title || course?.title || "Course", sourcePages ?? [{ sourceId: sourceName.trim() || "Pasted source", page: 1, text: sourceText }]);
       setDraft(next); setDesignChoices({}); setDesignApproved({}); setDesignRationale({});
       if (!next.lessons.length) toast.error("No readable lessons found.");
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not parse source."); }
+    } catch (error) { toast.error(friendlyError(error, "Could not parse source.")); }
   };
   const importDraft = async () => {
     if (!draft?.lessons.length || importing || course?.published) return;
@@ -443,7 +444,7 @@ function Editor() {
       if (error) throw error;
       toast.success(`Imported ${rows.length} reading lessons for review.`);
       setDraft(null); setSourceText(""); refresh();
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Import failed."); }
+    } catch (error) { toast.error(friendlyError(error, "Import failed.")); }
     finally { setImporting(false); }
   };
 
@@ -464,7 +465,7 @@ function Editor() {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message ?? "AI generation failed.");
       setAiDraft(payload);
-    } catch (error) { toast.error(error instanceof Error ? error.message : "AI generation failed."); }
+    } catch (error) { toast.error(friendlyError(error, "AI generation failed.")); }
     finally { setAiLoading(false); }
   };
 
@@ -493,7 +494,7 @@ function Editor() {
         setBatchDrafts([...results]);
       }
       toast.success(`Generated ${results.length} draft lessons. Review before saving.`);
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Batch generation stopped."); }
+    } catch (error) { toast.error(friendlyError(error, "Batch generation stopped.")); }
     finally { setBatchProgress(""); setBatchRunning(false); }
   };
 
@@ -526,7 +527,7 @@ function Editor() {
       toast.success(`Saved ${saved} AI lesson drafts. Review each lesson and quiz before publishing.`);
     } catch (error) {
       setBatchDrafts((current) => current.slice(saved));
-      toast.error(error instanceof Error ? error.message : "Batch save interrupted. Review saved lessons.");
+      toast.error(friendlyError(error, "Batch save interrupted. Review saved lessons."));
     } finally { setBatchRunning(false); refresh(); }
   };
 
@@ -555,7 +556,7 @@ function Editor() {
       setAiDraft(null);
       toast.success("AI reading and quiz saved as drafts. Verify all content before publishing.");
       refresh();
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not save AI draft."); }
+    } catch (error) { toast.error(friendlyError(error, "Could not save AI draft.")); }
     finally { setAiLoading(false); }
   };
 

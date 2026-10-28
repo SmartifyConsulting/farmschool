@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -42,7 +43,7 @@ function MoodleAdmin() {
   const act = async (fn: () => Promise<{ message?: string } | unknown>, done?: string) => {
     setBusy(true); setMsg(null);
     try { const r = (await fn()) as { message?: string }; setMsg(r?.message ?? done ?? "Done"); }
-    catch (e) { setMsg(e instanceof Error ? e.message : "Something went wrong"); }
+    catch (e) { setMsg(friendlyError(e, "Something went wrong")); }
     setBusy(false); qc.invalidateQueries();
   };
 

@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -91,7 +92,7 @@ function ClassPage() {
             </ol>
             {user && pct === 100 && <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" onClick={async () => {
               try { await claim({ data: { source: "studio", courseRef: id } }); toast.success("Certificate added to your profile!"); qc.invalidateQueries({ queryKey: ["certificates"] }); }
-              catch (e) { toast.error(e instanceof Error ? e.message : "Could not issue certificate."); }
+              catch (e) { toast.error(friendlyError(e, "Could not issue certificate.")); }
             }}><Award className="h-4 w-4" />Get my certificate</Button>}
           </aside>
         </div>
@@ -113,7 +114,7 @@ function Quiz({ lesson, courseId, passed }: { lesson: L; courseId: string; passe
       if (!user) { toast.error("Sign in to take the quiz."); return; }
       if (answers.includes(-1)) { toast.error("Answer every question first."); return; }
       try { const r = await submit({ data: { lessonId: lesson.id, answers } }); setResult(r); qc.invalidateQueries({ queryKey: ["progress"] }); }
-      catch (err) { toast.error(err instanceof Error ? err.message : "Could not grade quiz."); }
+      catch (err) { toast.error(friendlyError(err, "Could not grade quiz.")); }
     }}>
       {passed && !result && <p className="rounded-xl bg-secondary/30 px-3 py-2 text-sm">You already passed this quiz. You can try again.</p>}
       {lesson.quiz.map((q, qi) => (

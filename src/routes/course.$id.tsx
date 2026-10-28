@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -51,7 +52,7 @@ function CourseDetails() {
         </div>
         <div className="px-5 pt-4 md:px-10 lg:px-0 lg:pt-0">
           {user && <div className="mb-4"><ProgressBar pct={p.pct} label={`${p.done}/${p.total} lessons complete`} />
-            {p.pct === 100 && <button className="mt-3 w-full rounded-xl bg-accent py-2.5 text-sm font-semibold text-accent-foreground" onClick={async () => { try { await claim({ data: { source: "catalogue", courseRef: c.id } }); toast.success("Certificate added to your profile!"); } catch (e) { toast.error(e instanceof Error ? e.message : "Could not issue certificate."); } }}>Get my certificate</button>}</div>}
+            {p.pct === 100 && <button className="mt-3 w-full rounded-xl bg-accent py-2.5 text-sm font-semibold text-accent-foreground" onClick={async () => { try { await claim({ data: { source: "catalogue", courseRef: c.id } }); toast.success("Certificate added to your profile!"); } catch (e) { toast.error(friendlyError(e, "Could not issue certificate.")); } }}>Get my certificate</button>}</div>}
           <div className="flex rounded-full bg-muted p-1 text-sm">
             {["Modules", "Description", "Reviews"].map((t) => <button key={t} onClick={() => setTab(t)} className={`flex-1 rounded-full py-1.5 ${tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{t}</button>)}
           </div>

@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -63,7 +64,7 @@ function Developer() {
     queryFn: async () => (await supabase.from("api_keys").select("id, name, prefix, created_at, last_used_at, scopes, daily_limit, usage_count, usage_date, total_requests, revoked_at, rotated_at").order("created_at", { ascending: false })).data as Key[] ?? [],
   });
   const refresh = () => qc.invalidateQueries({ queryKey: ["api_keys"] });
-  const run = async (p: PromiseLike<{ error: { message: string } | null }>) => { const { error } = await p; setErr(error?.message ?? null); refresh(); return !error; };
+  const run = async (p: PromiseLike<{ error: { message: string } | null }>) => { const { error } = await p; setErr(error ? friendlyError(error, "That didn't work. Please try again.") : null); refresh(); return !error; };
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
