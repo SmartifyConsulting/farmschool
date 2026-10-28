@@ -46,7 +46,7 @@ const activityLabels: Record<string, { title: string; description: string }> = {
 };
 
 function SourceActivity({ method, lesson, courseId, published }: { method: string; lesson: DraftCourse["lessons"][number]; courseId: string; published: boolean }) {
-  const evidence = lesson.body.split(/(?<=[.!?])\\s+|\\n+/).map(value => value.trim())
+  const evidence = lesson.body.split(/(?<=[.!?])\s+|\n+/).map(value => value.trim())
     .find(value => value.length >= 65 && value.length <= 450 && /[.!?]$/.test(value));
   const suggested = method === "steps"
     ? "Practical exercise: Using the evidence below, outline the steps you would follow and explain how you would check each step. Do not add procedures the source does not describe."
