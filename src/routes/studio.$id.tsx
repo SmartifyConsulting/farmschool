@@ -1,3 +1,4 @@
+import { useConfirm } from "@/components/ConfirmDialog";
 import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -474,7 +475,7 @@ function Editor() {
     const candidates = draft.lessons.map((lesson, index) => ({ lesson, index })).filter(({ lesson }) => lesson.body.length >= 100).slice(0, 5);
     if (!candidates.length) { toast.error("No lessons with enough source text (100 characters)."); return; }
     if (candidates.some(({ index }) => !designApproved[index])) { toast.error("Approve the learning design for each selected lesson before batch generation."); return; }
-    if (!confirm(`Generate AI drafts for ${candidates.length} lessons? Each request uses your daily AI allowance and may incur provider charges.`)) return;
+    if (!(await confirm({ title: `Generate ${candidates.length} AI lesson drafts?`, description: "Each lesson uses part of your daily AI allowance. You can review every draft before saving.", confirmLabel: "Generate drafts" }))) return;
     setBatchRunning(true); setBatchDrafts([]);
     const results: { sourceTitle: string; sourceRefs: string; lessonTitle: string; lessonSummary: string; questions: { question: string; options: string[]; correctIndex: number; sourceQuote: string }[] }[] = [];
     try {
@@ -584,14 +585,32 @@ function Editor() {
     if (published && lessons?.some((lesson) => lesson.body.includes("Review required before publishing."))) { toast.error("Imported lessons still need review. Edit each imported lesson and remove the review notice after verifying the content."); return; }
     if (published) {
       const { error: approvalError } = await supabase.rpc("studio_approve_review" as never, { _course_id: id } as never);
-      if (approvalError) { toast.error(approvalError.message || "Could not record trainer approval."); return; }
+      if (approvalError) { toast.error(friendlyError(approvalError, "We couldn't record your review. Please try again.")); return; }
     }
     const { error } = await supabase.from("studio_courses").update({ published }).eq("id", id);
-    if (error) { toast.error("Could not change publishing status."); return; }
+    if (error) { toast.error(/creator|approv/i.test(error.message) ? "Your creator application must be approved before you can publish." : "We couldn't change the publishing status. Please try again.", /creator|approv/i.test(error.message) ? { action: { label: "Apply", onClick: () => nav({ to: "/creator-application" }) } } : undefined); return; }
     setReviewConfirmed(false); refresh();
     toast.success(published ? "Published — it now appears in the catalogue." : "Moved back to draft.");
   };
-  const remove = async () => { if (!confirm("Delete this course and all its lessons?")) return; await supabase.from("studio_courses").delete().eq("id", id); refresh(); nav({ to: "/studio" }); };
+  const [deleting, setDeleting] = useState(false);
+  const remove = async () => {
+    if (!course || deleting) return;
+    if (course.published) { toast.warning("Unpublish this course before deleting it.", { description: "Published courses can't be deleted while learners can see them." }); return; }
+    const ok = await confirm({
+      tone: "danger", title: "Delete this draft course?", confirmLabel: "Delete course", cancelLabel: "Keep course",
+      description: <><p>You're about to permanently delete <strong className="text-foreground">{course.title}</strong>, including all of its lessons, quizzes and saved import work.</p><p>This can't be undone.</p></>,
+    });
+    if (!ok) return;
+    setDeleting(true);
+    const { data, error } = await supabase.rpc("studio_delete_draft", { _course_id: id });
+    setDeleting(false);
+    const result = error ? "error" : data;
+    if (result === "deleted") { toast.success(`"${course.title}" was deleted.`); await qc.invalidateQueries({ queryKey: ["studio"] }); nav({ to: "/studio" }); return; }
+    toast.error(result === "published" ? "Unpublish this course before deleting it."
+      : result === "not_owner" ? "Only the trainer who created this course can delete it."
+      : result === "not_signed_in" ? "Your session has ended. Please sign in again."
+      : result === "not_found" ? "This course no longer exists." : "We couldn't delete the course. Please try again.");
+  };
 
   if (isLoading) return <Phone><Header title="Loading…" /></Phone>;
   if (!course) return <Phone><Header title="Course not found" /><Sheet><Link to="/studio" className="text-primary">Back to Studio</Link></Sheet></Phone>;
@@ -650,7 +669,7 @@ function Editor() {
               {!course.published && <label className="mb-3 flex items-start gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={reviewConfirmed} onChange={(e) => setReviewConfirmed(e.target.checked)} className="mt-0.5" />I have reviewed all lessons, sources and quiz answers for accuracy before publishing.</label>}
               {course.published ? <Button variant="outline" className="w-full" onClick={() => setPublished(false)}>Unpublish</Button>
                 : <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={!readyToPublish} onClick={() => setPublished(true)}>Publish to catalogue</Button>}
-              <Button variant="ghost" className="mt-2 w-full text-destructive" onClick={remove}><Trash2 className="h-4 w-4" />Delete course</Button>
+              <Button variant="ghost" className="mt-2 w-full text-destructive" onClick={remove} disabled={deleting}><Trash2 className="h-4 w-4" />{deleting ? "Deleting…" : "Delete course"}</Button>
             </div>
           </section>
           </div>
