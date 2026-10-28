@@ -30,6 +30,17 @@ describe("Course Factory draft builder", () => {
     expect(draft.lessons[0]?.sourceRefs).toEqual([{ sourceId: "manual", page: 3 }]);
   });
 
+  it("keeps numbered facts within the current module instead of making them lessons", () => {
+    const draft = buildCourseDraft("Beekeeping", [{
+      sourceId: "manual", page: 7,
+      text: ["MODULE 1", "Bees live in organised colonies.", "7 bee families (apidae) across the world.", "12 subspecies in Africa with different characteristics."].join("\n"),
+    }]);
+    expect(draft.lessons).toHaveLength(1);
+    expect(draft.lessons[0]?.title).toBe("MODULE 1");
+    expect(draft.lessons[0]?.body).toContain("7 bee families");
+    expect(draft.lessons[0]?.body).toContain("12 subspecies");
+  });
+
   it("rejects invalid provenance", () => {
     expect(() => buildCourseDraft("Example", [{ sourceId: "", page: 0, text: "Content" }])).toThrow();
   });
