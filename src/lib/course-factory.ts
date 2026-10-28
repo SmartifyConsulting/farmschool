@@ -19,7 +19,7 @@ export type DraftCourse = {
 
 const MAX_PAGES = 500;
 const MAX_CHARS = 1_000_000;
-const heading = /^(?:(?:module|chapter|unit|lesson|section|part|topic)\s+(?:\d+|[IVX]+|[A-Z])(?:[.:\s–-]+.*)?|\d+(?:\.\d+){0,2}[.)]?\s+[A-Z].{3,100})$/i;
+const heading = /^(?:module|chapter|unit|lesson|section|part|topic)\s+(?:\d+|[IVX]+|[A-Z])(?:[.:\s–-]+.*)?$/i;
 const frontMatter = /^(?:table of contents|contents|copyright|acknowledg(?:e)?ments|foreword|preface|about (?:this|the) (?:manual|course)|learning objectives?|course overview)$/i;
 const moduleHeading = /^(?:module|chapter|unit|lesson|section|part|topic)\s+(?:\d+|[IVX]+|[A-Z])(?:[.\s:–-]+.*)?$/i;
 const contentsEntry = /(?:\.{3,}|…{2,}|\s{3,})\s*\d{1,3}\s*$/;
@@ -47,7 +47,7 @@ export function buildCourseDraft(title: string, pages: SourcePage[]): DraftCours
   let refs: { sourceId: string; page: number }[] = [];
   const flush = () => {
     const content = body.join("\n\n").trim();
-    if (content.length > 0 && (foundHeading || content.length >= 250)) lessons.push({ title: currentTitle.slice(0, 120), body: content, sourceRefs: [...refs], reviewRequired: true });
+    if (content.length >= 40 && (foundHeading || content.length >= 250)) lessons.push({ title: currentTitle.slice(0, 120), body: content, sourceRefs: [...refs], reviewRequired: true });
 
     body = []; refs = [];
   };
@@ -60,7 +60,7 @@ export function buildCourseDraft(title: string, pages: SourcePage[]): DraftCours
     for (const line of lines) {
       if (heading.test(line) && !frontMatter.test(line)) {
         if (!foundHeading && !moduleHeading.test(line) && body.length === 0) continue;
-        flush(); currentTitle = line; foundHeading = true; continue;
+        if (foundHeading && body.length === 0) {\n          // A bare "MODULE 1" followed by a descriptive heading is one unit, not two lessons.\n          if (/^(?:module|chapter|unit)\\s+\\d+$/i.test(currentTitle)) currentTitle = `${currentTitle}: ${line}`.slice(0, 120);\n          else currentTitle = line;\n          continue;\n        }\n        flush(); currentTitle = line; foundHeading = true; continue;
       }
       if (!foundHeading && (frontMatter.test(line) || coverMarker.test(line) || contentsEntry.test(line) || line.length < 30)) { skippedIntro++; continue; }
       if (frontMatter.test(line) && body.length === 0) continue;
