@@ -9,7 +9,7 @@ async function assertAdmin(ctx: Ctx) {
   if (!data) throw new Error("Only administrators can manage the video library.");
 }
 
-async function youtubeInfo(url: string): Promise<{ title?: string; thumb?: string } | null> {
+async function youtubeInfo(url: string): Promise<{ title?: string | undefined; thumb?: string | undefined } | null> {
   if (!youtubeId(url)) return null;
   try {
     const r = await fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(6000) });

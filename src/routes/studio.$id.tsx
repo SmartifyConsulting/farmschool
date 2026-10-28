@@ -824,7 +824,7 @@ function Editor() {
   );
 }
 
-function LessonEditor({ lesson, index, onChange, courseId, sourceText, link }: { lesson: LessonRow; index: number; onChange: () => void; courseId: string; sourceText: string; link?: VideoLink }) {
+function LessonEditor({ lesson, index, onChange, courseId, sourceText, link }: { lesson: LessonRow; index: number; onChange: () => void; courseId: string; sourceText: string; link?: VideoLink | undefined }) {
   const [objectives, setObjectives] = useState(link?.objectives ?? "");
   const [title, setTitle] = useState(lesson.title);
   const [video, setVideo] = useState(lesson.video_url ?? "");

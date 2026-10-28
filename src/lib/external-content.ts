@@ -4,7 +4,7 @@ import { STUDIO_CATEGORIES } from "@/lib/studio";
 
 export function youtubeId(url: string): string | null {
   const m = url.match(/(?:youtube\.com\/watch\?(?:.*&)?v=|youtu\.be\/|youtube\.com\/(?:embed|shorts)\/|youtube-nocookie\.com\/embed\/)([\w-]{11})/);
-  return m ? m[1] : null;
+  return m?.[1] ?? null;
 }
 
 /** One stable key per video so the same video is never imported twice. */
