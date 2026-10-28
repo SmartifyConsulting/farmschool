@@ -21,9 +21,9 @@ const MAX_PAGES = 500;
 const MAX_CHARS = 1_000_000;
 const heading = /^(?:(?:module|chapter|unit|lesson|section|part|topic)\s+(?:\d+|[IVX]+|[A-Z])(?:[.:\s–-]+.*)?|\d+(?:\.\d+){0,2}[.)]?\s+[A-Z].{3,100})$/i;
 const frontMatter = /^(?:table of contents|contents|copyright|acknowledg(?:e)?ments|foreword|preface|about (?:this|the) (?:manual|course)|learning objectives?|course overview)$/i;
-const moduleHeading = /^(?:module|chapter|unit|lesson|section|part|topic)\\s+(?:\\d+|[IVX]+|[A-Z])(?:[.\\s:–-]+.*)?$/i;
-const contentsEntry = /(?:\\.{3,}|…{2,}|\\s{3,})\\s*\\d{1,3}\\s*$/;
-const coverMarker = /^(?:short learning programme|training manual|entrepreneurship|equip\\s*[•·-]\\s*learn|building skills,? empowering people|protecting pollinators|future leaders)$/i;
+const moduleHeading = /^(?:module|chapter|unit|lesson|section|part|topic)\s+(?:\d+|[IVX]+|[A-Z])(?:[.\s:–-]+.*)?$/i;
+const contentsEntry = /(?:\.{3,}|…{2,}|\s{3,})\s*\d{1,3}\s*$/;
+const coverMarker = /^(?:short learning programme|training manual|entrepreneurship|equip\s*[•·-]\s*learn|building skills,? empowering people|protecting pollinators|future leaders)$/i;
 function looksLikeContents(lines: string[]): boolean {
   const moduleCount = lines.filter(line => moduleHeading.test(line) || contentsEntry.test(line)).length;
   return lines.some(line => /^(?:table of contents|contents)$/i.test(line))
@@ -71,8 +71,8 @@ export function buildCourseDraft(title: string, pages: SourcePage[]): DraftCours
   }
   flush();
   if (!lessons.length && pages.some(page => page.text.trim().length >= 100)) {
-    const allText = pages.map(page => page.text).join("\\n");
-    const modulePattern = /(?:^|\\n)\\s*(MODULE\\s+\\d+\\s*[-–:]\\s*[^\\n]{4,100})/gi;
+    const allText = pages.map(page => page.text).join("\n");
+    const modulePattern = /(?:^|\n)\s*(MODULE\s+\d+\s*[-–:]\s*[^\n]{4,100})/gi;
     const matches = [...allText.matchAll(modulePattern)];
     if (matches.length) {
       for (let index = 0; index < matches.length; index++) {
@@ -80,7 +80,7 @@ export function buildCourseDraft(title: string, pages: SourcePage[]): DraftCours
         const start = (match.index ?? 0) + match[0].length;
         const end = matches[index + 1]?.index ?? allText.length;
         const content = allText.slice(start, end).trim();
-        if (content.length >= 80 && !/^\\.{3,}/.test(content)) {
+        if (content.length >= 80 && !/^\.{3,}/.test(content)) {
           lessons.push({ title: match[1].trim(), body: content, sourceRefs: pages.map(page => ({ sourceId: page.sourceId, page: page.page })), reviewRequired: true });
         }
       }
