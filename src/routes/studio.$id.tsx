@@ -635,8 +635,8 @@ function Editor() {
         </div>
       </Header>
       <Sheet wide>
-        <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)_260px]">
-          <div className="min-w-0 space-y-6 lg:row-span-2 xl:row-span-1">
+        <div className="min-w-0 space-y-6">
+        <div className="grid min-w-0 items-start gap-6 lg:grid-cols-2">
           <section className="space-y-3 rounded-2xl border border-border p-4">
             <h2 className="font-semibold">Course details</h2>
             <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} aria-label="Title" maxLength={120} />
@@ -668,22 +668,23 @@ function Editor() {
             </div>
             <CoverImageInput value={form.cover_url} onChange={(url) => setForm({ ...form, cover_url: url })} />
             <Button onClick={saveDetails} className="w-full">Save details</Button>
-            <div className="border-t border-border pt-3 space-y-2">
-              <h3 className="text-sm font-semibold">Publishing checklist</h3>
-              <p className="text-xs text-muted-foreground">Finish these steps before making your course visible to learners. This is a trainer self-review, not marketplace verification.</p>
-              <ul className="space-y-1.5">
-                {readiness.map((item) => <li key={item.label} className="flex items-start gap-2 text-xs">
-                  <span aria-hidden="true" className={item.ready ? "text-primary" : "text-muted-foreground"}>{item.ready ? "✓" : "○"}</span>
-                  <span>{item.label}</span>
-                </li>)}
-              </ul>
-              {!course.published && <label className="mb-3 flex items-start gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={reviewConfirmed} onChange={(e) => setReviewConfirmed(e.target.checked)} className="mt-0.5" />I have reviewed all lessons, sources and quiz answers for accuracy before publishing.</label>}
-              {course.published ? <Button variant="outline" className="w-full" onClick={() => setPublished(false)}>Unpublish</Button>
-                : <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={!readyToPublish} onClick={() => setPublished(true)}>Publish to catalogue</Button>}
-              <Button variant="ghost" className="mt-2 w-full text-destructive" onClick={remove} disabled={deleting}><Trash2 className="h-4 w-4" />{deleting ? "Deleting…" : "Delete course"}</Button>
-            </div>
           </section>
-          </div>
+          <section className="space-y-2 rounded-2xl border border-border p-4">
+            <h2 className="font-semibold">Publishing checklist</h2>
+            <p className="text-xs text-muted-foreground">Finish these steps before making your course visible to learners. This is a trainer self-review, not marketplace verification.</p>
+            <ul className="space-y-1.5">
+              {readiness.map((item) => <li key={item.label} className="flex items-start gap-2 text-xs">
+                <span aria-hidden="true" className={item.ready ? "text-primary" : "text-muted-foreground"}>{item.ready ? "✓" : "○"}</span>
+                <span>{item.label}</span>
+              </li>)}
+            </ul>
+            {!course.published && <label className="mb-3 flex items-start gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={reviewConfirmed} onChange={(e) => setReviewConfirmed(e.target.checked)} className="mt-0.5" />I have reviewed all lessons, sources and quiz answers for accuracy before publishing.</label>}
+            {course.published ? <Button variant="outline" className="w-full" onClick={() => setPublished(false)}>Unpublish</Button>
+              : <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={!readyToPublish} onClick={() => setPublished(true)}>Publish to catalogue</Button>}
+            <Button variant="ghost" className="mt-2 w-full text-destructive" onClick={remove} disabled={deleting}><Trash2 className="h-4 w-4" />{deleting ? "Deleting…" : "Delete course"}</Button>
+          </section>
+        </div>
+        <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
           <div className="min-w-0 space-y-6">
           <section className="min-w-0 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-semibold">Course outline</h2><p className="text-xs text-muted-foreground">Expand a lesson to review or edit. Use Preview above to see the learner experience.</p></div>
@@ -814,11 +815,12 @@ function Editor() {
             </div>}
           </section>
           </div>
-          <div className="min-w-0 space-y-6 lg:col-start-2 xl:col-start-3 xl:sticky xl:top-6">
+          <div className="min-w-0 space-y-6 lg:sticky lg:top-6">
           <aside className="hidden space-y-3 lg:block rounded-2xl border border-border p-4"><h2 className="font-semibold">Course navigation</h2><p className="text-xs text-muted-foreground">{lessons?.length ?? 0} learning objects</p><nav aria-label="Course lessons" className="space-y-2">{lessons?.map((lesson, index) => <a key={lesson.id} href={`#lesson-${lesson.id}`} className="block rounded-lg border border-border px-3 py-2 text-xs hover:bg-muted"><span className="font-semibold">{index + 1}. {lesson.title}</span><span className="mt-1 block capitalize text-muted-foreground">{lesson.kind}</span></a>)}</nav></aside>
           <CourseAnalytics courseId={id} />
           <aside className="space-y-3 rounded-2xl border border-border p-4"><h2 className="font-semibold">Trainer review</h2><p className="text-sm text-muted-foreground">Check the source evidence, lesson content and assessments before publishing.</p><div className="rounded-lg bg-muted/40 p-3 text-xs"><p className="font-medium">AI learning design</p><p className="mt-1 text-muted-foreground">Proposed teaching and assessment methods with trainer approval are planned, not yet active.</p></div><Link to="/class/$id" params={{ id }} className="inline-flex items-center gap-2 text-sm font-medium text-primary"><Eye className="h-4 w-4" />Preview as learner</Link></aside>
           </div>
+        </div>
         </div>
       </Sheet>
     </Phone>
