@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { STUDIO_CATEGORIES } from "@/lib/studio";
 import { INDUSTRIES, courseIndustry } from "@/lib/industries";
 import { CourseWizard } from "@/components/CourseWizard";
+import { CoverImageInput } from "@/components/CoverImageInput";
 
 export const Route = createFileRoute("/studio")({
   head: () => ({ meta: [
@@ -92,7 +93,7 @@ function NewCourseDialog({ open, onOpenChange, onCreated }: { open: boolean; onO
             </div>
             <select value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} className="rounded-md border border-input bg-background px-2 py-2 text-sm" aria-label="Level">{["Beginner", "Intermediate", "Advanced"].map((c) => <option key={c}>{c}</option>)}</select>
           </div>
-          <Input value={form.cover_url} onChange={(e) => setForm({ ...form, cover_url: e.target.value })} placeholder="Cover image link (https://…)" />
+          <CoverImageInput value={form.cover_url} onChange={(url) => setForm({ ...form, cover_url: url })} />
           <DialogFooter>
             <Button type="submit" disabled={creating} className="w-full"><Plus className="h-4 w-4" />{creating ? "Creating…" : "Create course"}</Button>
           </DialogFooter>
