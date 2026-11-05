@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Home, BookOpen, Search, Bell, User, LayoutGrid, KeyRound, Bookmark, Sprout, PenSquare, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
+import { Home, BookOpen, Search, Bell, User, LayoutGrid, Bookmark, PenSquare, ChevronLeft, ChevronRight, Mail } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import logo from "@/assets/mobile-school-logo.png.asset.json";
 import { useBookmarks, useAuth } from "@/hooks/useLearning";
@@ -8,16 +8,15 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const tabs = [
   { to: "/", icon: Home, label: "Home" },
-  { to: "/courses", icon: BookOpen, label: "My courses" },
   { to: "/search", icon: Search, label: "Catalogue" },
-  { to: "/notifications", icon: Bell, label: "Notifications" },
-  { to: "/profile", icon: User, label: "Profile" },
+  { to: "/courses", icon: BookOpen, label: "My courses" },
 ] as const;
 
-function useIsAdmin() {
+export function useIsAdmin() {
   const { user } = useAuth();
   const { data } = useQuery({
     queryKey: ["app-shell-admin", user?.id],
@@ -52,7 +51,6 @@ function useNavCollapsed() {
 
 export function Phone({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const isAdmin = useIsAdmin();
   const [collapsed, toggleCollapsed] = useNavCollapsed();
   return (
     <div className="min-h-screen bg-muted md:flex">
@@ -65,8 +63,8 @@ export function Phone({ children }: { children: ReactNode }) {
           </button>
         </div>
         <div className={`flex flex-1 flex-col ${collapsed ? "p-3" : "p-5"}`}>
-          <nav className="space-y-1">
-            {[...tabs, { to: "/ask", icon: Sprout, label: "Ask the Farmer AI" } as const, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const, { to: "/developer", icon: KeyRound, label: "API keys" } as const].map((t) => {
+          <nav className="mt-10 space-y-1">
+            {[...tabs, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const].map((t) => {
               const active = path === t.to;
               return (
                 <Link key={t.to} to={t.to} aria-label={t.label}
@@ -75,18 +73,15 @@ export function Phone({ children }: { children: ReactNode }) {
                 </Link>
               );
             })}
-            {isAdmin && <Link to="/admin" aria-label="Administration"
-              className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium ${collapsed ? "justify-center" : "justify-start"} ${path.startsWith("/admin") ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
-              <ShieldCheck className="h-5 w-5 shrink-0" />{!collapsed && <span>Administration</span>}
-            </Link>}
           </nav>
           <AccountLinks collapsed={collapsed} />
+          <AvatarMenu collapsed={collapsed} />
         </div>
       </aside>
       <div className="relative mx-auto min-h-screen w-full max-w-md overflow-hidden bg-card pb-28 md:max-w-none md:pb-10">
-        {isAdmin && <div className="px-5 pt-3 md:hidden"><Link to="/admin" className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-2 text-xs font-semibold text-primary"><ShieldCheck className="h-4 w-4" />Administration</Link></div>}
         {children}
-        <nav className="fixed bottom-4 left-1/2 z-20 flex w-[calc(100%-2rem)] max-w-[400px] -translate-x-1/2 justify-around rounded-full bg-navy px-4 py-3 shadow-lg md:hidden">
+        <Footer />
+        <nav className="fixed bottom-4 left-1/2 z-20 flex w-[calc(100%-2rem)] max-w-[400px] -translate-x-1/2 items-center justify-around rounded-full bg-navy px-4 py-3 shadow-lg md:hidden">
           {tabs.map((t) => {
             const active = path === t.to;
             return (
@@ -96,9 +91,37 @@ export function Phone({ children }: { children: ReactNode }) {
               </Link>
             );
           })}
+          <AvatarMenu collapsed mobile />
         </nav>
       </div>
     </div>
+  );
+}
+
+function AvatarMenu({ collapsed, mobile = false }: { collapsed: boolean; mobile?: boolean }) {
+  const { user, ready } = useAuth();
+  const nav = useNavigate();
+  const { data: prof } = useQuery({ queryKey: ["avatar-profile", user?.id], enabled: !!user, queryFn: async () => (await supabase.from("profiles").select("full_name").maybeSingle()).data });
+  if (!ready || !user) return null;
+  const name = prof?.full_name ?? user.email?.split("@")[0] ?? "Account";
+  const initials = name.slice(0, 2).toUpperCase();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        {mobile ? (
+          <button type="button" aria-label="Account menu" className="grid h-10 w-10 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{initials}</button>
+        ) : (
+          <button type="button" aria-label="Account menu" className={`mt-auto flex items-center gap-2 rounded-md p-2 text-sm font-medium hover:bg-muted ${collapsed ? "justify-center" : "justify-start"}`}>
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{initials}</span>
+            {!collapsed && <span className="min-w-0 truncate">{name}</span>}
+          </button>
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" side="top">
+        <DropdownMenuItem asChild><Link to="/profile">Profile</Link></DropdownMenuItem>
+        <DropdownMenuItem onClick={() => { void supabase.auth.signOut(); nav({ to: "/" }); }}>Sign out</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -134,6 +157,7 @@ export function Header({ greeting = "Hi there", title, children, wide = false }:
             <h1 className="mt-1 text-xl font-bold tracking-tight md:text-3xl">{title}</h1>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <Link to="/notifications" aria-label="Notifications" className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-navy-foreground/10 text-navy-foreground hover:bg-navy-foreground/20"><Bell className="h-5 w-5" /></Link>
             <LanguageSwitcher />
             <HeaderAction />
           </div>
@@ -149,6 +173,22 @@ export function SearchBox() {
     <Link to="/search" className="mt-4 flex items-center gap-2 rounded-xl border border-navy-foreground/20 bg-card px-3 py-3 text-sm text-muted-foreground shadow-sm md:max-w-xl">
       <Search className="h-4 w-4" /> What do you want to learn?
     </Link>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="border-t border-border px-5 py-6 text-xs text-muted-foreground md:px-10">
+      <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 sm:flex-row sm:justify-between">
+        <p>© 2026 Smartify Consulting (Pty) Ltd. All rights reserved.</p>
+        <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-4">
+          <Link to="/terms" className="hover:text-foreground">Terms and Conditions</Link>
+          <Link to="/privacy" className="hover:text-foreground">Privacy Policy</Link>
+          <a href="mailto:support@mobileschool.co.za" className="flex items-center gap-1 hover:text-foreground"><Mail className="h-3.5 w-3.5" />Support</a>
+          <Link to="/developer" className="hover:text-foreground">API</Link>
+        </nav>
+      </div>
+    </footer>
   );
 }
 

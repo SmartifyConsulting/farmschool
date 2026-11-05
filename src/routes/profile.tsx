@@ -1,10 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Award, BadgeCheck, KeyRound, LogOut, Printer } from "lucide-react";
+import { Award, BadgeCheck, KeyRound, LogOut, Printer, ShieldCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { credentialCode } from "@/lib/studio";
 import logo from "@/assets/mobile-school-logo.png.asset.json";
-import { Phone, Header, Sheet } from "@/components/AppShell";
+import { Phone, Header, Sheet, useIsAdmin } from "@/components/AppShell";
 import { CourseCard } from "./index";
 import { courses } from "@/lib/courses";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,7 @@ function Profile() {
   const [tab, setTab] = useState("Saved");
   const [open, setOpen] = useState<{ id: string; title: string; issued_at: string } | null>(null);
   const { user, ready } = useAuth();
+  const isAdmin = useIsAdmin();
   const { ids } = useBookmarks();
   const { data } = useProgress();
   const nav = useNavigate();
@@ -43,8 +44,9 @@ function Profile() {
           <span className="grid h-20 w-20 place-items-center rounded-full border-4 border-primary-foreground/30 bg-accent text-2xl font-bold uppercase text-accent-foreground">{name.slice(0, 2)}</span>
           <p className="mt-2 font-semibold">{name}</p><p className="text-xs opacity-80">{prof ? `${prof.learner_role} · ${prof.region}` : user?.email}</p>
           <p className="mt-2 text-sm"><b>{enrolled.length}</b> Enrolled <span className="text-accent">•</span> <b>{certs?.length ?? 0}</b> Certifications</p>
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
             <Link to="/developer" className="flex items-center gap-1 rounded-full border border-primary-foreground/50 px-3 py-1 text-xs"><KeyRound className="h-3 w-3" />API keys</Link>
+            {isAdmin && <Link to="/admin" className="flex items-center gap-1 rounded-full border border-primary-foreground/50 px-3 py-1 text-xs"><ShieldCheck className="h-3 w-3" />Administration</Link>}
             <button onClick={async () => { await supabase.auth.signOut(); nav({ to: "/" }); }} className="flex items-center gap-1 rounded-full border border-primary-foreground/50 px-3 py-1 text-xs"><LogOut className="h-3 w-3" />Sign out</button>
           </div>
         </div>
