@@ -8,8 +8,9 @@ export const Route = createFileRoute("/api/public/v1/courses")({
         const { verifyApiKey, json } = await import("@/lib/api-auth.server");
         const auth = await verifyApiKey(request, "courses:read");
         if (auth instanceof Response) return auth;
+        const scoped = auth.categories ? courses.filter((c) => auth.categories!.includes(c.category)) : courses;
         return json({
-          courses: courses.map(({ image: _i, ...c }) => ({
+          courses: scoped.map(({ image: _i, ...c }) => ({
             ...c,
             modules: c.modules.map((m) => ({ ...m, lessons: m.lessons.map((l) => ({ ...l, video_url: l.type === "video" ? VIDEO_URL : null })) })),
           })),

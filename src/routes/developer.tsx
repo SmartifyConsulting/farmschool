@@ -8,6 +8,7 @@ import { Phone, Header, Sheet } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useLearning";
 import { inputCls } from "@/components/PasswordInput";
+import { courses } from "@/lib/courses";
 
 export const Route = createFileRoute("/developer")({
   head: () => ({ meta: [
@@ -26,8 +27,9 @@ const SCOPES = [
   { id: "progress:read", label: "Read my progress" },
 ] as const;
 const LIMITS = [100, 1000, 5000, 10000];
+const CATEGORIES = [...new Set(courses.map((c) => c.category))];
 
-type Key = { id: string; name: string; prefix: string; created_at: string; last_used_at: string | null; scopes: string[]; daily_limit: number; usage_count: number; usage_date: string; total_requests: number; revoked_at: string | null; rotated_at: string | null };
+type Key = { id: string; name: string; prefix: string; created_at: string; last_used_at: string | null; scopes: string[]; categories: string[] | null; daily_limit: number; usage_count: number; usage_date: string; total_requests: number; revoked_at: string | null; rotated_at: string | null };
 
 async function newKey() {
   const bytes = crypto.getRandomValues(new Uint8Array(24));
@@ -48,22 +50,35 @@ function ScopePicker({ value, onChange }: { value: string[]; onChange: (v: strin
   );
 }
 
+/** Limits the key's courses:read response to the chosen categories; an empty selection means every category (unrestricted — the current default behaviour). */
+function CategoryPicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {CATEGORIES.map((c) => { const on = value.includes(c); return (
+        <button type="button" key={c} aria-pressed={on} onClick={() => onChange(on ? value.filter((x) => x !== c) : [...value, c])}
+          className={`rounded-full border px-3 py-1 text-xs ${on ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}>{c}</button>); })}
+      {!value.length && <span className="self-center text-xs text-muted-foreground">(none selected — this key can read every category)</span>}
+    </div>
+  );
+}
+
 function Developer() {
   const { user, ready } = useAuth();
   const qc = useQueryClient();
   const confirm = useConfirm();
   const [name, setName] = useState("");
   const [scopes, setScopes] = useState<string[]>(["courses:read"]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [limit, setLimit] = useState(1000);
   const [shown, setShown] = useState<{ key: string; label: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
-  const [edit, setEdit] = useState<{ scopes: string[]; limit: number }>({ scopes: [], limit: 1000 });
+  const [edit, setEdit] = useState<{ scopes: string[]; categories: string[]; limit: number }>({ scopes: [], categories: [], limit: 1000 });
 
   const { data: keys } = useQuery({
     queryKey: ["api_keys", user?.id], enabled: !!user,
-    queryFn: async () => (await supabase.from("api_keys").select("id, name, prefix, created_at, last_used_at, scopes, daily_limit, usage_count, usage_date, total_requests, revoked_at, rotated_at").order("created_at", { ascending: false })).data as Key[] ?? [],
+    queryFn: async () => (await supabase.from("api_keys").select("id, name, prefix, created_at, last_used_at, scopes, categories, daily_limit, usage_count, usage_date, total_requests, revoked_at, rotated_at" as never).order("created_at", { ascending: false })).data as unknown as Key[] ?? [],
   });
   const refresh = () => qc.invalidateQueries({ queryKey: ["api_keys"] });
   const run = async (p: PromiseLike<{ error: { message: string } | null }>) => { const { error } = await p; setErr(error ? friendlyError(error, "That didn't work. Please try again.") : null); refresh(); return !error; };
@@ -72,7 +87,7 @@ function Developer() {
     e.preventDefault();
     if (!scopes.length) return setErr("Pick at least one scope.");
     const k = await newKey();
-    if (await run(supabase.from("api_keys").insert({ user_id: user!.id, name: name.trim().slice(0, 60) || "My key", prefix: k.prefix, key_hash: k.hash, scopes, daily_limit: limit })))
+    if (await run(supabase.from("api_keys").insert({ user_id: user!.id, name: name.trim().slice(0, 60) || "My key", prefix: k.prefix, key_hash: k.hash, scopes, daily_limit: limit, categories } as never)))
       { setShown({ key: k.key, label: "New key created" }); setCopied(false); setName(""); }
   };
   const rotate = async (id: string) => {
@@ -85,7 +100,7 @@ function Developer() {
   const remove = async (id: string) => (await confirm({ tone: "danger", title: "Remove this revoked key?", description: "It will be removed from your list. This can't be undone.", confirmLabel: "Remove" })) && run(supabase.from("api_keys").delete().eq("id", id));
   const saveEdit = async (id: string) => {
     if (!edit.scopes.length) return setErr("Pick at least one scope.");
-    if (await run(supabase.from("api_keys").update({ scopes: edit.scopes, daily_limit: edit.limit }).eq("id", id))) setEditing(null);
+    if (await run(supabase.from("api_keys").update({ scopes: edit.scopes, daily_limit: edit.limit, categories: edit.categories } as never).eq("id", id))) setEditing(null);
   };
 
   const origin = typeof window === "undefined" ? "" : window.location.origin;
@@ -104,6 +119,7 @@ function Developer() {
               <h2 className="font-semibold">Create a key</h2>
               <input placeholder="Key name, e.g. My website" maxLength={60} value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
               <div><p className="mb-1.5 text-xs font-medium text-muted-foreground">Scopes</p><ScopePicker value={scopes} onChange={setScopes} /></div>
+              <div><p className="mb-1.5 text-xs font-medium text-muted-foreground">Categories this key can read</p><CategoryPicker value={categories} onChange={setCategories} /></div>
               <label className="block text-xs font-medium text-muted-foreground">Daily request limit
                 <select value={limit} onChange={(e) => setLimit(+e.target.value)} className={`${inputCls} mt-1`}>{LIMITS.map((l) => <option key={l} value={l}>{l.toLocaleString()} per day</option>)}</select>
               </label>
@@ -124,16 +140,21 @@ function Developer() {
                   <div className="flex min-w-0 items-start gap-2">
                     <div className="min-w-0 flex-1"><p className="truncate font-medium">{k.name}</p><p className="truncate text-xs text-muted-foreground">{k.prefix}… · created {fmtDate(k.created_at)}{k.rotated_at && ` · rotated ${fmtDate(k.rotated_at)}`} · last used {fmtDate(k.last_used_at)}</p></div>
                     <div className="flex shrink-0 gap-1">
-                      <button aria-label="Edit scopes and limit" onClick={() => { setEditing(editing === k.id ? null : k.id); setEdit({ scopes: k.scopes, limit: k.daily_limit }); }} className="grid h-8 w-8 place-items-center rounded-full hover:bg-muted"><Pencil className="h-4 w-4" /></button>
+                      <button aria-label="Edit scopes and limit" onClick={() => { setEditing(editing === k.id ? null : k.id); setEdit({ scopes: k.scopes, categories: k.categories ?? [], limit: k.daily_limit }); }} className="grid h-8 w-8 place-items-center rounded-full hover:bg-muted"><Pencil className="h-4 w-4" /></button>
                       <button aria-label="Rotate key" onClick={() => rotate(k.id)} className="grid h-8 w-8 place-items-center rounded-full hover:bg-muted"><RefreshCw className="h-4 w-4" /></button>
                       <button aria-label="Revoke key" onClick={() => revoke(k.id)} className="grid h-8 w-8 place-items-center rounded-full text-destructive hover:bg-muted"><Ban className="h-4 w-4" /></button>
                     </div>
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-1">{k.scopes.map((s) => <span key={s} className="rounded-full bg-secondary px-2 py-0.5 text-[10px] text-secondary-foreground">{s}</span>)}</div>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {k.scopes.map((s) => <span key={s} className="rounded-full bg-secondary px-2 py-0.5 text-[10px] text-secondary-foreground">{s}</span>)}
+                    {(k.categories ?? []).map((c) => <span key={c} className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">{c}</span>)}
+                    {!k.categories?.length && <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">All categories</span>}
+                  </div>
                   <div className="mt-2"><div className="h-1.5 rounded-full bg-muted"><div className={`h-full rounded-full ${pct >= 90 ? "bg-destructive" : "bg-accent"}`} style={{ width: `${pct}%` }} /></div>
                     <p className="mt-1 text-[11px] text-muted-foreground">{used.toLocaleString()} / {k.daily_limit.toLocaleString()} requests today · {k.total_requests.toLocaleString()} total</p></div>
                   {editing === k.id && <div className="mt-3 space-y-2 border-t border-border pt-3">
                     <ScopePicker value={edit.scopes} onChange={(s) => setEdit({ ...edit, scopes: s })} />
+                    <CategoryPicker value={edit.categories} onChange={(c) => setEdit({ ...edit, categories: c })} />
                     <select value={edit.limit} onChange={(e) => setEdit({ ...edit, limit: +e.target.value })} className={inputCls}>{LIMITS.map((l) => <option key={l} value={l}>{l.toLocaleString()} per day</option>)}</select>
                     <button onClick={() => saveEdit(k.id)} className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground">Save changes</button>
                   </div>}
