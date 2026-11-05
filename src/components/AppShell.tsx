@@ -7,6 +7,7 @@ import { LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 const tabs = [
   { to: "/", icon: Home, label: "Home" },
@@ -130,7 +131,10 @@ export function Header({ greeting = "Hi there", title, children, wide = false }:
             <p className="text-sm opacity-80">{greeting} ☁</p>
             <h1 className="text-xl font-semibold md:text-3xl">{title}</h1>
           </div>
-          <HeaderAction />
+          <div className="flex shrink-0 items-center gap-2">
+            <LanguageSwitcher />
+            <HeaderAction />
+          </div>
         </div>
         {children}
       </div>
