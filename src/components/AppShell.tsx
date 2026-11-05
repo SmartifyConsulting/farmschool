@@ -56,30 +56,32 @@ export function Phone({ children }: { children: ReactNode }) {
   const [collapsed, toggleCollapsed] = useNavCollapsed();
   return (
     <div className="min-h-screen bg-muted md:flex">
-      <aside className={`sticky top-0 relative hidden h-screen shrink-0 flex-col border-r border-border bg-card md:flex ${collapsed ? "w-20 p-3" : "w-64 p-5"}`}>
-        <div className="mb-6 flex items-center justify-between gap-2">
+      <aside className={`sticky top-0 relative hidden h-screen shrink-0 flex-col bg-card md:flex ${collapsed ? "w-20" : "w-64"}`}>
+        <div className={`flex items-center justify-between gap-2 bg-navy ${collapsed ? "p-3" : "p-5"}`}>
           <img src={logo.url} alt="Mobile School" className={`object-contain ${collapsed ? "mx-auto h-[72px] w-auto" : "h-[72px] w-auto"}`} />
           <button type="button" onClick={toggleCollapsed} aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
-            className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border border-border text-muted-foreground hover:bg-muted ${collapsed ? "absolute -right-3 top-6 bg-card" : ""}`}>
+            className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border border-navy-foreground/30 bg-navy text-navy-foreground hover:bg-navy-foreground/10 ${collapsed ? "absolute -right-3 top-6" : ""}`}>
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </button>
         </div>
-        <nav className="space-y-1">
-          {[...tabs, { to: "/ask", icon: Sprout, label: "Ask the Farmer AI" } as const, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const, { to: "/developer", icon: KeyRound, label: "API keys" } as const].map((t) => {
-            const active = path === t.to;
-            return (
-              <Link key={t.to} to={t.to} aria-label={t.label}
-                className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium ${collapsed ? "justify-center" : "justify-start"} ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
-                <t.icon className="h-5 w-5 shrink-0" />{!collapsed && <span>{t.label}</span>}
-              </Link>
-            );
-          })}
-          {isAdmin && <Link to="/admin" aria-label="Administration"
-            className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium ${collapsed ? "justify-center" : "justify-start"} ${path.startsWith("/admin") ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
-            <ShieldCheck className="h-5 w-5 shrink-0" />{!collapsed && <span>Administration</span>}
-          </Link>}
-        </nav>
-        <AccountLinks collapsed={collapsed} />
+        <div className={`flex flex-1 flex-col ${collapsed ? "p-3" : "p-5"}`}>
+          <nav className="space-y-1">
+            {[...tabs, { to: "/ask", icon: Sprout, label: "Ask the Farmer AI" } as const, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const, { to: "/developer", icon: KeyRound, label: "API keys" } as const].map((t) => {
+              const active = path === t.to;
+              return (
+                <Link key={t.to} to={t.to} aria-label={t.label}
+                  className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium ${collapsed ? "justify-center" : "justify-start"} ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
+                  <t.icon className="h-5 w-5 shrink-0" />{!collapsed && <span>{t.label}</span>}
+                </Link>
+              );
+            })}
+            {isAdmin && <Link to="/admin" aria-label="Administration"
+              className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium ${collapsed ? "justify-center" : "justify-start"} ${path.startsWith("/admin") ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
+              <ShieldCheck className="h-5 w-5 shrink-0" />{!collapsed && <span>Administration</span>}
+            </Link>}
+          </nav>
+          <AccountLinks collapsed={collapsed} />
+        </div>
       </aside>
       <div className="relative mx-auto min-h-screen w-full max-w-md overflow-hidden bg-card pb-28 md:max-w-none md:pb-10">
         {isAdmin && <div className="px-5 pt-3 md:hidden"><Link to="/admin" className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-2 text-xs font-semibold text-primary"><ShieldCheck className="h-4 w-4" />Administration</Link></div>}
