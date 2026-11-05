@@ -636,40 +636,54 @@ function Editor() {
       </Header>
       <Sheet wide>
         <div className="min-w-0 space-y-6">
-        <div className="grid min-w-0 items-start gap-6 lg:grid-cols-2">
-          <section className="space-y-3 rounded-2xl border border-border p-4">
+        <div className="grid min-w-0 items-stretch gap-6 lg:grid-cols-2">
+          <section className="flex h-full flex-col space-y-3 rounded-2xl border border-border p-4">
             <h2 className="font-semibold">Course details</h2>
-            <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} aria-label="Title" maxLength={120} />
-            <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What will learners gain from this course?" rows={4} maxLength={4000} />
-            <div className="grid grid-cols-2 gap-2">
-              <div className="col-span-2 space-y-2">
-                <label className="block text-xs font-medium">Industry</label>
-                <select value={courseIndustry(form.category)} onChange={(e) => {
-                  const selected = e.target.value;
-                  setForm({ ...form, category: selected === "Agriculture" ? "Farm Management" : selected + " / General" });
-                  setNewTopic("");
-                }} className="w-full rounded-md border border-input bg-background px-2 py-2 text-sm" aria-label="Industry">
-                  {INDUSTRIES.map((name) => <option key={name} value={name}>{name}</option>)}
-                </select>
-                <label className="block text-xs font-medium">Topic</label>
-                {courseIndustry(form.category) === "Agriculture" ? (
-                  <select value={STUDIO_CATEGORIES.includes(form.category) ? form.category : ""} onChange={(e) => setForm({ ...form, category: e.target.value })}
-                    className="w-full rounded-md border border-input bg-background px-2 py-2 text-sm" aria-label="Topic">
-                    {!STUDIO_CATEGORIES.includes(form.category) && <option value="">Select a topic</option>}
-                    {STUDIO_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+            <div className="grid flex-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-3">
+                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} aria-label="Title" maxLength={120} placeholder="Title" />
+                <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What will learners gain from this course?" rows={4} maxLength={4000} />
+                <div>
+                  <label className="block text-xs font-medium">Industry</label>
+                  <select value={courseIndustry(form.category)} onChange={(e) => {
+                    const selected = e.target.value;
+                    setForm({ ...form, category: selected === "Agriculture" ? "Farm Management" : selected + " / General" });
+                    setNewTopic("");
+                  }} className="mt-1 w-full rounded-md border border-input bg-background px-2 py-2 text-sm" aria-label="Industry">
+                    {INDUSTRIES.map((name) => <option key={name} value={name}>{name}</option>)}
                   </select>
-                ) : (
-                  <Input value={newTopic || form.category.split(" / ").slice(1).join(" / ")}
-                    onChange={(e) => { setNewTopic(e.target.value); setForm({ ...form, category: courseIndustry(form.category) + " / " + e.target.value }); }}
-                    aria-label="Topic" placeholder="e.g. Patient care, Retail operations" maxLength={100} />
-                )}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium">Topic</label>
+                    {courseIndustry(form.category) === "Agriculture" ? (
+                      <select value={STUDIO_CATEGORIES.includes(form.category) ? form.category : ""} onChange={(e) => setForm({ ...form, category: e.target.value })}
+                        className="mt-1 w-full rounded-md border border-input bg-background px-2 py-2 text-sm" aria-label="Topic">
+                        {!STUDIO_CATEGORIES.includes(form.category) && <option value="">Select a topic</option>}
+                        {STUDIO_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                      </select>
+                    ) : (
+                      <Input value={newTopic || form.category.split(" / ").slice(1).join(" / ")}
+                        onChange={(e) => { setNewTopic(e.target.value); setForm({ ...form, category: courseIndustry(form.category) + " / " + e.target.value }); }}
+                        aria-label="Topic" placeholder="e.g. Patient care, Retail operations" maxLength={100} className="mt-1" />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium">Level</label>
+                    <select value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} className="mt-1 w-full rounded-md border border-input bg-background px-2 py-2 text-sm" aria-label="Level">{["Beginner", "Intermediate", "Advanced"].map((c) => <option key={c}>{c}</option>)}</select>
+                  </div>
+                </div>
               </div>
-              <select value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} className="rounded-md border border-input bg-background px-2 py-2 text-sm" aria-label="Level">{["Beginner", "Intermediate", "Advanced"].map((c) => <option key={c}>{c}</option>)}</select>
+              <div>
+                <label className="block text-xs font-medium">Cover image</label>
+                <div className="mt-1">
+                  <CoverImageInput value={form.cover_url} onChange={(url) => setForm({ ...form, cover_url: url })} />
+                </div>
+              </div>
             </div>
-            <CoverImageInput value={form.cover_url} onChange={(url) => setForm({ ...form, cover_url: url })} />
-            <Button onClick={saveDetails} className="w-full">Save details</Button>
+            <Button onClick={saveDetails} className="mt-auto w-full">Save details</Button>
           </section>
-          <section className="space-y-2 rounded-2xl border border-border p-4">
+          <section className="flex h-full flex-col space-y-2 rounded-2xl border border-border p-4">
             <h2 className="font-semibold">Publishing checklist</h2>
             <p className="text-xs text-muted-foreground">Finish these steps before making your course visible to learners. This is a trainer self-review, not marketplace verification.</p>
             <ul className="space-y-1.5">
