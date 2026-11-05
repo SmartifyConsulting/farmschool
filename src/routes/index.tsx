@@ -84,7 +84,7 @@ function Hero() {
 }
 
 function Schools() {
-  const [active, setActive] = useState(categories[0]?.name ?? "");
+  const [active, setActive] = useState<string>(categories[0]?.name ?? "");
   const cat = categories.find((c) => c.name === active);
   const list = courses.filter((c) => c.category === active || (cat && c.category.includes(active.split(" ")[0])));
   return (
