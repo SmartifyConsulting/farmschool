@@ -63,7 +63,7 @@ function Hero() {
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
       <div className="relative overflow-hidden rounded-md bg-navy text-navy-foreground">
-        <img src={courses[0].image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />
+        <img src={courses[0]?.image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />
         <div className="relative p-6 md:p-10">
           <h2 className="max-w-lg text-2xl font-extrabold tracking-tight md:text-4xl">Field-ready farming skills, on any phone</h2>
           <p className="mt-3 max-w-md text-sm opacity-85">Practical agricultural courses built with trainers and farmers. Learn at your own pace, pass the quiz and earn a Mobile School certificate.</p>
@@ -86,7 +86,7 @@ function Hero() {
 function Schools() {
   const [active, setActive] = useState<string>(categories[0]?.name ?? "");
   const cat = categories.find((c) => c.name === active);
-  const list = courses.filter((c) => c.category === active || (cat && c.category.includes(active.split(" ")[0])));
+  const list = courses.filter((c) => c.category === active || (cat && c.category.includes(active.split(" ")[0] ?? active)));
   return (
     <section className="mt-12">
       <h2 className="text-center text-xl font-bold tracking-tight md:text-3xl">Explore our schools to find your perfect course</h2>
