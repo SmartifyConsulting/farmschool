@@ -184,7 +184,9 @@ type Screen = { view: "details" } | { view: "overview" } | { view: "module"; key
 
 function Editor() {
   const { id } = Route.useParams();
-  const [screen, setScreen] = useState<Screen>({ view: "overview" });
+  const [screen, setScreen] = useState<Screen>({ view: "details" });
+  const [factoryStep, setFactoryStep] = useState(0);
+  const [draftGroupIndex, setDraftGroupIndex] = useState(0);
   const qc = useQueryClient();
   const nav = useNavigate();
   const confirm = useConfirm();
@@ -768,13 +770,23 @@ function Editor() {
           </section>
           <section className="space-y-3 rounded-2xl border border-border p-4">
             <h2 className="font-semibold">Course Factory — source import</h2>
-            <p className="text-xs text-muted-foreground">Paste extracted text from a training manual. Module and chapter headings become draft reading lessons. Upload PDF, Word, PowerPoint or plain text. Scanned PDFs require OCR, which is not yet available. AI media generation is not yet available. Review every lesson before publishing.</p>
-            <label className="block text-xs font-medium">Upload a manual (PDF, DOCX, PPTX, TXT or MD)
-              <input type="file" accept=".pdf,.docx,.pptx,.txt,.md" disabled={readingFile} onChange={(e) => { void readTextFile(e.target.files?.[0]); e.target.value = ""; }} className="mt-1 block w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-primary" />
-            </label>
-            <Input value={sourceName} onChange={(e) => setSourceName(e.target.value)} placeholder="Source document name" aria-label="Source document name" maxLength={160} />
-            <Textarea value={sourceText} onChange={(e) => { setSourceText(e.target.value); setSourcePages(null); setDraft(null); }} placeholder={"Module 1: Introduction\\nYour training content..."} rows={6} maxLength={1000000} aria-label="Extracted manual text" />
-            <Button type="button" variant="outline" onClick={previewSource} disabled={!sourceText.trim()}>Analyse manual & build course outline</Button>
+            <nav aria-label="Course Factory steps" className="flex flex-wrap gap-2">
+              {["Upload", "Review & approve", "Generate & import"].map((label, i) => (
+                <button key={label} type="button" onClick={() => setFactoryStep(i)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium ${factoryStep === i ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
+                  {i + 1}. {label}
+                </button>
+              ))}
+            </nav>
+
+            {factoryStep === 0 && (<div className="space-y-3">
+              <p className="text-xs text-muted-foreground">Paste extracted text from a training manual. Module and chapter headings become draft reading lessons. Upload PDF, Word, PowerPoint or plain text. Scanned PDFs require OCR, which is not yet available. Review every lesson before publishing.</p>
+              <label className="block text-xs font-medium">Upload a manual (PDF, DOCX, PPTX, TXT or MD)
+                <input type="file" accept=".pdf,.docx,.pptx,.txt,.md" disabled={readingFile} onChange={(e) => { void readTextFile(e.target.files?.[0]); e.target.value = ""; }} className="mt-1 block w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-primary" />
+              </label>
+              <Input value={sourceName} onChange={(e) => setSourceName(e.target.value)} placeholder="Source document name" aria-label="Source document name" maxLength={160} />
+              <Textarea value={sourceText} onChange={(e) => { setSourceText(e.target.value); setSourcePages(null); setDraft(null); }} placeholder={"Module 1: Introduction\\nYour training content..."} rows={6} maxLength={1000000} aria-label="Extracted manual text" />
+              <Button type="button" variant="outline" onClick={() => { previewSource(); setDraftGroupIndex(0); setFactoryStep(1); }} disabled={!sourceText.trim()}>Analyse manual & build course outline</Button>
               <p role="status" aria-live="polite" className="text-xs text-muted-foreground">Cloud source draft: {cloudSaveStatus === "saved" ? "Saved to Supabase" : cloudSaveStatus === "saving" ? "Saving…" : cloudSaveStatus === "pending" ? "Unsaved changes — saving shortly" : cloudSaveStatus === "loading" ? "Loading…" : cloudSaveStatus === "error" ? "Save failed — check connection" : "Cloud storage unavailable"}</p>
               {!!savedDesigns?.length && <div className="space-y-2 rounded-xl border border-border p-4">
                 <h3 className="font-semibold">Saved learning designs in Supabase</h3>
@@ -798,58 +810,68 @@ function Editor() {
                   {!course?.published && <Button size="sm" variant="outline" disabled={designSyncing || (item.review_status !== "approved" && !item.proposed_methods.length)} onClick={() => void updateSavedApproval(item.lesson_key, item.review_status !== "approved")}>{item.review_status === "approved" ? "Reopen approval" : "Approve saved design"}</Button>}
                 </details>)}
               </div>}
-            {draft && <div className="space-y-2 rounded-xl bg-muted/40 p-3">
-              <p className="text-sm font-semibold">Proposed course outline · {draft.lessons.length} topics</p><p className="text-xs text-muted-foreground">Review the topics before generating detailed AI lessons. Source references remain attached.</p>
-              {draft.warnings.map((warning, i) => <p key={i} className="text-xs text-destructive">{warning}</p>)}
-              <div className="space-y-3 rounded-xl border border-border bg-background p-4">
-                <h3 className="font-semibold">AI learning design review</h3>
-                <p className="text-xs text-muted-foreground">Suggested teaching and assessment methods are based on topic keywords. These are preliminary recommendations, not AI-generated media or saved course objects. Approve or adjust each lesson before content generation.</p>
-                {draft.lessons.map((lesson, i) => <details key={i} className="rounded-lg border border-border p-3">
-                  <summary className="cursor-pointer text-sm font-medium">{i + 1}. {lesson.title} {designApproved[i] ? "✓ Approved" : "· Needs review"}</summary>
-                  <div className="mt-3 space-y-2">
-                    <Button type="button" size="sm" variant="outline" disabled={designLoading !== null || lesson.body.length < 100 || !!course.published} onClick={() => void proposeDesign(i, lesson)}>{designLoading === i ? "Designing…" : "Ask AI to propose methods"}</Button>
-                    {designRationale[i] && <p className="rounded-lg bg-muted/50 p-2 text-xs text-muted-foreground"><strong>AI rationale:</strong> {designRationale[i]}</p>}
-                    {learningMethods.map(method => <label key={method.id} className="flex items-start gap-2 text-sm">
-                      <input type="checkbox" className="mt-1" checked={choicesFor(i, lesson.title, lesson.body).includes(method.id)} disabled={designSyncing} onChange={e => void saveDesignSelection(i, e.target.checked ? [...choicesFor(i, lesson.title, lesson.body), method.id] : choicesFor(i, lesson.title, lesson.body).filter(x => x !== method.id))} />
-                      <span><span className="font-medium">{method.label}</span><span className="block text-xs text-muted-foreground">{method.detail}</span></span>
-                    </label>)}
-                    <Button type="button" size="sm" variant={designApproved[i] ? "secondary" : "outline"} disabled={designSyncing || !choicesFor(i, lesson.title, lesson.body).length} onClick={() => void toggleDesignApproval(i, lesson)}>{designApproved[i] ? "Reopen review" : "Approve lesson design"}</Button>
+            </div>)}
+
+            {factoryStep === 1 && (draft ? (() => {
+              const groups = groupDraftLessons(draft.lessons);
+              const gi = Math.min(draftGroupIndex, Math.max(0, groups.length - 1));
+              const group = groups[gi];
+              return (<div className="space-y-3">
+                <p className="text-sm font-semibold">Proposed course outline · {draft.lessons.length} topic{draft.lessons.length === 1 ? "" : "s"} in {groups.length} module{groups.length === 1 ? "" : "s"}</p>
+                {draft.warnings.map((warning, i) => <p key={i} className="text-xs text-destructive">{warning}</p>)}
+                <nav aria-label="Draft modules" className="flex flex-wrap gap-2">
+                  {groups.map((g, i) => (
+                    <button key={g.title} type="button" onClick={() => setDraftGroupIndex(i)}
+                      className={`rounded-full px-3 py-1.5 text-xs font-medium ${i === gi ? "bg-secondary text-secondary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
+                      {g.title} · {g.items.length}
+                    </button>
+                  ))}
+                </nav>
+                {group && <>
+                  <div className="space-y-3 rounded-xl border border-border bg-background p-4">
+                    <h3 className="font-semibold">AI learning design review</h3>
+                    <p className="text-xs text-muted-foreground">Suggested teaching and assessment methods are based on topic keywords. These are preliminary recommendations, not AI-generated media or saved course objects. Approve or adjust each lesson before content generation.</p>
+                    {group.items.map(({ lesson, index: i }) => <details key={i} className="rounded-lg border border-border p-3">
+                      <summary className="cursor-pointer text-sm font-medium">{lesson.title} {designApproved[i] ? "✓ Approved" : "· Needs review"}</summary>
+                      <div className="mt-3 space-y-2">
+                        <Button type="button" size="sm" variant="outline" disabled={designLoading !== null || lesson.body.length < 100 || !!course.published} onClick={() => void proposeDesign(i, lesson)}>{designLoading === i ? "Designing…" : "Ask AI to propose methods"}</Button>
+                        {designRationale[i] && <p className="rounded-lg bg-muted/50 p-2 text-xs text-muted-foreground"><strong>AI rationale:</strong> {designRationale[i]}</p>}
+                        {learningMethods.map(method => <label key={method.id} className="flex items-start gap-2 text-sm">
+                          <input type="checkbox" className="mt-1" checked={choicesFor(i, lesson.title, lesson.body).includes(method.id)} disabled={designSyncing} onChange={e => void saveDesignSelection(i, e.target.checked ? [...choicesFor(i, lesson.title, lesson.body), method.id] : choicesFor(i, lesson.title, lesson.body).filter(x => x !== method.id))} />
+                          <span><span className="font-medium">{method.label}</span><span className="block text-xs text-muted-foreground">{method.detail}</span></span>
+                        </label>)}
+                        <Button type="button" size="sm" variant={designApproved[i] ? "secondary" : "outline"} disabled={designSyncing || !choicesFor(i, lesson.title, lesson.body).length} onClick={() => void toggleDesignApproval(i, lesson)}>{designApproved[i] ? "Reopen review" : "Approve lesson design"}</Button>
+                      </div>
+                    </details>)}
                   </div>
-                </details>)}
-                <p className="text-xs text-muted-foreground">{draft.lessons.filter((_, i) => designApproved[i]).length} of {draft.lessons.length} designs approved. Design approvals and selected methods are saved to Supabase for cross-device access. The imported manual text and draft outline remain cached in this browser. Approved methods are passed to the generation API. AI proposals use your daily AI allowance.</p>
-              </div>
-              <div className="space-y-3 rounded-xl border border-border bg-background p-4">
-                <h3 className="font-semibold">Course structure · modules and lessons</h3>
-                <p className="text-xs text-muted-foreground">Provisional grouping based on detected module headings. Check every lesson against its source pages; activities and assessments are generated only after trainer approval.</p>
-                {groupDraftLessons(draft.lessons).map((group, groupIndex) => <details key={groupIndex} open={groupIndex === 0} className="rounded-lg border border-border p-3">
-                  <summary className="cursor-pointer font-medium">{group.title} <span className="text-xs font-normal text-muted-foreground">· {group.items.length} source sections</span></summary>
-                  <ol className="mt-3 space-y-2 pl-5 text-sm list-decimal">
-                    {group.items.map(({ lesson, index }) => <li key={index}>
-                      <span className="font-medium">{lesson.title}</span>
-                      <span className="ml-2 text-xs text-muted-foreground">{designApproved[index] ? "Design approved" : "Needs trainer review"}</span>
-                      <p className="text-xs text-muted-foreground">{lesson.sourceRefs.map(ref => `p.${ref.page}`).join(", ")}</p>
-                    </li>)}
-                  </ol>
-                </details>)}
-              </div>
-              <div className="space-y-3 rounded-xl border border-border bg-background p-4">
-                <h3 className="font-semibold">Learning activity storyboard</h3>
-                <p className="text-xs text-muted-foreground">Preview the mix of presentation and assessment methods. These are activity plans, not generated videos, images or quizzes.</p>
-                {draft.lessons.map((lesson, index) => <details key={index} className="rounded-lg border border-border p-3">
-                  <summary className="cursor-pointer text-sm font-medium">{index + 1}. {lesson.title} · {designApproved[index] ? "Approved design" : "Pending design approval"}</summary>
-                  <div className="mt-3 space-y-2">
-                    <div className="rounded-lg bg-muted/40 p-3 text-sm"><strong>1. Lesson introduction</strong><p className="text-xs text-muted-foreground">Introduce the learning objective and connect it to the original manual.</p></div>
-                    {choicesFor(index, lesson.title, lesson.body).map((method, methodIndex) => <div key={method} className="rounded-lg bg-muted/40 p-3 text-sm">
-                      <strong>{methodIndex + 2}. {activityLabels[method]?.title ?? method}</strong>
-                      <p className="text-xs text-muted-foreground">{activityLabels[method]?.description ?? "Trainer review required."}</p>
-                      <SourceActivity method={method} lesson={lesson} courseId={id} published={!!course.published} />
-                    </div>)}
-                    <p className="text-xs text-muted-foreground">Source: {lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join(", ")}</p>
+                  <div className="space-y-3 rounded-xl border border-border bg-background p-4">
+                    <h3 className="font-semibold">Learning activity storyboard</h3>
+                    <p className="text-xs text-muted-foreground">Preview the mix of presentation and assessment methods. These are activity plans, not generated videos, images or quizzes.</p>
+                    {group.items.map(({ lesson, index }) => <details key={index} className="rounded-lg border border-border p-3">
+                      <summary className="cursor-pointer text-sm font-medium">{lesson.title} · {designApproved[index] ? "Approved design" : "Pending design approval"}</summary>
+                      <div className="mt-3 space-y-2">
+                        <div className="rounded-lg bg-muted/40 p-3 text-sm"><strong>1. Lesson introduction</strong><p className="text-xs text-muted-foreground">Introduce the learning objective and connect it to the original manual.</p></div>
+                        {choicesFor(index, lesson.title, lesson.body).map((method, methodIndex) => <div key={method} className="rounded-lg bg-muted/40 p-3 text-sm">
+                          <strong>{methodIndex + 2}. {activityLabels[method]?.title ?? method}</strong>
+                          <p className="text-xs text-muted-foreground">{activityLabels[method]?.description ?? "Trainer review required."}</p>
+                          <SourceActivity method={method} lesson={lesson} courseId={id} published={!!course.published} />
+                        </div>)}
+                        <p className="text-xs text-muted-foreground">Source: {lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join(", ")}</p>
+                      </div>
+                    </details>)}
                   </div>
-                </details>)}
-              </div>
-              <div className="space-y-2">{draft.lessons.map((lesson, i) => <details key={i} className="rounded-lg border border-border bg-background p-3"><summary className="cursor-pointer text-sm font-medium">{i + 1}. {lesson.title} <span className="text-xs font-normal text-muted-foreground">· {lesson.sourceRefs.length} source pages</span></summary><p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{lesson.body.slice(0, 2500)}{lesson.body.length > 2500 ? "…" : ""}</p><p className="mt-2 text-xs text-muted-foreground">Source: {lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join(", ")}</p></details>)}</div>
-              <div className="space-y-2 border-t border-border pt-3">
+                  <div className="space-y-2">{group.items.map(({ lesson, index: i }) => <details key={i} className="rounded-lg border border-border bg-background p-3"><summary className="cursor-pointer text-sm font-medium">{lesson.title} <span className="text-xs font-normal text-muted-foreground">· {lesson.sourceRefs.length} source pages</span></summary><p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{lesson.body.slice(0, 2500)}{lesson.body.length > 2500 ? "…" : ""}</p><p className="mt-2 text-xs text-muted-foreground">Source: {lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join(", ")}</p></details>)}</div>
+                </>}
+                <p className="text-xs text-muted-foreground">{draft.lessons.filter((_, i) => designApproved[i]).length} of {draft.lessons.length} designs approved across all modules. Approvals are saved to Supabase for cross-device access.</p>
+                <div className="flex justify-between">
+                  <Button variant="outline" onClick={() => gi > 0 ? setDraftGroupIndex(gi - 1) : setFactoryStep(0)}>{gi > 0 ? "Previous module" : "Back: Upload"}</Button>
+                  <Button onClick={() => gi < groups.length - 1 ? setDraftGroupIndex(gi + 1) : setFactoryStep(2)}>{gi < groups.length - 1 ? "Next module" : "Next: Generate & import"}</Button>
+                </div>
+              </div>);
+            })() : <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Upload or paste a source manual and analyse it first.</p>)}
+
+            {factoryStep === 2 && (draft ? (<div className="space-y-3">
+              <div className="space-y-2 rounded-xl border border-border bg-background p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Button type="button" variant="outline" disabled={batchRunning || aiLoading || !!course.published} onClick={generateBatch}>{batchRunning ? "Working…" : "Generate batch (up to 5 lessons)"}</Button>
                   {batchProgress && <p className="text-xs text-muted-foreground">{batchProgress}</p>}
@@ -870,18 +892,22 @@ function Editor() {
                   <p className="text-muted-foreground">Review all answers and citations. Saving does not publish the course.</p>
                   <Button type="button" size="sm" disabled={aiLoading || !aiDraft.questions.length || !!course.published} onClick={saveAiDraft}>Save AI lesson and quiz as drafts</Button>
                 </div>}
-
+              </div>
+              <div className="space-y-2 rounded-xl border border-border bg-background p-4">
                 <h3 className="text-sm font-medium">Suggested knowledge checks</h3>
-                <p className="text-xs text-muted-foreground">These are source-based question prompts, not AI-generated multiple-choice quizzes. Review the suggested answer and create verified options using the Quiz editor below.</p>
+                <p className="text-xs text-muted-foreground">These are source-based question prompts, not AI-generated multiple-choice quizzes. Review the suggested answer and create verified options using the Quiz editor in each lesson.</p>
                 {suggestReviewQuestions(draft, 8).map((item, i) => <div key={i} className="rounded-lg border border-border p-2 text-xs">
                   <p className="font-medium">{item.question}</p>
                   <p className="mt-1 text-muted-foreground">Source answer: {item.suggestedAnswer}</p>
                   <p className="mt-1 text-muted-foreground">{item.sourceId}, page {item.page}</p>
                 </div>)}
               </div>
-              <Button type="button" onClick={importDraft} disabled={!draft.lessons.length || importing || !!course.published}>{importing ? "Importing…" : "Add draft lessons to course"}</Button>
+              <div className="flex items-center justify-between border-t border-border pt-3">
+                <Button variant="outline" onClick={() => setFactoryStep(1)}>Back: Review & approve</Button>
+                <Button type="button" onClick={importDraft} disabled={!draft.lessons.length || importing || !!course.published}>{importing ? "Importing…" : "Add draft lessons to course"}</Button>
+              </div>
               {course.published && <p className="text-xs text-destructive">Unpublish the course before importing draft material.</p>}
-            </div>}
+            </div>) : <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Upload or paste a source manual and analyse it first.</p>)}
           </section>
           <div className="grid min-w-0 items-stretch gap-6 lg:grid-cols-2">
             <section className="flex h-full flex-col space-y-2 rounded-2xl border border-border p-4">
