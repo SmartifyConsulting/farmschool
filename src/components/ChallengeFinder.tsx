@@ -63,9 +63,10 @@ export function ChallengeFinder() {
     <section aria-labelledby="challenge-heading" className="border-b border-border py-6 md:py-8">
       <div className="mb-4 flex items-center gap-3">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-secondary text-secondary-foreground"><Sprout className="h-6 w-6" /></span>
-        <div><p className="text-xs font-semibold text-primary">AI-powered learning</p><h2 id="challenge-heading" className="text-lg font-semibold md:text-xl">What’s happening on your farm?</h2></div>
+        <div><p className="text-xs font-semibold text-primary">AI-powered learning</p><h2 id="challenge-heading" className="text-lg font-semibold md:text-xl">What challenge are you facing?</h2></div>
       </div>
       <form onSubmit={findLearning} className="space-y-3">
+        <p className="text-sm text-muted-foreground">Describe what you're dealing with and we'll find the most relevant course for it.</p>
         <label htmlFor="farm-challenge" className="text-sm font-medium">Your farming challenge</label>
         <Textarea id="farm-challenge" value={challenge} onChange={(e) => setChallenge(e.target.value)} maxLength={2000} disabled={busy} placeholder="For example: My tomatoes are growing slowly. I want to improve the soil without expensive inputs." className="min-h-28 resize-y bg-background text-sm" aria-describedby={error ? "challenge-error" : undefined} />
         <div className="flex flex-wrap items-center justify-between gap-3">

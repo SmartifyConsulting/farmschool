@@ -101,6 +101,7 @@ export function Phone({ children }: { children: ReactNode }) {
 function AvatarMenu({ collapsed, mobile = false }: { collapsed: boolean; mobile?: boolean }) {
   const { user, ready } = useAuth();
   const nav = useNavigate();
+  const isAdmin = useIsAdmin();
   const { data: prof } = useQuery({ queryKey: ["avatar-profile", user?.id], enabled: !!user, queryFn: async () => (await supabase.from("profiles").select("full_name").maybeSingle()).data });
   if (!ready || !user) return null;
   const name = prof?.full_name ?? user.email?.split("@")[0] ?? "Account";
@@ -119,6 +120,7 @@ function AvatarMenu({ collapsed, mobile = false }: { collapsed: boolean; mobile?
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="top">
         <DropdownMenuItem asChild><Link to="/profile">Profile</Link></DropdownMenuItem>
+        {isAdmin && <DropdownMenuItem asChild><Link to="/admin">Administration</Link></DropdownMenuItem>}
         <DropdownMenuItem onClick={() => { void supabase.auth.signOut(); nav({ to: "/" }); }}>Sign out</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

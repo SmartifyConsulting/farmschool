@@ -6,7 +6,6 @@ import { categories, courses, type Course } from "@/lib/courses";
 import { useAuth, useProgress, courseProgress } from "@/hooks/useLearning";
 import { ChallengeFinder } from "@/components/ChallengeFinder";
 
-
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [

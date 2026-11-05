@@ -29,8 +29,10 @@ function AdminHome() {
       : <div className="max-w-3xl space-y-4 pb-10">
           <p className="text-sm text-muted-foreground">Manage course creators and learning platform connections.</p>
           <div role="navigation" aria-label="Administration sections" className="flex flex-wrap gap-2 border-b border-border pb-4">
-            <Link to="/admin/creators" className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Creator Approvals</Link>
+            <Link to="/admin/users" className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Users</Link>
+            <Link to="/admin/creators" className="rounded-full border border-border px-4 py-2 text-sm font-semibold">Creator Approvals</Link>
             <Link to="/admin/external-content" className="rounded-full border border-border px-4 py-2 text-sm font-semibold">External Content</Link>
+            <Link to="/admin/api-connections" className="rounded-full border border-border px-4 py-2 text-sm font-semibold">API Connections</Link>
             <Link to="/admin/moodle" className="rounded-full border border-border px-4 py-2 text-sm font-semibold">Moodle Settings</Link>
           </div>
           <p className="text-xs text-muted-foreground">Creator approvals are required before new courses can be published. Moodle connection settings are optional.</p>
