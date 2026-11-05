@@ -69,13 +69,13 @@ export function Phone({ children }: { children: ReactNode }) {
             const active = path === t.to;
             return (
               <Link key={t.to} to={t.to} aria-label={t.label}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium ${collapsed ? "justify-center" : "justify-start"} ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
+                className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium ${collapsed ? "justify-center" : "justify-start"} ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
                 <t.icon className="h-5 w-5 shrink-0" />{!collapsed && <span>{t.label}</span>}
               </Link>
             );
           })}
           {isAdmin && <Link to="/admin" aria-label="Administration"
-            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium ${collapsed ? "justify-center" : "justify-start"} ${path.startsWith("/admin") ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
+            className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium ${collapsed ? "justify-center" : "justify-start"} ${path.startsWith("/admin") ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
             <ShieldCheck className="h-5 w-5 shrink-0" />{!collapsed && <span>Administration</span>}
           </Link>}
         </nav>
@@ -84,12 +84,12 @@ export function Phone({ children }: { children: ReactNode }) {
       <div className="relative mx-auto min-h-screen w-full max-w-md overflow-hidden bg-card pb-28 md:max-w-none md:pb-10">
         {isAdmin && <div className="px-5 pt-3 md:hidden"><Link to="/admin" className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-2 text-xs font-semibold text-primary"><ShieldCheck className="h-4 w-4" />Administration</Link></div>}
         {children}
-        <nav className="fixed bottom-4 left-1/2 z-20 flex w-[calc(100%-2rem)] max-w-[400px] -translate-x-1/2 justify-around rounded-full bg-accent px-4 py-3 shadow-lg md:hidden">
+        <nav className="fixed bottom-4 left-1/2 z-20 flex w-[calc(100%-2rem)] max-w-[400px] -translate-x-1/2 justify-around rounded-full bg-navy px-4 py-3 shadow-lg md:hidden">
           {tabs.map((t) => {
             const active = path === t.to;
             return (
               <Link key={t.to} to={t.to} aria-label={t.label}
-                className={`grid h-10 w-10 place-items-center rounded-full transition ${active ? "bg-accent-foreground text-accent" : "text-accent-foreground"}`}>
+                className={`grid h-10 w-10 place-items-center rounded-full transition ${active ? "bg-primary text-primary-foreground" : "text-navy-foreground"}`}>
                 <t.icon className="h-5 w-5" />
               </Link>
             );
@@ -106,7 +106,7 @@ function AccountLinks({ collapsed }: { collapsed: boolean }) {
   return (
     <div className="mt-auto space-y-2">
       <Link to="/auth" aria-label="Sign in" className="flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground"><LogIn className="h-4 w-4 shrink-0" />{!collapsed && <span>Sign in</span>}</Link>
-      <Link to="/auth" search={{ mode: "signup" }} aria-label="Sign up" className="flex items-center justify-center gap-2 rounded-xl bg-accent px-3 py-2.5 text-sm font-semibold text-accent-foreground"><UserPlus className="h-4 w-4 shrink-0" />{!collapsed && <span>Sign up</span>}</Link>
+      <Link to="/auth" search={{ mode: "signup" }} aria-label="Sign up" className="flex items-center justify-center gap-2 rounded-md border border-primary px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-primary"><UserPlus className="h-4 w-4 shrink-0" />{!collapsed && <span>Sign up</span>}</Link>
     </div>
   );
 }
@@ -115,21 +115,21 @@ function HeaderAction() {
   const { user, ready } = useAuth();
   if (ready && !user) return (
     <div className="flex shrink-0 gap-2 md:hidden">
-      <Link to="/auth" className="rounded-full bg-primary-foreground/15 px-3 py-2 text-xs font-semibold">Sign in</Link>
-      <Link to="/auth" search={{ mode: "signup" }} className="rounded-full bg-accent px-3 py-2 text-xs font-semibold text-accent-foreground">Sign up</Link>
+      <Link to="/auth" className="rounded-full bg-navy-foreground/10 px-3 py-2 text-xs font-semibold">Sign in</Link>
+      <Link to="/auth" search={{ mode: "signup" }} className="rounded-md bg-primary px-3 py-2 text-xs font-bold uppercase text-primary-foreground">Get started</Link>
     </div>
   );
-  return <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary-foreground/15"><LayoutGrid className="h-5 w-5" /></span>;
+  return <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-navy-foreground/10"><LayoutGrid className="h-5 w-5" /></span>;
 }
 
 export function Header({ greeting = "Hi there", title, children, wide = false }: { greeting?: string; title: string; children?: ReactNode; wide?: boolean }) {
   return (
-    <header className="bg-primary px-5 pb-6 pt-8 text-primary-foreground md:px-10 md:pt-10">
+    <header className="bg-navy px-5 pb-6 pt-8 text-navy-foreground md:px-10 md:pt-10">
       <div className="mx-auto max-w-6xl">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm opacity-80">{greeting} ☁</p>
-            <h1 className="text-xl font-semibold md:text-3xl">{title}</h1>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">{greeting}</p>
+            <h1 className="mt-1 text-xl font-bold tracking-tight md:text-3xl">{title}</h1>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <LanguageSwitcher />
@@ -144,14 +144,14 @@ export function Header({ greeting = "Hi there", title, children, wide = false }:
 
 export function SearchBox() {
   return (
-    <Link to="/search" className="mt-4 flex items-center gap-2 rounded-xl border border-primary-foreground/30 bg-primary-foreground/10 px-3 py-2.5 text-sm text-primary-foreground/70 md:max-w-xl">
+    <Link to="/search" className="mt-4 flex items-center gap-2 rounded-xl border border-navy-foreground/20 bg-card px-3 py-3 text-sm text-muted-foreground shadow-sm md:max-w-xl">
       <Search className="h-4 w-4" /> What do you want to learn?
     </Link>
   );
 }
 
 export function Sheet({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
-  return <div className="-mt-3 rounded-t-3xl bg-card px-5 pt-5 md:px-10 md:pt-8"><div className={wide ? "mx-auto w-full max-w-none" : "mx-auto max-w-6xl"}>{children}</div></div>;
+  return <div className="bg-card px-5 pt-5 md:px-10 md:pt-8"><div className={wide ? "mx-auto w-full max-w-none" : "mx-auto max-w-6xl"}>{children}</div></div>;
 }
 
 export function BookmarkButton({ courseId, className = "" }: { courseId: string; className?: string }) {
@@ -171,7 +171,7 @@ export function BookmarkButton({ courseId, className = "" }: { courseId: string;
 export function ProgressBar({ pct, label }: { pct: number; label?: string }) {
   return (
     <div>
-      <div className="h-1.5 rounded-full bg-muted"><div className="h-full rounded-full bg-accent transition-all" style={{ width: `${pct}%` }} /></div>
+      <div className="h-1.5 rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} /></div>
       {label && <div className="mt-1 flex justify-between text-[10px] text-muted-foreground"><span>{label}</span><span>{pct}%</span></div>}
     </div>
   );
