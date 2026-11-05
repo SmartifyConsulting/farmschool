@@ -13,7 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 const tabs = [
   { to: "/", icon: Home, label: "Home" },
   { to: "/search", icon: Search, label: "Catalogue" },
-  { to: "/courses", icon: BookOpen, label: "My courses" },
+  { to: "/courses", icon: BookOpen, label: "My Courses" },
 ] as const;
 
 export function useIsAdmin() {
@@ -63,7 +63,7 @@ export function Phone({ children }: { children: ReactNode }) {
           </button>
         </div>
         <div className={`flex flex-1 flex-col ${collapsed ? "p-3" : "p-5"}`}>
-          <nav className="mt-10 space-y-1">
+          <nav className="mt-28 space-y-1">
             {[...tabs, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const].map((t) => {
               const active = path === t.to;
               return (
@@ -78,10 +78,10 @@ export function Phone({ children }: { children: ReactNode }) {
           <AvatarMenu collapsed={collapsed} />
         </div>
       </aside>
-      <div className="relative mx-auto min-h-screen w-full max-w-md overflow-hidden bg-card pb-28 md:max-w-none md:pb-10">
+      <div className="relative mx-auto min-h-screen w-full max-w-md overflow-hidden bg-card pb-32 md:max-w-none md:pb-14">
         {children}
         <Footer />
-        <nav className="fixed bottom-4 left-1/2 z-20 flex w-[calc(100%-2rem)] max-w-[400px] -translate-x-1/2 items-center justify-around rounded-full bg-navy px-4 py-3 shadow-lg md:hidden">
+        <nav className="fixed bottom-10 left-1/2 z-20 flex w-[calc(100%-2rem)] max-w-[400px] -translate-x-1/2 items-center justify-around rounded-full bg-navy px-4 py-3 shadow-lg md:hidden">
           {tabs.map((t) => {
             const active = path === t.to;
             return (
@@ -178,13 +178,13 @@ export function SearchBox() {
 
 function Footer() {
   return (
-    <footer className="border-t border-border px-5 py-6 text-xs text-muted-foreground md:px-10">
-      <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 sm:flex-row sm:justify-between">
+    <footer className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-card px-5 py-2 text-[11px] text-muted-foreground md:px-10">
+      <div className="mx-auto flex max-w-6xl flex-col items-center gap-1 sm:flex-row sm:justify-between">
         <p>© 2026 Smartify Consulting (Pty) Ltd. All rights reserved.</p>
-        <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-4">
+        <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-3">
           <Link to="/terms" className="hover:text-foreground">Terms and Conditions</Link>
           <Link to="/privacy" className="hover:text-foreground">Privacy Policy</Link>
-          <a href="mailto:support@mobileschool.co.za" className="flex items-center gap-1 hover:text-foreground"><Mail className="h-3.5 w-3.5" />Support</a>
+          <a href="mailto:support@mobileschool.co.za" className="flex items-center gap-1 hover:text-foreground"><Mail className="h-3 w-3" />Support</a>
           <Link to="/developer" className="hover:text-foreground">API</Link>
         </nav>
       </div>

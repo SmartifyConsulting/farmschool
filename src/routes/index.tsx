@@ -108,9 +108,8 @@ function Index() {
       <Header greeting={user ? `Hi, ${user.email?.split("@")[0]}` : "Welcome"} title="What will you grow today?"><SearchBox /></Header>
       <Sheet>
         <Hero />
-        <div className="my-8 grid gap-3 sm:grid-cols-2">
-          <Link to="/ask" className="rounded-md border border-primary/30 bg-secondary p-5 text-secondary-foreground"><p className="font-semibold">Ask the Farmer AI</p><p className="text-xs opacity-80">Get answers to any farming question.</p></Link>
-          <Link to="/studio" className="rounded-md border border-border p-5"><p className="font-semibold">Course Studio</p><p className="text-xs text-muted-foreground">Trainers: build lessons, videos and quizzes.</p></Link>
+        <div className="my-8">
+          <Link to="/studio" className="block rounded-md border border-border p-5"><p className="font-semibold">Course Studio</p><p className="text-xs text-muted-foreground">Trainers: build lessons, videos and quizzes.</p></Link>
         </div>
         <ChallengeFinder />
         <Schools />
