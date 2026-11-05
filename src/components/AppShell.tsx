@@ -1,7 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Home, BookOpen, Search, Bell, User, LayoutGrid, Bookmark, PenSquare, ChevronLeft, ChevronRight, Mail } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
-import logo from "@/assets/mobile-school-logo.png.asset.json";
+import { Home, BookOpen, Search, Bell, User, LayoutGrid, Bookmark, PenSquare, Mail } from "lucide-react";
+import { type ReactNode } from "react";
+import logo from "@/assets/plusticity-logo.png";
 import { useBookmarks, useAuth } from "@/hooks/useLearning";
 import { LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,52 +30,28 @@ export function useIsAdmin() {
   return !!data;
 }
 
-const NAV_COLLAPSED_KEY = "farmschool:nav-collapsed";
-
-function useNavCollapsed() {
-  const [collapsed, setCollapsed] = useState(false);
-  useEffect(() => {
-    try {
-      setCollapsed(window.localStorage.getItem(NAV_COLLAPSED_KEY) === "1");
-    } catch { /* storage may be disabled; default to expanded */ }
-  }, []);
-  const toggle = () => {
-    setCollapsed((prev) => {
-      const next = !prev;
-      try { window.localStorage.setItem(NAV_COLLAPSED_KEY, next ? "1" : "0"); } catch { /* ignore */ }
-      return next;
-    });
-  };
-  return [collapsed, toggle] as const;
-}
-
 export function Phone({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const [collapsed, toggleCollapsed] = useNavCollapsed();
   return (
     <div className="min-h-screen bg-muted md:flex">
-      <aside className={`sticky top-0 relative hidden h-screen shrink-0 flex-col bg-card md:flex ${collapsed ? "w-20" : "w-64"}`}>
-        <div className={`flex items-center justify-between gap-2 bg-navy ${collapsed ? "p-3" : "p-5"}`}>
-          <img src={logo.url} alt="Mobile School" className={`object-contain ${collapsed ? "mx-auto h-[72px] w-auto" : "h-[72px] w-auto"}`} />
-          <button type="button" onClick={toggleCollapsed} aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
-            className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border border-navy-foreground/30 bg-navy text-navy-foreground hover:bg-navy-foreground/10 ${collapsed ? "absolute -right-3 top-6" : ""}`}>
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </button>
+      <aside className="sticky top-0 relative hidden h-screen w-64 shrink-0 flex-col bg-card md:flex">
+        <div className="flex h-40 items-center justify-center bg-navy p-5">
+          <img src={logo} alt="Plusticity" className="h-[158px] w-auto object-contain" />
         </div>
-        <div className={`flex flex-1 flex-col ${collapsed ? "p-3" : "p-5"}`}>
+        <div className="flex flex-1 flex-col p-5">
           <nav className="mt-28 space-y-1">
             {[...tabs, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const].map((t) => {
               const active = path === t.to;
               return (
                 <Link key={t.to} to={t.to} aria-label={t.label}
-                  className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium ${collapsed ? "justify-center" : "justify-start"} ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
-                  <t.icon className="h-5 w-5 shrink-0" />{!collapsed && <span>{t.label}</span>}
+                  className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium justify-start ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
+                  <t.icon className="h-5 w-5 shrink-0" /><span>{t.label}</span>
                 </Link>
               );
             })}
           </nav>
-          <AccountLinks collapsed={collapsed} />
-          <AvatarMenu collapsed={collapsed} />
+          <AccountLinks />
+          <AvatarMenu />
         </div>
       </aside>
       <div className="relative mx-auto min-h-screen w-full max-w-md overflow-hidden bg-card pb-32 md:max-w-none md:pb-14">
@@ -91,14 +67,14 @@ export function Phone({ children }: { children: ReactNode }) {
               </Link>
             );
           })}
-          <AvatarMenu collapsed mobile />
+          <AvatarMenu mobile />
         </nav>
       </div>
     </div>
   );
 }
 
-function AvatarMenu({ collapsed, mobile = false }: { collapsed: boolean; mobile?: boolean }) {
+function AvatarMenu({ mobile = false }: { mobile?: boolean }) {
   const { user, ready } = useAuth();
   const nav = useNavigate();
   const isAdmin = useIsAdmin();
@@ -112,9 +88,9 @@ function AvatarMenu({ collapsed, mobile = false }: { collapsed: boolean; mobile?
         {mobile ? (
           <button type="button" aria-label="Account menu" className="grid h-10 w-10 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{initials}</button>
         ) : (
-          <button type="button" aria-label="Account menu" className={`mt-auto flex items-center gap-2 rounded-md p-2 text-sm font-medium hover:bg-muted ${collapsed ? "justify-center" : "justify-start"}`}>
+          <button type="button" aria-label="Account menu" className="mt-auto flex items-center justify-start gap-2 rounded-md p-2 text-sm font-medium hover:bg-muted">
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{initials}</span>
-            {!collapsed && <span className="min-w-0 truncate">{name}</span>}
+            <span className="min-w-0 truncate">{name}</span>
           </button>
         )}
       </DropdownMenuTrigger>
@@ -127,13 +103,13 @@ function AvatarMenu({ collapsed, mobile = false }: { collapsed: boolean; mobile?
   );
 }
 
-function AccountLinks({ collapsed }: { collapsed: boolean }) {
+function AccountLinks() {
   const { user, ready } = useAuth();
   if (!ready || user) return null;
   return (
     <div className="mt-auto space-y-2">
-      <Link to="/auth" aria-label="Sign in" className="flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground"><LogIn className="h-4 w-4 shrink-0" />{!collapsed && <span>Sign in</span>}</Link>
-      <Link to="/auth" search={{ mode: "signup" }} aria-label="Sign up" className="flex items-center justify-center gap-2 rounded-md border border-primary px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-primary"><UserPlus className="h-4 w-4 shrink-0" />{!collapsed && <span>Sign up</span>}</Link>
+      <Link to="/auth" aria-label="Sign in" className="flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground"><LogIn className="h-4 w-4 shrink-0" /><span>Sign in</span></Link>
+      <Link to="/auth" search={{ mode: "signup" }} aria-label="Sign up" className="flex items-center justify-center gap-2 rounded-md border border-primary px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-primary"><UserPlus className="h-4 w-4 shrink-0" /><span>Sign up</span></Link>
     </div>
   );
 }

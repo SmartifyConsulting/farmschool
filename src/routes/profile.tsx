@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Award, BadgeCheck, KeyRound, LogOut, Printer, ShieldCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { credentialCode } from "@/lib/studio";
-import logo from "@/assets/mobile-school-logo.png.asset.json";
+import logo from "@/assets/plusticity-logo.png";
 import { Phone, Header, Sheet, useIsAdmin } from "@/components/AppShell";
 import { CourseCard } from "./index";
 import { courses } from "@/lib/courses";
@@ -72,7 +72,7 @@ function Profile() {
         <DialogContent className="max-w-2xl print:max-w-none print:border-0 print:shadow-none">
           <DialogTitle className="sr-only">Certificate</DialogTitle>
           {open && <div id="certificate" className="rounded-2xl border-4 border-primary p-6 text-center sm:p-10">
-            <img src={logo.url} alt="Mobile School" className="mx-auto h-20 w-auto" />
+            <img src={logo} alt="Plusticity" className="mx-auto h-[176px] w-auto" />
             <p className="mt-4 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Certificate of Completion</p>
             <p className="mt-4 text-sm text-muted-foreground">This certifies that</p>
             <p className="mt-1 font-display text-2xl font-bold sm:text-3xl">{name}</p>

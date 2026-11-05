@@ -5,7 +5,7 @@ import { Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PasswordInput, inputCls } from "@/components/PasswordInput";
 import { ROLES, mapAuthError, passwordRules } from "@/lib/auth-errors";
-import logo from "@/assets/mobile-school-logo.png.asset.json";
+import logo from "@/assets/plusticity-logo.png";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (s: Record<string, unknown>): { mode?: "signup" } => (s['mode'] === "signup" ? { mode: "signup" } : {}),
@@ -24,7 +24,7 @@ export function AuthCard({ title, children }: { title: string; children: React.R
   return (
     <div className="grid min-h-screen place-items-center bg-primary p-5">
       <div className="w-full max-w-sm rounded-3xl bg-card p-6 shadow-xl">
-        <Link to="/"><img src={logo.url} alt="Mobile School" className="mx-auto mb-4 h-[168px] w-auto object-contain" /></Link>
+        <Link to="/"><img src={logo} alt="Plusticity" className="mx-auto mb-4 h-[370px] w-auto object-contain" /></Link>
         <h1 className="mb-5 text-center text-xl font-semibold">{title}</h1>
         {children}
       </div>
