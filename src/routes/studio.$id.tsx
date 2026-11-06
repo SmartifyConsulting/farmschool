@@ -176,12 +176,11 @@ function lessonIsComplete(lesson: LessonRow) {
   return lesson.body.trim().length > 0 && !lesson.body.includes("Review required before publishing.");
 }
 
-type Screen = "build" | "performance" | "publish";
+type Screen = string;
 
 function Editor() {
   const { id } = Route.useParams();
-  const [screen, setScreen] = useState<Screen>("build");
-  const [buildSub, setBuildSub] = useState<string>("overview");
+  const [screen, setScreen] = useState<Screen>("overview");
   const [factoryStep, setFactoryStep] = useState(0);
   const [draftGroupIndex, setDraftGroupIndex] = useState(0);
   const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
@@ -636,7 +635,7 @@ function Editor() {
     if (error) { toast.error("Could not delete module."); return; }
     qc.invalidateQueries({ queryKey: ["studio-modules", id] });
     qc.invalidateQueries({ queryKey: ["studio-lessons", id] });
-    if (buildSub === moduleId) setBuildSub("overview");
+    if (screen === moduleId) setScreen("overview");
   };
   const assignLessonToModule = async (lessonId: string, moduleId: string | null) => {
     const { error } = await supabase.from("studio_lessons").update({ module_id: moduleId } as never).eq("id", lessonId);
@@ -710,39 +709,31 @@ function Editor() {
       <Sheet wide>
         <div className="min-w-0 space-y-6">
         <nav aria-label="Course setup steps" className="flex items-center gap-2 overflow-x-auto pb-1">
-          <button type="button" onClick={() => setScreen("build")}
-            className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors ${screen === "build" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
-            <LayoutGrid className="h-4 w-4" />Course Build
+          <button type="button" onClick={() => setScreen("overview")}
+            className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors ${screen === "overview" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
+            <LayoutGrid className="h-4 w-4" />Overview
           </button>
+          {modules.map((m, i) => {
+            const active = screen === m.key;
+            const complete = m.lessons.length > 0 && m.lessons.every(lessonIsComplete);
+            return (
+              <button key={m.key} type="button" onClick={() => setScreen(m.key)}
+                className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors ${active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
+                <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] ${complete ? "bg-emerald-500 text-white" : active ? "bg-primary-foreground text-primary" : "bg-background"}`}>{complete ? <Check className="h-3 w-3" /> : i + 1}</span>
+                Step {i + 1}
+              </button>
+            );
+          })}
           <button type="button" onClick={() => setScreen("performance")}
             className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors ${screen === "performance" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
-            Course Performance
+            Performance
           </button>
           <button type="button" onClick={() => setScreen("publish")}
             className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors ${screen === "publish" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
             Publish
           </button>
         </nav>
-        {screen === "build" && (
-        <nav aria-label="Course Build steps" className="flex items-center gap-2 overflow-x-auto pb-1">
-          <button type="button" onClick={() => setBuildSub("overview")}
-            className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${buildSub === "overview" ? "bg-secondary text-secondary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
-            Overview
-          </button>
-          {modules.map((m, i) => {
-            const active = buildSub === m.key;
-            const complete = m.lessons.length > 0 && m.lessons.every(lessonIsComplete);
-            return (
-              <button key={m.key} type="button" onClick={() => setBuildSub(m.key)}
-                className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${active ? "bg-secondary text-secondary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
-                <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full text-[10px] ${complete ? "bg-emerald-500 text-white" : "bg-background"}`}>{complete ? <Check className="h-2.5 w-2.5" /> : i + 1}</span>
-                Step {i + 1}
-              </button>
-            );
-          })}
-        </nav>
-        )}
-        {screen === "build" && buildSub === "overview" && (
+        {screen === "overview" && (
         <div className="min-w-0 space-y-6">
           <section className="flex h-full flex-col space-y-3 rounded-2xl border border-border p-4">
             <h2 className="font-semibold">Course details</h2>
@@ -999,19 +990,19 @@ function Editor() {
           </div>
         </div>
         )}
-        {screen === "build" && buildSub !== "overview" && (() => {
-          const moduleIndex = modules.findIndex((m) => m.key === buildSub);
+        {screen !== "overview" && screen !== "performance" && screen !== "publish" && (() => {
+          const moduleIndex = modules.findIndex((m) => m.key === screen);
           const mod = modules[moduleIndex];
-          if (!mod) return <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Module not found. <button type="button" className="font-medium text-primary" onClick={() => setBuildSub("overview")}>Back to Overview</button></p>;
+          if (!mod) return <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Module not found. <button type="button" className="font-medium text-primary" onClick={() => setScreen("overview")}>Back to Overview</button></p>;
           const dGroup = draftGroupFor(mod.title);
           const videoLessons = mod.lessons.filter((l) => l.kind === "video");
           const quizLessons = mod.lessons.filter((l) => l.kind === "quiz");
-          const goToModule = (index: number) => { const next = modules[index]; setBuildSub(next ? next.key : "overview"); };
+          const goToModule = (index: number) => { const next = modules[index]; setScreen(next ? next.key : "overview"); };
           return (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div><h2 className="font-semibold">{mod.title}</h2><p className="text-xs text-muted-foreground">{mod.lessons.length} lesson{mod.lessons.length === 1 ? "" : "s"}</p></div>
-              <Button size="sm" variant="outline" onClick={() => setBuildSub("overview")}><LayoutGrid className="h-4 w-4" />Overview</Button>
+              <Button size="sm" variant="outline" onClick={() => setScreen("overview")}><LayoutGrid className="h-4 w-4" />Overview</Button>
             </div>
             <Tabs defaultValue="lessons">
               <TabsList className="flex-wrap">
@@ -1055,7 +1046,7 @@ function Editor() {
                     <h3 className="font-semibold">Source sections</h3>
                     {dGroup.items.map(({ lesson, index: i }) => <details key={i} className="rounded-lg border border-border bg-muted/20 p-3"><summary className="cursor-pointer text-sm font-medium">{lesson.title} <span className="text-xs font-normal text-muted-foreground">· {lesson.sourceRefs.length} source pages</span></summary><p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{lesson.body.slice(0, 2500)}{lesson.body.length > 2500 ? "…" : ""}</p><p className="mt-2 text-xs text-muted-foreground">Source: {lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join(", ")}</p></details>)}
                   </div>
-                </>) : <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">No AI draft content loaded for this module. Import a source manual from Course Build to review it here.</p>}
+                </>) : <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">No AI draft content loaded for this module. Import a source manual from Overview to review it here.</p>}
               </TabsContent>
               <TabsContent value="media" className="space-y-3">
                 <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => addLesson("video", mod.moduleId)}><Video className="h-4 w-4" />Add video lesson</Button><VideoLibraryPicker courseId={id} position={lessons?.length ?? 0} usedItemIds={videoLinks.map((v) => v.item_id)} onAdded={() => { refresh(); void refetchLinks(); }} /></div>
@@ -1079,7 +1070,7 @@ function Editor() {
                       </div>
                     </details>)}
                   </div>
-                ) : <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">No AI activity storyboard for this module yet. Import a source manual from Course Build to generate one.</p>}
+                ) : <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">No AI activity storyboard for this module yet. Import a source manual from Overview to generate one.</p>}
               </TabsContent>
               <TabsContent value="assessment" className="space-y-3">
                 {dGroup && <div className="space-y-2 rounded-xl border border-border bg-background p-4">
@@ -1098,7 +1089,7 @@ function Editor() {
               </TabsContent>
             </Tabs>
             <div className="flex justify-between">
-              <Button variant="outline" onClick={() => moduleIndex > 0 ? goToModule(moduleIndex - 1) : setBuildSub("overview")}><ChevronLeft className="h-4 w-4" />{moduleIndex > 0 ? "Previous module" : "Overview"}</Button>
+              <Button variant="outline" onClick={() => moduleIndex > 0 ? goToModule(moduleIndex - 1) : setScreen("overview")}><ChevronLeft className="h-4 w-4" />{moduleIndex > 0 ? "Previous module" : "Overview"}</Button>
               <Button onClick={() => moduleIndex < modules.length - 1 ? goToModule(moduleIndex + 1) : setScreen("publish")}>{moduleIndex < modules.length - 1 ? "Save & continue" : "Finish · Publish"}<ChevronRight className="h-4 w-4" /></Button>
             </div>
           </div>
