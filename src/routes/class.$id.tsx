@@ -12,6 +12,7 @@ import { submitQuiz, claimCertificate } from "@/lib/learning.functions";
 import { youtubeEmbed } from "@/lib/studio";
 import { toast } from "sonner";
 import { ExternalVideo, LINKED_VIDEO_SELECT, type LinkedVideo } from "@/components/ExternalVideo";
+import { FormattedLesson } from "@/components/FormattedLesson";
 
 export const Route = createFileRoute("/class/$id")({
   head: () => ({ meta: [
@@ -71,7 +72,7 @@ function ClassPage() {
                 ? <iframe src={youtubeEmbed(lesson.video_url)!} title={lesson.title} className="aspect-video w-full rounded-2xl" allow="accelerometer; encrypted-media; picture-in-picture" allowFullScreen />
                 : <video src={lesson.video_url} controls playsInline className="aspect-video w-full rounded-2xl bg-foreground" onEnded={markDone} />)}
               <h2 className="text-lg font-semibold">{lesson.title}</h2>
-              {lesson.body && lesson.kind !== "quiz" && <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{lesson.body}</p>}
+              {lesson.body && lesson.kind !== "quiz" && <FormattedLesson content={lesson.body} />}
               {lesson.kind === "quiz" ? <Quiz key={lesson.id} lesson={lesson} courseId={id} passed={done.has(lesson.id)} />
                 : <Button onClick={markDone} disabled={done.has(lesson.id)}>{done.has(lesson.id) ? "Completed" : "Mark as complete"}</Button>}
             </>) : <p className="text-sm text-muted-foreground">This course has no lessons yet.</p>}
