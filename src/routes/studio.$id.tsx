@@ -139,27 +139,35 @@ export const Route = createFileRoute("/studio/$id")({
 });
 
 type Q = { q: string; options: string[]; answer: number };
-type LessonRow = { id: string; position: number; kind: string; title: string; video_url: string | null; body: string; quiz: unknown };
+type LessonRow = { id: string; position: number; kind: string; title: string; video_url: string | null; body: string; quiz: unknown; module_id: string | null };
+type ModuleRow = { id: string; course_id: string; title: string; position: number };
 
 const MODULE_TITLE_RE = /^MODULE\s+(\d+)\b(?:\s*[-–:]\s*(.*))?/i;
 
-/** Groups persisted lessons by their "MODULE N" title prefix, the same convention Course Factory uses when importing. Lessons without that prefix fall into one "Lessons" module, so courses built without AI import still work. */
-function groupLessonsIntoModules(lessons: LessonRow[]) {
-  const modules: { key: string; title: string; lessons: LessonRow[] }[] = [];
+/** Groups persisted lessons by their real studio_modules record. Lessons with no module_id (legacy imports, or not yet organised) fall back to their "MODULE N" title prefix if present, else a single "Unassigned lessons" bucket. */
+function groupLessonsIntoModules(lessons: LessonRow[], realModules: ModuleRow[]) {
+  const modules: { key: string; title: string; lessons: LessonRow[]; moduleId: string | null }[] =
+    realModules.map((m) => ({ key: m.id, title: m.title, lessons: [], moduleId: m.id }));
+  const legacy: { key: string; title: string; lessons: LessonRow[]; moduleId: string | null }[] = [];
   let plain: LessonRow[] = [];
   for (const lesson of lessons) {
+    if (lesson.module_id) {
+      const mod = modules.find((m) => m.moduleId === lesson.module_id);
+      if (mod) { mod.lessons.push(lesson); continue; }
+    }
     const match = lesson.title.match(MODULE_TITLE_RE);
     if (!match) { plain.push(lesson); continue; }
     const number = match[1];
     const label = match[2]?.trim();
-    const key = `module-${number}`;
-    let mod = modules.find((m) => m.key === key);
-    if (!mod) { mod = { key, title: `Module ${number}${label ? " · " + label : ""}`, lessons: [] }; modules.push(mod); }
+    const key = `legacy-module-${number}`;
+    let mod = legacy.find((m) => m.key === key);
+    if (!mod) { mod = { key, title: `Module ${number}${label ? " · " + label : ""}`, lessons: [], moduleId: null }; legacy.push(mod); }
     mod.lessons.push(lesson);
   }
-  modules.sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true }));
-  if (plain.length) modules.push({ key: "lessons", title: modules.length ? "Other lessons" : "Lessons", lessons: plain });
-  return modules;
+  legacy.sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true }));
+  const all = [...modules, ...legacy];
+  if (plain.length) all.push({ key: "unassigned", title: "Unassigned lessons", lessons: plain, moduleId: null });
+  return all;
 }
 
 function lessonIsComplete(lesson: LessonRow) {
@@ -176,11 +184,13 @@ function Editor() {
   const [buildSub, setBuildSub] = useState<string>("overview");
   const [factoryStep, setFactoryStep] = useState(0);
   const [draftGroupIndex, setDraftGroupIndex] = useState(0);
+  const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
   const qc = useQueryClient();
   const nav = useNavigate();
   const confirm = useConfirm();
   const { data: course, isLoading } = useQuery({ queryKey: ["studio-course", id], queryFn: async () => (await supabase.from("studio_courses").select("*").eq("id", id).maybeSingle()).data });
-  const { data: lessons } = useQuery({ queryKey: ["studio-lessons", id], queryFn: async () => ((await supabase.from("studio_lessons").select("*").eq("course_id", id).order("position")).data ?? []) as LessonRow[] });
+  const { data: lessons } = useQuery({ queryKey: ["studio-lessons", id], queryFn: async () => ((await supabase.from("studio_lessons").select("*").eq("course_id", id).order("position")).data ?? []) as unknown as LessonRow[] });
+  const { data: studioModules } = useQuery({ queryKey: ["studio-modules", id], queryFn: async () => ((await supabase.from("studio_modules" as never).select("*").eq("course_id", id).order("position")).data ?? []) as unknown as ModuleRow[] });
   const [sourceText, setSourceText] = useState("");
   const [sourcePages, setSourcePages] = useState<SourcePage[] | null>(null);
   const [sourceName, setSourceName] = useState("Training manual");
@@ -602,13 +612,47 @@ function Editor() {
     queryKey: ["studio-video-links", id],
     queryFn: async () => ((await supabase.from("course_external_content").select("id, lesson_id, item_id, objectives, item:external_content_items(title, provider:external_content_providers(name))").eq("course_id", id)).data ?? []) as unknown as VideoLink[],
   });
-  const addLesson = async (kind: string, moduleTitle?: string) => {
-    const base = kind === "quiz" ? "Knowledge check" : kind === "video" ? "New video lesson" : "New reading";
-    const title = moduleTitle ? `${moduleTitle} - ${base}` : base;
-    const { error } = await supabase.from("studio_lessons").insert({ course_id: id, kind, position: lessons?.length ?? 0, title });
+  const addLesson = async (kind: string, moduleId?: string | null) => {
+    const title = kind === "quiz" ? "Knowledge check" : kind === "video" ? "New video lesson" : "New reading";
+    const { error } = await supabase.from("studio_lessons").insert({ course_id: id, kind, position: lessons?.length ?? 0, title, module_id: moduleId ?? null } as never);
     if (error) toast.error("Could not add lesson."); else refresh();
   };
-  const modules = groupLessonsIntoModules(lessons ?? []);
+  const createModule = async () => {
+    const { data, error } = await supabase.from("studio_modules" as never).insert({ course_id: id, title: `Module ${(studioModules?.length ?? 0) + 1}`, position: studioModules?.length ?? 0 } as never).select("id").single();
+    if (error || !data) { toast.error("Could not create module."); return; }
+    qc.invalidateQueries({ queryKey: ["studio-modules", id] });
+    return (data as unknown as { id: string }).id;
+  };
+  const renameModule = async (moduleId: string, title: string) => {
+    const { error } = await supabase.from("studio_modules" as never).update({ title } as never).eq("id", moduleId);
+    if (error) { toast.error("Could not rename module."); return; }
+    qc.invalidateQueries({ queryKey: ["studio-modules", id] });
+  };
+  const deleteModule = async (moduleId: string) => {
+    const ok = await confirm({ tone: "danger", title: "Delete this module?", confirmLabel: "Delete module",
+      description: <p>Its lessons move to Unassigned lessons, not deleted.</p> });
+    if (!ok) return;
+    const { error } = await supabase.from("studio_modules" as never).delete().eq("id", moduleId);
+    if (error) { toast.error("Could not delete module."); return; }
+    qc.invalidateQueries({ queryKey: ["studio-modules", id] });
+    qc.invalidateQueries({ queryKey: ["studio-lessons", id] });
+    if (buildSub === moduleId) setBuildSub("overview");
+  };
+  const assignLessonToModule = async (lessonId: string, moduleId: string | null) => {
+    const { error } = await supabase.from("studio_lessons").update({ module_id: moduleId } as never).eq("id", lessonId);
+    if (error) { toast.error("Could not move lesson."); return; }
+    refresh();
+  };
+  const deleteLessons = async (lessonIds: string[]) => {
+    if (!lessonIds.length) return;
+    const ok = await confirm({ tone: "danger", title: `Delete ${lessonIds.length} lesson${lessonIds.length === 1 ? "" : "s"}?`, confirmLabel: "Delete", description: <p>This can't be undone.</p> });
+    if (!ok) return;
+    const { error } = await supabase.from("studio_lessons").delete().in("id", lessonIds);
+    if (error) { toast.error("Could not delete lessons."); return; }
+    toast.success(`Deleted ${lessonIds.length} lesson${lessonIds.length === 1 ? "" : "s"}.`);
+    refresh();
+  };
+  const modules = groupLessonsIntoModules(lessons ?? [], studioModules ?? []);
   const draftGroups = draft ? groupDraftLessons(draft.lessons) : [];
   const draftGroupFor = (moduleTitle: string) => draftGroups.find((g) => g.title === moduleTitle || moduleTitle.startsWith(g.title.split(" · ")[0] ?? g.title));
   const readiness = [
@@ -767,6 +811,40 @@ function Editor() {
             </div>
           </section>
           )}
+          <section className="space-y-3 rounded-2xl border border-border p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">Modules</h2><Button size="sm" variant="outline" onClick={createModule}><Plus className="h-4 w-4" />Add module</Button></div>
+            {studioModules?.length ? <ul className="space-y-2">
+              {studioModules.map((m) => <li key={m.id} className="flex items-center gap-2">
+                <Input value={m.title} onChange={(e) => renameModule(m.id, e.target.value)} className="h-8" aria-label="Module title" />
+                <span className="shrink-0 text-xs text-muted-foreground">{modules.find((g) => g.moduleId === m.id)?.lessons.length ?? 0} lessons</span>
+                <Button size="icon" variant="ghost" aria-label="Delete module" onClick={() => deleteModule(m.id)}><Trash2 className="h-4 w-4" /></Button>
+              </li>)}
+            </ul> : <p className="text-xs text-muted-foreground">No modules yet. Add one, or import a manual below to create modules automatically.</p>}
+          </section>
+          <section className="space-y-3 rounded-2xl border border-border p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-semibold">Manage lessons</h2>
+              {selectedLessonIds.length > 0 && <Button size="sm" variant="ghost" className="text-destructive" onClick={() => { void deleteLessons(selectedLessonIds); setSelectedLessonIds([]); }}><Trash2 className="h-4 w-4" />Delete {selectedLessonIds.length} selected</Button>}
+            </div>
+            {lessons?.length ? (() => {
+              const titleCounts = new Map<string, number>();
+              for (const l of lessons) titleCounts.set(l.title, (titleCounts.get(l.title) ?? 0) + 1);
+              return <ul className="space-y-1.5">
+                {lessons.map((l) => {
+                  const duplicate = (titleCounts.get(l.title) ?? 0) > 1;
+                  const checked = selectedLessonIds.includes(l.id);
+                  return <li key={l.id} className={`flex flex-wrap items-center gap-2 rounded-lg border p-2 text-sm ${duplicate ? "border-destructive/40 bg-destructive/5" : "border-border"}`}>
+                    <input type="checkbox" checked={checked} onChange={(e) => setSelectedLessonIds((cur) => e.target.checked ? [...cur, l.id] : cur.filter((x) => x !== l.id))} />
+                    <span className="min-w-0 flex-1 truncate">{l.title}{duplicate && <span className="ml-2 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">Possible duplicate</span>}</span>
+                    <select value={l.module_id ?? ""} onChange={(e) => assignLessonToModule(l.id, e.target.value || null)} className="rounded-md border border-input bg-background px-2 py-1 text-xs" aria-label="Module">
+                      <option value="">Unassigned</option>
+                      {studioModules?.map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
+                    </select>
+                  </li>;
+                })}
+              </ul>;
+            })() : <p className="text-xs text-muted-foreground">No lessons yet.</p>}
+          </section>
           <section className="space-y-3 rounded-2xl border border-border p-4">
             <h2 className="font-semibold">Course Factory — source import</h2>
             <nav aria-label="Course Factory steps" className="flex flex-wrap gap-2">
@@ -955,10 +1033,10 @@ function Editor() {
               <TabsContent value="lessons" className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-muted-foreground">Expand a lesson to review or edit. Use Preview above to see the learner experience.</p>
                   <div className="flex flex-wrap gap-2">
-                    <Button size="sm" variant="outline" onClick={() => addLesson("video", mod.key === "lessons" ? undefined : mod.title)}><Video className="h-4 w-4" />Video</Button>
+                    <Button size="sm" variant="outline" onClick={() => addLesson("video", mod.moduleId)}><Video className="h-4 w-4" />Video</Button>
                     <VideoLibraryPicker courseId={id} position={lessons?.length ?? 0} usedItemIds={videoLinks.map((v) => v.item_id)} onAdded={() => { refresh(); void refetchLinks(); }} />
-                    <Button size="sm" variant="outline" onClick={() => addLesson("reading", mod.key === "lessons" ? undefined : mod.title)}><FileText className="h-4 w-4" />Reading</Button>
-                    <Button size="sm" variant="outline" onClick={() => addLesson("quiz", mod.key === "lessons" ? undefined : mod.title)}><HelpCircle className="h-4 w-4" />Quiz</Button>
+                    <Button size="sm" variant="outline" onClick={() => addLesson("reading", mod.moduleId)}><FileText className="h-4 w-4" />Reading</Button>
+                    <Button size="sm" variant="outline" onClick={() => addLesson("quiz", mod.moduleId)}><HelpCircle className="h-4 w-4" />Quiz</Button>
                   </div>
                 </div>
                 {mod.lessons.map((l, i) => <LessonEditor key={l.id} lesson={l} index={i} link={videoLinks.find((v) => v.lesson_id === l.id)} onChange={() => { refresh(); void refetchLinks(); }} courseId={id} sourceText={mod.lessons.slice(0, i).reverse().find((p) => p.kind !== "quiz" && p.body.trim().length > 0)?.body ?? ""} />)}
@@ -989,7 +1067,7 @@ function Editor() {
                 </>) : <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">No AI draft content loaded for this module. Import a source manual from Course Build to review it here.</p>}
               </TabsContent>
               <TabsContent value="media" className="space-y-3">
-                <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => addLesson("video", mod.key === "lessons" ? undefined : mod.title)}><Video className="h-4 w-4" />Add video lesson</Button><VideoLibraryPicker courseId={id} position={lessons?.length ?? 0} usedItemIds={videoLinks.map((v) => v.item_id)} onAdded={() => { refresh(); void refetchLinks(); }} /></div>
+                <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => addLesson("video", mod.moduleId)}><Video className="h-4 w-4" />Add video lesson</Button><VideoLibraryPicker courseId={id} position={lessons?.length ?? 0} usedItemIds={videoLinks.map((v) => v.item_id)} onAdded={() => { refresh(); void refetchLinks(); }} /></div>
                 {videoLessons.length ? <ul className="space-y-2">{videoLessons.map((l) => { const link = videoLinks.find((v) => v.lesson_id === l.id); return <li key={l.id} className="rounded-xl border border-border p-3 text-sm"><p className="font-medium">{l.title}</p><p className="text-xs text-muted-foreground">{link ? `Library video · ${link.item?.title ?? ""}` : l.video_url || "No video link set yet"}</p></li>; })}</ul> : <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">No video lessons in this module yet.</p>}
               </TabsContent>
               <TabsContent value="activities" className="space-y-3">
