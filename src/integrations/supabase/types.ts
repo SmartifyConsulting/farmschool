@@ -34,6 +34,7 @@ export type Database = {
       }
       api_keys: {
         Row: {
+          categories: string[] | null
           created_at: string
           daily_limit: number
           id: string
@@ -50,6 +51,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          categories?: string[] | null
           created_at?: string
           daily_limit?: number
           id?: string
@@ -66,6 +68,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          categories?: string[] | null
           created_at?: string
           daily_limit?: number
           id?: string
@@ -540,6 +543,7 @@ export type Database = {
           created_at: string
           full_name: string
           learner_role: string
+          preferred_language: string | null
           region: string
           updated_at: string
           user_id: string
@@ -548,6 +552,7 @@ export type Database = {
           created_at?: string
           full_name: string
           learner_role: string
+          preferred_language?: string | null
           region: string
           updated_at?: string
           user_id: string
@@ -556,6 +561,7 @@ export type Database = {
           created_at?: string
           full_name?: string
           learner_role?: string
+          preferred_language?: string | null
           region?: string
           updated_at?: string
           user_id?: string
@@ -898,6 +904,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_set_user_role: {
+        Args: {
+          _grant: boolean
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
       course_factory_reserve_ai_request: { Args: never; Returns: number }
       creator_review_application: {
         Args: { _approve: boolean; _notes?: string; _user_id: string }
