@@ -5,7 +5,7 @@ import { Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PasswordInput, inputCls } from "@/components/PasswordInput";
 import { ROLES, mapAuthError, passwordRules } from "@/lib/auth-errors";
-import logo from "@/assets/plusticity-logo.png";
+import logo from "@/assets/plusticity-logo-navy.png";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (s: Record<string, unknown>): { mode?: "signup" } => (s['mode'] === "signup" ? { mode: "signup" } : {}),

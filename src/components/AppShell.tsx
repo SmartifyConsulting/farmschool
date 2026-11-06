@@ -33,27 +33,7 @@ export function useIsAdmin() {
 export function Phone({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   return (
-    <div className="min-h-screen bg-muted md:flex">
-      <aside className="sticky top-0 relative hidden h-screen w-64 shrink-0 flex-col bg-card md:flex">
-        <div className="flex h-40 items-center justify-center bg-navy p-5">
-          <img src={logo} alt="Plusticity" className="h-[158px] w-auto object-contain" />
-        </div>
-        <div className="flex flex-1 flex-col p-5">
-          <nav className="mt-28 space-y-1">
-            {[...tabs, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const].map((t) => {
-              const active = path === t.to;
-              return (
-                <Link key={t.to} to={t.to} aria-label={t.label}
-                  className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium justify-start ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
-                  <t.icon className="h-5 w-5 shrink-0" /><span>{t.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
-          <AccountLinks />
-          <AvatarMenu />
-        </div>
-      </aside>
+    <div className="min-h-screen bg-muted">
       <div className="relative mx-auto min-h-screen w-full max-w-md overflow-hidden bg-card pb-32 md:max-w-none md:pb-14">
         {children}
         <Footer />
@@ -74,7 +54,7 @@ export function Phone({ children }: { children: ReactNode }) {
   );
 }
 
-function AvatarMenu({ mobile = false }: { mobile?: boolean }) {
+function AvatarMenu({ mobile = false, horizontal = false }: { mobile?: boolean; horizontal?: boolean }) {
   const { user, ready } = useAuth();
   const nav = useNavigate();
   const isAdmin = useIsAdmin();
@@ -85,16 +65,16 @@ function AvatarMenu({ mobile = false }: { mobile?: boolean }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        {mobile ? (
-          <button type="button" aria-label="Account menu" className="grid h-10 w-10 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{initials}</button>
+        {mobile || horizontal ? (
+          <button type="button" aria-label="Account menu" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{initials}</button>
         ) : (
-          <button type="button" aria-label="Account menu" className="mt-auto flex items-center justify-start gap-2 rounded-md p-2 text-sm font-medium hover:bg-muted">
+          <button type="button" aria-label="Account menu" className="flex items-center justify-start gap-2 rounded-md p-2 text-sm font-medium hover:bg-muted">
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{initials}</span>
             <span className="min-w-0 truncate">{name}</span>
           </button>
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" side="top">
+      <DropdownMenuContent align="end" side="bottom">
         <DropdownMenuItem asChild><Link to="/profile">Profile</Link></DropdownMenuItem>
         {isAdmin && <DropdownMenuItem asChild><Link to="/admin">Administration</Link></DropdownMenuItem>}
         <DropdownMenuItem onClick={() => { void supabase.auth.signOut(); nav({ to: "/" }); }}>Sign out</DropdownMenuItem>
@@ -103,13 +83,13 @@ function AvatarMenu({ mobile = false }: { mobile?: boolean }) {
   );
 }
 
-function AccountLinks() {
+function AccountLinks({ horizontal = false }: { horizontal?: boolean }) {
   const { user, ready } = useAuth();
   if (!ready || user) return null;
   return (
-    <div className="mt-auto space-y-2">
-      <Link to="/auth" aria-label="Sign in" className="flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground"><LogIn className="h-4 w-4 shrink-0" /><span>Sign in</span></Link>
-      <Link to="/auth" search={{ mode: "signup" }} aria-label="Sign up" className="flex items-center justify-center gap-2 rounded-md border border-primary px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-primary"><UserPlus className="h-4 w-4 shrink-0" /><span>Sign up</span></Link>
+    <div className={horizontal ? "flex items-center gap-2" : "space-y-2"}>
+      <Link to="/auth" aria-label="Sign in" className="flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"><LogIn className="h-4 w-4 shrink-0" /><span>Sign in</span></Link>
+      <Link to="/auth" search={{ mode: "signup" }} aria-label="Sign up" className="flex items-center justify-center gap-2 rounded-md border border-primary px-3 py-2 text-xs font-bold uppercase tracking-wider text-primary"><UserPlus className="h-4 w-4 shrink-0" /><span>Sign up</span></Link>
     </div>
   );
 }
@@ -126,15 +106,38 @@ function HeaderAction() {
 }
 
 export function Header({ greeting = "Hi there", title, children, wide = false }: { greeting?: string; title: string; children?: ReactNode; wide?: boolean }) {
+  const path = useRouterState({ select: (s) => s.location.pathname });
   return (
-    <header className="bg-navy px-5 pb-6 pt-8 text-navy-foreground md:px-10 md:pt-10">
+    <header className="bg-navy px-5 pb-6 pt-5 text-navy-foreground md:px-10">
       <div className="mx-auto max-w-6xl">
+        <div className="mb-5 hidden items-center justify-between gap-4 border-b border-navy-foreground/10 pb-4 md:flex">
+          <div className="flex items-center gap-6">
+            <Link to="/" aria-label="Home"><img src={logo} alt="Plusticity" className="h-10 w-auto object-contain" /></Link>
+            <nav className="flex items-center gap-1">
+              {[...tabs, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const].map((t) => {
+                const active = path === t.to;
+                return (
+                  <Link key={t.to} to={t.to} aria-label={t.label}
+                    className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${active ? "bg-primary text-primary-foreground" : "text-navy-foreground/80 hover:bg-navy-foreground/10"}`}>
+                    <t.icon className="h-4 w-4 shrink-0" />{t.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link to="/notifications" aria-label="Notifications" className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-navy-foreground/10 text-navy-foreground hover:bg-navy-foreground/20"><Bell className="h-4 w-4" /></Link>
+            <LanguageSwitcher />
+            <AccountLinks horizontal />
+            <AvatarMenu horizontal />
+          </div>
+        </div>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">{greeting}</p>
             <h1 className="mt-1 text-xl font-bold tracking-tight md:text-3xl">{title}</h1>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2 md:hidden">
             <Link to="/notifications" aria-label="Notifications" className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-navy-foreground/10 text-navy-foreground hover:bg-navy-foreground/20"><Bell className="h-5 w-5" /></Link>
             <LanguageSwitcher />
             <HeaderAction />

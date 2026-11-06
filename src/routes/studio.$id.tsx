@@ -767,6 +767,18 @@ function Editor() {
         )}
         {screen === "build" && buildSub === "overview" && (
         <div className="min-w-0 space-y-6">
+          {modules.length === 0 && (
+          <section className="space-y-3 rounded-2xl border border-dashed border-border p-4">
+            <h2 className="font-semibold">Add your first lesson</h2>
+            <p className="text-xs text-muted-foreground">Add one lesson to create your first module, then it gets its own step above with Lessons, Content, Media, Activities and Assessment tabs.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={() => addLesson("video")}><Video className="h-4 w-4" />Video</Button>
+              <VideoLibraryPicker courseId={id} position={lessons?.length ?? 0} usedItemIds={videoLinks.map((v) => v.item_id)} onAdded={() => { refresh(); void refetchLinks(); }} />
+              <Button size="sm" variant="outline" onClick={() => addLesson("reading")}><FileText className="h-4 w-4" />Reading</Button>
+              <Button size="sm" variant="outline" onClick={() => addLesson("quiz")}><HelpCircle className="h-4 w-4" />Quiz</Button>
+            </div>
+          </section>
+          )}
           <section className="space-y-3 rounded-2xl border border-border p-4">
             <h2 className="font-semibold">Course Factory — source import</h2>
             <nav aria-label="Course Factory steps" className="flex flex-wrap gap-2">

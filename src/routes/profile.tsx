@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Award, BadgeCheck, KeyRound, LogOut, Printer, ShieldCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { credentialCode } from "@/lib/studio";
-import logo from "@/assets/plusticity-logo.png";
+import logo from "@/assets/plusticity-logo-navy.png";
 import { Phone, Header, Sheet, useIsAdmin } from "@/components/AppShell";
 import { CourseCard } from "./index";
 import { courses } from "@/lib/courses";
