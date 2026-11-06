@@ -111,20 +111,18 @@ export function Header({ greeting = "Hi there", title, children, wide = false }:
     <header className="bg-navy px-5 pb-6 pt-5 text-navy-foreground md:px-10">
       <div className="mx-auto max-w-6xl">
         <div className="mb-5 hidden items-center justify-between gap-4 border-b border-navy-foreground/10 pb-4 md:flex">
-          <div className="flex items-center gap-6">
-            <Link to="/" aria-label="Home"><img src={logo} alt="Plusticity" className="h-10 w-auto object-contain" /></Link>
-            <nav className="flex items-center gap-1">
-              {[...tabs, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const].map((t) => {
-                const active = path === t.to;
-                return (
-                  <Link key={t.to} to={t.to} aria-label={t.label}
-                    className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${active ? "bg-primary text-primary-foreground" : "text-navy-foreground/80 hover:bg-navy-foreground/10"}`}>
-                    <t.icon className="h-4 w-4 shrink-0" />{t.label}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
+          <Link to="/" aria-label="Home" className="shrink-0"><img src={logo} alt="Plusticity" className="h-[60px] w-auto object-contain" /></Link>
+          <nav className="flex flex-1 items-center justify-center gap-1">
+            {[...tabs, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const].map((t) => {
+              const active = path === t.to;
+              return (
+                <Link key={t.to} to={t.to} aria-label={t.label}
+                  className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${active ? "bg-primary text-primary-foreground" : "text-navy-foreground/80 hover:bg-navy-foreground/10"}`}>
+                  <t.icon className="h-4 w-4 shrink-0" />{t.label}
+                </Link>
+              );
+            })}
+          </nav>
           <div className="flex shrink-0 items-center gap-2">
             <Link to="/notifications" aria-label="Notifications" className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-navy-foreground/10 text-navy-foreground hover:bg-navy-foreground/20"><Bell className="h-4 w-4" /></Link>
             <LanguageSwitcher />

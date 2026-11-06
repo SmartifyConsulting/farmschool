@@ -104,9 +104,11 @@ function Index() {
   const inProgress = courses.filter((c) => { const p = courseProgress(c, data); return p.started && p.pct < 100; });
   return (
     <Phone>
-      <Header greeting={user ? `Hi, ${user.email?.split("@")[0]}` : "Welcome"} title="How will you grow today?" />
+      <Header greeting="" title="" />
       <Sheet>
-        <SearchBox />
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">{user ? `Hi, ${user.email?.split("@")[0]}` : "Welcome"}</p>
+        <h1 className="mt-1 text-xl font-bold tracking-tight text-navy md:text-3xl">How will you grow today?</h1>
+        <div className="mt-4"><SearchBox /></div>
         <Hero />
         <div className="my-8">
           <Link to="/studio" className="block rounded-md border border-border p-5"><p className="font-semibold">Course Studio</p><p className="text-xs text-muted-foreground">Trainers: build lessons, videos and quizzes.</p></Link>
