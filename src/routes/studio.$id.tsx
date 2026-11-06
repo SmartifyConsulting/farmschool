@@ -180,11 +180,12 @@ function lessonIsComplete(lesson: LessonRow) {
   return lesson.body.trim().length > 0 && !lesson.body.includes("Review required before publishing.");
 }
 
-type Screen = { view: "details" } | { view: "overview" } | { view: "module"; key: string };
+type Screen = "details" | "build" | "performance" | "publish";
 
 function Editor() {
   const { id } = Route.useParams();
-  const [screen, setScreen] = useState<Screen>({ view: "details" });
+  const [screen, setScreen] = useState<Screen>("details");
+  const [buildSub, setBuildSub] = useState<string>("overview");
   const [factoryStep, setFactoryStep] = useState(0);
   const [draftGroupIndex, setDraftGroupIndex] = useState(0);
   const qc = useQueryClient();
@@ -203,7 +204,6 @@ function Editor() {
   const [batchRunning, setBatchRunning] = useState(false);
   const [batchProgress, setBatchProgress] = useState("");
   const [batchDrafts, setBatchDrafts] = useState<{ sourceTitle: string; sourceRefs: string; lessonTitle: string; lessonSummary: string; questions: { question: string; options: string[]; correctIndex: number; sourceQuote: string }[] }[]>([]);
-  const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [designChoices, setDesignChoices] = useState<Record<number, string[]>>({});
   const [designApproved, setDesignApproved] = useState<Record<number, boolean>>({});
   const [designRationale, setDesignRationale] = useState<Record<number, string>>({});
@@ -457,16 +457,20 @@ function Editor() {
       setSourcePages(pages);
       setSourceText(text);
       setDraft(null);
-      toast.success("Manual extracted. Analyse its structure to preview the course outline.");
+      previewSource({ pages, name: file.name, text });
+      setDraftGroupIndex(0);
+      setFactoryStep(1);
+      toast.success("Manual extracted and analysed. Review its detected modules below.");
     } catch (error) {
       toast.error(friendlyError(error, "Could not read file."));
     } finally {
       setReadingFile(false);
     }
   };
-  const previewSource = () => {
+  const previewSource = (override?: { pages?: SourcePage[]; name?: string; text?: string }) => {
     try {
-      const next = buildCourseDraft(form.title || course?.title || "Course", sourcePages ?? [{ sourceId: sourceName.trim() || "Pasted source", page: 1, text: sourceText }]);
+      const pages = override?.pages ?? sourcePages ?? [{ sourceId: (override?.name ?? sourceName).trim() || "Pasted source", page: 1, text: override?.text ?? sourceText }];
+      const next = buildCourseDraft(form.title || course?.title || "Course", pages);
       setDraft(next); setDesignChoices({}); setDesignApproved({}); setDesignRationale({});
       if (!next.lessons.length) toast.error("No readable lessons found.");
     } catch (error) { toast.error(friendlyError(error, "Could not parse source.")); }
@@ -629,7 +633,6 @@ function Editor() {
 
   const setPublished = async (published: boolean) => {
     if (published && !readyToPublish) { toast.error("Complete the publishing checklist and save your course details first."); return; }
-    if (published && !reviewConfirmed) { toast.error("Confirm that you have reviewed the course and its quizzes."); return; }
     if (published && !lessons?.length) { toast.error("Add at least one lesson before publishing."); return; }
     if (published && lessons?.some((lesson) => lesson.body.includes("Review required before publishing."))) { toast.error("Imported lessons still need review. Edit each imported lesson and remove the review notice after verifying the content."); return; }
     if (published) {
@@ -638,7 +641,7 @@ function Editor() {
     }
     const { error } = await supabase.from("studio_courses").update({ published }).eq("id", id);
     if (error) { toast.error(/creator|approv/i.test(error.message) ? "Your creator application must be approved before you can publish." : "We couldn't change the publishing status. Please try again.", /creator|approv/i.test(error.message) ? { action: { label: "Apply", onClick: () => nav({ to: "/creator-application" }) } } : undefined); return; }
-    setReviewConfirmed(false); refresh();
+    refresh();
     toast.success(published ? "Published — it now appears in the catalogue." : "Moved back to draft.");
   };
   const [deleting, setDeleting] = useState(false);
@@ -665,7 +668,7 @@ function Editor() {
   if (!course) return <Phone><Header title="Course not found" /><Sheet><Link to="/studio" className="text-primary">Back to Studio</Link></Sheet></Phone>;
   return (
     <Phone>
-      <Header wide greeting={course.published ? "Published" : "Draft"} title={course.title}>
+      <Header wide greeting={course.published ? "Published" : "Draft"} title="Course editor">
         <div className="mt-3 flex flex-wrap gap-2">
           <Link to="/studio" className="flex items-center gap-1 rounded-full border border-primary-foreground/50 px-3 py-1 text-xs"><ArrowLeft className="h-3 w-3" />All my courses</Link>
           <Link to="/class/$id" params={{ id }} className="flex items-center gap-1 rounded-full border border-primary-foreground/50 px-3 py-1 text-xs"><Eye className="h-3 w-3" />Preview</Link>
@@ -675,27 +678,43 @@ function Editor() {
       <Sheet wide>
         <div className="min-w-0 space-y-6">
         <nav aria-label="Course setup steps" className="flex items-center gap-2 overflow-x-auto pb-1">
-          <button type="button" onClick={() => setScreen({ view: "details" })}
-            className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors ${screen.view === "details" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
+          <button type="button" onClick={() => setScreen("details")}
+            className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors ${screen === "details" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
             Course details
           </button>
-          <button type="button" onClick={() => setScreen({ view: "overview" })}
-            className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors ${screen.view === "overview" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
-            <LayoutGrid className="h-4 w-4" />Course Overview
+          <button type="button" onClick={() => setScreen("build")}
+            className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors ${screen === "build" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
+            <LayoutGrid className="h-4 w-4" />Course Build
           </button>
-          {modules.map((m) => {
-            const active = screen.view === "module" && screen.key === m.key;
+          <button type="button" onClick={() => setScreen("performance")}
+            className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors ${screen === "performance" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
+            Course Performance
+          </button>
+          <button type="button" onClick={() => setScreen("publish")}
+            className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors ${screen === "publish" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
+            Publish
+          </button>
+        </nav>
+        {screen === "build" && (
+        <nav aria-label="Course Build steps" className="flex items-center gap-2 overflow-x-auto pb-1">
+          <button type="button" onClick={() => setBuildSub("overview")}
+            className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${buildSub === "overview" ? "bg-secondary text-secondary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
+            Overview
+          </button>
+          {modules.map((m, i) => {
+            const active = buildSub === m.key;
             const complete = m.lessons.length > 0 && m.lessons.every(lessonIsComplete);
             return (
-              <button key={m.key} type="button" onClick={() => setScreen({ view: "module", key: m.key })}
-                className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors ${active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
-                <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-xs ${complete ? "bg-emerald-500 text-white" : active ? "bg-primary-foreground text-primary" : "bg-background"}`}>{complete ? <Check className="h-3 w-3" /> : m.lessons.length}</span>
-                {m.title}
+              <button key={m.key} type="button" onClick={() => setBuildSub(m.key)}
+                className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${active ? "bg-secondary text-secondary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
+                <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full text-[10px] ${complete ? "bg-emerald-500 text-white" : "bg-background"}`}>{complete ? <Check className="h-2.5 w-2.5" /> : i + 1}</span>
+                Step {i + 1}
               </button>
             );
           })}
         </nav>
-        {screen.view === "details" && (
+        )}
+        {screen === "details" && (
         <div className="space-y-4">
           <section className="flex h-full flex-col space-y-3 rounded-2xl border border-border p-4">
             <h2 className="font-semibold">Course details</h2>
@@ -743,31 +762,11 @@ function Editor() {
             </div>
             <Button onClick={saveDetails} className="mt-auto w-full">Save details</Button>
           </section>
-          <div className="flex justify-end"><Button onClick={() => setScreen({ view: "overview" })}>Next: Course Overview</Button></div>
+          <div className="flex justify-end"><Button onClick={() => { setScreen("build"); setBuildSub("overview"); }}>Next: Course Build</Button></div>
         </div>
         )}
-        {screen.view === "overview" && (
+        {screen === "build" && buildSub === "overview" && (
         <div className="min-w-0 space-y-6">
-          <section className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div><h2 className="font-semibold">Modules</h2><p className="text-xs text-muted-foreground">Open a module to edit its lessons, content, media, activities and assessment.</p></div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {modules.map((m) => {
-                const complete = m.lessons.length > 0 && m.lessons.every(lessonIsComplete);
-                return (
-                  <button key={m.key} type="button" onClick={() => setScreen({ view: "module", key: m.key })}
-                    className="min-w-0 rounded-2xl border border-border p-4 text-left hover:bg-muted/50">
-                    <div className="flex items-start justify-between gap-2"><p className="font-semibold">{m.title}</p>
-                      <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs ${complete ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground"}`}>{complete ? <Check className="h-3.5 w-3.5" /> : m.lessons.length}</span>
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">{m.lessons.length} lesson{m.lessons.length === 1 ? "" : "s"} · {complete ? "Complete" : m.lessons.length ? "In progress" : "Empty"}</p>
-                  </button>
-                );
-              })}
-              {modules.length === 0 && <p className="col-span-full rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">No modules yet — import a source manual below, or add a lesson to start your first module.</p>}
-            </div>
-          </section>
           <section className="space-y-3 rounded-2xl border border-border p-4">
             <h2 className="font-semibold">Course Factory — source import</h2>
             <nav aria-label="Course Factory steps" className="flex flex-wrap gap-2">
@@ -909,39 +908,41 @@ function Editor() {
               {course.published && <p className="text-xs text-destructive">Unpublish the course before importing draft material.</p>}
             </div>) : <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Upload or paste a source manual and analyse it first.</p>)}
           </section>
+        </div>
+        )}
+        {screen === "performance" && (
+        <div className="min-w-0 space-y-6">
+          <CourseAnalytics courseId={id} />
+        </div>
+        )}
+        {screen === "publish" && (
+        <div className="min-w-0 space-y-6">
           <div className="grid min-w-0 items-stretch gap-6 lg:grid-cols-2">
             <section className="flex h-full flex-col space-y-2 rounded-2xl border border-border p-4">
-              <h2 className="font-semibold">Publishing checklist</h2>
-              <p className="text-xs text-muted-foreground">Finish these steps before making your course visible to learners. This is a trainer self-review, not marketplace verification.</p>
-              <ul className="space-y-1.5">
-                {readiness.map((item) => <li key={item.label} className="flex items-start gap-2 text-xs">
-                  <span aria-hidden="true" className={item.ready ? "text-primary" : "text-muted-foreground"}>{item.ready ? "✓" : "○"}</span>
-                  <span>{item.label}</span>
-                </li>)}
-              </ul>
-              {!course.published && <label className="mb-3 flex items-start gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={reviewConfirmed} onChange={(e) => setReviewConfirmed(e.target.checked)} className="mt-0.5" />I have reviewed all lessons, sources and quiz answers for accuracy before publishing.</label>}
+              <h2 className="font-semibold">Publish</h2>
+              <p className="text-xs text-muted-foreground">Course details, modules and lesson content are checked automatically before this is allowed.</p>
               {course.published ? <Button variant="outline" className="w-full" onClick={() => setPublished(false)}>Unpublish</Button>
                 : <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={!readyToPublish} onClick={() => setPublished(true)}>Publish to catalogue</Button>}
+              {!readyToPublish && !course.published && <p className="text-xs text-muted-foreground">Finish the course title, description, industry/topic, and add at least one lesson with every imported lesson reviewed, to enable publishing.</p>}
               <Button variant="ghost" className="mt-2 w-full text-destructive" onClick={remove} disabled={deleting}><Trash2 className="h-4 w-4" />{deleting ? "Deleting…" : "Delete course"}</Button>
             </section>
             <aside className="flex h-full flex-col space-y-3 rounded-2xl border border-border p-4"><h2 className="font-semibold">Trainer review</h2><p className="text-sm text-muted-foreground">Check the source evidence, lesson content and assessments before publishing.</p><div className="rounded-lg bg-muted/40 p-3 text-xs"><p className="font-medium">AI learning design</p><p className="mt-1 text-muted-foreground">Proposed teaching and assessment methods with trainer approval are planned, not yet active.</p></div><Link to="/class/$id" params={{ id }} className="inline-flex items-center gap-2 text-sm font-medium text-primary"><Eye className="h-4 w-4" />Preview as learner</Link></aside>
           </div>
-          <CourseAnalytics courseId={id} />
         </div>
         )}
-        {screen.view === "module" && (() => {
-          const moduleIndex = modules.findIndex((m) => m.key === screen.key);
+        {screen === "build" && buildSub !== "overview" && (() => {
+          const moduleIndex = modules.findIndex((m) => m.key === buildSub);
           const mod = modules[moduleIndex];
-          if (!mod) return <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Module not found. <button type="button" className="font-medium text-primary" onClick={() => setScreen({ view: "overview" })}>Back to Course Overview</button></p>;
+          if (!mod) return <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Module not found. <button type="button" className="font-medium text-primary" onClick={() => setBuildSub("overview")}>Back to Overview</button></p>;
           const dGroup = draftGroupFor(mod.title);
           const videoLessons = mod.lessons.filter((l) => l.kind === "video");
           const quizLessons = mod.lessons.filter((l) => l.kind === "quiz");
-          const goToModule = (index: number) => { const next = modules[index]; if (next) setScreen({ view: "module", key: next.key }); else setScreen({ view: "overview" }); };
+          const goToModule = (index: number) => { const next = modules[index]; setBuildSub(next ? next.key : "overview"); };
           return (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div><h2 className="font-semibold">{mod.title}</h2><p className="text-xs text-muted-foreground">{mod.lessons.length} lesson{mod.lessons.length === 1 ? "" : "s"}</p></div>
-              <Button size="sm" variant="outline" onClick={() => setScreen({ view: "overview" })}><LayoutGrid className="h-4 w-4" />Course Overview</Button>
+              <Button size="sm" variant="outline" onClick={() => setBuildSub("overview")}><LayoutGrid className="h-4 w-4" />Overview</Button>
             </div>
             <Tabs defaultValue="lessons">
               <TabsList className="flex-wrap">
@@ -985,7 +986,7 @@ function Editor() {
                     <h3 className="font-semibold">Source sections</h3>
                     {dGroup.items.map(({ lesson, index: i }) => <details key={i} className="rounded-lg border border-border bg-muted/20 p-3"><summary className="cursor-pointer text-sm font-medium">{lesson.title} <span className="text-xs font-normal text-muted-foreground">· {lesson.sourceRefs.length} source pages</span></summary><p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{lesson.body.slice(0, 2500)}{lesson.body.length > 2500 ? "…" : ""}</p><p className="mt-2 text-xs text-muted-foreground">Source: {lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join(", ")}</p></details>)}
                   </div>
-                </>) : <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">No AI draft content loaded for this module. Import a source manual from Course Overview to review it here.</p>}
+                </>) : <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">No AI draft content loaded for this module. Import a source manual from Course Build to review it here.</p>}
               </TabsContent>
               <TabsContent value="media" className="space-y-3">
                 <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => addLesson("video", mod.key === "lessons" ? undefined : mod.title)}><Video className="h-4 w-4" />Add video lesson</Button><VideoLibraryPicker courseId={id} position={lessons?.length ?? 0} usedItemIds={videoLinks.map((v) => v.item_id)} onAdded={() => { refresh(); void refetchLinks(); }} /></div>
@@ -1009,7 +1010,7 @@ function Editor() {
                       </div>
                     </details>)}
                   </div>
-                ) : <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">No AI activity storyboard for this module yet. Import a source manual from Course Overview to generate one.</p>}
+                ) : <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">No AI activity storyboard for this module yet. Import a source manual from Course Build to generate one.</p>}
               </TabsContent>
               <TabsContent value="assessment" className="space-y-3">
                 {dGroup && <div className="space-y-2 rounded-xl border border-border bg-background p-4">
@@ -1028,8 +1029,8 @@ function Editor() {
               </TabsContent>
             </Tabs>
             <div className="flex justify-between">
-              <Button variant="outline" onClick={() => moduleIndex > 0 ? goToModule(moduleIndex - 1) : setScreen({ view: "overview" })}><ChevronLeft className="h-4 w-4" />{moduleIndex > 0 ? "Previous module" : "Course Overview"}</Button>
-              <Button onClick={() => moduleIndex < modules.length - 1 ? goToModule(moduleIndex + 1) : setScreen({ view: "overview" })}>{moduleIndex < modules.length - 1 ? "Save & continue" : "Finish · Course Overview"}<ChevronRight className="h-4 w-4" /></Button>
+              <Button variant="outline" onClick={() => moduleIndex > 0 ? goToModule(moduleIndex - 1) : setBuildSub("overview")}><ChevronLeft className="h-4 w-4" />{moduleIndex > 0 ? "Previous module" : "Overview"}</Button>
+              <Button onClick={() => moduleIndex < modules.length - 1 ? goToModule(moduleIndex + 1) : setScreen("publish")}>{moduleIndex < modules.length - 1 ? "Save & continue" : "Finish · Publish"}<ChevronRight className="h-4 w-4" /></Button>
             </div>
           </div>
           );
