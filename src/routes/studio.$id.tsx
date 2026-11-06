@@ -176,11 +176,11 @@ function lessonIsComplete(lesson: LessonRow) {
   return lesson.body.trim().length > 0 && !lesson.body.includes("Review required before publishing.");
 }
 
-type Screen = "details" | "build" | "performance" | "publish";
+type Screen = "build" | "performance" | "publish";
 
 function Editor() {
   const { id } = Route.useParams();
-  const [screen, setScreen] = useState<Screen>("details");
+  const [screen, setScreen] = useState<Screen>("build");
   const [buildSub, setBuildSub] = useState<string>("overview");
   const [factoryStep, setFactoryStep] = useState(0);
   const [draftGroupIndex, setDraftGroupIndex] = useState(0);
@@ -710,10 +710,6 @@ function Editor() {
       <Sheet wide>
         <div className="min-w-0 space-y-6">
         <nav aria-label="Course setup steps" className="flex items-center gap-2 overflow-x-auto pb-1">
-          <button type="button" onClick={() => setScreen("details")}
-            className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors ${screen === "details" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
-            Course details
-          </button>
           <button type="button" onClick={() => setScreen("build")}
             className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors ${screen === "build" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
             <LayoutGrid className="h-4 w-4" />Course Build
@@ -746,8 +742,8 @@ function Editor() {
           })}
         </nav>
         )}
-        {screen === "details" && (
-        <div className="space-y-4">
+        {screen === "build" && buildSub === "overview" && (
+        <div className="min-w-0 space-y-6">
           <section className="flex h-full flex-col space-y-3 rounded-2xl border border-border p-4">
             <h2 className="font-semibold">Course details</h2>
             <div className="grid flex-1 gap-4 sm:grid-cols-2">
@@ -794,11 +790,6 @@ function Editor() {
             </div>
             <Button onClick={saveDetails} className="mt-auto w-full">Save details</Button>
           </section>
-          <div className="flex justify-end"><Button onClick={() => { setScreen("build"); setBuildSub("overview"); }}>Next: Course Build</Button></div>
-        </div>
-        )}
-        {screen === "build" && buildSub === "overview" && (
-        <div className="min-w-0 space-y-6">
           {modules.length === 0 && (
           <section className="space-y-3 rounded-2xl border border-dashed border-border p-4">
             <h2 className="font-semibold">Add your first lesson</h2>
