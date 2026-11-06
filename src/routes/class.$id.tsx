@@ -60,8 +60,10 @@ function ClassPage() {
 
   return (
     <Phone>
-      <Header greeting={`${course.category} · ${course.level}`} title={course.title} />
+      <Header greeting="" title="" />
       <Sheet>
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">{course.category} · {course.level}</p>
+        <h1 className="mt-1 mb-4 text-xl font-bold tracking-tight text-navy md:text-3xl">{course.title}</h1>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           <div className="min-w-0 space-y-4">
             {lesson ? (<>
