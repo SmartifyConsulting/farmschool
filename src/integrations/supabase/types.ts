@@ -598,6 +598,83 @@ export type Database = {
         }
         Relationships: []
       }
+      scorm_attempts: {
+        Row: {
+          id: string
+          lesson_location: string
+          lesson_status: string
+          package_id: string
+          score_max: number | null
+          score_raw: number | null
+          suspend_data: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          lesson_location?: string
+          lesson_status?: string
+          package_id: string
+          score_max?: number | null
+          score_raw?: number | null
+          suspend_data?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          id?: string
+          lesson_location?: string
+          lesson_status?: string
+          package_id?: string
+          score_max?: number | null
+          score_raw?: number | null
+          suspend_data?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scorm_attempts_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "scorm_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scorm_packages: {
+        Row: {
+          author_id: string
+          created_at: string
+          entry_path: string
+          entry_url: string
+          file_count: number
+          id: string
+          scorm_version: string
+          title: string
+        }
+        Insert: {
+          author_id?: string
+          created_at?: string
+          entry_path: string
+          entry_url: string
+          file_count?: number
+          id?: string
+          scorm_version?: string
+          title: string
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          entry_path?: string
+          entry_url?: string
+          file_count?: number
+          id?: string
+          scorm_version?: string
+          title?: string
+        }
+        Relationships: []
+      }
       studio_course_source_drafts: {
         Row: {
           course_id: string

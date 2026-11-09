@@ -36,7 +36,10 @@ import { Route as ApiCourseWizardRouteImport } from './routes/api/course-wizard'
 import { Route as ClassIdRouteImport } from './routes/class.$id'
 import { Route as CourseIdRouteImport } from './routes/course.$id'
 import { Route as LearningActivitiesCourseIdRouteImport } from './routes/learning-activities.$courseId'
+import { Route as ScormIndexRouteImport } from './routes/scorm.index'
+import { Route as ScormIdRouteImport } from './routes/scorm.$id'
 import { Route as StudioIdRouteImport } from './routes/studio.$id'
+import { Route as ApiScormFileSplatRouteImport } from './routes/api/scorm-file.$'
 import { Route as LessonCourseIdLessonIdRouteImport } from './routes/lesson.$courseId.$lessonId'
 import { Route as ApiPublicV1CoursesRouteImport } from './routes/api/public/v1/courses'
 import { Route as ApiPublicV1ProgressRouteImport } from './routes/api/public/v1/progress'
@@ -177,10 +180,25 @@ const LearningActivitiesCourseIdRoute =
     path: '/learning-activities/$courseId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ScormIndexRoute = ScormIndexRouteImport.update({
+  id: '/scorm/',
+  path: '/scorm/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScormIdRoute = ScormIdRouteImport.update({
+  id: '/scorm/$id',
+  path: '/scorm/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StudioIdRoute = StudioIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => StudioRoute,
+} as any)
+const ApiScormFileSplatRoute = ApiScormFileSplatRouteImport.update({
+  id: '/api/scorm-file/$',
+  path: '/api/scorm-file/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const LessonCourseIdLessonIdRoute = LessonCourseIdLessonIdRouteImport.update({
   id: '/lesson/$courseId/$lessonId',
@@ -225,8 +243,11 @@ export interface FileRoutesByFullPath {
   '/class/$id': typeof ClassIdRoute
   '/course/$id': typeof CourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
+  '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/scorm/': typeof ScormIndexRoute
+  '/api/scorm-file/$': typeof ApiScormFileSplatRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
   '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
@@ -258,8 +279,11 @@ export interface FileRoutesByTo {
   '/class/$id': typeof ClassIdRoute
   '/course/$id': typeof CourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
+  '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
   '/admin': typeof AdminIndexRoute
+  '/scorm': typeof ScormIndexRoute
+  '/api/scorm-file/$': typeof ApiScormFileSplatRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
   '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
@@ -292,8 +316,11 @@ export interface FileRoutesById {
   '/class/$id': typeof ClassIdRoute
   '/course/$id': typeof CourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
+  '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/scorm/': typeof ScormIndexRoute
+  '/api/scorm-file/$': typeof ApiScormFileSplatRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
   '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
@@ -327,8 +354,11 @@ export interface FileRouteTypes {
     | '/class/$id'
     | '/course/$id'
     | '/learning-activities/$courseId'
+    | '/scorm/$id'
     | '/studio/$id'
     | '/admin/'
+    | '/scorm/'
+    | '/api/scorm-file/$'
     | '/lesson/$courseId/$lessonId'
     | '/api/public/v1/courses'
     | '/api/public/v1/progress'
@@ -360,8 +390,11 @@ export interface FileRouteTypes {
     | '/class/$id'
     | '/course/$id'
     | '/learning-activities/$courseId'
+    | '/scorm/$id'
     | '/studio/$id'
     | '/admin'
+    | '/scorm'
+    | '/api/scorm-file/$'
     | '/lesson/$courseId/$lessonId'
     | '/api/public/v1/courses'
     | '/api/public/v1/progress'
@@ -393,8 +426,11 @@ export interface FileRouteTypes {
     | '/class/$id'
     | '/course/$id'
     | '/learning-activities/$courseId'
+    | '/scorm/$id'
     | '/studio/$id'
     | '/admin/'
+    | '/scorm/'
+    | '/api/scorm-file/$'
     | '/lesson/$courseId/$lessonId'
     | '/api/public/v1/courses'
     | '/api/public/v1/progress'
@@ -427,7 +463,10 @@ export interface RootRouteChildren {
   ClassIdRoute: typeof ClassIdRoute
   CourseIdRoute: typeof CourseIdRoute
   LearningActivitiesCourseIdRoute: typeof LearningActivitiesCourseIdRoute
+  ScormIdRoute: typeof ScormIdRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  ScormIndexRoute: typeof ScormIndexRoute
+  ApiScormFileSplatRoute: typeof ApiScormFileSplatRoute
   LessonCourseIdLessonIdRoute: typeof LessonCourseIdLessonIdRoute
   ApiPublicV1CoursesRoute: typeof ApiPublicV1CoursesRoute
   ApiPublicV1ProgressRoute: typeof ApiPublicV1ProgressRoute
@@ -624,12 +663,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LearningActivitiesCourseIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/scorm/': {
+      id: '/scorm/'
+      path: '/scorm'
+      fullPath: '/scorm/'
+      preLoaderRoute: typeof ScormIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scorm/$id': {
+      id: '/scorm/$id'
+      path: '/scorm/$id'
+      fullPath: '/scorm/$id'
+      preLoaderRoute: typeof ScormIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/studio/$id': {
       id: '/studio/$id'
       path: '/$id'
       fullPath: '/studio/$id'
       preLoaderRoute: typeof StudioIdRouteImport
       parentRoute: typeof StudioRoute
+    }
+    '/api/scorm-file/$': {
+      id: '/api/scorm-file/$'
+      path: '/api/scorm-file/$'
+      fullPath: '/api/scorm-file/$'
+      preLoaderRoute: typeof ApiScormFileSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/lesson/$courseId/$lessonId': {
       id: '/lesson/$courseId/$lessonId'
@@ -693,7 +753,10 @@ const rootRouteChildren: RootRouteChildren = {
   ClassIdRoute: ClassIdRoute,
   CourseIdRoute: CourseIdRoute,
   LearningActivitiesCourseIdRoute: LearningActivitiesCourseIdRoute,
+  ScormIdRoute: ScormIdRoute,
   AdminIndexRoute: AdminIndexRoute,
+  ScormIndexRoute: ScormIndexRoute,
+  ApiScormFileSplatRoute: ApiScormFileSplatRoute,
   LessonCourseIdLessonIdRoute: LessonCourseIdLessonIdRoute,
   ApiPublicV1CoursesRoute: ApiPublicV1CoursesRoute,
   ApiPublicV1ProgressRoute: ApiPublicV1ProgressRoute,

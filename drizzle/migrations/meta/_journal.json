@@ -78,6 +78,13 @@
       "when": 1794263280962,
       "tag": "0010_studio_lock_both_content_parents",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794263517490,
+      "tag": "0011_scorm_packages",
+      "breakpoints": true
     }
   ]
 }

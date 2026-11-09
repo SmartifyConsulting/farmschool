@@ -125,7 +125,7 @@ function Studio() {
       <Header greeting="For trainers" title="Course Studio" />
       <Sheet wide>
         {ready && !user ? <p className="py-10 text-center text-sm text-muted-foreground"><Link to="/auth" className="font-semibold text-primary">Sign in</Link> to create courses.</p> : (<>
-          <p className="mb-4 text-sm text-muted-foreground">Create and edit courses here. To publish a new course, first <Link to="/creator-application" className="font-semibold text-primary">apply for creator approval</Link>.</p>
+          <p className="mb-4 text-sm text-muted-foreground">Create and edit courses here. To publish a new course, first <Link to="/creator-application" className="font-semibold text-primary">apply for creator approval</Link>. Have a SCORM package? <Link to="/scorm" className="font-semibold text-primary">Upload SCORM courses</Link>.</p>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4" />Create</Button>
             {user && <CourseWizard />}
