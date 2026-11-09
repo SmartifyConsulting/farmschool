@@ -41,10 +41,14 @@ export const claimCertificate = createServerFn({ method: "POST" })
     } else {
       const { data: c } = await context.supabase.from("studio_courses").select("id, title").eq("id", data.courseRef).maybeSingle();
       if (!c) throw new Error("Course not found.");
-      const { data: lessons } = await supabaseAdmin.from("studio_lessons").select("id, kind").eq("course_id", c.id);
+      const { data: lessons } = await supabaseAdmin.from("studio_lessons").select("id, kind, body").eq("course_id", c.id);
       const { data: passes } = await supabaseAdmin.from("quiz_attempts").select("lesson_id").eq("user_id", context.userId).eq("course_id", c.id).eq("passed", true);
       const passed = new Set((passes ?? []).map((p) => p.lesson_id));
-      if (!lessons?.length || !lessons.every((l) => (l.kind === "quiz" ? passed.has(l.id) : done.has(l.id)))) throw new Error("Finish every lesson and pass every quiz first.");
+      const { scormLessonRef } = await import("@/lib/scorm");
+      const scormIds = (lessons ?? []).map((l) => l.kind === "scorm" ? scormLessonRef(String((l as { body?: string }).body ?? "")) : null).filter((x): x is string => !!x);
+      const { data: scormDone } = scormIds.length ? await supabaseAdmin.from("scorm_attempts").select("package_id").eq("user_id", context.userId).in("package_id", scormIds).in("lesson_status", ["passed", "completed"]) : { data: [] };
+      const finishedPkgs = new Set((scormDone ?? []).map((a) => a.package_id));
+      if (!lessons?.length || !lessons.every((l) => (l.kind === "quiz" ? passed.has(l.id) : l.kind === "scorm" ? finishedPkgs.has(scormLessonRef(String((l as { body?: string }).body ?? "")) ?? "") : done.has(l.id)))) throw new Error("Finish every lesson and pass every quiz first.");
       title = c.title;
     }
     const { error } = await supabaseAdmin.from("certificates").upsert({ user_id: context.userId, source: data.source, course_ref: data.courseRef, title }, { onConflict: "user_id,source,course_ref", ignoreDuplicates: true });

@@ -85,3 +85,35 @@ export const getCourseAnalytics = createServerFn({ method: "POST" })
     const input: RosterInput = { lessons: lessons ?? [], progress: progress ?? [], attempts: attempts ?? [], certificates: certs ?? [], profiles: profiles ?? [] };
     return summariseRoster(input);
   });
+
+/** Drafts a course description from the uploaded manual (when given) or the course's lessons. Nothing is saved here. */
+export const generateCourseDescription = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ courseId: z.string().uuid(), title: z.string().max(120), sourceText: z.string().max(200000).optional() }).parse(i))
+  .handler(async ({ data, context }) => {
+    await ownCourse(context.supabase, context.userId, data.courseId);
+    const apiKey = process.env["OPENAI_API_KEY"];
+    if (!apiKey) throw new Error("The AI connection is not configured yet.");
+    const { data: count, error: quotaError } = await context.supabase.rpc("course_factory_reserve_ai_request" as never);
+    if (quotaError || typeof count !== "number") {
+      throw new Error(quotaError?.message.includes("Daily AI generation limit") ? "Your daily AI allowance is used up. Try again tomorrow." : "Your AI allowance could not be checked. Please try later.");
+    }
+    const { data: lessons } = await context.supabase.from("studio_lessons").select("title, kind, body").eq("course_id", data.courseId).order("position");
+    const outline = (lessons ?? []).map(l => ({ title: l.title, notes: l.kind === "quiz" || l.kind === "scorm" ? "" : String(l.body).slice(0, 600) }));
+    const manual = (data.sourceText ?? "").slice(0, 15000);
+    if (!manual.trim() && !outline.length && !data.title.trim()) throw new Error("Add a title, lessons or upload a manual first.");
+    const { createOpenAI } = await import("@ai-sdk/openai");
+    const { generateText, Output } = await import("ai");
+    try {
+      const { output } = await generateText({
+        model: createOpenAI({ apiKey }).responses("gpt-6-luna"), maxRetries: 1,
+        system: `${SAFETY} Write a course catalogue description: 2 short paragraphs (about 90 to 140 words total) saying who it is for and what learners will be able to do, then 3 to 5 bullet points starting with "- " listing practical outcomes. Use only topics present in the manual or lesson outline.`,
+        prompt: JSON.stringify({ title: data.title, manual: manual || undefined, lessons: outline }),
+        output: Output.object({ schema: z.object({ text: z.string().min(40).max(4000) }) }),
+      });
+      return { text: output.text, usedManual: !!manual.trim() };
+    } catch (e) {
+      console.error("generateCourseDescription failed", e);
+      throw new Error("The AI assistant couldn't finish. Please try again.");
+    }
+  });

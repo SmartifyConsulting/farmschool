@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Circle, Video, FileText, HelpCircle, Award } from "lucide-react";
+import { CheckCircle2, Circle, Video, FileText, HelpCircle, Award, Package } from "lucide-react";
 import { Phone, Header, Sheet, ProgressBar } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +13,7 @@ import { youtubeEmbed } from "@/lib/studio";
 import { toast } from "sonner";
 import { ExternalVideo, LINKED_VIDEO_SELECT, type LinkedVideo } from "@/components/ExternalVideo";
 import { FormattedLesson } from "@/components/FormattedLesson";
+import { ScormLesson } from "@/components/ScormLesson";
 
 export const Route = createFileRoute("/class/$id")({
   head: () => ({ meta: [
@@ -72,8 +73,10 @@ function ClassPage() {
                 ? <iframe src={youtubeEmbed(lesson.video_url)!} title={lesson.title} className="aspect-video w-full rounded-2xl" allow="accelerometer; encrypted-media; picture-in-picture" allowFullScreen />
                 : <video src={lesson.video_url} controls playsInline className="aspect-video w-full rounded-2xl bg-foreground" onEnded={markDone} />)}
               <h2 className="text-lg font-semibold">{lesson.title}</h2>
-              {lesson.body && lesson.kind !== "quiz" && <FormattedLesson content={lesson.body} />}
+              {lesson.kind === "scorm" && <ScormLesson key={lesson.id} body={lesson.body} onFinished={() => { if (user && !done.has(lesson.id)) save.mutate({ course_id: id, lesson_id: lesson.id, completed: true }); }} />}
+              {lesson.body && lesson.kind !== "quiz" && lesson.kind !== "scorm" && <FormattedLesson content={lesson.body} />}
               {lesson.kind === "quiz" ? <Quiz key={lesson.id} lesson={lesson} courseId={id} passed={done.has(lesson.id)} />
+                : lesson.kind === "scorm" ? <p className="text-sm text-muted-foreground">{done.has(lesson.id) ? "Completed" : "This lesson completes automatically when you finish the e-learning."}</p>
                 : <Button onClick={markDone} disabled={done.has(lesson.id)}>{done.has(lesson.id) ? "Completed" : "Mark as complete"}</Button>}
             </>) : <p className="text-sm text-muted-foreground">This course has no lessons yet.</p>}
             {course.published && activities.length > 0 && <section className="space-y-3" aria-label="Trainer-approved learning activities">
@@ -89,7 +92,7 @@ function ClassPage() {
           <aside className="space-y-3">
             {user && <ProgressBar pct={pct} label={`${count}/${total} lessons`} />}
             <ol className="space-y-1.5">
-              {(lessons ?? []).map((l, i) => { const Icon = l.kind === "video" ? Video : l.kind === "quiz" ? HelpCircle : FileText; return (
+              {(lessons ?? []).map((l, i) => { const Icon = l.kind === "video" ? Video : l.kind === "quiz" ? HelpCircle : l.kind === "scorm" ? Package : FileText; return (
                 <li key={l.id}><button onClick={() => setIdx(i)} className={`flex w-full items-center gap-3 rounded-xl border p-2.5 text-left text-sm ${i === idx ? "border-primary bg-primary/5" : "border-border"}`}>
                   <Icon className="h-4 w-4 shrink-0 text-primary" /><span className="min-w-0 flex-1 truncate">{l.title}</span>
                   {done.has(l.id) ? <CheckCircle2 className="h-4 w-4 text-secondary-foreground" /> : <Circle className="h-4 w-4 text-muted-foreground" />}

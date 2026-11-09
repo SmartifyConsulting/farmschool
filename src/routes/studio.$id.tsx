@@ -3,7 +3,7 @@ import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Plus, Trash2, Video, FileText, HelpCircle, Eye, ChevronLeft, ChevronRight, LayoutGrid, Check, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Video, FileText, HelpCircle, Eye, ChevronLeft, ChevronRight, LayoutGrid, Check, ArrowUp, ArrowDown, Package } from "lucide-react";
 import { Phone, Header, Sheet } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,9 @@ import { ManualLessonReview } from "@/components/ManualLessonReview";
 import { StudioVersions } from "@/components/StudioVersions";
 import { StudioCourseActions } from "@/components/StudioCourseActions";
 import { useAuth } from "@/hooks/useLearning";
+import { ScormPicker } from "@/components/ScormPicker";
+import { scormLessonRef } from "@/lib/scorm";
+import { DescriptionAssistant } from "@/components/DescriptionAssistant";
 
 type VideoLink = { id: string; lesson_id: string; item_id: string; objectives: string; item: { title: string; provider: { name: string } | null } | null };
 
@@ -182,6 +185,7 @@ function groupLessonsIntoModules(lessons: LessonRow[], realModules: ModuleRow[])
 function lessonIsComplete(lesson: LessonRow) {
   if (lesson.kind === "quiz") return Array.isArray(lesson.quiz) && (lesson.quiz as unknown[]).length > 0;
   if (lesson.kind === "video") return !!lesson.video_url;
+  if (lesson.kind === "scorm") return !!scormLessonRef(lesson.body);
   return lesson.body.trim().length > 0 && !lesson.body.includes("Review required before publishing.");
 }
 
@@ -637,7 +641,7 @@ function Editor() {
     queryFn: async () => ((await supabase.from("course_external_content").select("id, lesson_id, item_id, objectives, item:external_content_items(title, provider:external_content_providers(name))").eq("course_id", id)).data ?? []) as unknown as VideoLink[],
   });
   const addLesson = async (kind: string, moduleId?: string | null) => {
-    const title = kind === "quiz" ? "Knowledge check" : kind === "video" ? "New video lesson" : "New reading";
+    const title = kind === "quiz" ? "Knowledge check" : kind === "video" ? "New video lesson" : kind === "scorm" ? "SCORM e-learning" : "New reading";
     const { data, error } = await supabase.from("studio_lessons").insert({ course_id: id, kind, position: (lessons?.at(-1)?.position ?? -1) + 1, title, module_id: moduleId ?? null }).select("id").single();
     if (error || !data) toast.error("Could not add lesson."); else { refresh(); setSelectedLesson(data.id); setScreen("lesson"); }
   };
@@ -754,13 +758,14 @@ function Editor() {
           <div className="mt-2 max-h-72 space-y-4 overflow-y-auto lg:max-h-[65vh]">
             {modules.map(mod => <div key={mod.key}>
               <Button variant={screen === mod.key ? "secondary" : "ghost"} className="h-auto w-full justify-start whitespace-normal text-left text-xs font-bold" onClick={() => setScreen(mod.key)}>{mod.title}<span className="ml-auto pl-2 text-muted-foreground">{mod.lessons.length}</span></Button>
-              {mod.lessons.map(lesson => { const Icon = lesson.kind === "quiz" ? HelpCircle : lesson.kind === "video" ? Video : FileText; return <Button key={lesson.id} variant={screen === "lesson" && selectedLesson === lesson.id ? "secondary" : "ghost"} className="h-auto min-h-10 w-full justify-start whitespace-normal text-left text-xs" onClick={() => { setSelectedLesson(lesson.id); setScreen("lesson"); }}><Icon className="h-4 w-4 shrink-0" /><span className="min-w-0 flex-1 break-words">{lesson.title}</span>{lessonIsComplete(lesson) && <Check className="h-3 w-3 shrink-0 text-primary" />}</Button>; })}
+              {mod.lessons.map(lesson => { const Icon = lesson.kind === "quiz" ? HelpCircle : lesson.kind === "video" ? Video : lesson.kind === "scorm" ? Package : FileText; return <Button key={lesson.id} variant={screen === "lesson" && selectedLesson === lesson.id ? "secondary" : "ghost"} className="h-auto min-h-10 w-full justify-start whitespace-normal text-left text-xs" onClick={() => { setSelectedLesson(lesson.id); setScreen("lesson"); }}><Icon className="h-4 w-4 shrink-0" /><span className="min-w-0 flex-1 break-words">{lesson.title}</span>{lessonIsComplete(lesson) && <Check className="h-3 w-3 shrink-0 text-primary" />}</Button>; })}
             </div>)}
           </div>
           <div className="mt-4 flex flex-wrap gap-1">
             <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("reading")}><Plus className="h-3 w-3" />Reading</Button>
             <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("video")}><Video className="h-3 w-3" />Video</Button>
             <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("quiz")}><HelpCircle className="h-3 w-3" />Quiz</Button>
+            <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("scorm")}><Package className="h-3 w-3" />SCORM</Button>
           </div>
         </aside>
         <main className="min-w-0 space-y-6">
@@ -784,6 +789,7 @@ function Editor() {
               <div className="space-y-3">
                 <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} aria-label="Title" maxLength={120} placeholder="Title" />
                 <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What will learners gain from this course?" rows={4} maxLength={4000} />
+                <DescriptionAssistant courseId={id} title={form.title} sourceText={sourceText} onText={(t) => setForm(f => ({ ...f, description: t }))} />
                 <div>
                   <label className="block text-xs font-medium">Industry</label>
                   <select value={courseIndustry(form.category)} onChange={(e) => {
@@ -1129,7 +1135,7 @@ function LessonEditor({ lesson, index, onChange, courseId, sourceText, link, rea
       if (data) setQs((cur) => cur.map((q, i) => ({ ...q, answer: data.answers[i] ?? 0 })));
     });
   }, [open, lesson.id, lesson.kind]);
-  const Icon = lesson.kind === "video" ? Video : lesson.kind === "quiz" ? HelpCircle : FileText;
+  const Icon = lesson.kind === "video" ? Video : lesson.kind === "quiz" ? HelpCircle : lesson.kind === "scorm" ? Package : FileText;
   const save = async (silent = false) => {
     if (readOnly || saving) return;
     setSaving(true);
@@ -1170,8 +1176,9 @@ function LessonEditor({ lesson, index, onChange, courseId, sourceText, link, rea
         {link && <div className="rounded-xl bg-primary/5 p-3 text-xs text-muted-foreground">Library video: <strong className="text-foreground">{link.item?.title}</strong> · {link.item?.provider?.name}. Learners see the provider's player or a Watch Video button.</div>}
         {link && <Textarea value={objectives} onChange={(e) => setObjectives(e.target.value)} rows={3} maxLength={2000} placeholder="Learning objectives, one per line" aria-label="Learning objectives" />}
         {lesson.kind === "video" && !link && <Input value={video} onChange={(e) => setVideo(e.target.value)} placeholder="Video link (https://… .mp4 or YouTube)" />}
-        {lesson.kind !== "quiz" && <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={14} aria-label="Lesson notes" placeholder="Lesson notes, steps or checklist" maxLength={20000} />}
-        {!readOnly && <LessonAssistant courseId={courseId} title={title} kind={lesson.kind} text={lesson.kind === "quiz" ? sourceText : body} onText={setBody} onQuestions={(n) => setQs((cur) => [...cur.filter((q) => q.q.trim()), ...n])} />}
+        {lesson.kind === "scorm" && <ScormPicker value={scormLessonRef(body)} onChange={(pid) => setBody(`scorm:${pid}`)} />}
+        {lesson.kind !== "quiz" && lesson.kind !== "scorm" && <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={14} aria-label="Lesson notes" placeholder="Lesson notes, steps or checklist" maxLength={20000} />}
+        {!readOnly && lesson.kind !== "scorm" && <LessonAssistant courseId={courseId} title={title} kind={lesson.kind} text={lesson.kind === "quiz" ? sourceText : body} onText={setBody} onQuestions={(n) => setQs((cur) => [...cur.filter((q) => q.q.trim()), ...n])} />}
         {lesson.kind === "quiz" && <div className="space-y-3">
           {qs.map((q, qi) => (
             <div key={qi} className="space-y-1.5 rounded-xl bg-muted/50 p-2">

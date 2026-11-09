@@ -51,3 +51,31 @@ const MIME: Record<string, string> = {
 export function mimeFor(path: string) {
   return MIME[path.split(".").pop()?.toLowerCase() ?? ""] ?? "application/octet-stream";
 }
+
+const CHILDREN: Record<string, string> = {
+  "cmi.core._children": "student_id,student_name,lesson_location,credit,lesson_status,entry,score,total_time,lesson_mode,exit,session_time",
+  "cmi.core.score._children": "raw,min,max",
+  "cmi.score._children": "scaled,raw,min,max",
+  "cmi.objectives._children": "id,score,status,success_status,completion_status,description",
+  "cmi.interactions._children": "id,objectives,time,timestamp,type,correct_responses,weighting,student_response,learner_response,result,latency,description",
+  "cmi.student_data._children": "mastery_score,max_time_allowed,time_limit_action",
+  "cmi.student_preference._children": "audio,language,speed,text",
+  "cmi.learner_preference._children": "audio_level,language,delivery_speed,audio_captioning",
+};
+/** Answers SCORM `._children` keyword reads (Articulate checks these on launch); null when not a keyword. */
+export function cmiChildren(key: string): string | null {
+  if (!key.endsWith("._children")) return null;
+  return CHILDREN[key] ?? "";
+}
+/** Counts stored entries for a `._count` read, e.g. cmi.interactions._count → number of distinct cmi.interactions.N.* indexes. */
+export function cmiCount(cmi: Record<string, string>, key: string): number {
+  const prefix = key.slice(0, -"_count".length);
+  const idx = new Set<string>();
+  for (const k of Object.keys(cmi)) if (k.startsWith(prefix)) { const n = k.slice(prefix.length).split(".")[0]; if (n && /^\d+$/.test(n)) idx.add(n); }
+  return idx.size;
+}
+
+/** Studio lessons of kind "scorm" store the linked package as `scorm:<packageId>` in the body. */
+export function scormLessonRef(body: string): string | null {
+  return body.match(/^scorm:([0-9a-f-]{36})/i)?.[1] ?? null;
+}
