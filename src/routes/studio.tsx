@@ -14,6 +14,7 @@ import { STUDIO_CATEGORIES } from "@/lib/studio";
 import { INDUSTRIES, courseIndustry } from "@/lib/industries";
 import { CourseWizard } from "@/components/CourseWizard";
 import { CoverImageInput } from "@/components/CoverImageInput";
+import { StudioCourseActions } from "@/components/StudioCourseActions";
 
 export const Route = createFileRoute("/studio")({
   head: () => ({ meta: [
@@ -106,11 +107,13 @@ function NewCourseDialog({ open, onOpenChange, onCreated }: { open: boolean; onO
 function Studio() {
   const { user, ready } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
   const nav = useNavigate();
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["studio-mine", user?.id], enabled: !!user, queryFn: async () => {
     if (!user) return [];
-    return (await supabase.from("studio_courses").select("id, title, published, category, studio_lessons(count)").eq("author_id", user.id).order("updated_at", { ascending: false })).data ?? [];
+    return (await supabase.from("studio_courses").select("id, title, published, category, version_number, revision_of, studio_lessons(count), studio_modules(count)").eq("author_id", user.id).order("updated_at", { ascending: false })).data ?? [];
   } });
   const handleCreated = (id: string) => {
     setDialogOpen(false);
@@ -120,7 +123,7 @@ function Studio() {
   return (
     <Phone>
       <Header greeting="For trainers" title="Course Studio" />
-      <Sheet>
+      <Sheet wide>
         {ready && !user ? <p className="py-10 text-center text-sm text-muted-foreground"><Link to="/auth" className="font-semibold text-primary">Sign in</Link> to create courses.</p> : (<>
           <p className="mb-4 text-sm text-muted-foreground">Create and edit courses here. To publish a new course, first <Link to="/creator-application" className="font-semibold text-primary">apply for creator approval</Link>.</p>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -128,15 +131,16 @@ function Studio() {
             {user && <CourseWizard />}
           </div>
           <NewCourseDialog open={dialogOpen} onOpenChange={setDialogOpen} onCreated={handleCreated} />
+          <div className="mt-5 flex flex-wrap gap-3"><Input aria-label="Search your courses" placeholder="Search your courses" value={search} onChange={e => setSearch(e.target.value)} className="max-w-md" /><select aria-label="Course status" value={status} onChange={e => setStatus(e.target.value)} className="rounded-md border border-input bg-background px-3 py-2 text-sm"><option value="all">All courses</option><option value="draft">Drafts</option><option value="published">Published</option><option value="revision">Revisions</option></select></div>
           <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {(data ?? []).map((c) => (
-              <Link key={c.id} to="/studio/$id" params={{ id: c.id }} className="min-w-0 rounded-2xl border border-border p-4 hover:bg-muted/50">
-                <div className="flex items-start justify-between gap-2"><p className="font-semibold">{c.title}</p><PenSquare className="h-4 w-4 shrink-0 text-primary" /></div>
-                <p className="mt-1 text-xs text-muted-foreground">{c.category} · {(c.studio_lessons as unknown as { count: number }[])[0]?.count ?? 0} lessons</p>
+            {(data ?? []).filter(c => c.title.toLowerCase().includes(search.toLowerCase()) && (status === "all" || status === "published" && c.published || status === "draft" && !c.published || status === "revision" && !!c.revision_of)).map((c) => (
+              <article key={c.id} className="min-w-0 rounded-lg border border-border p-5 hover:bg-muted/50">
+                <div className="flex items-start justify-between gap-2"><Link to="/studio/$id" params={{ id: c.id }} className="break-words font-semibold hover:text-primary">{c.title}</Link><StudioCourseActions course={c} onChanged={() => qc.invalidateQueries({ queryKey: ["studio-mine"] })} /></div>
+                <p className="mt-2 text-xs text-muted-foreground">{c.category} · {(c.studio_modules as unknown as { count: number }[])[0]?.count ?? 0} modules · {(c.studio_lessons as unknown as { count: number }[])[0]?.count ?? 0} lessons</p>
                 <div className="mt-2 flex gap-2 text-[11px]">
-                  <span className={`rounded-full px-2 py-0.5 ${c.published ? "bg-secondary text-secondary-foreground" : "bg-muted text-muted-foreground"}`}>{c.published ? "Published" : "Draft"}</span>
+                  <span className={`rounded-full px-2 py-0.5 ${c.published ? "bg-secondary text-secondary-foreground" : "bg-muted text-muted-foreground"}`}>{c.published ? "Published" : c.revision_of ? "Draft revision" : "Draft"}</span><span className="text-muted-foreground">v1.{c.version_number - 1}</span>
                 </div>
-              </Link>))}
+              </article>))}
             {data?.length === 0 && <p className="col-span-full py-8 text-center text-sm text-muted-foreground">No courses yet — click Create above to start.</p>}
           </div>
         </>)}

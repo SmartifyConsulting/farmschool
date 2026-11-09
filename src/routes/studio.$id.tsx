@@ -3,7 +3,7 @@ import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Plus, Trash2, Video, FileText, HelpCircle, Eye, ChevronLeft, ChevronRight, LayoutGrid, Check } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Video, FileText, HelpCircle, Eye, ChevronLeft, ChevronRight, LayoutGrid, Check, ArrowUp, ArrowDown } from "lucide-react";
 import { Phone, Header, Sheet } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,9 @@ import { LessonAssistant } from "@/components/LessonAssistant";
 import { VideoLibraryPicker } from "@/components/VideoLibraryPicker";
 import { CoverImageInput } from "@/components/CoverImageInput";
 import { FormattedLesson } from "@/components/FormattedLesson";
+import { StudioVersions } from "@/components/StudioVersions";
+import { StudioCourseActions } from "@/components/StudioCourseActions";
+import { useAuth } from "@/hooks/useLearning";
 
 type VideoLink = { id: string; lesson_id: string; item_id: string; objectives: string; item: { title: string; provider: { name: string } | null } | null };
 
@@ -105,9 +108,9 @@ function SourceActivity({ method, lesson, courseId, published }: { method: strin
           setSaved(true);
           setApproved(false);
           setVerified(false);
-          toast.success("Activity saved to Supabase.");
+          toast.success("Activity saved.");
         } catch {
-          toast.error("Cloud save failed. Run migration 0009 in Supabase SQL Editor, then retry.");
+          toast.error("We couldn’t save the activity. Please try again.");
         } finally { setSyncing(false); }
       }}>Save draft</Button>
       <Button type="button" variant="outline" size="sm" onClick={() => void navigator.clipboard.writeText(`${activity}\\n\\nSource evidence: ${evidence}\\nSource pages: ${lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join("; ")}`).then(() => toast.success("Activity copied."), () => toast.error("Could not copy activity."))}>Copy</Button>
@@ -181,6 +184,9 @@ type Screen = string;
 function Editor() {
   const { id } = Route.useParams();
   const [screen, setScreen] = useState<Screen>("overview");
+  const [selectedLesson, setSelectedLesson] = useState<string | null>(null);
+  const [changeNote, setChangeNote] = useState("");
+  const { user } = useAuth();
   const [factoryStep, setFactoryStep] = useState(0);
   const [draftGroupIndex, setDraftGroupIndex] = useState(0);
   const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
@@ -613,8 +619,8 @@ function Editor() {
   });
   const addLesson = async (kind: string, moduleId?: string | null) => {
     const title = kind === "quiz" ? "Knowledge check" : kind === "video" ? "New video lesson" : "New reading";
-    const { error } = await supabase.from("studio_lessons").insert({ course_id: id, kind, position: lessons?.length ?? 0, title, module_id: moduleId ?? null } as never);
-    if (error) toast.error("Could not add lesson."); else refresh();
+    const { data, error } = await supabase.from("studio_lessons").insert({ course_id: id, kind, position: (lessons?.at(-1)?.position ?? -1) + 1, title, module_id: moduleId ?? null }).select("id").single();
+    if (error || !data) toast.error("Could not add lesson."); else { refresh(); setSelectedLesson(data.id); setScreen("lesson"); }
   };
   const createModule = async () => {
     const { data, error } = await supabase.from("studio_modules" as never).insert({ course_id: id, title: `Module ${(studioModules?.length ?? 0) + 1}`, position: studioModules?.length ?? 0 } as never).select("id").single();
@@ -641,6 +647,10 @@ function Editor() {
     const { error } = await supabase.from("studio_lessons").update({ module_id: moduleId } as never).eq("id", lessonId);
     if (error) { toast.error("Could not move lesson."); return; }
     refresh();
+  };
+  const reorderLesson = async (lessonId: string, direction: number) => {
+    const { error } = await supabase.rpc("studio_move_lesson", { _course_id: id, _lesson_id: lessonId, _direction: direction });
+    if (error) toast.error(friendlyError(error, "Could not move the lesson.")); else refresh();
   };
   const deleteLessons = async (lessonIds: string[]) => {
     if (!lessonIds.length) return;
@@ -670,10 +680,14 @@ function Editor() {
       const { error: approvalError } = await supabase.rpc("studio_approve_review" as never, { _course_id: id } as never);
       if (approvalError) { toast.error(friendlyError(approvalError, "We couldn't record your review. Please try again.")); return; }
     }
-    const { error } = await supabase.from("studio_courses").update({ published }).eq("id", id);
+    const { data: publishedId, error } = published
+      ? await supabase.rpc("studio_publish_version", { _course_id: id, _note: changeNote })
+      : await supabase.from("studio_courses").update({ published: false }).eq("id", id).select("id").single().then(r => ({ data: r.data?.id, error: r.error }));
     if (error) { toast.error(/creator|approv/i.test(error.message) ? "Your creator application must be approved before you can publish." : "We couldn't change the publishing status. Please try again.", /creator|approv/i.test(error.message) ? { action: { label: "Apply", onClick: () => nav({ to: "/creator-application" }) } } : undefined); return; }
     refresh();
-    toast.success(published ? "Published — it now appears in the catalogue." : "Moved back to draft.");
+    toast.success(published ? "Version published — learners can now see it." : "Moved back to draft.");
+    if (publishedId && publishedId !== id) nav({ to: "/studio/$id", params: { id: publishedId } });
+    qc.invalidateQueries({ queryKey: ["studio-versions"] });
   };
   const [deleting, setDeleting] = useState(false);
   const remove = async () => {
@@ -697,6 +711,7 @@ function Editor() {
 
   if (isLoading) return <Phone><Header title="Loading…" /></Phone>;
   if (!course) return <Phone><Header title="Course not found" /><Sheet><Link to="/studio" className="text-primary">Back to Studio</Link></Sheet></Phone>;
+  if (course.author_id !== user?.id) return <Phone><Header title="Course Studio" /><Sheet><p>Only the course owner can open this editor.</p><Link to="/studio" className="text-primary">Back to Studio</Link></Sheet></Phone>;
   return (
     <Phone>
       <Header wide greeting={course.published ? "Published" : "Draft"} title="Course editor">
@@ -707,35 +722,44 @@ function Editor() {
         </div>
       </Header>
       <Sheet wide>
-        <div className="min-w-0 space-y-6">
-        <nav aria-label="Course setup steps" className="flex items-center gap-2 overflow-x-auto pb-1">
-          <button type="button" onClick={() => setScreen("overview")}
-            className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors ${screen === "overview" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
-            <LayoutGrid className="h-4 w-4" />Overview
-          </button>
-          {modules.map((m, i) => {
-            const active = screen === m.key;
-            const complete = m.lessons.length > 0 && m.lessons.every(lessonIsComplete);
-            return (
-              <button key={m.key} type="button" onClick={() => setScreen(m.key)}
-                className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors ${active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
-                <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] ${complete ? "bg-emerald-500 text-white" : active ? "bg-primary-foreground text-primary" : "bg-background"}`}>{complete ? <Check className="h-3 w-3" /> : i + 1}</span>
-                Step {i + 1}
-              </button>
-            );
-          })}
-          <button type="button" onClick={() => setScreen("performance")}
-            className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors ${screen === "performance" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
-            Performance
-          </button>
-          <button type="button" onClick={() => setScreen("publish")}
-            className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors ${screen === "publish" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
-            Publish
-          </button>
-        </nav>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+          <div className="min-w-0"><h2 className="break-words text-xl font-semibold">{course.title}</h2><p className="mt-1 text-xs text-muted-foreground">v1.{course.version_number - 1} · {course.published ? "Published" : course.revision_of ? "Draft revision · published course unchanged" : "Draft"}</p></div>
+          <StudioCourseActions course={course} onChanged={refresh} />
+        </div>
+        <div className="grid min-w-0 gap-6 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
+        <aside className="min-w-0 border-b border-border pb-4 lg:border-b-0 lg:border-r lg:pr-5">
+          <nav aria-label="Course workspace" className="grid grid-cols-2 gap-1 lg:grid-cols-1">
+            {[{ key: "overview", label: "Course details" }, { key: "import", label: "Manual & learning design" }, { key: "performance", label: "Performance" }, { key: "history", label: "Version history" }, { key: "publish", label: "Review & publish" }].map(item => <Button key={item.key} variant={screen === item.key ? "secondary" : "ghost"} className="h-auto min-h-9 justify-start whitespace-normal text-left" onClick={() => setScreen(item.key)}>{item.label}</Button>)}
+          </nav>
+          <div className="mt-5 flex items-center justify-between"><h3 className="text-sm font-semibold">Curriculum</h3><Button size="icon" variant="ghost" title="Add module" aria-label="Add module" disabled={course.published} onClick={createModule}><Plus className="h-4 w-4" /></Button></div>
+          <div className="mt-2 max-h-72 space-y-4 overflow-y-auto lg:max-h-[65vh]">
+            {modules.map(mod => <div key={mod.key}>
+              <Button variant={screen === mod.key ? "secondary" : "ghost"} className="h-auto w-full justify-start whitespace-normal text-left text-xs font-bold" onClick={() => setScreen(mod.key)}>{mod.title}<span className="ml-auto pl-2 text-muted-foreground">{mod.lessons.length}</span></Button>
+              {mod.lessons.map(lesson => { const Icon = lesson.kind === "quiz" ? HelpCircle : lesson.kind === "video" ? Video : FileText; return <Button key={lesson.id} variant={screen === "lesson" && selectedLesson === lesson.id ? "secondary" : "ghost"} className="h-auto min-h-10 w-full justify-start whitespace-normal text-left text-xs" onClick={() => { setSelectedLesson(lesson.id); setScreen("lesson"); }}><Icon className="h-4 w-4 shrink-0" /><span className="min-w-0 flex-1 break-words">{lesson.title}</span>{lessonIsComplete(lesson) && <Check className="h-3 w-3 shrink-0 text-primary" />}</Button>; })}
+            </div>)}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-1">
+            <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("reading")}><Plus className="h-3 w-3" />Reading</Button>
+            <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("video")}><Video className="h-3 w-3" />Video</Button>
+            <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("quiz")}><HelpCircle className="h-3 w-3" />Quiz</Button>
+          </div>
+        </aside>
+        <main className="min-w-0 space-y-6">
+        {course.published && <div className="flex flex-wrap items-center justify-between gap-3 border-l-4 border-primary bg-muted p-4"><p className="text-sm">This published version is read-only. Create a draft revision to make changes.</p><StudioCourseActions course={course} onChanged={refresh} revisionOnly /></div>}
+        {screen === "history" && <StudioVersions courseId={course.revision_of ?? id} onOpened={newId => nav({ to: "/studio/$id", params: { id: newId } })} />}
+        {screen === "lesson" && (() => {
+          const lesson = lessons?.find(l => l.id === selectedLesson);
+          if (!lesson) return <p className="py-10 text-muted-foreground">Select a lesson from the curriculum, or add a new one.</p>;
+          const index = lessons?.findIndex(l => l.id === lesson.id) ?? 0;
+          return <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">Lesson editor</h2><select aria-label="Lesson module" value={lesson.module_id ?? ""} disabled={course.published} onChange={e => assignLessonToModule(lesson.id, e.target.value || null)} className="max-w-full rounded-md border border-input bg-background px-3 py-2 text-sm"><option value="">Unassigned lessons</option>{studioModules?.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}</select></div>
+            <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={index === 0 || course.published} onClick={() => reorderLesson(lesson.id, -1)}><ArrowUp className="h-4 w-4" />Move up</Button><Button size="sm" variant="outline" disabled={index === (lessons?.length ?? 0) - 1 || course.published} onClick={() => reorderLesson(lesson.id, 1)}><ArrowDown className="h-4 w-4" />Move down</Button></div>
+            <LessonEditor key={lesson.id} lesson={lesson} index={index} link={videoLinks.find(v => v.lesson_id === lesson.id)} onChange={() => { refresh(); void refetchLinks(); }} courseId={id} sourceText={lessons?.slice(0, index).reverse().find(l => l.kind !== "quiz")?.body ?? ""} readOnly={course.published} />
+          </div>;
+        })()}
         {screen === "overview" && (
-        <div className="min-w-0 space-y-6">
-          <section className="flex h-full flex-col space-y-3 rounded-2xl border border-border p-4">
+        <fieldset disabled={course.published} className="min-w-0 space-y-6">
+          <section className="flex h-full flex-col space-y-3 border-b border-border pb-6">
             <h2 className="font-semibold">Course details</h2>
             <div className="grid flex-1 gap-4 sm:grid-cols-2">
               <div className="space-y-3">
@@ -784,7 +808,7 @@ function Editor() {
           {modules.length === 0 && (
           <section className="space-y-3 rounded-2xl border border-dashed border-border p-4">
             <h2 className="font-semibold">Add your first lesson</h2>
-            <p className="text-xs text-muted-foreground">Add one lesson to create your first module, then it gets its own step above with Lessons, Content, Media, Activities and Assessment tabs.</p>
+            <p className="text-xs text-muted-foreground"></p>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={() => addLesson("video")}><Video className="h-4 w-4" />Video</Button>
               <VideoLibraryPicker courseId={id} position={lessons?.length ?? 0} usedItemIds={videoLinks.map((v) => v.item_id)} onAdded={() => { refresh(); void refetchLinks(); }} />
@@ -793,17 +817,17 @@ function Editor() {
             </div>
           </section>
           )}
-          <section className="space-y-3 rounded-2xl border border-border p-4">
+          <section className="space-y-3 border-b border-border pb-6">
             <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">Modules</h2><Button size="sm" variant="outline" onClick={createModule}><Plus className="h-4 w-4" />Add module</Button></div>
             {studioModules?.length ? <ul className="space-y-2">
               {studioModules.map((m) => <li key={m.id} className="flex items-center gap-2">
-                <Input value={m.title} onChange={(e) => renameModule(m.id, e.target.value)} className="h-8" aria-label="Module title" />
+                <Input key={m.id + m.title} defaultValue={m.title} onBlur={(e) => { if (e.target.value.trim() && e.target.value !== m.title) void renameModule(m.id, e.target.value); }} className="h-8" aria-label="Module title" />
                 <span className="shrink-0 text-xs text-muted-foreground">{modules.find((g) => g.moduleId === m.id)?.lessons.length ?? 0} lessons</span>
                 <Button size="icon" variant="ghost" aria-label="Delete module" onClick={() => deleteModule(m.id)}><Trash2 className="h-4 w-4" /></Button>
               </li>)}
             </ul> : <p className="text-xs text-muted-foreground">No modules yet. Add one, or import a manual below to create modules automatically.</p>}
           </section>
-          <section className="space-y-3 rounded-2xl border border-border p-4">
+          <section className="space-y-3 border-b border-border pb-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-semibold">Manage lessons</h2>
               {selectedLessonIds.length > 0 && <Button size="sm" variant="ghost" className="text-destructive" onClick={() => { void deleteLessons(selectedLessonIds); setSelectedLessonIds([]); }}><Trash2 className="h-4 w-4" />Delete {selectedLessonIds.length} selected</Button>}
@@ -817,7 +841,7 @@ function Editor() {
                   const checked = selectedLessonIds.includes(l.id);
                   return <li key={l.id} className={`flex flex-wrap items-center gap-2 rounded-lg border p-2 text-sm ${duplicate ? "border-destructive/40 bg-destructive/5" : "border-border"}`}>
                     <input type="checkbox" checked={checked} onChange={(e) => setSelectedLessonIds((cur) => e.target.checked ? [...cur, l.id] : cur.filter((x) => x !== l.id))} />
-                    <span className="min-w-0 flex-1 truncate">{l.title}{duplicate && <span className="ml-2 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">Possible duplicate</span>}</span>
+                    <Button variant="ghost" className="min-w-0 flex-1 justify-start truncate" onClick={() => { setSelectedLesson(l.id); setScreen("lesson"); }}>{l.title}{duplicate && <span className="ml-2 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">Possible duplicate</span>}</Button>
                     <select value={l.module_id ?? ""} onChange={(e) => assignLessonToModule(l.id, e.target.value || null)} className="rounded-md border border-input bg-background px-2 py-1 text-xs" aria-label="Module">
                       <option value="">Unassigned</option>
                       {studioModules?.map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
@@ -827,7 +851,9 @@ function Editor() {
               </ul>;
             })() : <p className="text-xs text-muted-foreground">No lessons yet.</p>}
           </section>
-          <section className="space-y-3 rounded-2xl border border-border p-4">
+        </fieldset>)}
+        {screen === "import" && (<div className="min-w-0 space-y-6">
+          <section className="space-y-3 border-b border-border pb-6">
             <h2 className="font-semibold">Course Factory — source import</h2>
             <nav aria-label="Course Factory steps" className="flex flex-wrap gap-2">
               {["Upload", "Review & approve", "Generate & import"].map((label, i) => (
@@ -846,9 +872,9 @@ function Editor() {
               <Input value={sourceName} onChange={(e) => setSourceName(e.target.value)} placeholder="Source document name" aria-label="Source document name" maxLength={160} />
               <Textarea value={sourceText} onChange={(e) => { setSourceText(e.target.value); setSourcePages(null); setDraft(null); }} placeholder={"Module 1: Introduction\\nYour training content..."} rows={6} maxLength={1000000} aria-label="Extracted manual text" />
               <Button type="button" variant="outline" onClick={() => { previewSource(); setDraftGroupIndex(0); setFactoryStep(1); }} disabled={!sourceText.trim()}>Analyse manual & build course outline</Button>
-              <p role="status" aria-live="polite" className="text-xs text-muted-foreground">Cloud source draft: {cloudSaveStatus === "saved" ? "Saved to Supabase" : cloudSaveStatus === "saving" ? "Saving…" : cloudSaveStatus === "pending" ? "Unsaved changes — saving shortly" : cloudSaveStatus === "loading" ? "Loading…" : cloudSaveStatus === "error" ? "Save failed — check connection" : "Cloud storage unavailable"}</p>
+              <p role="status" aria-live="polite" className="text-xs text-muted-foreground">Cloud source draft: {cloudSaveStatus === "saved" ? "Saved" : cloudSaveStatus === "saving" ? "Saving…" : cloudSaveStatus === "pending" ? "Unsaved changes — saving shortly" : cloudSaveStatus === "loading" ? "Loading…" : cloudSaveStatus === "error" ? "Save failed — check connection" : "Cloud storage unavailable"}</p>
               {!!savedDesigns?.length && <div className="space-y-2 rounded-xl border border-border p-4">
-                <h3 className="font-semibold">Saved learning designs in Supabase</h3>
+                <h3 className="font-semibold">Saved learning designs</h3>
                 <p className="text-xs text-muted-foreground">These records are available across devices. To edit or generate their lesson content, upload the source manual on this device.</p>
                 <p className="text-xs font-medium">{savedDesigns.filter(item => item.review_status === "approved").length} of {savedDesigns.length} designs approved</p>
                 {savedDesigns.map((item, index) => <details key={item.lesson_key} className="rounded-lg border border-border bg-background p-3 text-xs">
@@ -921,7 +947,7 @@ function Editor() {
                   </div>
                   <div className="space-y-2">{group.items.map(({ lesson, index: i }) => <details key={i} className="rounded-lg border border-border bg-background p-3"><summary className="cursor-pointer text-sm font-medium">{lesson.title} <span className="text-xs font-normal text-muted-foreground">· {lesson.sourceRefs.length} source pages</span></summary><p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{lesson.body.slice(0, 2500)}{lesson.body.length > 2500 ? "…" : ""}</p><p className="mt-2 text-xs text-muted-foreground">Source: {lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join(", ")}</p></details>)}</div>
                 </>}
-                <p className="text-xs text-muted-foreground">{draft.lessons.filter((_, i) => designApproved[i]).length} of {draft.lessons.length} designs approved across all modules. Approvals are saved to Supabase for cross-device access.</p>
+                <p className="text-xs text-muted-foreground">{draft.lessons.filter((_, i) => designApproved[i]).length} of {draft.lessons.length} designs approved across all modules. Approvals are saved across devices.</p>
                 <div className="flex justify-between">
                   <Button variant="outline" onClick={() => gi > 0 ? setDraftGroupIndex(gi - 1) : setFactoryStep(0)}>{gi > 0 ? "Previous module" : "Back: Upload"}</Button>
                   <Button onClick={() => gi < groups.length - 1 ? setDraftGroupIndex(gi + 1) : setFactoryStep(2)}>{gi < groups.length - 1 ? "Next module" : "Next: Generate & import"}</Button>
@@ -978,19 +1004,21 @@ function Editor() {
         {screen === "publish" && (
         <div className="min-w-0 space-y-6">
           <div className="grid min-w-0 items-stretch gap-6 lg:grid-cols-2">
-            <section className="flex h-full flex-col space-y-2 rounded-2xl border border-border p-4">
-              <h2 className="font-semibold">Publish</h2>
+            <section className="flex h-full flex-col space-y-2 border-b border-border pb-6">
+              <h2 className="font-semibold">Publish v1.{course.version_number - 1}</h2>
+              {!course.published && <Textarea aria-label="Version change note" value={changeNote} onChange={e => setChangeNote(e.target.value)} placeholder="What changed in this version?" maxLength={1000} />}
+              <ul className="space-y-2">{readiness.map(item => <li key={item.label} className="flex items-center gap-2 text-xs"><Check className={item.ready ? "h-4 w-4 text-primary" : "h-4 w-4 text-muted-foreground"} />{item.label}</li>)}</ul>
               <p className="text-xs text-muted-foreground">Course details, modules and lesson content are checked automatically before this is allowed.</p>
               {course.published ? <Button variant="outline" className="w-full" onClick={() => setPublished(false)}>Unpublish</Button>
                 : <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={!readyToPublish} onClick={() => setPublished(true)}>Publish to catalogue</Button>}
               {!readyToPublish && !course.published && <p className="text-xs text-muted-foreground">Finish the course title, description, industry/topic, and add at least one lesson with every imported lesson reviewed, to enable publishing.</p>}
-              <Button variant="ghost" className="mt-2 w-full text-destructive" onClick={remove} disabled={deleting}><Trash2 className="h-4 w-4" />{deleting ? "Deleting…" : "Delete course"}</Button>
+              <Button variant="ghost" className="mt-2 w-full text-destructive" onClick={remove} disabled={deleting || course.published}><Trash2 className="h-4 w-4" />{deleting ? "Deleting…" : "Delete course"}</Button>
             </section>
-            <aside className="flex h-full flex-col space-y-3 rounded-2xl border border-border p-4"><h2 className="font-semibold">Trainer review</h2><p className="text-sm text-muted-foreground">Check the source evidence, lesson content and assessments before publishing.</p><div className="rounded-lg bg-muted/40 p-3 text-xs"><p className="font-medium">AI learning design</p><p className="mt-1 text-muted-foreground">Proposed teaching and assessment methods with trainer approval are planned, not yet active.</p></div><Link to="/class/$id" params={{ id }} className="inline-flex items-center gap-2 text-sm font-medium text-primary"><Eye className="h-4 w-4" />Preview as learner</Link></aside>
+            <aside className="flex h-full flex-col space-y-3 border-b border-border pb-6"><h2 className="font-semibold">Trainer review</h2><p className="text-sm text-muted-foreground">Check the source evidence, lesson content and assessments before publishing.</p><div className="rounded-lg bg-muted/40 p-3 text-xs"><p className="font-medium">AI learning design</p><p className="mt-1 text-muted-foreground">Proposed teaching and assessment methods with trainer approval are planned, not yet active.</p></div><Link to="/class/$id" params={{ id }} className="inline-flex items-center gap-2 text-sm font-medium text-primary"><Eye className="h-4 w-4" />Preview as learner</Link></aside>
           </div>
         </div>
         )}
-        {screen !== "overview" && screen !== "performance" && screen !== "publish" && (() => {
+        {!["overview", "performance", "publish", "import", "history", "lesson"].includes(screen) && (() => {
           const moduleIndex = modules.findIndex((m) => m.key === screen);
           const mod = modules[moduleIndex];
           if (!mod) return <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Module not found. <button type="button" className="font-medium text-primary" onClick={() => setScreen("overview")}>Back to Overview</button></p>;
@@ -1013,7 +1041,7 @@ function Editor() {
                 <TabsTrigger value="assessment">Assessment</TabsTrigger>
               </TabsList>
               <TabsContent value="lessons" className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-muted-foreground">Expand a lesson to review or edit. Use Preview above to see the learner experience.</p>
+                <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-muted-foreground"></p>
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" onClick={() => addLesson("video", mod.moduleId)}><Video className="h-4 w-4" />Video</Button>
                     <VideoLibraryPicker courseId={id} position={lessons?.length ?? 0} usedItemIds={videoLinks.map((v) => v.item_id)} onAdded={() => { refresh(); void refetchLinks(); }} />
@@ -1021,7 +1049,7 @@ function Editor() {
                     <Button size="sm" variant="outline" onClick={() => addLesson("quiz", mod.moduleId)}><HelpCircle className="h-4 w-4" />Quiz</Button>
                   </div>
                 </div>
-                {mod.lessons.map((l, i) => <LessonEditor key={l.id} lesson={l} index={i} link={videoLinks.find((v) => v.lesson_id === l.id)} onChange={() => { refresh(); void refetchLinks(); }} courseId={id} sourceText={mod.lessons.slice(0, i).reverse().find((p) => p.kind !== "quiz" && p.body.trim().length > 0)?.body ?? ""} />)}
+                {mod.lessons.map(l => <Button key={l.id} variant="outline" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => { setSelectedLesson(l.id); setScreen("lesson"); }}>{l.title}<FileText className="ml-auto h-4 w-4 shrink-0" /></Button>)}
                 {mod.lessons.length === 0 && <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Add this module's first video, reading or quiz.</p>}
               </TabsContent>
               <TabsContent value="content" className="space-y-3">
@@ -1090,25 +1118,30 @@ function Editor() {
             </Tabs>
             <div className="flex justify-between">
               <Button variant="outline" onClick={() => moduleIndex > 0 ? goToModule(moduleIndex - 1) : setScreen("overview")}><ChevronLeft className="h-4 w-4" />{moduleIndex > 0 ? "Previous module" : "Overview"}</Button>
-              <Button onClick={() => moduleIndex < modules.length - 1 ? goToModule(moduleIndex + 1) : setScreen("publish")}>{moduleIndex < modules.length - 1 ? "Save & continue" : "Finish · Publish"}<ChevronRight className="h-4 w-4" /></Button>
+              <Button onClick={() => moduleIndex < modules.length - 1 ? goToModule(moduleIndex + 1) : setScreen("publish")}>{moduleIndex < modules.length - 1 ? "Next module" : "Finish · Publish"}<ChevronRight className="h-4 w-4" /></Button>
             </div>
           </div>
           );
         })()}
+        </main>
         </div>
       </Sheet>
     </Phone>
   );
 }
 
-function LessonEditor({ lesson, index, onChange, courseId, sourceText, link }: { lesson: LessonRow; index: number; onChange: () => void; courseId: string; sourceText: string; link?: VideoLink | undefined }) {
+function LessonEditor({ lesson, index, onChange, courseId, sourceText, link, readOnly = false }: { lesson: LessonRow; index: number; onChange: () => void; courseId: string; sourceText: string; link?: VideoLink | undefined; readOnly?: boolean }) {
   const [objectives, setObjectives] = useState(link?.objectives ?? "");
   const [title, setTitle] = useState(lesson.title);
   const [video, setVideo] = useState(lesson.video_url ?? "");
   const [body, setBody] = useState(lesson.body);
   const [qs, setQs] = useState<Q[]>(() => ((lesson.quiz as { q: string; options: string[] }[]) ?? []).map((x) => ({ ...x, answer: 0 })));
   const [passMark, setPassMark] = useState(() => parsePassMark(lesson.body));
-  const [open, setOpen] = useState(false);
+  const [open] = useState(true);
+  const confirm = useConfirm();
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(true);
+  const initial = useRef(true);
   useEffect(() => {
     if (!open || lesson.kind !== "quiz") return;
     supabase.from("studio_quiz_answers").select("answers").eq("lesson_id", lesson.id).maybeSingle().then(({ data }) => {
@@ -1117,6 +1150,9 @@ function LessonEditor({ lesson, index, onChange, courseId, sourceText, link }: {
   }, [open, lesson.id, lesson.kind]);
   const Icon = lesson.kind === "video" ? Video : lesson.kind === "quiz" ? HelpCircle : FileText;
   const save = async (silent = false) => {
+    if (readOnly || saving) return;
+    setSaving(true);
+    try {
     if (video && !/^https:\/\//.test(video)) { if (!silent) toast.error("Video link must start with https://"); return; }
     const clean = qs.filter((q) => q.q.trim() && q.options.filter((o) => o.trim()).length >= 2);
     const { error } = await supabase.from("studio_lessons").update({ title, video_url: video || null, body: lesson.kind === "quiz" ? `pass:${passMark}` : body, quiz: clean.map(({ q, options }) => ({ q, options })) }).eq("id", lesson.id);
@@ -1126,41 +1162,35 @@ function LessonEditor({ lesson, index, onChange, courseId, sourceText, link }: {
       if (e3) { if (!silent) toast.error("Could not save the learning objectives."); return; }
     }
     if (lesson.kind === "quiz") {
-      const { error: e2 } = await supabase.from("studio_quiz_answers").upsert({ lesson_id: lesson.id, course_id: (await supabase.from("studio_lessons").select("course_id").eq("id", lesson.id).single()).data!.course_id, answers: clean.map((q) => q.answer) });
+      const { error: e2 } = await supabase.from("studio_quiz_answers").upsert({ lesson_id: lesson.id, course_id: courseId, answers: clean.map((q) => q.answer) });
       if (e2) { if (!silent) toast.error("Could not save answers."); return; }
     }
     if (!silent) toast.success("Lesson saved");
+    setSaved(true);
     onChange();
+    } finally { setSaving(false); }
   };
-  const dirtyRef = useRef(false);
   useEffect(() => {
-    if (!open) return;
-    if (!dirtyRef.current) { dirtyRef.current = true; return; }
-    const timer = setTimeout(() => { void save(true); }, 1500);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (initial.current) { initial.current = false; return; }
+    setSaved(false);
   }, [title, video, body, qs, passMark, objectives]);
   const del = async () => {
+    if (readOnly || !(await confirm({ tone: "danger", title: "Delete this lesson?", description: `“${lesson.title}” will be removed from this course. This cannot be undone.`, confirmLabel: "Delete lesson" }))) return;
     const { error } = await supabase.from("studio_lessons").delete().eq("id", lesson.id);
     if (error) { toast.error("We couldn't remove that lesson. Please try again."); return; }
     toast.success(link ? "Video removed from this course. It's still in the shared library." : "Lesson removed.");
     onChange();
   };
   return (
-    <div className="rounded-2xl border border-border">
-      <button onClick={() => setOpen(!open)} className="flex w-full items-center gap-3 p-3 text-left">
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><Icon className="h-4 w-4" /></span>
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">{index + 1}. {lesson.title}</span>
-        {link && <span className="hidden rounded-full bg-secondary/40 px-2 py-0.5 text-[10px] font-semibold sm:inline">Library</span>}
-        <span className="text-xs text-muted-foreground">{open ? "Close" : "Edit"}</span>
-      </button>
-      {open && <div className="space-y-2 border-t border-border p-3">
+    <div className="rounded-lg border border-border">
+      <div className="flex items-center gap-3 border-b border-border p-4"><Icon className="h-5 w-5 shrink-0 text-primary" /><h3 className="min-w-0 flex-1 break-words font-semibold">{index + 1}. {lesson.title}</h3><span role="status" className="shrink-0 text-xs text-muted-foreground">{readOnly ? "Read-only" : saving ? "Saving…" : saved ? "Saved" : "Unsaved changes"}</span></div>
+      <fieldset disabled={readOnly || saving} className="space-y-4 p-4 md:p-6">
         <Input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Lesson title" maxLength={120} />
         {link && <div className="rounded-xl bg-primary/5 p-3 text-xs text-muted-foreground">Library video: <strong className="text-foreground">{link.item?.title}</strong> · {link.item?.provider?.name}. Learners see the provider's player or a Watch Video button.</div>}
         {link && <Textarea value={objectives} onChange={(e) => setObjectives(e.target.value)} rows={3} maxLength={2000} placeholder="Learning objectives, one per line" aria-label="Learning objectives" />}
         {lesson.kind === "video" && !link && <Input value={video} onChange={(e) => setVideo(e.target.value)} placeholder="Video link (https://… .mp4 or YouTube)" />}
-        {lesson.kind !== "quiz" && <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} placeholder="Lesson notes, steps or checklist" maxLength={20000} />}
-        <LessonAssistant courseId={courseId} title={title} kind={lesson.kind} text={lesson.kind === "quiz" ? sourceText : body} onText={setBody} onQuestions={(n) => setQs((cur) => [...cur.filter((q) => q.q.trim()), ...n])} />
+        {lesson.kind !== "quiz" && <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={14} aria-label="Lesson notes" placeholder="Lesson notes, steps or checklist" maxLength={20000} />}
+        {!readOnly && <LessonAssistant courseId={courseId} title={title} kind={lesson.kind} text={lesson.kind === "quiz" ? sourceText : body} onText={setBody} onQuestions={(n) => setQs((cur) => [...cur.filter((q) => q.q.trim()), ...n])} />}
         {lesson.kind === "quiz" && <div className="space-y-3">
           {qs.map((q, qi) => (
             <div key={qi} className="space-y-1.5 rounded-xl bg-muted/50 p-2">
@@ -1176,8 +1206,8 @@ function LessonEditor({ lesson, index, onChange, courseId, sourceText, link }: {
           <label className="flex items-center gap-2 text-sm">Pass mark<select value={passMark} onChange={(e) => setPassMark(Number(e.target.value))} className="rounded-md border border-input bg-background px-2 py-1 text-sm" aria-label="Pass mark">{PASS_MARKS.map((m) => <option key={m} value={m}>{m}%</option>)}</select></label>
           <p className="text-xs text-muted-foreground">Tick the correct option. Learners need {passMark}% to pass.</p>
         </div>}
-        <div className="flex gap-2"><Button size="sm" onClick={() => void save()}>Save lesson</Button><Button size="sm" variant="ghost" className="text-destructive" onClick={del}>{link ? "Remove from course" : "Delete"}</Button></div>
-      </div>}
+        <div className="flex gap-2"><Button size="sm" disabled={saving || readOnly} onClick={() => void save()}>{saving ? "Saving…" : "Save lesson"}</Button><Button size="sm" variant="ghost" className="text-destructive" onClick={del}>{link ? "Remove from course" : "Delete"}</Button></div>
+      </fieldset>
     </div>
   );
 }

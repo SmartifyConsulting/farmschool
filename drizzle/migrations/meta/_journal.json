@@ -50,6 +50,20 @@
       "when": 1793205975509,
       "tag": "0006_external_content_library",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794262651498,
+      "tag": "0007_studio_versions_and_safe_revisions",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794262777369,
+      "tag": "0008_studio_atomic_lesson_order",
+      "breakpoints": true
     }
   ]
 }

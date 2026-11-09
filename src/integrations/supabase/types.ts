@@ -633,6 +633,41 @@ export type Database = {
           },
         ]
       }
+      studio_course_versions: {
+        Row: {
+          change_note: string
+          course_id: string
+          created_at: string
+          id: string
+          snapshot: Json
+          version_number: number
+        }
+        Insert: {
+          change_note?: string
+          course_id: string
+          created_at?: string
+          id?: string
+          snapshot: Json
+          version_number: number
+        }
+        Update: {
+          change_note?: string
+          course_id?: string
+          created_at?: string
+          id?: string
+          snapshot?: Json
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_course_versions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       studio_courses: {
         Row: {
           author_id: string
@@ -644,8 +679,11 @@ export type Database = {
           level: string
           moodle_id: number | null
           published: boolean
+          revision_base: number | null
+          revision_of: string | null
           title: string
           updated_at: string
+          version_number: number
         }
         Insert: {
           author_id?: string
@@ -657,8 +695,11 @@ export type Database = {
           level?: string
           moodle_id?: number | null
           published?: boolean
+          revision_base?: number | null
+          revision_of?: string | null
           title: string
           updated_at?: string
+          version_number?: number
         }
         Update: {
           author_id?: string
@@ -670,10 +711,21 @@ export type Database = {
           level?: string
           moodle_id?: number | null
           published?: boolean
+          revision_base?: number | null
+          revision_of?: string | null
           title?: string
           updated_at?: string
+          version_number?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "studio_courses_revision_of_fkey"
+            columns: ["revision_of"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       studio_learning_activities: {
         Row: {
@@ -786,6 +838,7 @@ export type Database = {
           id: string
           kind: string
           module_id: string | null
+          origin_lesson_id: string | null
           position: number
           quiz: Json
           title: string
@@ -798,6 +851,7 @@ export type Database = {
           id?: string
           kind?: string
           module_id?: string | null
+          origin_lesson_id?: string | null
           position?: number
           quiz?: Json
           title: string
@@ -810,6 +864,7 @@ export type Database = {
           id?: string
           kind?: string
           module_id?: string | null
+          origin_lesson_id?: string | null
           position?: number
           quiz?: Json
           title?: string
@@ -837,6 +892,7 @@ export type Database = {
           course_id: string
           created_at: string
           id: string
+          origin_module_id: string | null
           position: number
           title: string
         }
@@ -844,6 +900,7 @@ export type Database = {
           course_id: string
           created_at?: string
           id?: string
+          origin_module_id?: string | null
           position?: number
           title: string
         }
@@ -851,6 +908,7 @@ export type Database = {
           course_id?: string
           created_at?: string
           id?: string
+          origin_module_id?: string | null
           position?: number
           title?: string
         }
@@ -979,9 +1037,21 @@ export type Database = {
         Args: { _course_id: string }
         Returns: undefined
       }
+      studio_copy_draft: {
+        Args: { _course_id: string; _revision?: boolean }
+        Returns: string
+      }
       studio_course_owned: { Args: { _course: string }; Returns: boolean }
       studio_course_visible: { Args: { _course: string }; Returns: boolean }
       studio_delete_draft: { Args: { _course_id: string }; Returns: string }
+      studio_move_lesson: {
+        Args: { _course_id: string; _direction: number; _lesson_id: string }
+        Returns: undefined
+      }
+      studio_publish_version: {
+        Args: { _course_id: string; _note?: string }
+        Returns: string
+      }
       studio_save_generated_course: {
         Args: {
           _course_id: string
@@ -991,6 +1061,7 @@ export type Database = {
         }
         Returns: string
       }
+      studio_snapshot: { Args: { _id: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "user"

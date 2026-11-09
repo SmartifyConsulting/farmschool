@@ -17,3 +17,6 @@
 - [x] Inline AI lesson & quiz assistant in Course Studio
 - [x] Trainer course performance & learner roster
 - [x] Access Agriculture video library: providers, manual/CSV import, duplicate detection, studio picker, embed/link-out playback, course usage + link check
+- [ ] Studio two-panel editor and searchable course actions
+- [ ] Safe draft duplication, live-course revisions and version history
+- [ ] Verify Studio editing, revision and deletion flows on desktop and mobile
