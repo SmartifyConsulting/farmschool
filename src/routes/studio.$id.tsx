@@ -194,6 +194,7 @@ type Screen = string;
 function Editor() {
   const { id } = Route.useParams();
   const [screen, setScreen] = useState<Screen>("overview");
+  const [designTab, setDesignTab] = useState<"auto" | "manual">("auto");
   const [selectedLesson, setSelectedLesson] = useState<string | null>(null);
   const [changeNote, setChangeNote] = useState("");
   const { user, ready: authReady } = useAuth();
@@ -838,6 +839,11 @@ function Editor() {
             </div>
             <Button onClick={saveDetails} className="mt-auto w-full">Save details</Button>
           </section>
+        </fieldset>)}
+        {screen === "import" && (<div className="flex gap-1 rounded-full border border-border p-1 w-fit" role="tablist" aria-label="Design method">
+          {([{ key: "auto", label: "Auto Design" }, { key: "manual", label: "Manual Design" }] as const).map(t => <Button key={t.key} role="tab" aria-selected={designTab === t.key} size="sm" variant={designTab === t.key ? "default" : "ghost"} className="rounded-full" onClick={() => setDesignTab(t.key)}>{t.label}</Button>)}
+        </div>)}
+        {screen === "import" && designTab === "manual" && (<fieldset disabled={course.published} className="min-w-0 space-y-6">
           {modules.length === 0 && (
           <section className="space-y-3 rounded-2xl border border-dashed border-border p-4">
             <h2 className="font-semibold">Add your first lesson</h2>
@@ -859,7 +865,7 @@ function Editor() {
                 <span className="shrink-0 text-xs text-muted-foreground">{modules.find((g) => g.moduleId === m.id)?.lessons.length ?? 0} lessons</span>
                 <Button size="icon" variant="ghost" aria-label="Delete module" onClick={() => deleteModule(m.id)}><Trash2 className="h-4 w-4" /></Button>
               </li>)}
-            </ul> : <p className="text-xs text-muted-foreground">No modules yet. Add one, or import a manual below to create modules automatically.</p>}
+            </ul> : <p className="text-xs text-muted-foreground">No modules yet. Add one, or use Auto Design to create modules automatically.</p>}
           </section>
           <section className="space-y-3 border-b border-border pb-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -886,7 +892,7 @@ function Editor() {
             })() : <p className="text-xs text-muted-foreground">No lessons yet.</p>}
           </section>
         </fieldset>)}
-        {screen === "import" && (<div className="min-w-0 space-y-6">
+        {screen === "import" && designTab === "auto" && (<div className="min-w-0 space-y-6">
           <section className="space-y-3 border-b border-border pb-6">
             <h2 className="font-semibold">Build from a manual</h2>
             <nav aria-label="Course Factory steps" className="flex flex-wrap gap-2">
