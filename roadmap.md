@@ -17,6 +17,7 @@
 - [x] Inline AI lesson & quiz assistant in Course Studio
 - [x] Trainer course performance & learner roster
 - [x] Access Agriculture video library: providers, manual/CSV import, duplicate detection, studio picker, embed/link-out playback, course usage + link check
-- [ ] Studio two-panel editor and searchable course actions
-- [ ] Safe draft duplication, live-course revisions and version history
-- [ ] Verify Studio editing, revision and deletion flows on desktop and mobile
+- [x] Studio two-panel editor and searchable course actions
+- [x] Safe draft duplication, live-course revisions and version history
+- [x] Verify Studio creation, editing, duplication, delete cancellation/deletion and approval rejection on desktop and mobile
+- [ ] Verify approved version publishing end-to-end (blocked: current account has no approved creator application; restricted test connection cannot run authenticated functions)

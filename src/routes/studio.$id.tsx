@@ -138,8 +138,13 @@ export const Route = createFileRoute("/studio/$id")({
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary" },
   ] }),
-  component: Editor,
+  component: EditorRoute,
 });
+
+function EditorRoute() {
+  const { id } = Route.useParams();
+  return <Editor key={id} />;
+}
 
 type Q = { q: string; options: string[]; answer: number };
 type LessonRow = { id: string; position: number; kind: string; title: string; video_url: string | null; body: string; quiz: unknown; module_id: string | null };
@@ -186,7 +191,7 @@ function Editor() {
   const [screen, setScreen] = useState<Screen>("overview");
   const [selectedLesson, setSelectedLesson] = useState<string | null>(null);
   const [changeNote, setChangeNote] = useState("");
-  const { user } = useAuth();
+  const { user, ready: authReady } = useAuth();
   const [factoryStep, setFactoryStep] = useState(0);
   const [draftGroupIndex, setDraftGroupIndex] = useState(0);
   const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
@@ -709,7 +714,7 @@ function Editor() {
       : result === "not_found" ? "This course no longer exists." : "We couldn't delete the course. Please try again.");
   };
 
-  if (isLoading) return <Phone><Header title="Loading…" /></Phone>;
+  if (isLoading || !authReady) return <Phone><Header title="Loading…" /></Phone>;
   if (!course) return <Phone><Header title="Course not found" /><Sheet><Link to="/studio" className="text-primary">Back to Studio</Link></Sheet></Phone>;
   if (course.author_id !== user?.id) return <Phone><Header title="Course Studio" /><Sheet><p>Only the course owner can open this editor.</p><Link to="/studio" className="text-primary">Back to Studio</Link></Sheet></Phone>;
   return (
@@ -1141,7 +1146,7 @@ function LessonEditor({ lesson, index, onChange, courseId, sourceText, link, rea
   const confirm = useConfirm();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(true);
-  const initial = useRef(true);
+  const baseline = useRef(JSON.stringify({ title: lesson.title, video: lesson.video_url ?? "", body: lesson.body, qs, passMark, objectives }));
   useEffect(() => {
     if (!open || lesson.kind !== "quiz") return;
     supabase.from("studio_quiz_answers").select("answers").eq("lesson_id", lesson.id).maybeSingle().then(({ data }) => {
@@ -1166,13 +1171,13 @@ function LessonEditor({ lesson, index, onChange, courseId, sourceText, link, rea
       if (e2) { if (!silent) toast.error("Could not save answers."); return; }
     }
     if (!silent) toast.success("Lesson saved");
+    baseline.current = JSON.stringify({ title, video, body, qs, passMark, objectives });
     setSaved(true);
     onChange();
     } finally { setSaving(false); }
   };
   useEffect(() => {
-    if (initial.current) { initial.current = false; return; }
-    setSaved(false);
+    setSaved(baseline.current === JSON.stringify({ title, video, body, qs, passMark, objectives }));
   }, [title, video, body, qs, passMark, objectives]);
   const del = async () => {
     if (readOnly || !(await confirm({ tone: "danger", title: "Delete this lesson?", description: `“${lesson.title}” will be removed from this course. This cannot be undone.`, confirmLabel: "Delete lesson" }))) return;
