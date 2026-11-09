@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { STUDIO_CATEGORIES, PASS_MARKS, parsePassMark } from "@/lib/studio";
 import { INDUSTRIES, courseIndustry } from "@/lib/industries";
 import { toast } from "sonner";
-import { buildCourseDraft, type DraftCourse, type SourcePage } from "@/lib/course-factory";
+import { buildCourseDraft, splitDraftLesson, mergeDraftLessons, type DraftCourse, type SourcePage } from "@/lib/course-factory";
 import { extractDocument } from "@/lib/document-extraction";
 import { suggestReviewQuestions } from "@/lib/course-quiz-suggestions";
 import { CourseAnalytics } from "@/components/CourseAnalytics";
@@ -21,6 +21,7 @@ import { LessonAssistant } from "@/components/LessonAssistant";
 import { VideoLibraryPicker } from "@/components/VideoLibraryPicker";
 import { CoverImageInput } from "@/components/CoverImageInput";
 import { FormattedLesson } from "@/components/FormattedLesson";
+import { ManualLessonReview } from "@/components/ManualLessonReview";
 import { StudioVersions } from "@/components/StudioVersions";
 import { StudioCourseActions } from "@/components/StudioCourseActions";
 import { useAuth } from "@/hooks/useLearning";
@@ -193,7 +194,7 @@ function Editor() {
   const [changeNote, setChangeNote] = useState("");
   const { user, ready: authReady } = useAuth();
   const [factoryStep, setFactoryStep] = useState(0);
-  const [draftGroupIndex, setDraftGroupIndex] = useState(0);
+  const [firstContentPage, setFirstContentPage] = useState(1);
   const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
   const qc = useQueryClient();
   const nav = useNavigate();
@@ -285,7 +286,11 @@ function Editor() {
         setSourceName(row.source_name);
         setSourceText(row.source_text);
         setSourcePages(Array.isArray(row.source_pages) ? row.source_pages : null);
-        if (row.draft?.lessons && Array.isArray(row.draft.lessons)) setDraft(row.draft);
+        if (row.draft?.lessons && Array.isArray(row.draft.lessons)) {
+          setDraft(row.draft);
+          const firstPage = row.draft.lessons.flatMap(lesson => lesson.sourceRefs.map(ref => ref.page));
+          if (firstPage.length) setFirstContentPage(Math.min(...firstPage));
+        }
       }
       setCloudDraftEnabled(true);
       setCloudSaveStatus("saved");
@@ -312,7 +317,7 @@ function Editor() {
   }, [id, cloudDraftReady, cloudDraftEnabled, restoredDesign, sourceName, sourceText, sourcePages, draft, course?.published]);
 
   const lessonKey = (index: number, lesson: { title: string; sourceRefs: { sourceId: string; page: number }[] }) =>
-    JSON.stringify([index, lesson.title, lesson.sourceRefs]);
+    JSON.stringify([index, lesson.title, lesson.sourceRefs.map(ref => [ref.sourceId, ref.page]), "body" in lesson && typeof lesson.body === "string" ? Array.from(lesson.body).reduce((hash, char) => Math.imul(hash ^ char.charCodeAt(0), 16777619), 2166136261) >>> 0 : 0]);
   const [designSyncing, setDesignSyncing] = useState(false);
   const { data: savedDesigns, refetch: refetchSavedDesigns } = useQuery({
     queryKey: ["studio-learning-designs", id],
@@ -465,10 +470,11 @@ function Editor() {
       setSourcePages(pages);
       setSourceText(text);
       setDraft(null);
+      setFirstContentPage(1);
       previewSource({ pages, name: file.name, text });
-      setDraftGroupIndex(0);
+      
       setFactoryStep(1);
-      toast.success("Manual extracted and analysed. Review its detected modules below.");
+      toast.success("Manual extracted. Review the lessons below.");
     } catch (error) {
       toast.error(friendlyError(error, "Could not read file."));
     } finally {
@@ -478,10 +484,18 @@ function Editor() {
   const previewSource = (override?: { pages?: SourcePage[]; name?: string; text?: string }) => {
     try {
       const pages = override?.pages ?? sourcePages ?? [{ sourceId: (override?.name ?? sourceName).trim() || "Pasted source", page: 1, text: override?.text ?? sourceText }];
-      const next = buildCourseDraft(form.title || course?.title || "Course", pages);
+      const next = buildCourseDraft(form.title || course?.title || "Course", pages, override ? undefined : firstContentPage);
+      const detectedPages = next.lessons.flatMap(lesson => lesson.sourceRefs.map(ref => ref.page));
+      if (detectedPages.length) setFirstContentPage(Math.min(...detectedPages));
       setDraft(next); setDesignChoices({}); setDesignApproved({}); setDesignRationale({});
       if (!next.lessons.length) toast.error("No readable lessons found.");
     } catch (error) { toast.error(friendlyError(error, "Could not parse source.")); }
+  };
+  const reviseOutline = (nextLessons: DraftCourse["lessons"]) => {
+    if (!draft || course?.published) return;
+    setDraft({ ...draft, lessons: nextLessons });
+    setDesignChoices({}); setDesignApproved({}); setDesignRationale({});
+    setAiDraft(null); setBatchDrafts([]);
   };
   const importDraft = async () => {
     if (!draft?.lessons.length || importing || course?.published) return;
@@ -859,13 +873,12 @@ function Editor() {
         </fieldset>)}
         {screen === "import" && (<div className="min-w-0 space-y-6">
           <section className="space-y-3 border-b border-border pb-6">
-            <h2 className="font-semibold">Course Factory — source import</h2>
+            <h2 className="font-semibold">Build from a manual</h2>
             <nav aria-label="Course Factory steps" className="flex flex-wrap gap-2">
               {["Upload", "Review & approve", "Generate & import"].map((label, i) => (
-                <button key={label} type="button" onClick={() => setFactoryStep(i)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium ${factoryStep === i ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
+                <Button key={label} type="button" size="sm" variant={factoryStep === i ? "secondary" : "ghost"} onClick={() => setFactoryStep(i)}>
                   {i + 1}. {label}
-                </button>
+                </Button>
               ))}
             </nav>
 
@@ -876,7 +889,7 @@ function Editor() {
               </label>
               <Input value={sourceName} onChange={(e) => setSourceName(e.target.value)} placeholder="Source document name" aria-label="Source document name" maxLength={160} />
               <Textarea value={sourceText} onChange={(e) => { setSourceText(e.target.value); setSourcePages(null); setDraft(null); }} placeholder={"Module 1: Introduction\\nYour training content..."} rows={6} maxLength={1000000} aria-label="Extracted manual text" />
-              <Button type="button" variant="outline" onClick={() => { previewSource(); setDraftGroupIndex(0); setFactoryStep(1); }} disabled={!sourceText.trim()}>Analyse manual & build course outline</Button>
+              <Button type="button" variant="outline" onClick={() => { previewSource();  setFactoryStep(1); }} disabled={!sourceText.trim()}>Analyse manual & build course outline</Button>
               <p role="status" aria-live="polite" className="text-xs text-muted-foreground">Cloud source draft: {cloudSaveStatus === "saved" ? "Saved" : cloudSaveStatus === "saving" ? "Saving…" : cloudSaveStatus === "pending" ? "Unsaved changes — saving shortly" : cloudSaveStatus === "loading" ? "Loading…" : cloudSaveStatus === "error" ? "Save failed — check connection" : "Cloud storage unavailable"}</p>
               {!!savedDesigns?.length && <div className="space-y-2 rounded-xl border border-border p-4">
                 <h3 className="font-semibold">Saved learning designs</h3>
@@ -902,63 +915,26 @@ function Editor() {
               </div>}
             </div>)}
 
-            {factoryStep === 1 && (draft ? (() => {
-              const groups = groupDraftLessons(draft.lessons);
-              const gi = Math.min(draftGroupIndex, Math.max(0, groups.length - 1));
-              const group = groups[gi];
-              return (<div className="space-y-3">
-                <p className="text-sm font-semibold">Proposed course outline · {draft.lessons.length} topic{draft.lessons.length === 1 ? "" : "s"} in {groups.length} module{groups.length === 1 ? "" : "s"}</p>
-                {draft.warnings.map((warning, i) => <p key={i} className="text-xs text-destructive">{warning}</p>)}
-                <nav aria-label="Draft modules" className="flex flex-wrap gap-2">
-                  {groups.map((g, i) => (
-                    <button key={g.title} type="button" onClick={() => setDraftGroupIndex(i)}
-                      className={`rounded-full px-3 py-1.5 text-xs font-medium ${i === gi ? "bg-secondary text-secondary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
-                      {g.title} · {g.items.length}
-                    </button>
-                  ))}
-                </nav>
-                {group && <>
-                  <div className="space-y-3 rounded-xl border border-border bg-background p-4">
-                    <h3 className="font-semibold">AI learning design review</h3>
-                    <p className="text-xs text-muted-foreground">Suggested teaching and assessment methods are based on topic keywords. These are preliminary recommendations, not AI-generated media or saved course objects. Approve or adjust each lesson before content generation.</p>
-                    {group.items.map(({ lesson, index: i }) => <details key={i} className="rounded-lg border border-border p-3">
-                      <summary className="cursor-pointer text-sm font-medium">{lesson.title} {designApproved[i] ? "✓ Approved" : "· Needs review"}</summary>
-                      <div className="mt-3 space-y-2">
-                        <Button type="button" size="sm" variant="outline" disabled={designLoading !== null || lesson.body.length < 100 || !!course.published} onClick={() => void proposeDesign(i, lesson)}>{designLoading === i ? "Designing…" : "Ask AI to propose methods"}</Button>
-                        {designRationale[i] && <p className="rounded-lg bg-muted/50 p-2 text-xs text-muted-foreground"><strong>AI rationale:</strong> {designRationale[i]}</p>}
-                        {learningMethods.map(method => <label key={method.id} className="flex items-start gap-2 text-sm">
-                          <input type="checkbox" className="mt-1" checked={choicesFor(i, lesson.title, lesson.body).includes(method.id)} disabled={designSyncing} onChange={e => void saveDesignSelection(i, e.target.checked ? [...choicesFor(i, lesson.title, lesson.body), method.id] : choicesFor(i, lesson.title, lesson.body).filter(x => x !== method.id))} />
-                          <span><span className="font-medium">{method.label}</span><span className="block text-xs text-muted-foreground">{method.detail}</span></span>
-                        </label>)}
-                        <Button type="button" size="sm" variant={designApproved[i] ? "secondary" : "outline"} disabled={designSyncing || !choicesFor(i, lesson.title, lesson.body).length} onClick={() => void toggleDesignApproval(i, lesson)}>{designApproved[i] ? "Reopen review" : "Approve lesson design"}</Button>
-                      </div>
-                    </details>)}
-                  </div>
-                  <div className="space-y-3 rounded-xl border border-border bg-background p-4">
-                    <h3 className="font-semibold">Learning activity storyboard</h3>
-                    <p className="text-xs text-muted-foreground">Preview the mix of presentation and assessment methods. These are activity plans, not generated videos, images or quizzes.</p>
-                    {group.items.map(({ lesson, index }) => <details key={index} className="rounded-lg border border-border p-3">
-                      <summary className="cursor-pointer text-sm font-medium">{lesson.title} · {designApproved[index] ? "Approved design" : "Pending design approval"}</summary>
-                      <div className="mt-3 space-y-2">
-                        <div className="rounded-lg bg-muted/40 p-3 text-sm"><strong>1. Lesson introduction</strong><p className="text-xs text-muted-foreground">Introduce the learning objective and connect it to the original manual.</p></div>
-                        {choicesFor(index, lesson.title, lesson.body).map((method, methodIndex) => <div key={method} className="rounded-lg bg-muted/40 p-3 text-sm">
-                          <strong>{methodIndex + 2}. {activityLabels[method]?.title ?? method}</strong>
-                          <p className="text-xs text-muted-foreground">{activityLabels[method]?.description ?? "Trainer review required."}</p>
-                          <SourceActivity method={method} lesson={lesson} courseId={id} published={!!course.published} />
-                        </div>)}
-                        <p className="text-xs text-muted-foreground">Source: {lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join(", ")}</p>
-                      </div>
-                    </details>)}
-                  </div>
-                  <div className="space-y-2">{group.items.map(({ lesson, index: i }) => <details key={i} className="rounded-lg border border-border bg-background p-3"><summary className="cursor-pointer text-sm font-medium">{lesson.title} <span className="text-xs font-normal text-muted-foreground">· {lesson.sourceRefs.length} source pages</span></summary><p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{lesson.body.slice(0, 2500)}{lesson.body.length > 2500 ? "…" : ""}</p><p className="mt-2 text-xs text-muted-foreground">Source: {lesson.sourceRefs.map(ref => `${ref.sourceId} p.${ref.page}`).join(", ")}</p></details>)}</div>
-                </>}
-                <p className="text-xs text-muted-foreground">{draft.lessons.filter((_, i) => designApproved[i]).length} of {draft.lessons.length} designs approved across all modules. Approvals are saved across devices.</p>
-                <div className="flex justify-between">
-                  <Button variant="outline" onClick={() => gi > 0 ? setDraftGroupIndex(gi - 1) : setFactoryStep(0)}>{gi > 0 ? "Previous module" : "Back: Upload"}</Button>
-                  <Button onClick={() => gi < groups.length - 1 ? setDraftGroupIndex(gi + 1) : setFactoryStep(2)}>{gi < groups.length - 1 ? "Next module" : "Next: Generate & import"}</Button>
-                </div>
-              </div>);
-            })() : <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Upload or paste a source manual and analyse it first.</p>)}
+            {factoryStep === 1 && (draft ? <div className="space-y-5">
+              <div className="flex flex-wrap items-end gap-3 border-b border-border pb-4">
+                <label className="space-y-1 text-xs font-medium"><span className="block">First content page</span><Input type="number" min={1} max={sourcePages?.at(-1)?.page ?? 500} value={firstContentPage} aria-label="First content page" className="w-24" disabled={course.published} onChange={event => setFirstContentPage(Math.max(1, Number(event.target.value) || 1))} /></label>
+                <Button variant="outline" disabled={course.published || !sourceText.trim()} onClick={async () => {
+                  if (await confirm({ title: "Rebuild the outline?", description: "This replaces your outline edits and approvals. Your original source and saved course lessons stay unchanged.", confirmLabel: "Rebuild outline" })) previewSource();
+                }}>Rebuild outline</Button>
+              </div>
+              <ManualLessonReview draft={draft} readOnly={course.published} busy={designSyncing || designLoading !== null || batchRunning || aiLoading}
+                methods={learningMethods} choices={choicesFor} approved={designApproved} rationale={designRationale}
+                onEdit={(index, lesson) => reviseOutline(draft.lessons.map((item, i) => i === index ? lesson : item))}
+                onSplit={(index, offset) => { const lesson = draft.lessons[index]; if (lesson) reviseOutline(draft.lessons.flatMap((item, i) => i === index ? splitDraftLesson(lesson, offset) : [item])); }}
+                onMerge={index => { const first = draft.lessons[index]; const second = draft.lessons[index + 1]; if (first && second) reviseOutline([...draft.lessons.slice(0, index), mergeDraftLessons(first, second), ...draft.lessons.slice(index + 2)]); }}
+                onDelete={async index => { if (await confirm({ title: "Remove this lesson from the outline?", description: "The original manual and saved course lessons will not be deleted.", confirmLabel: "Remove lesson", tone: "danger" })) reviseOutline(draft.lessons.filter((_, i) => i !== index)); }}
+                onMethods={(index, methods) => void saveDesignSelection(index, methods)}
+                onApprove={(index, lesson) => void toggleDesignApproval(index, lesson)}
+                onPropose={(index, lesson) => void proposeDesign(index, lesson)}
+                activity={(method, lesson) => <SourceActivity method={method} lesson={lesson} courseId={id} published={course.published} />}
+              />
+              <div className="flex flex-wrap justify-between gap-2 border-t border-border pt-4"><Button variant="outline" onClick={() => setFactoryStep(0)}>Back to upload</Button><Button disabled={!draft.lessons.length} onClick={() => setFactoryStep(2)}>Continue to generation</Button></div>
+            </div> : <p className="py-6 text-sm text-muted-foreground">Upload a manual to review its lessons.</p>)}
 
             {factoryStep === 2 && (draft ? (<div className="space-y-3">
               <div className="space-y-2 rounded-xl border border-border bg-background p-4">

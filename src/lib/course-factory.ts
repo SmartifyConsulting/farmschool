@@ -19,85 +19,91 @@ export type DraftCourse = {
 
 const MAX_PAGES = 500;
 const MAX_CHARS = 1_000_000;
-const heading = /^(?:module|chapter|unit|lesson|section|part|topic)\s+(?:\d+|[IVX]+|[A-Z])(?:[.:\s–-]+.*)?$/i;
-const frontMatter = /^(?:table of contents|contents|copyright|acknowledg(?:e)?ments|foreword|preface|about (?:this|the) (?:manual|course)|learning objectives?|course overview)$/i;
-const moduleHeading = /^(?:module|chapter|unit|lesson|section|part|topic)\s+(?:\d+|[IVX]+|[A-Z])(?:[.\s:–-]+.*)?$/i;
-const contentsEntry = /(?:\.{3,}|…{2,}|\s{3,})\s*\d{1,3}\s*$/;
-const coverMarker = /^(?:short learning programme|training manual|entrepreneurship|equip\s*[•·-]\s*learn|building skills,? empowering people|protecting pollinators|future leaders)$/i;
-function looksLikeContents(lines: string[]): boolean {
-  const moduleCount = lines.filter(line => moduleHeading.test(line) || contentsEntry.test(line)).length;
-  return lines.some(line => /^(?:table of contents|contents)$/i.test(line))
-    || (moduleCount >= 4 && lines.length < 65);
-}
+const heading = /^(?:(?:module|chapter|unit|lesson|section|part|topic)\s+(?:\d+|[IVX]+|[A-Z])(?:[.:\s–-]+.*)?|\d+(?:\.\d+)*[.)]?\s+[A-Z][^.!?]{2,100}|[IVX]+[.)]\s+[A-Z][^.!?]{2,100})$/i;
+const contentsEntry = /(?:\.{2,}|…+|\s{3,})\s*\d{1,3}\s*$/;
+const coverMarker = /^(?:short learning programme|training manual|copyright|all rights reserved|entrepreneurship|equip\s*[•·-]\s*learn|building skills,? empowering people|protecting pollinators|future leaders)$/i;
 function normalise(text: string): string {
   return text.replace(/\r\n?/g, "\n").replace(/[\t ]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
 }
+function contentsTitle(line: string): string {
+  return line.replace(/(?:\.{2,}|…+|\s+)\s*\d{1,3}\s*$/, "").trim();
+}
+function titleCase(line: string): boolean {
+  const words = line.split(/\s+/);
+  return line.length < 100 && words.length >= 2 && words.length <= 12 && !/[.!?;]$/.test(line)
+    && words.filter(word => /^[A-Z]/.test(word)).length >= Math.ceil(words.length * 0.7);
+}
 
-/** Group content by actual headings across page boundaries; never use page numbers as lesson topics. */
-export function buildCourseDraft(title: string, pages: SourcePage[]): DraftCourse {
+/** Preserve content after front matter, including text before the first recognised heading. */
+export function buildCourseDraft(title: string, pages: SourcePage[], firstContentPage?: number): DraftCourse {
   if (!title.trim() || title.length > 120) throw new Error("Course title must be 1–120 characters.");
   if (!pages.length || pages.length > MAX_PAGES) throw new Error("Supply 1–500 source pages.");
   if (pages.reduce((sum, p) => sum + p.text.length, 0) > MAX_CHARS) throw new Error("Source exceeds the 1,000,000 character limit.");
+  if (firstContentPage !== undefined && (!Number.isSafeInteger(firstContentPage) || firstContentPage < 1)) throw new Error("Choose a positive first content page.");
   const lessons: DraftLesson[] = [];
   const warnings: string[] = [];
+  const tocTitles = new Set<string>();
   let currentTitle = title.trim();
-  let foundHeading = false;
-  let skippedIntro = 0;
+  let started = false;
+  let skipped = false;
   let body: string[] = [];
-  let refs: { sourceId: string; page: number }[] = [];
+  let refs: DraftLesson["sourceRefs"] = [];
   const flush = () => {
     const content = body.join("\n\n").trim();
-    if (content.length > 0 && (foundHeading || content.length >= 250)) lessons.push({ title: currentTitle.slice(0, 120), body: content, sourceRefs: [...refs], reviewRequired: true });
-
+    if (content) lessons.push({ title: currentTitle.slice(0, 120), body: content, sourceRefs: [...refs], reviewRequired: true });
     body = []; refs = [];
   };
-  for (const page of pages) {
+  for (const [pageIndex, page] of pages.entries()) {
     if (!page.sourceId.trim() || !Number.isSafeInteger(page.page) || page.page < 1) throw new Error("Every page requires a source ID and positive page number.");
-    const text = normalise(page.text);
-    if (!text) { warnings.push(`Empty text on ${page.sourceId}, page ${page.page}; check whether OCR is required.`); continue; }
-    const lines = text.split("\n").map((line) => line.trim()).filter(Boolean);
-    if (!foundHeading && pages.length > 1 && looksLikeContents(lines) && lines.length < 65) { skippedIntro++; continue; }
-    for (const line of lines) {
-      if (heading.test(line) && !frontMatter.test(line)) {
-        if (!foundHeading && !moduleHeading.test(line) && body.length === 0) continue;
-        if (foundHeading && body.length === 0) { 
-          // A bare "MODULE 1" followed by a descriptive heading is one unit, not two lessons. 
-          if (/^(?:module|chapter|unit)\s+\d+$/i.test(currentTitle)) currentTitle = `${currentTitle}: ${line}`.slice(0, 120); 
-          else currentTitle = line; 
-          continue; 
-        } 
-        flush(); currentTitle = line; foundHeading = true; continue;
+    const lines = normalise(page.text).split("\n").map(line => line.trim()).filter(Boolean);
+    if (!page.text.trim()) { warnings.push(`Empty text on ${page.sourceId}, page ${page.page}; check whether OCR is required.`); continue; }
+    const isContents = lines.some(line => /^(?:table of contents|contents)$/i.test(line)) || (lines.filter(line => contentsEntry.test(line)).length >= 3 && lines.length < 65);
+    if (!started && isContents) {
+      for (const line of lines) if (!/^(?:table of contents|contents)$/i.test(line)) tocTitles.add(contentsTitle(line).toLowerCase());
+      skipped = true; continue;
+    }
+    if (firstContentPage !== undefined && page.page < firstContentPage) { skipped = true; continue; }
+    if (firstContentPage === undefined && !started && pageIndex === 0 && page.page === 1 && pages.length > 1
+      && !lines.some(line => heading.test(line)) && (lines.some(line => coverMarker.test(line)) || (lines.length < 12 && page.text.length < 250 && !/[.!?]/.test(page.text)))) { skipped = true; continue; }
+    for (const [lineIndex, line] of lines.entries()) {
+      if (/^\d+$/.test(line)) continue;
+      const isHeading = heading.test(line) || tocTitles.has(line.toLowerCase()) || (lineIndex === 0 && titleCase(line));
+      if (isHeading) {
+        if (started && !body.length && /^(?:module|chapter|unit)\s+\d+$/i.test(currentTitle)) currentTitle = `${currentTitle}: ${line}`.slice(0, 120);
+        else if (line !== currentTitle || !started) { flush(); currentTitle = line; }
+        started = true;
+        continue;
       }
-      if (!foundHeading && (frontMatter.test(line) || coverMarker.test(line) || contentsEntry.test(line) || line.length < 30)) { skippedIntro++; continue; }
-      if (frontMatter.test(line) && body.length === 0) continue;
+      started = true;
+      // Split before a paragraph, never in the middle of its text.
+      if (body.length && body.join("\n\n").length + line.length > 16000) {
+        flush();
+        const sentence = line.split(/(?<=[.!?])\s+/)[0] ?? line;
+        currentTitle = sentence.length <= 100 ? sentence.replace(/[.!?]$/, "") : `${title.trim()} · Topic ${lessons.length + 1}`;
+      }
       body.push(line);
-      if (!refs.some((r) => r.sourceId === page.sourceId && r.page === page.page)) refs.push({ sourceId: page.sourceId, page: page.page });
-      if (body.join("\n\n").length > 16000) { flush(); currentTitle = `${currentTitle.slice(0, 95)} (continued)`; }
+      if (!refs.some(ref => ref.sourceId === page.sourceId && ref.page === page.page)) refs.push({ sourceId: page.sourceId, page: page.page });
     }
   }
   flush();
-  if (!lessons.length && pages.some(page => page.text.trim().length >= 100)) {
-    const allText = pages.map(page => page.text).join("\n");
-    const modulePattern = /(?:^|\n)\s*(MODULE\s+\d+\s*[-–:]\s*[^\n]{4,100})/gi;
-    const matches = [...allText.matchAll(modulePattern)];
-    if (matches.length) {
-      for (let index = 0; index < matches.length; index++) {
-        const match = matches[index];
-        if (!match || !match[1]) continue;
-        const start = (match.index ?? 0) + match[0].length;
-        const end = matches[index + 1]?.index ?? allText.length;
-        const content = allText.slice(start, end).trim();
-        if (content.length >= 80 && !/^\.{3,}/.test(content)) {
-          lessons.push({ title: match[1].trim(), body: content, sourceRefs: pages.map(page => ({ sourceId: page.sourceId, page: page.page })), reviewRequired: true });
-        }
-      }
-    }
-    if (!lessons.length) warnings.push("Could not reliably identify instructional modules. Check the source text or re-upload the original PDF to retain page references.");
-  }
-  if (skippedIntro) warnings.push("Introductory, cover or contents material was skipped; check the proposed lesson boundaries against the source.");
+  if (skipped) warnings.push("Cover and contents material excluded. Check the source page ranges below.");
   if (!lessons.length) warnings.push("No substantial readable content was found. Check source extraction before publishing.");
-  if (lessons.length === 1 && pages.length > 3) warnings.push("Only one topic was detected; review headings and document structure before generating AI lessons.");
+  if (lessons.length === 1 && pages.length > 3) warnings.push("One topic detected. Check its boundaries before generating lessons.");
   return { title: title.trim(), lessons, status: "draft", warnings };
+}
+
+/** Editing boundaries never changes source text or automatically approves a lesson. */
+export function splitDraftLesson(lesson: DraftLesson, offset: number): DraftLesson[] {
+  if (offset <= 0 || offset >= lesson.body.length) return [lesson];
+  const first = lesson.body.slice(0, offset).trim();
+  const second = lesson.body.slice(offset).trim();
+  if (!first || !second) return [lesson];
+  return [{ ...lesson, body: first }, { ...lesson, title: `${lesson.title.slice(0, 105)} — part 2`, body: second }];
+}
+export function mergeDraftLessons(first: DraftLesson, second: DraftLesson): DraftLesson {
+  const sourceRefs = [...first.sourceRefs];
+  for (const ref of second.sourceRefs) if (!sourceRefs.some(existing => existing.sourceId === ref.sourceId && existing.page === ref.page)) sourceRefs.push(ref);
+  return { ...first, body: `${first.body}\n\n${second.body}`, sourceRefs, reviewRequired: true };
 }
 
 /** Drafts are intentionally never auto-published; a human must approve factual accuracy. */
