@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { STUDIO_CATEGORIES, PASS_MARKS, parsePassMark } from "@/lib/studio";
 import { INDUSTRIES, courseIndustry } from "@/lib/industries";
 import { toast } from "sonner";
-import { buildCourseDraft, splitDraftLesson, mergeDraftLessons, type DraftCourse, type SourcePage } from "@/lib/course-factory";
+import { buildCourseDraft, splitDraftLessonAt, mergeDraftLessons, type DraftCourse, type SourcePage } from "@/lib/course-factory";
 import { extractDocument } from "@/lib/document-extraction";
 import { suggestReviewQuestions } from "@/lib/course-quiz-suggestions";
 import { CourseAnalytics } from "@/components/CourseAnalytics";
@@ -507,14 +507,22 @@ function Editor() {
     setImporting(true);
     try {
       const start = lessons?.length ?? 0;
+      const moduleIds = new Map<string, string>();
+      const names = [...new Set(draft.lessons.map((lesson) => lesson.module).filter((m): m is string => !!m))];
+      if (names.length) {
+        const base = studioModules?.length ?? 0;
+        const { data: created, error: moduleError } = await supabase.from("studio_modules" as never).insert(names.map((title, i) => ({ course_id: id, title, position: base + i })) as never).select("id, title");
+        if (moduleError) throw moduleError;
+        for (const m of (created ?? []) as unknown as { id: string; title: string }[]) moduleIds.set(m.title, m.id);
+      }
       const rows = draft.lessons.map((lesson, index) => ({
-        course_id: id, kind: "reading", position: start + index, title: lesson.title,
+        course_id: id, kind: "reading", position: start + index, title: lesson.title, module_id: lesson.module ? moduleIds.get(lesson.module) ?? null : null,
         body: `${lesson.body}\n\nSource: ${lesson.sourceRefs.map((ref) => `${ref.sourceId}, page ${ref.page}`).join("; ")}\nReview required before publishing.`,
       }));
       const { error } = await supabase.from("studio_lessons").insert(rows);
       if (error) throw error;
       toast.success(`Imported ${rows.length} reading lessons for review.`);
-      setDraft(null); setSourceText(""); refresh();
+      setDraft(null); setSourceText(""); refresh(); qc.invalidateQueries({ queryKey: ["studio-modules", id] });
     } catch (error) { toast.error(friendlyError(error, "Import failed.")); }
     finally { setImporting(false); }
   };
@@ -839,6 +847,7 @@ function Editor() {
               <VideoLibraryPicker courseId={id} position={lessons?.length ?? 0} usedItemIds={videoLinks.map((v) => v.item_id)} onAdded={() => { refresh(); void refetchLinks(); }} />
               <Button size="sm" variant="outline" onClick={() => addLesson("reading")}><FileText className="h-4 w-4" />Reading</Button>
               <Button size="sm" variant="outline" onClick={() => addLesson("quiz")}><HelpCircle className="h-4 w-4" />Quiz</Button>
+              <Button size="sm" variant="outline" onClick={() => addLesson("scorm")}><Package className="h-4 w-4" />SCORM</Button>
             </div>
           </section>
           )}
@@ -931,7 +940,7 @@ function Editor() {
               <ManualLessonReview draft={draft} readOnly={course.published} busy={designSyncing || designLoading !== null || batchRunning || aiLoading}
                 methods={learningMethods} choices={choicesFor} approved={designApproved} rationale={designRationale}
                 onEdit={(index, lesson) => reviseOutline(draft.lessons.map((item, i) => i === index ? lesson : item))}
-                onSplit={(index, offset) => { const lesson = draft.lessons[index]; if (lesson) reviseOutline(draft.lessons.flatMap((item, i) => i === index ? splitDraftLesson(lesson, offset) : [item])); }}
+                onSplit={(index, paragraph, title) => { const lesson = draft.lessons[index]; if (lesson) reviseOutline(draft.lessons.flatMap((item, i) => i === index ? splitDraftLessonAt(lesson, paragraph, title) : [item])); }}
                 onMerge={index => { const first = draft.lessons[index]; const second = draft.lessons[index + 1]; if (first && second) reviseOutline([...draft.lessons.slice(0, index), mergeDraftLessons(first, second), ...draft.lessons.slice(index + 2)]); }}
                 onDelete={async index => { if (await confirm({ title: "Remove this lesson from the outline?", description: "The original manual and saved course lessons will not be deleted.", confirmLabel: "Remove lesson", tone: "danger" })) reviseOutline(draft.lessons.filter((_, i) => i !== index)); }}
                 onMethods={(index, methods) => void saveDesignSelection(index, methods)}

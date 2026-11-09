@@ -22,3 +22,4 @@
 - [x] Safe draft duplication, live-course revisions and version history
 - [x] Verify Studio creation, editing, duplication, delete cancellation/deletion and approval rejection on desktop and mobile
 - [ ] Verify approved version publishing end-to-end (blocked: current account has no approved creator application; restricted test connection cannot run authenticated functions)
+- [x] Manual import: strip cover/contents/references, rejoin wrapped lines, modules from heading 1 and lessons from heading 2, easy paragraph splitting, SCORM in empty lesson box

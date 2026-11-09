@@ -109,3 +109,26 @@ describe("Course Factory draft builder", () => {
     expect(draft.lessons.map((lesson) => lesson.title)).toEqual(["Module 1: Basics", "Module 2: Practice"]);
   });
 });
+
+import { reflowText as _reflow, buildCourseDraft as _build, splitDraftLessonAt as _splitAt } from "./course-factory";
+describe("manual structure", () => {
+  it("rejoins PDF-wrapped lines into one paragraph", () => {
+    expect(_reflow("sustainable agricultural practices must assess\nwater availability and promote efficient water\nuse by understanding a catchment.")).toBe("sustainable agricultural practices must assess water availability and promote efficient water use by understanding a catchment.");
+  });
+  it("makes heading 1 a module and heading 2 its lessons, dropping references", () => {
+    const d = _build("Water", [
+      { sourceId: "m.pdf", page: 3, text: "1. Water Resources\nWater is vital for every farm and catchment in the region.\n1.1 The Water Balance\nIncoming water is rainfall over the catchment area.\n1.2 Wetlands\nWetlands store and filter water for the farm.\nReferences\nSmith, J. (2020). Water. Pretoria." },
+    ]);
+    expect(d.lessons.map(l => [l.module, l.title])).toEqual([
+      ["1. Water Resources", "1. Water Resources · Overview"],
+      ["1. Water Resources", "1.1 The Water Balance"],
+      ["1. Water Resources", "1.2 Wetlands"],
+    ]);
+    expect(d.lessons.some(l => l.body.includes("Smith"))).toBe(false);
+  });
+  it("splits a lesson before the chosen paragraph with a new title", () => {
+    const [a, b] = _splitAt({ title: "T", body: "One.\n\nTwo.\n\nThree.", sourceRefs: [], reviewRequired: true, module: "M" }, 2, "Third part");
+    expect(a!.body).toBe("One.\n\nTwo.");
+    expect(b).toMatchObject({ title: "Third part", body: "Three.", module: "M" });
+  });
+});

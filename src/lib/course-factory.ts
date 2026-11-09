@@ -9,6 +9,8 @@ export type DraftLesson = {
   body: string;
   sourceRefs: { sourceId: string; page: number }[];
   reviewRequired: true;
+  /** Heading 1 the lesson belongs to; becomes a Studio module on import. */
+  module?: string;
 };
 export type DraftCourse = {
   title: string;
@@ -25,6 +27,25 @@ const coverMarker = /^(?:short learning programme|training manual|copyright|all 
 function normalise(text: string): string {
   return text.replace(/\r\n?/g, "\n").replace(/[\t ]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
 }
+const h1 = /^(?:(?:module|chapter|unit|part)\s+(?:\d+|[IVX]+|[A-Z])(?:[.:\s–-]+.*)?|\d+[.)]?\s+[A-Z][^.!?]{2,100}|[IVX]+[.)]\s+[A-Z][^.!?]{2,100})$/i;
+const referencesHeading = /^(?:\d+(?:\.\d+)*[.)]?\s+)?(?:references?(?: list)?|bibliography|works cited|sources|further reading)$/i;
+const listItem = /^(?:[•●▪◦·*-]|\(?\d+[.)]|\(?[a-z][.)])\s+/;
+
+/** Rejoin lines that a PDF wrapped mid-sentence into flowing paragraphs. Keeps list items and real breaks. */
+export function reflowText(text: string): string {
+  const out: string[] = [];
+  for (const block of text.replace(/\r\n?/g, "\n").split(/\n/)) {
+    const line = block.replace(/[\t ]+/g, " ").trim();
+    if (!line) { if (out.length && out.at(-1) !== "") out.push(""); continue; }
+    const prev = out.at(-1);
+    const joins = prev && prev !== "" && !listItem.test(line) && !/[.!?:;]["')\]]?$/.test(prev)
+      && (/^[a-z(,;–-]/.test(line) || !/[.!?]$/.test(prev) && prev.length > 40);
+    if (joins) out[out.length - 1] = prev.endsWith("-") && /^[a-z]/.test(line) ? prev.slice(0, -1) + line : `${prev} ${line}`;
+    else { if (prev && prev !== "" && (listItem.test(line) ? !listItem.test(prev) : true)) out.push(""); out.push(line); }
+  }
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 function contentsTitle(line: string): string {
   return line.replace(/(?:\.{2,}|…+|\s+)\s*\d{1,3}\s*$/, "").trim();
 }
@@ -44,13 +65,15 @@ export function buildCourseDraft(title: string, pages: SourcePage[], firstConten
   const warnings: string[] = [];
   const tocTitles = new Set<string>();
   let currentTitle = title.trim();
+  let currentModule: string | undefined;
+  let inReferences = false;
   let started = false;
   let skipped = false;
   let body: string[] = [];
   let refs: DraftLesson["sourceRefs"] = [];
   const flush = () => {
-    const content = body.join("\n\n").trim();
-    if (content) lessons.push({ title: currentTitle.slice(0, 120), body: content, sourceRefs: [...refs], reviewRequired: true });
+    const content = reflowText(body.join("\n"));
+    if (content) lessons.push({ title: currentTitle.slice(0, 120), body: content, sourceRefs: [...refs], reviewRequired: true, ...(currentModule ? { module: currentModule } : {}) });
     body = []; refs = [];
   };
   for (const [pageIndex, page] of pages.entries()) {
@@ -67,10 +90,18 @@ export function buildCourseDraft(title: string, pages: SourcePage[], firstConten
       && !lines.some(line => heading.test(line)) && (lines.some(line => coverMarker.test(line)) || (lines.length < 12 && page.text.length < 250 && !/[.!?]/.test(page.text)))) { skipped = true; continue; }
     for (const [lineIndex, line] of lines.entries()) {
       if (/^\d+$/.test(line)) continue;
+      if (referencesHeading.test(line)) { flush(); inReferences = true; skipped = true; continue; }
+      if (inReferences) { if (h1.test(line)) inReferences = false; else continue; }
       const isHeading = heading.test(line) || tocTitles.has(line.toLowerCase()) || (lineIndex === 0 && titleCase(line));
       if (isHeading) {
-        if (started && !body.length && /^(?:module|chapter|unit)\s+\d+$/i.test(currentTitle)) currentTitle = `${currentTitle}: ${line}`.slice(0, 120);
-        else if (line !== currentTitle || !started) { flush(); currentTitle = line; }
+        if (started && !body.length && /^(?:module|chapter|unit)\s+\d+$/i.test(currentTitle)) {
+          currentTitle = `${currentTitle}: ${line}`.slice(0, 120);
+          if (currentModule && /^(?:module|chapter|unit)\s+\d+$/i.test(currentModule)) currentModule = currentTitle;
+        } else if (line !== currentTitle || !started) {
+          flush();
+          if (h1.test(line)) { currentModule = line.slice(0, 120); currentTitle = line; }
+          else currentTitle = line;
+        }
         started = true;
         continue;
       }
@@ -86,7 +117,8 @@ export function buildCourseDraft(title: string, pages: SourcePage[], firstConten
     }
   }
   flush();
-  if (skipped) warnings.push("Cover and contents material excluded. Check the source page ranges below.");
+  for (const lesson of lessons) if (lesson.module && lesson.title === lesson.module && lessons.some(other => other !== lesson && other.module === lesson.module)) lesson.title = `${lesson.title} · Overview`.slice(0, 120);
+  if (skipped) warnings.push("Cover, contents and reference list material excluded. Check the source page ranges below.");
   if (!lessons.length) warnings.push("No substantial readable content was found. Check source extraction before publishing.");
   if (lessons.length === 1 && pages.length > 3) warnings.push("One topic detected. Check its boundaries before generating lessons.");
   return { title: title.trim(), lessons, status: "draft", warnings };
@@ -99,6 +131,13 @@ export function splitDraftLesson(lesson: DraftLesson, offset: number): DraftLess
   const second = lesson.body.slice(offset).trim();
   if (!first || !second) return [lesson];
   return [{ ...lesson, body: first }, { ...lesson, title: `${lesson.title.slice(0, 105)} — part 2`, body: second }];
+}
+/** Split before paragraph `index` (paragraphs separated by blank lines), giving the new lesson its own title. */
+export function splitDraftLessonAt(lesson: DraftLesson, index: number, newTitle?: string): DraftLesson[] {
+  const paragraphs = lesson.body.split(/\n{2,}/);
+  if (index <= 0 || index >= paragraphs.length) return [lesson];
+  const second = { ...lesson, title: (newTitle?.trim() || `${lesson.title.slice(0, 105)} — part 2`).slice(0, 120), body: paragraphs.slice(index).join("\n\n") };
+  return [{ ...lesson, body: paragraphs.slice(0, index).join("\n\n") }, second];
 }
 export function mergeDraftLessons(first: DraftLesson, second: DraftLesson): DraftLesson {
   const sourceRefs = [...first.sourceRefs];
