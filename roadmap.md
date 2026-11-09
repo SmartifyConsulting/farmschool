@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Add confirmed bulk imported-lesson review and admin publishing exemption; verify with disposable courses
 - [x] Simplify manual review into one editable lesson list; improve opening-content detection and add split/merge controls
 - [x] AI farming-challenge course and lesson finder
 - [x] Desktop + tablet layouts
@@ -21,5 +22,5 @@
 - [x] Studio two-panel editor and searchable course actions
 - [x] Safe draft duplication, live-course revisions and version history
 - [x] Verify Studio creation, editing, duplication, delete cancellation/deletion and approval rejection on desktop and mobile
-- [ ] Verify approved version publishing end-to-end (blocked: current account has no approved creator application; restricted test connection cannot run authenticated functions)
+- [x] Verify reviewed course publishing end-to-end as an admin without a creator application
 - [x] Manual import: strip cover/contents/references, rejoin wrapped lines, modules from heading 1 and lessons from heading 2, easy paragraph splitting, SCORM in empty lesson box

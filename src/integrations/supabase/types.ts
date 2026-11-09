@@ -1121,6 +1121,10 @@ export type Database = {
       studio_course_owned: { Args: { _course: string }; Returns: boolean }
       studio_course_visible: { Args: { _course: string }; Returns: boolean }
       studio_delete_draft: { Args: { _course_id: string }; Returns: string }
+      studio_mark_imported_reviewed: {
+        Args: { _course_id: string }
+        Returns: number
+      }
       studio_move_lesson: {
         Args: { _course_id: string; _direction: number; _lesson_id: string }
         Returns: undefined

@@ -197,6 +197,7 @@ function Editor() {
   const [designTab, setDesignTab] = useState<"auto" | "manual">("auto");
   const [selectedLesson, setSelectedLesson] = useState<string | null>(null);
   const [changeNote, setChangeNote] = useState("");
+  const [reviewingLessons, setReviewingLessons] = useState(false);
   const { user, ready: authReady } = useAuth();
   const [factoryStep, setFactoryStep] = useState(0);
   const [firstContentPage, setFirstContentPage] = useState(1);
@@ -696,18 +697,36 @@ function Editor() {
   const modules = groupLessonsIntoModules(lessons ?? [], studioModules ?? []);
   const draftGroups = draft ? groupDraftLessons(draft.lessons) : [];
   const draftGroupFor = (moduleTitle: string) => draftGroups.find((g) => g.title === moduleTitle || moduleTitle.startsWith(g.title.split(" · ")[0] ?? g.title));
+  const pendingReviewCount = (lessons ?? []).filter(lesson => /Review required before publishing\./i.test(lesson.body)).length;
+  const markAllReviewed = async () => {
+    if (!course || course.published || reviewingLessons || !pendingReviewCount) return;
+    const accepted = await confirm({
+      title: "Mark all imported lessons as reviewed?", confirmLabel: "Mark all reviewed",
+      description: <p>I have checked the content and source evidence for all {pendingReviewCount} imported lessons. This records my review; it does not publish the course.</p>,
+    });
+    if (!accepted) return;
+    setReviewingLessons(true);
+    try {
+      const { data: count, error } = await supabase.rpc("studio_mark_imported_reviewed", { _course_id: id });
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ["studio-lessons", id] });
+      toast.success(`${count} imported lesson${count === 1 ? "" : "s"} marked as reviewed.`);
+    } catch (error) {
+      toast.error(friendlyError(error, "We couldn't save your lesson review. Please try again."));
+    } finally { setReviewingLessons(false); }
+  };
   const readiness = [
     { label: "Course title and description", ready: form.title.trim().length >= 3 && form.description.trim().length >= 30 },
     { label: "Industry and topic selected", ready: !!form.category.trim() && !form.category.endsWith(" / General") && !form.category.endsWith(" / ") },
     { label: "At least one lesson", ready: (lessons?.length ?? 0) > 0 },
-    { label: "Imported lessons reviewed", ready: !(lessons ?? []).some((lesson) => lesson.body.includes("Review required before publishing.")) },
+    { label: "Imported lessons reviewed", ready: pendingReviewCount === 0 },
   ];
   const readyToPublish = readiness.every((item) => item.ready);
 
   const setPublished = async (published: boolean) => {
     if (published && !readyToPublish) { toast.error("Complete the publishing checklist and save your course details first."); return; }
     if (published && !lessons?.length) { toast.error("Add at least one lesson before publishing."); return; }
-    if (published && lessons?.some((lesson) => lesson.body.includes("Review required before publishing."))) { toast.error("Imported lessons still need review. Edit each imported lesson and remove the review notice after verifying the content."); return; }
+    if (published && pendingReviewCount > 0) { toast.error("Check your imported lessons, then mark them as reviewed before publishing."); return; }
     if (published) {
       const { error: approvalError } = await supabase.rpc("studio_approve_review" as never, { _course_id: id } as never);
       if (approvalError) { toast.error(friendlyError(approvalError, "We couldn't record your review. Please try again.")); return; }
@@ -1010,9 +1029,10 @@ function Editor() {
               <h2 className="font-semibold">Publish v1.{course.version_number - 1}</h2>
               {!course.published && <Textarea aria-label="Version change note" value={changeNote} onChange={e => setChangeNote(e.target.value)} placeholder="What changed in this version?" maxLength={1000} />}
               <ul className="space-y-2">{readiness.map(item => <li key={item.label} className="flex items-center gap-2 text-xs"><Check className={item.ready ? "h-4 w-4 text-primary" : "h-4 w-4 text-muted-foreground"} />{item.label}</li>)}</ul>
+              {!course.published && pendingReviewCount > 0 && <div className="space-y-2 border-l-2 border-primary py-2 pl-3"><p className="text-sm text-muted-foreground">{pendingReviewCount} imported lessons awaiting your review.</p><Button variant="outline" disabled={reviewingLessons} onClick={markAllReviewed}><Check className="h-4 w-4" />{reviewingLessons ? "Saving review…" : "Mark all lessons as reviewed"}</Button></div>}
               <p className="text-xs text-muted-foreground">Course details, modules and lesson content are checked automatically before this is allowed.</p>
               {course.published ? <Button variant="outline" className="w-full" onClick={() => setPublished(false)}>Unpublish</Button>
-                : <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={!readyToPublish} onClick={() => setPublished(true)}>Publish to catalogue</Button>}
+                : <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={!readyToPublish || reviewingLessons} onClick={() => setPublished(true)}>Publish to catalogue</Button>}
               {!readyToPublish && !course.published && <p className="text-xs text-muted-foreground">Finish the course title, description, industry/topic, and add at least one lesson with every imported lesson reviewed, to enable publishing.</p>}
               <Button variant="ghost" className="mt-2 w-full text-destructive" onClick={remove} disabled={deleting || course.published}><Trash2 className="h-4 w-4" />{deleting ? "Deleting…" : "Delete course"}</Button>
             </section>

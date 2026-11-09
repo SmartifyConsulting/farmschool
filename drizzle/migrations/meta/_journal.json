@@ -85,6 +85,20 @@
       "when": 1794263517490,
       "tag": "0011_scorm_packages",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794267508868,
+      "tag": "0012_studio_bulk_review_admin_publish",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794267670478,
+      "tag": "0013_studio_admin_version_publish",
+      "breakpoints": true
     }
   ]
 }

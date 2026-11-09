@@ -75,7 +75,8 @@ suite("Studio revision database rules", () => {
     await expect(sql`select public.studio_copy_draft(${id},false)`).rejects.toThrow('Only the owner');
   }));
   it("rejects publishing without creator approval", async () => fixture(async (sql,id,owner) => {
-    await sql`select public.creator_review_application(${owner},false,'Temporary rolled-back rejection')`;
+    await sql`update public.creator_applications set status='rejected' where user_id=${owner}`;
+    await sql`delete from public.user_roles where user_id=${owner} and role='admin'`;
     await sql`select public.studio_approve_review(${id})`;
     await expect(sql`select public.studio_publish_version(${id},'Initial')`).rejects.toThrow('Creator approval');
   }));
