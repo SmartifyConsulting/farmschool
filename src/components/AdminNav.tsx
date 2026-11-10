@@ -5,7 +5,6 @@ const SECTIONS = [
   { to: "/admin/analytics", label: "Analytics" },
   { to: "/admin/compliance", label: "Compliance" },
   { to: "/admin/creators", label: "Creator Approvals" },
-  { to: "/admin/external-content", label: "Library" },
   { to: "/admin/api-connections", label: "API Connections" },
 ] as const;
 

@@ -24,3 +24,6 @@
 - [x] Verify Studio creation, editing, duplication, delete cancellation/deletion and approval rejection on desktop and mobile
 - [x] Verify reviewed course publishing end-to-end as an admin without a creator application
 - [x] Manual import: strip cover/contents/references, rejoin wrapped lines, modules from heading 1 and lessons from heading 2, easy paragraph splitting, SCORM in empty lesson box
+- [x] Black nav banner, white text, heading spacing, My Learning heading
+- [x] Move Content Library into Course Studio tab, remove from Admin
+- [x] Restore left body padding

@@ -139,7 +139,7 @@ function MyCourses() {
     <Phone>
       <Header />
       <Sheet>
-        <CanvasHeading title="My learning" />
+        <CanvasHeading eyebrow="Continue learning" title="My Learning" />
         <div className="mt-4">
           <SearchBox />
         </div>

@@ -193,7 +193,7 @@ function HeaderAction() {
 export function Header({ children, wide = false }: { children?: ReactNode; wide?: boolean }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   return (
-    <header className="relative bg-white px-5 pb-6 pt-5 text-navy md:px-10 md:py-0">
+    <header className="relative bg-banner px-5 pb-6 pt-5 text-banner-foreground md:px-10 md:py-0">
       <div className="mx-auto max-w-[1600px]">
         <div className="hidden h-[104px] items-center justify-between gap-4 md:flex">
           <Link to="/" aria-label="Home" className="shrink-0">
@@ -208,7 +208,7 @@ export function Header({ children, wide = false }: { children?: ReactNode; wide?
                     key={t.to}
                     to={t.to}
                     aria-label={t.label}
-                    className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${active ? "bg-primary/10 text-primary" : "text-navy/80 hover:bg-muted"}`}
+                    className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${active ? "bg-banner-foreground/20 text-banner-foreground" : "text-banner-foreground hover:bg-banner-foreground/10"}`}
                   >
                     <t.icon className="h-4 w-4 shrink-0" />
                     {t.label}
@@ -221,7 +221,7 @@ export function Header({ children, wide = false }: { children?: ReactNode; wide?
             <Link
               to="/notifications"
               aria-label="Notifications"
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-muted text-navy hover:bg-muted/70"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-banner-foreground/10 text-banner-foreground hover:bg-banner-foreground/20"
             >
               <Bell className="h-4 w-4" />
             </Link>
@@ -238,7 +238,7 @@ export function Header({ children, wide = false }: { children?: ReactNode; wide?
             <Link
               to="/notifications"
               aria-label="Notifications"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-navy hover:bg-muted/70"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-banner-foreground/10 text-banner-foreground hover:bg-banner-foreground/20"
             >
               <Bell className="h-5 w-5" />
             </Link>
@@ -305,7 +305,7 @@ function Footer() {
 
 export function Sheet({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   return (
-    <div className="bg-card px-5 pt-5 md:px-10 md:pt-8">
+    <div className="bg-card px-6 pt-10 md:px-12 md:pt-20 lg:px-16">
       <div className={wide ? "mx-auto w-full max-w-none" : "mx-auto max-w-6xl"}>{children}</div>
     </div>
   );

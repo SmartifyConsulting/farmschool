@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Plus, PenSquare } from "lucide-react";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
+import { ContentLibrary } from "@/components/ContentLibrary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -335,6 +336,7 @@ function Studio() {
       );
     },
   });
+  const [view, setView] = useState<"courses" | "library">("courses");
   const handleCreated = (id: string) => {
     setDialogOpen(false);
     qc.invalidateQueries({ queryKey: ["studio-mine"] });
@@ -356,6 +358,21 @@ function Studio() {
           </p>
         ) : (
           <>
+            <div className="mb-5 flex gap-1 rounded-full bg-muted p-1 text-sm md:max-w-sm" role="tablist">
+              {(["courses", "library"] as const).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  role="tab"
+                  aria-selected={view === k}
+                  onClick={() => setView(k)}
+                  className={`flex-1 rounded-full px-3 py-2 font-semibold ${view === k ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                >
+                  {k === "courses" ? "My courses" : "Content Library"}
+                </button>
+              ))}
+            </div>
+            {view === "library" ? <ContentLibrary /> : <>
             <p className="mb-4 text-sm text-muted-foreground">
               Create and edit courses here. To publish a new course, first{" "}
               <Link to="/creator-application" className="font-semibold text-primary">
@@ -462,6 +479,7 @@ function Studio() {
                 </p>
               )}
             </div>
+            </>}
           </>
         )}
       </Sheet>

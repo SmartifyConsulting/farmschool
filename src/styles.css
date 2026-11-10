@@ -60,6 +60,8 @@
   --color-sidebar: var(--sidebar);
   --color-navy: var(--navy);
   --color-navy-foreground: var(--navy-foreground);
+  --color-banner: var(--banner);
+  --color-banner-foreground: var(--banner-foreground);
   --color-highlight: var(--highlight);
   --color-highlight-foreground: var(--highlight-foreground);
   --color-gold: var(--gold);
@@ -88,6 +90,8 @@
   --secondary-foreground: oklch(0.35 0.15 290);
   --navy: oklch(0.15 0.06 275);
   --navy-foreground: oklch(0.99 0 0);
+  --banner: oklch(0 0 0);
+  --banner-foreground: oklch(1 0 0);
   --highlight: oklch(0.6 0.25 300);
   --highlight-foreground: oklch(0.99 0 0);
   --gold: oklch(0.8 0.16 75);
