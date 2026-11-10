@@ -7,7 +7,7 @@ export const Route = createFileRoute("/api/health")({
         const started = Date.now();
         try {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-          const { error } = await supabaseAdmin.from("studio_courses").select("id", { head: true, count: "exact" }).limit(1);
+          const { error } = await supabaseAdmin.from("studio_courses").select("id").limit(1);
           if (error) throw error;
           return Response.json({
             status: "ok",
