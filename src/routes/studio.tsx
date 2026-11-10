@@ -232,7 +232,7 @@ function Studio() {
           await supabase
             .from("studio_courses")
             .select(
-              "id, title, published, category, version_number, revision_of, studio_lessons(count), studio_modules(count)",
+              "id, title, published, category, cover_url, version_number, revision_of, studio_lessons(count), studio_modules(count)",
             )
             .eq("author_id", user.id)
             .order("updated_at", { ascending: false })
@@ -317,34 +317,47 @@ function Studio() {
                 .map((c) => (
                   <article
                     key={c.id}
-                    className="min-w-0 rounded-lg border border-border p-5 hover:bg-muted/50"
+                    className="min-w-0 overflow-hidden rounded-lg border border-border hover:bg-muted/50"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <Link
-                        to="/studio/$id"
-                        params={{ id: c.id }}
-                        className="break-words font-semibold hover:text-primary"
-                      >
-                        {c.title}
-                      </Link>
-                      <StudioCourseActions
-                        course={c}
-                        onChanged={() => qc.invalidateQueries({ queryKey: ["studio-mine"] })}
+                    {c.cover_url ? (
+                      <img
+                        src={c.cover_url}
+                        alt=""
+                        className="h-32 w-full object-cover"
                       />
-                    </div>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {c.category} ·{" "}
-                      {(c.studio_modules as unknown as { count: number }[])[0]?.count ?? 0} modules
-                      · {(c.studio_lessons as unknown as { count: number }[])[0]?.count ?? 0}{" "}
-                      lessons
-                    </p>
-                    <div className="mt-2 flex gap-2 text-[11px]">
-                      <span
-                        className={`rounded-full px-2 py-0.5 ${c.published ? "bg-secondary text-secondary-foreground" : "bg-muted text-muted-foreground"}`}
-                      >
-                        {c.published ? "Published" : c.revision_of ? "Draft revision" : "Draft"}
-                      </span>
-                      <span className="text-muted-foreground">v1.{c.version_number - 1}</span>
+                    ) : (
+                      <div className="grid h-32 w-full place-items-center bg-muted text-xs text-muted-foreground">
+                        No cover image
+                      </div>
+                    )}
+                    <div className="p-5">
+                      <div className="flex items-start justify-between gap-2">
+                        <Link
+                          to="/studio/$id"
+                          params={{ id: c.id }}
+                          className="break-words font-semibold hover:text-primary"
+                        >
+                          {c.title}
+                        </Link>
+                        <StudioCourseActions
+                          course={c}
+                          onChanged={() => qc.invalidateQueries({ queryKey: ["studio-mine"] })}
+                        />
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {c.category} ·{" "}
+                        {(c.studio_modules as unknown as { count: number }[])[0]?.count ?? 0} modules
+                        · {(c.studio_lessons as unknown as { count: number }[])[0]?.count ?? 0}{" "}
+                        lessons
+                      </p>
+                      <div className="mt-2 flex gap-2 text-[11px]">
+                        <span
+                          className={`rounded-full px-2 py-0.5 ${c.published ? "bg-secondary text-secondary-foreground" : "bg-muted text-muted-foreground"}`}
+                        >
+                          {c.published ? "Published" : c.revision_of ? "Draft revision" : "Draft"}
+                        </span>
+                        <span className="text-muted-foreground">v1.{c.version_number - 1}</span>
+                      </div>
                     </div>
                   </article>
                 ))}
