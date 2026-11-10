@@ -29,7 +29,7 @@ export const Route = createFileRoute("/api/scorm-file/$")({
       .download(path);
     if (storageError || !file) return new Response("Not found", { status: 404 });
 
-    return new Response(file.stream(), {
+    return new Response(await file.arrayBuffer(), {
       headers: {
         "Content-Type": mimeFor(path),
         "Cache-Control": "private, max-age=3600",
