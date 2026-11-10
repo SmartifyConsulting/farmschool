@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Lightbulb, Pin, RotateCw, TriangleAlert } from "lucide-react";
 import { FormattedLesson } from "@/components/FormattedLesson";
+import { PhotoEvidence } from "@/components/PhotoEvidence";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { LessonSlide, SlideBlock } from "@/lib/lesson-slides";
@@ -36,12 +37,17 @@ export function SlidePlayer({
   completed,
   onComplete,
   saving,
+  lessonId,
+  isTrainer,
 }: {
   slides: LessonSlide[];
   storageKey?: string;
   completed?: boolean;
   onComplete?: () => void;
   saving?: boolean;
+  /** Needed only when a slide has a photo block, to scope the evidence upload/review. */
+  lessonId?: string;
+  isTrainer?: boolean;
 }) {
   const [state, setState] = useState(() => restore(storageKey, slides.length));
   const gesture = useRef<{ x: number; y: number } | null>(null);
@@ -108,6 +114,9 @@ export function SlidePlayer({
           <Block
             key={state.index + ":" + i}
             block={block}
+            lessonId={lessonId}
+            blockIndex={i}
+            isTrainer={!!isTrainer}
             checked={(item) => state.checked.includes([state.index, i, item].join(":"))}
             toggle={(item) => {
               const key = [state.index, i, item].join(":");
@@ -145,13 +154,53 @@ function Block({
   block,
   checked,
   toggle,
+  lessonId,
+  blockIndex,
+  isTrainer,
 }: {
   block: SlideBlock;
   checked: (item: number) => boolean;
   toggle: (item: number) => void;
+  lessonId: string | undefined;
+  blockIndex: number;
+  isTrainer: boolean;
 }) {
   const [flipped, setFlipped] = useState(false);
+  const [open, setOpen] = useState<number | null>(null);
   if (block.kind === "text") return <FormattedLesson content={block.body} />;
+  if (block.kind === "photo")
+    return lessonId ? (
+      <PhotoEvidence
+        lessonId={lessonId}
+        blockIndex={blockIndex}
+        prompt={block.prompt}
+        isTrainer={isTrainer}
+      />
+    ) : null;
+  if (block.kind === "hotspot")
+    return (
+      <div className="relative overflow-hidden rounded-xl border border-border">
+        <img src={block.image} alt="" className="w-full" />
+        {block.points.map((point, i) => (
+          <button
+            key={i}
+            type="button"
+            aria-label={point.label}
+            onClick={() => setOpen(open === i ? null : i)}
+            style={{ left: point.x + "%", top: point.y + "%" }}
+            className="absolute flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-primary-foreground bg-primary text-xs font-bold text-primary-foreground shadow"
+          >
+            {i + 1}
+          </button>
+        ))}
+        {open !== null && block.points[open] && (
+          <div className="absolute inset-x-2 bottom-2 space-y-1 rounded-lg border border-border bg-card/95 p-3 backdrop-blur">
+            <p className="text-sm font-semibold">{block.points[open]!.label}</p>
+            <FormattedLesson content={block.points[open]!.body} />
+          </div>
+        )}
+      </div>
+    );
   if (block.kind === "flip")
     return (
       <div className="space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-4">

@@ -3,7 +3,13 @@ export type SlideBlock =
   | { kind: "tip" | "warning" | "takeaway"; body: string }
   | { kind: "flip"; front: string; back: string }
   | { kind: "tabs" | "accordion"; items: { label: string; body: string }[] }
-  | { kind: "checklist"; items: string[] };
+  | { kind: "checklist"; items: string[] }
+  | { kind: "photo"; prompt: string }
+  | {
+      kind: "hotspot";
+      image: string;
+      points: { x: number; y: number; label: string; body: string }[];
+    };
 
 export type LessonSlide = { title: string; blocks: SlideBlock[] };
 
@@ -18,7 +24,8 @@ function parseBlocks(lines: string[]): SlideBlock[] {
   };
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
-    const marker = /^:::(tip|warning|takeaway|flip|tabs|accordion|checklist)\s*$/.exec(line);
+    const marker =
+      /^:::(tip|warning|takeaway|flip|tabs|accordion|checklist|photo|hotspot)\s*$/.exec(line);
     if (!marker) {
       plain.push(line);
       continue;
@@ -59,6 +66,37 @@ function parseBlocks(lines: string[]): SlideBlock[] {
         .filter((s) => s.trim())
         .map((s) => /^[-*]\s+(?:\[\s?\]\s*)?(.+)$/.exec(s.trim())?.[1]?.trim());
       if (items.length && items.every((item): item is string => !!item)) block = { kind, items };
+    }
+    if (kind === "photo" && body) block = { kind, prompt: body };
+    if (kind === "hotspot") {
+      const lines = body.split("\n");
+      const image = lines[0]?.trim();
+      const parts = lines
+        .slice(1)
+        .join("\n")
+        .split(/^###\s+/m);
+      const points = parts.slice(1).map((part) => {
+        const split = part.indexOf("\n");
+        const head = (split < 0 ? part : part.slice(0, split)).trim();
+        const coords = /^(\d{1,3}),(\d{1,3})\s+(\S.*)$/.exec(head);
+        return {
+          x: coords ? Number(coords[1]) : -1,
+          y: coords ? Number(coords[2]) : -1,
+          label: coords ? coords[3]!.trim() : "",
+          body: split < 0 ? "" : part.slice(split + 1).trim(),
+        };
+      });
+      if (
+        image &&
+        /^https:\/\//.test(image) &&
+        !parts[0]?.trim() &&
+        points.length &&
+        points.every(
+          (point) =>
+            point.x >= 0 && point.x <= 100 && point.y >= 0 && point.y <= 100 && point.label,
+        )
+      )
+        block = { kind, image, points };
     }
     if (block) {
       flush();
@@ -145,6 +183,8 @@ export function slideText(slide: LessonSlide, revealAnswers = true): string {
       if (block.kind === "checklist") return block.items;
       if (block.kind === "tabs" || block.kind === "accordion")
         return block.items.flatMap(({ label, body }) => [label, body]);
+      if (block.kind === "photo") return [block.prompt];
+      if (block.kind === "hotspot") return block.points.flatMap(({ label, body }) => [label, body]);
       return "body" in block ? [block.body] : [];
     }),
   ]

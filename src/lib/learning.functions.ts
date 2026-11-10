@@ -21,7 +21,27 @@ export const submitQuiz = createServerFn({ method: "POST" })
     const questions = parseQuizQuestions(lesson.quiz);
     const key = lesson.studio_quiz_answers;
     if (!questions || !key || key.course_id !== lesson.course_id) throw new Error("This quiz is not ready to be graded.");
-    const correct = gradeQuiz(questions, key.answers, data.answers);
+    const grading = gradeQuiz(questions, key.answers, data.answers);
+    const written = grading.filter((item) => typeof item !== "boolean");
+    const feedback: (string | null)[] = questions.map(() => null);
+    const correct = grading.map((item) => item === true);
+    if (written.length) {
+      const apiKey = process.env["OPENAI_API_KEY"];
+      if (!apiKey) throw new Error("Written grading is unavailable right now. Your answers were not graded.");
+      const { data: used, error: quotaError } = await supabaseAdmin.rpc("written_quiz_reserve_request", { _user_id: context.userId });
+      if (quotaError || typeof used !== "number") throw new Error("Written grading is unavailable right now. Your answers were not graded.");
+      if (used === 0) throw new Error("You’ve reached the daily limit for quizzes with written responses. Try again tomorrow.");
+      try {
+        const { gradeWrittenQuiz } = await import("@/lib/ai/written-quiz.server");
+        const writtenGrades = await gradeWrittenQuiz(apiKey, written);
+        for (const [index, grade] of writtenGrades) {
+          correct[index] = grade.correct;
+          feedback[index] = grade.feedback;
+        }
+      } catch {
+        throw new Error("Written grading did not finish. Your answers were kept on this page so you can try again.");
+      }
+    }
     const score = Math.round((correct.filter(Boolean).length / questions.length) * 100);
     const passMark = parsePassMark(lesson.body);
     const passed = score >= passMark;
@@ -31,7 +51,7 @@ export const submitQuiz = createServerFn({ method: "POST" })
       const { error: progressError } = await context.supabase.from("lesson_progress").upsert({ user_id: context.userId, course_id: lesson.course_id, lesson_id: lesson.id, completed: true, position_seconds: 0, updated_at: new Date().toISOString() }, { onConflict: "user_id,course_id,lesson_id" });
       if (progressError) throw new Error("Could not update lesson progress. Please retry.");
     }
-    return { score, passed, passMark, correct };
+    return { score, passed, passMark, correct, feedback };
   });
 
 /** Issues a certificate only when every lesson is complete (and studio quizzes were passed on the server). */

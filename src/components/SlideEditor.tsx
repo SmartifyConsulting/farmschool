@@ -23,6 +23,11 @@ const templates = [
   ["Safety warning", ":::warning\nExplain the safety concern.\n:::"],
   ["Pro tip", ":::tip\nAdd a practical tip.\n:::"],
   ["Key takeaway", ":::takeaway\nSummarise the key idea.\n:::"],
+  ["Photo evidence", ":::photo\nUpload a photo of your completed task for trainer sign-off.\n:::"],
+  [
+    "Hotspot image",
+    ":::hotspot\nhttps://example.com/image.jpg\n### 20,30 Label one\nExplain this point.\n### 70,60 Label two\nExplain this point.\n:::",
+  ],
 ] as const;
 
 export function SlideEditor({

@@ -210,7 +210,7 @@ export function Header({
       <div className="mx-auto max-w-6xl">
         <div className="mb-5 hidden items-center justify-between gap-4 pb-4 md:flex">
           <Link to="/" aria-label="Home" className="shrink-0">
-            <img src={logo} alt="Plusticity" className="h-[60px] w-auto object-contain" />
+            <img src={logo} alt="Plusticity" className="h-[90px] w-auto object-contain" />
           </Link>
           <nav className="flex flex-1 items-center justify-center gap-1">
             {[...tabs, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const].map(
@@ -243,6 +243,9 @@ export function Header({
             <AvatarMenu horizontal />
           </div>
         </div>
+        <Link to="/" aria-label="Home" className="mb-3 inline-block shrink-0 md:hidden">
+          <img src={logo} alt="Plusticity" className="h-[54px] w-auto object-contain" />
+        </Link>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-navy-foreground/80">

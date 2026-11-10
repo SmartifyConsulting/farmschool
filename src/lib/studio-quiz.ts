@@ -3,11 +3,16 @@ import { z } from "zod";
 const choiceIndex = z.number().int().min(0).max(49);
 const option = z.string().max(500);
 const prompt = z.string().trim().min(1).max(500);
+export const writtenResponseLimit = 2000;
+export const writtenRubricLimit = 2000;
+export const writtenQuestionsLimit = 5;
+const rubricSchema = z.string().trim().min(20).max(writtenRubricLimit);
 
 const questionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("choice"), q: prompt, options: z.array(option).min(2).max(50) }),
   z.object({ kind: z.literal("boolean"), q: prompt }),
   z.object({ kind: z.literal("blank"), q: prompt }),
+  z.object({ kind: z.literal("written"), q: prompt }),
   z.object({
     kind: z.literal("match"),
     q: prompt,
@@ -21,7 +26,7 @@ export type QuestionKind = QuizQuestion["kind"];
 
 const responseSchema = z.union([
   choiceIndex,
-  z.string().trim().min(1).max(500),
+  z.string().trim().min(1).max(writtenResponseLimit),
   z.array(choiceIndex).min(2).max(8),
 ]);
 export const quizSubmission = z.object({
@@ -34,6 +39,7 @@ const keySchema = z.union([
   choiceIndex,
   z.array(z.string().trim().min(1).max(500)).min(1).max(10),
   z.array(choiceIndex).min(2).max(8),
+  z.object({ rubric: rubricSchema }),
 ]);
 type QuizKey = z.infer<typeof keySchema>;
 
@@ -41,12 +47,14 @@ export type QuizDraftQuestion =
   | { kind: "choice"; q: string; options: string[]; answer: number }
   | { kind: "boolean"; q: string; answer: number }
   | { kind: "blank"; q: string; accepted: string }
+  | { kind: "written"; q: string; rubric: string }
   | { kind: "match"; q: string; pairs: { left: string; right: string }[] };
 
 export const questionLabels: Record<QuestionKind, string> = {
   choice: "Multiple choice",
   boolean: "True / false",
   blank: "Fill in the blank",
+  written: "Written response (AI graded)",
   match: "Matching pairs",
 };
 export const trueFalseOptions = ["True", "False"];
@@ -59,6 +67,8 @@ export function newQuizQuestion(kind: QuestionKind, q = ""): QuizDraftQuestion {
       return { kind, q, answer: -1 };
     case "blank":
       return { kind, q, accepted: "" };
+    case "written":
+      return { kind, q, rubric: "" };
     case "match":
       return {
         kind,
@@ -110,6 +120,11 @@ export function loadQuizDraft(questions: QuizQuestion[], rawKeys: unknown): Quiz
           ...question,
           accepted: Array.isArray(answer) && typeof answer[0] === "string" ? answer.join("\n") : "",
         };
+      case "written":
+        return {
+          ...question,
+          rubric: answer && typeof answer === "object" && "rubric" in answer ? answer.rubric : "",
+        };
       case "match":
         return {
           kind: "match",
@@ -135,6 +150,9 @@ export function buildQuiz(draft: QuizDraftQuestion[]): {
   keys: QuizKey[];
 } {
   if (!draft.length || draft.length > 50) throw new Error("Add between 1 and 50 questions.");
+  if (draft.filter((question) => question.kind === "written").length > writtenQuestionsLimit) {
+    throw new Error("Add up to five written responses per quiz.");
+  }
   const questions: QuizQuestion[] = [];
   const keys: QuizKey[] = [];
   for (const [i, question] of draft.entries()) {
@@ -168,6 +186,13 @@ export function buildQuiz(draft: QuizDraftQuestion[]): {
         error("Enter 1 to 10 accepted answers, one per line.");
       questions.push({ kind: "blank", q });
       keys.push(accepted);
+    } else if (question.kind === "written") {
+      const rubric = rubricSchema.safeParse(question.rubric);
+      if (!rubric.success) error("Write a rubric of 20 to 2,000 characters.");
+      else {
+        questions.push({ kind: "written", q });
+        keys.push({ rubric: rubric.data });
+      }
     } else {
       const left = question.pairs.map((pair) => pair.left.trim());
       const matches = question.pairs.map((pair) => pair.right.trim());
@@ -195,7 +220,11 @@ export function responseIsComplete(
 ): boolean {
   switch (question.kind) {
     case "blank":
-      return typeof value === "string" && !!value.trim();
+      return typeof value === "string" && !!value.trim() && value.trim().length <= 500;
+    case "written":
+      return (
+        typeof value === "string" && !!value.trim() && value.trim().length <= writtenResponseLimit
+      );
     case "choice":
       return typeof value === "number" && !!question.options[value]?.trim();
     case "boolean":
@@ -210,7 +239,19 @@ export function responseIsComplete(
   }
 }
 
-export function gradeQuiz(questions: QuizQuestion[], rawKeys: unknown, responses: QuizResponse[]) {
+export type WrittenGradeInput = {
+  index: number;
+  question: string;
+  response: string;
+  rubric: string;
+};
+
+/** Score fixed answers locally and prepare written questions for the server grader. */
+export function gradeQuiz(
+  questions: QuizQuestion[],
+  rawKeys: unknown,
+  responses: QuizResponse[],
+): (boolean | WrittenGradeInput)[] {
   const keys = z.array(keySchema).safeParse(rawKeys);
   if (!questions.length || !keys.success || keys.data.length !== questions.length)
     throw new Error("This quiz is not ready to be graded.");
@@ -220,9 +261,21 @@ export function gradeQuiz(questions: QuizQuestion[], rawKeys: unknown, responses
   ) {
     throw new Error("Answer every question before submitting.");
   }
+  if (questions.filter((question) => question.kind === "written").length > writtenQuestionsLimit) {
+    throw new Error("This quiz has too many written questions to grade.");
+  }
   return questions.map((question, i) => {
     const key = keys.data[i];
     const response = responses[i];
+    if (
+      question.kind === "written" &&
+      typeof response === "string" &&
+      key &&
+      typeof key === "object" &&
+      "rubric" in key
+    ) {
+      return { index: i, question: question.q, response, rubric: key.rubric };
+    }
     if (
       question.kind === "blank" &&
       Array.isArray(key) &&

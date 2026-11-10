@@ -24,7 +24,9 @@ import { Route as SearchRouteImport } from './routes/search'
 import { Route as StudioRouteImport } from './routes/studio'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminApiConnectionsRouteImport } from './routes/admin.api-connections'
+import { Route as AdminComplianceRouteImport } from './routes/admin.compliance'
 import { Route as AdminCreatorsRouteImport } from './routes/admin.creators'
 import { Route as AdminExternalContentRouteImport } from './routes/admin.external-content'
 import { Route as AdminMoodleRouteImport } from './routes/admin.moodle'
@@ -33,6 +35,7 @@ import { Route as ApiAskRouteImport } from './routes/api/ask'
 import { Route as ApiChallengeRouteImport } from './routes/api/challenge'
 import { Route as ApiCourseFactoryRouteImport } from './routes/api/course-factory'
 import { Route as ApiCourseWizardRouteImport } from './routes/api/course-wizard'
+import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
 import { Route as ClassIdRouteImport } from './routes/class.$id'
 import { Route as CourseIdRouteImport } from './routes/course.$id'
 import { Route as LearningActivitiesCourseIdRouteImport } from './routes/learning-activities.$courseId'
@@ -119,9 +122,19 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
+  id: '/admin/analytics',
+  path: '/admin/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminApiConnectionsRoute = AdminApiConnectionsRouteImport.update({
   id: '/admin/api-connections',
   path: '/admin/api-connections',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminComplianceRoute = AdminComplianceRouteImport.update({
+  id: '/admin/compliance',
+  path: '/admin/compliance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminCreatorsRoute = AdminCreatorsRouteImport.update({
@@ -162,6 +175,11 @@ const ApiCourseFactoryRoute = ApiCourseFactoryRouteImport.update({
 const ApiCourseWizardRoute = ApiCourseWizardRouteImport.update({
   id: '/api/course-wizard',
   path: '/api/course-wizard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
+  id: '/api/stripe-webhook',
+  path: '/api/stripe-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClassIdRoute = ClassIdRouteImport.update({
@@ -231,7 +249,9 @@ export interface FileRoutesByFullPath {
   '/search': typeof SearchRoute
   '/studio': typeof StudioRouteWithChildren
   '/terms': typeof TermsRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/api-connections': typeof AdminApiConnectionsRoute
+  '/admin/compliance': typeof AdminComplianceRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/moodle': typeof AdminMoodleRoute
@@ -240,6 +260,7 @@ export interface FileRoutesByFullPath {
   '/api/challenge': typeof ApiChallengeRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/class/$id': typeof ClassIdRoute
   '/course/$id': typeof CourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
@@ -267,7 +288,9 @@ export interface FileRoutesByTo {
   '/search': typeof SearchRoute
   '/studio': typeof StudioRouteWithChildren
   '/terms': typeof TermsRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/api-connections': typeof AdminApiConnectionsRoute
+  '/admin/compliance': typeof AdminComplianceRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/moodle': typeof AdminMoodleRoute
@@ -276,6 +299,7 @@ export interface FileRoutesByTo {
   '/api/challenge': typeof ApiChallengeRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/class/$id': typeof ClassIdRoute
   '/course/$id': typeof CourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
@@ -304,7 +328,9 @@ export interface FileRoutesById {
   '/search': typeof SearchRoute
   '/studio': typeof StudioRouteWithChildren
   '/terms': typeof TermsRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/api-connections': typeof AdminApiConnectionsRoute
+  '/admin/compliance': typeof AdminComplianceRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/moodle': typeof AdminMoodleRoute
@@ -313,6 +339,7 @@ export interface FileRoutesById {
   '/api/challenge': typeof ApiChallengeRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/class/$id': typeof ClassIdRoute
   '/course/$id': typeof CourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
@@ -342,7 +369,9 @@ export interface FileRouteTypes {
     | '/search'
     | '/studio'
     | '/terms'
+    | '/admin/analytics'
     | '/admin/api-connections'
+    | '/admin/compliance'
     | '/admin/creators'
     | '/admin/external-content'
     | '/admin/moodle'
@@ -351,6 +380,7 @@ export interface FileRouteTypes {
     | '/api/challenge'
     | '/api/course-factory'
     | '/api/course-wizard'
+    | '/api/stripe-webhook'
     | '/class/$id'
     | '/course/$id'
     | '/learning-activities/$courseId'
@@ -378,7 +408,9 @@ export interface FileRouteTypes {
     | '/search'
     | '/studio'
     | '/terms'
+    | '/admin/analytics'
     | '/admin/api-connections'
+    | '/admin/compliance'
     | '/admin/creators'
     | '/admin/external-content'
     | '/admin/moodle'
@@ -387,6 +419,7 @@ export interface FileRouteTypes {
     | '/api/challenge'
     | '/api/course-factory'
     | '/api/course-wizard'
+    | '/api/stripe-webhook'
     | '/class/$id'
     | '/course/$id'
     | '/learning-activities/$courseId'
@@ -414,7 +447,9 @@ export interface FileRouteTypes {
     | '/search'
     | '/studio'
     | '/terms'
+    | '/admin/analytics'
     | '/admin/api-connections'
+    | '/admin/compliance'
     | '/admin/creators'
     | '/admin/external-content'
     | '/admin/moodle'
@@ -423,6 +458,7 @@ export interface FileRouteTypes {
     | '/api/challenge'
     | '/api/course-factory'
     | '/api/course-wizard'
+    | '/api/stripe-webhook'
     | '/class/$id'
     | '/course/$id'
     | '/learning-activities/$courseId'
@@ -451,7 +487,9 @@ export interface RootRouteChildren {
   SearchRoute: typeof SearchRoute
   StudioRoute: typeof StudioRouteWithChildren
   TermsRoute: typeof TermsRoute
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminApiConnectionsRoute: typeof AdminApiConnectionsRoute
+  AdminComplianceRoute: typeof AdminComplianceRoute
   AdminCreatorsRoute: typeof AdminCreatorsRoute
   AdminExternalContentRoute: typeof AdminExternalContentRoute
   AdminMoodleRoute: typeof AdminMoodleRoute
@@ -460,6 +498,7 @@ export interface RootRouteChildren {
   ApiChallengeRoute: typeof ApiChallengeRoute
   ApiCourseFactoryRoute: typeof ApiCourseFactoryRoute
   ApiCourseWizardRoute: typeof ApiCourseWizardRoute
+  ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ClassIdRoute: typeof ClassIdRoute
   CourseIdRoute: typeof CourseIdRoute
   LearningActivitiesCourseIdRoute: typeof LearningActivitiesCourseIdRoute
@@ -579,11 +618,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/admin/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/api-connections': {
       id: '/admin/api-connections'
       path: '/admin/api-connections'
       fullPath: '/admin/api-connections'
       preLoaderRoute: typeof AdminApiConnectionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/compliance': {
+      id: '/admin/compliance'
+      path: '/admin/compliance'
+      fullPath: '/admin/compliance'
+      preLoaderRoute: typeof AdminComplianceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/creators': {
@@ -640,6 +693,13 @@ declare module '@tanstack/react-router' {
       path: '/api/course-wizard'
       fullPath: '/api/course-wizard'
       preLoaderRoute: typeof ApiCourseWizardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stripe-webhook': {
+      id: '/api/stripe-webhook'
+      path: '/api/stripe-webhook'
+      fullPath: '/api/stripe-webhook'
+      preLoaderRoute: typeof ApiStripeWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/class/$id': {
@@ -741,7 +801,9 @@ const rootRouteChildren: RootRouteChildren = {
   SearchRoute: SearchRoute,
   StudioRoute: StudioRouteWithChildren,
   TermsRoute: TermsRoute,
+  AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminApiConnectionsRoute: AdminApiConnectionsRoute,
+  AdminComplianceRoute: AdminComplianceRoute,
   AdminCreatorsRoute: AdminCreatorsRoute,
   AdminExternalContentRoute: AdminExternalContentRoute,
   AdminMoodleRoute: AdminMoodleRoute,
@@ -750,6 +812,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChallengeRoute: ApiChallengeRoute,
   ApiCourseFactoryRoute: ApiCourseFactoryRoute,
   ApiCourseWizardRoute: ApiCourseWizardRoute,
+  ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ClassIdRoute: ClassIdRoute,
   CourseIdRoute: CourseIdRoute,
   LearningActivitiesCourseIdRoute: LearningActivitiesCourseIdRoute,

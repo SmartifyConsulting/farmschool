@@ -50,6 +50,27 @@ describe("native lessons", () => {
     expect(parseLessonSlides(content + "\n\nSource: Hive manual, page 4")).toEqual([slide]);
   });
 
+  it("parses a photo task and a hotspot image with labelled points", () => {
+    const content = [
+      "## Hive check",
+      ":::photo\nUpload a photo of your hive inspection.\n:::",
+      ":::hotspot\nhttps://example.com/hive.jpg\n### 20,30 Frame\nA single wax frame.\n### 70,40 Queen excluder\nKeeps the queen in the brood box.\n:::",
+    ].join("\n\n");
+    const [slide] = parseLessonSlides(content);
+    expect(slide?.blocks).toEqual([
+      { kind: "photo", prompt: "Upload a photo of your hive inspection." },
+      {
+        kind: "hotspot",
+        image: "https://example.com/hive.jpg",
+        points: [
+          { x: 20, y: 30, label: "Frame", body: "A single wax frame." },
+          { x: 70, y: 40, label: "Queen excluder", body: "Keeps the queen in the brood box." },
+        ],
+      },
+    ]);
+    expect(slideText(slide!)).toContain("Queen excluder");
+  });
+
   it("keeps malformed widget text readable and still recognises the following slide", () => {
     const slides = parseLessonSlides(
       "## One\n\n:::checklist\nKeep this text.\n\n## Two\n\nContinue here.",
