@@ -112,12 +112,12 @@ function Section({ title, list }: { title: string; list: Course[] }) {
 }
 
 const COMPARE = [
-  "Learn by doing, not just reading",
-  "Practical, real-world skills",
-  "Short video & reading lessons",
-  "AI learning assistant on hand",
-  "Graded quizzes",
-  "Recognised certificates",
+  "Courses built straight from your training manual",
+  "Learner communities after course completion",
+  "AI-suggested file names & duplicate detection",
+  "Pay once per course — no subscription",
+  "AI tone-matched polish for every description",
+  "Prerequisites across trainers' own courses",
 ];
 
 function Hero() {
