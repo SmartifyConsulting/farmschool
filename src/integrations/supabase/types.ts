@@ -136,6 +136,9 @@ export type Database = {
           currency: string;
           id: string;
           stripe_session_id: string | null;
+          payment_provider: string | null;
+          payment_status: string | null;
+          paid_at: string | null;
           user_id: string;
         };
         Insert: {
@@ -145,6 +148,9 @@ export type Database = {
           currency?: string;
           id?: string;
           stripe_session_id?: string | null;
+          payment_provider?: string | null;
+          payment_status?: string | null;
+          paid_at?: string | null;
           user_id: string;
         };
         Update: {
@@ -154,6 +160,9 @@ export type Database = {
           currency?: string;
           id?: string;
           stripe_session_id?: string | null;
+          payment_provider?: string | null;
+          payment_status?: string | null;
+          paid_at?: string | null;
           user_id?: string;
         };
         Relationships: [
@@ -1381,6 +1390,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      admin_platform_analytics: { Args: never; Returns: Json };
+      record_audit_event: { Args: { _action: string; _entity_type: string; _entity_id?: string; _metadata?: Json }; Returns: string };
+      reserve_api_key_request: { Args: { _key_id: string; _scope: string }; Returns: Json };
+      studio_prerequisite_satisfied: { Args: { _course: string }; Returns: boolean };
       admin_set_user_role: {
         Args: {
           _grant: boolean;
