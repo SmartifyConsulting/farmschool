@@ -8,7 +8,8 @@ import { Phone, Header, Sheet, ProgressBar } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useProgress, useSaveProgress } from "@/hooks/useLearning";
-import { submitQuiz, claimCertificate } from "@/lib/learning.functions";
+import { claimCertificate } from "@/lib/learning.functions";
+import { StudioQuiz } from "@/components/StudioQuiz";
 import { youtubeEmbed } from "@/lib/studio";
 import { toast } from "sonner";
 import { ExternalVideo, LINKED_VIDEO_SELECT, type LinkedVideo } from "@/components/ExternalVideo";
@@ -31,7 +32,7 @@ export const Route = createFileRoute("/class/$id")({
   component: ClassPage,
 });
 
-type L = { id: string; kind: string; title: string; video_url: string | null; body: string; quiz: { q: string; options: string[] }[] };
+type L = { id: string; kind: string; title: string; video_url: string | null; body: string; quiz: unknown };
 
 function ClassPage() {
   const { id } = Route.useParams();
@@ -96,7 +97,7 @@ function ClassPage() {
               </div>}
               {lesson.kind === "scorm" && <ScormLesson key={lesson.id} body={lesson.body} onFinished={() => { if (user && !done.has(lesson.id)) save.mutate({ course_id: id, lesson_id: lesson.id, completed: true }); }} />}
               {lesson.body && (lesson.kind === "reading" || lesson.kind === "video") && <FormattedLesson content={lesson.body} />}
-              {lesson.kind === "quiz" ? <Quiz key={lesson.id} lesson={lesson} courseId={id} passed={done.has(lesson.id)} />
+              {lesson.kind === "quiz" ? <StudioQuiz key={lesson.id} lessonId={lesson.id} quiz={lesson.quiz} passed={done.has(lesson.id)} />
                 : lesson.kind === "scorm" ? <p className="text-sm text-muted-foreground">{done.has(lesson.id) ? "Completed" : "This lesson completes automatically when you finish the e-learning."}</p>
                 : lesson.kind === "slide" ? <SlidePlayer key={slideKey} storageKey={slideKey} slides={slides} completed={done.has(lesson.id)} saving={save.isPending} onComplete={markDone} />
                 : <Button onClick={markDone} disabled={done.has(lesson.id) || save.isPending}>{done.has(lesson.id) ? "Completed" : "Mark as complete"}</Button>}
@@ -128,37 +129,5 @@ function ClassPage() {
         </div>
       </Sheet>
     </Phone>
-  );
-}
-
-function Quiz({ lesson, courseId, passed }: { lesson: L; courseId: string; passed: boolean }) {
-  const [answers, setAnswers] = useState<number[]>(() => lesson.quiz.map(() => -1));
-  const [result, setResult] = useState<{ score: number; passed: boolean; passMark: number; correct: boolean[] } | null>(null);
-  const submit = useServerFn(submitQuiz);
-  const qc = useQueryClient();
-  const { user } = useAuth();
-  if (!lesson.quiz.length) return <p className="text-sm text-muted-foreground">No questions yet.</p>;
-  return (
-    <form className="space-y-4" onSubmit={async (e) => {
-      e.preventDefault();
-      if (!user) { toast.error("Sign in to take the quiz."); return; }
-      if (answers.includes(-1)) { toast.error("Answer every question first."); return; }
-      try { const r = await submit({ data: { lessonId: lesson.id, answers } }); setResult(r); qc.invalidateQueries({ queryKey: ["progress"] }); }
-      catch (err) { toast.error(friendlyError(err, "Could not grade quiz.")); }
-    }}>
-      {passed && !result && <p className="rounded-xl bg-secondary/30 px-3 py-2 text-sm">You already passed this quiz. You can try again.</p>}
-      {lesson.quiz.map((q, qi) => (
-        <fieldset key={qi} className="rounded-2xl border border-border p-3">
-          <legend className="px-1 text-sm font-semibold">{qi + 1}. {q.q}</legend>
-          {q.options.filter((o) => o.trim()).map((o, oi) => (
-            <label key={oi} className="mt-1.5 flex items-center gap-2 text-sm">
-              <input type="radio" name={`q${qi}`} checked={answers[qi] === oi} onChange={() => setAnswers(answers.map((a, i) => i === qi ? oi : a))} />{o}
-            </label>))}
-          {result && <p className={`mt-2 text-xs font-semibold ${result.correct[qi] ? "text-primary" : "text-destructive"}`}>{result.correct[qi] ? "Correct" : "Not quite"}</p>}
-        </fieldset>))}
-      {result && <p role="status" className="text-sm font-semibold">{result.passed ? `Passed with ${result.score}% 🎉` : `${result.score}% — you need ${result.passMark}% to pass. Try again.`}</p>}
-      <Button type="submit">Submit answers</Button>
-      <input type="hidden" value={courseId} readOnly />
-    </form>
   );
 }

@@ -3,25 +3,35 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { courses, allLessons } from "@/lib/courses";
 import { parsePassMark } from "@/lib/studio";
+import { gradeQuiz, parseQuizQuestions, quizSubmission } from "@/lib/studio-quiz";
 
 /** Grades a studio quiz on the server so answer keys never reach learners. */
 export const submitQuiz = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: unknown) => z.object({ lessonId: z.string().uuid(), answers: z.array(z.number().int().min(-1).max(20)).max(50) }).parse(i))
+  .validator(quizSubmission)
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: lesson } = await context.supabase.from("studio_lessons").select("id, course_id, kind, body").eq("id", data.lessonId).maybeSingle();
-    if (!lesson || lesson.kind !== "quiz") throw new Error("Quiz not found.");
-    const { data: key } = await supabaseAdmin.from("studio_quiz_answers").select("answers").eq("lesson_id", lesson.id).maybeSingle();
-    const answers = key?.answers ?? [];
-    if (!answers.length) throw new Error("This quiz has no questions yet.");
-    const correct = answers.filter((a, i) => data.answers[i] === a).length;
-    const score = Math.round((correct / answers.length) * 100);
+    // Read questions and their private keys in one query so a revision cannot mix versions.
+    const { data: lesson } = await supabaseAdmin.from("studio_lessons")
+      .select("id, course_id, body, quiz, studio_courses!inner(author_id, published), studio_quiz_answers!studio_quiz_answers_lesson_id_fkey(answers, course_id)")
+      .eq("id", data.lessonId).eq("kind", "quiz").maybeSingle();
+    if (!lesson?.studio_courses || (!lesson.studio_courses.published && lesson.studio_courses.author_id !== context.userId)) {
+      throw new Error("Quiz not found.");
+    }
+    const questions = parseQuizQuestions(lesson.quiz);
+    const key = lesson.studio_quiz_answers;
+    if (!questions || !key || key.course_id !== lesson.course_id) throw new Error("This quiz is not ready to be graded.");
+    const correct = gradeQuiz(questions, key.answers, data.answers);
+    const score = Math.round((correct.filter(Boolean).length / questions.length) * 100);
     const passMark = parsePassMark(lesson.body);
     const passed = score >= passMark;
-    await supabaseAdmin.from("quiz_attempts").insert({ user_id: context.userId, course_id: lesson.course_id, lesson_id: lesson.id, score, passed });
-    if (passed) await context.supabase.from("lesson_progress").upsert({ user_id: context.userId, course_id: lesson.course_id, lesson_id: lesson.id, completed: true, position_seconds: 0, updated_at: new Date().toISOString() }, { onConflict: "user_id,course_id,lesson_id" });
-    return { score, passed, passMark, correct: answers.map((a, i) => data.answers[i] === a) };
+    const { error } = await supabaseAdmin.from("quiz_attempts").insert({ user_id: context.userId, course_id: lesson.course_id, lesson_id: lesson.id, score, passed });
+    if (error) throw new Error("Could not save the quiz attempt.");
+    if (passed) {
+      const { error: progressError } = await context.supabase.from("lesson_progress").upsert({ user_id: context.userId, course_id: lesson.course_id, lesson_id: lesson.id, completed: true, position_seconds: 0, updated_at: new Date().toISOString() }, { onConflict: "user_id,course_id,lesson_id" });
+      if (progressError) throw new Error("Could not update lesson progress. Please retry.");
+    }
+    return { score, passed, passMark, correct };
   });
 
 /** Issues a certificate only when every lesson is complete (and studio quizzes were passed on the server). */

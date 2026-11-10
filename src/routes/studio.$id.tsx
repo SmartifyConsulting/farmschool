@@ -22,6 +22,8 @@ import { VideoLibraryPicker } from "@/components/VideoLibraryPicker";
 import { CoverImageInput } from "@/components/CoverImageInput";
 import { FormattedLesson } from "@/components/FormattedLesson";
 import { SlideEditor } from "@/components/SlideEditor";
+import { QuizQuestionEditor } from "@/components/QuizQuestionEditor";
+import { buildQuiz, loadQuizDraft, newQuizQuestion, parseQuizQuestions, type QuizDraftQuestion } from "@/lib/studio-quiz";
 import { formatManualAsSlides, parseLessonSlides, splitLessonSource } from "@/lib/lesson-slides";
 import { ManualLessonReview } from "@/components/ManualLessonReview";
 import { StudioVersions } from "@/components/StudioVersions";
@@ -1173,22 +1175,31 @@ function LessonEditor({ lesson, index, onChange, courseId, sourceText, link, rea
   const [video, setVideo] = useState(lesson.video_url ?? "");
   const [body, setBody] = useState(lesson.body);
   const [kind, setKind] = useState(lesson.kind);
-  const [qs, setQs] = useState<Q[]>(() => ((lesson.quiz as { q: string; options: string[] }[]) ?? []).map((x) => ({ ...x, answer: 0 })));
+  const [initialQuiz] = useState(lesson.quiz);
+  const [qs, setQs] = useState<QuizDraftQuestion[]>([]);
+  const [quizLoad, setQuizLoad] = useState<"loading" | "ready" | "failed">(lesson.kind === "quiz" ? "loading" : "ready");
   const [passMark, setPassMark] = useState(() => parsePassMark(lesson.body));
-  const [open] = useState(true);
   const confirm = useConfirm();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(true);
   const baseline = useRef(JSON.stringify({ title: lesson.title, video: lesson.video_url ?? "", body: lesson.body, kind: lesson.kind, qs, passMark, objectives }));
   useEffect(() => {
-    if (!open || lesson.kind !== "quiz") return;
-    supabase.from("studio_quiz_answers").select("answers").eq("lesson_id", lesson.id).maybeSingle().then(({ data }) => {
-      if (data) setQs((cur) => cur.map((q, i) => ({ ...q, answer: data.answers[i] ?? 0 })));
+    if (lesson.kind !== "quiz") return;
+    let active = true;
+    supabase.from("studio_quiz_answers").select("answers").eq("lesson_id", lesson.id).maybeSingle().then(({ data, error }) => {
+      if (!active) return;
+      const questions = parseQuizQuestions(initialQuiz);
+      if (error || !questions) { setQuizLoad("failed"); return; }
+      const next = loadQuizDraft(questions, data?.answers);
+      baseline.current = JSON.stringify({ ...JSON.parse(baseline.current), qs: next });
+      setQs(next);
+      setQuizLoad("ready");
     });
-  }, [open, lesson.id, lesson.kind]);
+    return () => { active = false; };
+  }, [lesson.id, lesson.kind, initialQuiz]);
   const Icon = lesson.kind === "video" ? Video : lesson.kind === "quiz" ? HelpCircle : lesson.kind === "scorm" ? Package : FileText;
   const save = async (silent = false) => {
-    if (readOnly || saving) return;
+    if (readOnly || saving || quizLoad !== "ready") return;
     setSaving(true);
     try {
     if (video && !/^https:\/\//.test(video)) { if (!silent) toast.error("Video link must start with https://"); return; }
@@ -1196,16 +1207,21 @@ function LessonEditor({ lesson, index, onChange, courseId, sourceText, link, rea
       if (!silent) toast.error("Add teaching text or an activity to your slides before saving.");
       return;
     }
-    const clean = qs.filter((q) => q.q.trim() && q.options.filter((o) => o.trim()).length >= 2);
-    const { error } = await supabase.from("studio_lessons").update({ title, kind, video_url: video || null, body: kind === "quiz" ? `pass:${passMark}` : body, quiz: clean.map(({ q, options }) => ({ q, options })) }).eq("id", lesson.id);
+    let error;
+    if (kind === "quiz") {
+      let quiz: ReturnType<typeof buildQuiz>;
+      try { quiz = buildQuiz(qs); }
+      catch (err) { if (!silent && err instanceof Error) toast.error(err.message); return; }
+      ({ error } = await supabase.rpc("studio_save_quiz", {
+        _lesson_id: lesson.id, _title: title, _pass_mark: passMark, _questions: quiz.questions, _answers: quiz.keys,
+      }));
+    } else {
+      ({ error } = await supabase.from("studio_lessons").update({ title, kind, video_url: video || null, body }).eq("id", lesson.id));
+    }
     if (error) { if (!silent) toast.error("Could not save lesson."); return; }
     if (link) {
       const { error: e3 } = await supabase.from("course_external_content").update({ objectives }).eq("id", link.id);
       if (e3) { if (!silent) toast.error("Could not save the learning objectives."); return; }
-    }
-    if (lesson.kind === "quiz") {
-      const { error: e2 } = await supabase.from("studio_quiz_answers").upsert({ lesson_id: lesson.id, course_id: courseId, answers: clean.map((q) => q.answer) });
-      if (e2) { if (!silent) toast.error("Could not save answers."); return; }
     }
     if (!silent) toast.success("Lesson saved");
     baseline.current = JSON.stringify({ title, video, body, kind, qs, passMark, objectives });
@@ -1240,23 +1256,17 @@ function LessonEditor({ lesson, index, onChange, courseId, sourceText, link, rea
           if (next.length > 20000) { toast.error("Shorten the reading before converting it to slides."); return; }
           setBody(next); setKind("slide");
         }}><LayoutGrid />Turn reading into slides</Button>}
-        {!readOnly && kind !== "scorm" && kind !== "slide" && <LessonAssistant courseId={courseId} title={title} kind={kind} text={kind === "quiz" ? sourceText : body} onText={setBody} onQuestions={(n) => setQs((cur) => [...cur.filter((q) => q.q.trim()), ...n])} />}
-        {lesson.kind === "quiz" && <div className="space-y-3">
-          {qs.map((q, qi) => (
-            <div key={qi} className="space-y-1.5 rounded-xl bg-muted/50 p-2">
-              <div className="flex gap-2"><Input value={q.q} placeholder={`Question ${qi + 1}`} onChange={(e) => setQs(qs.map((x, i) => i === qi ? { ...x, q: e.target.value } : x))} />
-                <Button size="icon" variant="ghost" aria-label="Remove question" onClick={() => setQs(qs.filter((_, i) => i !== qi))}><Trash2 className="h-4 w-4" /></Button></div>
-              {q.options.map((o, oi) => (
-                <label key={oi} className="flex items-center gap-2 text-sm">
-                  <input type="radio" name={`a-${lesson.id}-${qi}`} checked={q.answer === oi} onChange={() => setQs(qs.map((x, i) => i === qi ? { ...x, answer: oi } : x))} aria-label="Correct answer" />
-                  <Input value={o} placeholder={`Option ${oi + 1}`} onChange={(e) => setQs(qs.map((x, i) => i === qi ? { ...x, options: x.options.map((y, j) => j === oi ? e.target.value : y) } : x))} />
-                </label>))}
-            </div>))}
-          <Button size="sm" variant="outline" onClick={() => setQs([...qs, { q: "", options: ["", "", "", ""], answer: 0 }])}><Plus className="h-4 w-4" />Add question</Button>
+        {!readOnly && quizLoad === "ready" && kind !== "scorm" && kind !== "slide" && <LessonAssistant courseId={courseId} title={title} kind={kind} text={kind === "quiz" ? sourceText : body} onText={setBody} onQuestions={(n) => setQs((cur) => [...cur.filter((q) => q.q.trim()), ...n.map((question) => ({ ...question, kind: "choice" as const }))].slice(0, 50))} />}
+        {quizLoad !== "ready" && <p role="status" className="text-sm text-muted-foreground">{quizLoad === "loading" ? "Loading questions and answer keys…" : "The quiz could not be loaded. Reopen the lesson to retry."}</p>}
+        {lesson.kind === "quiz" && quizLoad === "ready" && <div className="space-y-3">
+          {qs.map((question, qi) => <QuizQuestionEditor key={qi} question={question} index={qi}
+            onChange={(next) => setQs((previous) => previous.map((item, i) => i === qi ? next : item))}
+            onRemove={() => setQs((previous) => previous.filter((_, i) => i !== qi))} />)}
+          <Button type="button" size="sm" variant="outline" disabled={qs.length >= 50} onClick={() => setQs([...qs, newQuizQuestion("choice")])}><Plus className="h-4 w-4" />Add question</Button>
           <label className="flex items-center gap-2 text-sm">Pass mark<select value={passMark} onChange={(e) => setPassMark(Number(e.target.value))} className="rounded-md border border-input bg-background px-2 py-1 text-sm" aria-label="Pass mark">{PASS_MARKS.map((m) => <option key={m} value={m}>{m}%</option>)}</select></label>
-          <p className="text-xs text-muted-foreground">Tick the correct option. Learners need {passMark}% to pass.</p>
+          <p className="text-xs text-muted-foreground">Learners need {passMark}% to pass. Each question is worth one point.</p>
         </div>}
-        <div className="flex gap-2"><Button size="sm" disabled={saving || readOnly} onClick={() => void save()}>{saving ? "Saving…" : "Save lesson"}</Button><Button size="sm" variant="ghost" className="text-destructive" onClick={del}>{link ? "Remove from course" : "Delete"}</Button></div>
+        <div className="flex gap-2"><Button size="sm" disabled={saving || readOnly || quizLoad !== "ready"} onClick={() => void save()}>{saving ? "Saving…" : "Save lesson"}</Button><Button size="sm" variant="ghost" className="text-destructive" onClick={del}>{link ? "Remove from course" : "Delete"}</Button></div>
       </fieldset>
       {kind === "slide" && readOnly && <div className="px-4 pb-4 md:px-6 md:pb-6"><SlideEditor value={body} onChange={setBody} readOnly /></div>}
     </div>

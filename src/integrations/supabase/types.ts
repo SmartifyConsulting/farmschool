@@ -1001,17 +1001,17 @@ export type Database = {
       }
       studio_quiz_answers: {
         Row: {
-          answers: number[]
+          answers: Json
           course_id: string
           lesson_id: string
         }
         Insert: {
-          answers?: number[]
+          answers?: Json
           course_id: string
           lesson_id: string
         }
         Update: {
-          answers?: number[]
+          answers?: Json
           course_id?: string
           lesson_id?: string
         }
@@ -1091,6 +1091,10 @@ export type Database = {
       }
       course_factory_reserve_ai_request: { Args: never; Returns: number }
       lesson_tutor_reserve_request: { Args: never; Returns: number }
+      studio_save_quiz: {
+        Args: { _lesson_id: string; _title: string; _pass_mark: number; _questions: Json; _answers: Json }
+        Returns: undefined
+      }
       creator_review_application: {
         Args: { _approve: boolean; _notes?: string; _user_id: string }
         Returns: undefined
