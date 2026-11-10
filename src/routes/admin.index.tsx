@@ -66,6 +66,12 @@ function AdminHome() {
                 Analytics
               </Link>
               <Link
+                to="/admin/compliance"
+                className="rounded-full border border-border px-4 py-2 text-sm font-semibold"
+              >
+                Compliance
+              </Link>
+              <Link
                 to="/admin/creators"
                 className="rounded-full border border-border px-4 py-2 text-sm font-semibold"
               >
