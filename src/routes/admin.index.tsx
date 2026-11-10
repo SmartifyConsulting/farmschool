@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useLearning";
 import { supabase } from "@/integrations/supabase/client";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
+import { AdminNav } from "@/components/AdminNav";
 import { pageMeta } from "@/lib/page-meta";
 
 export const Route = createFileRoute("/admin/")({
@@ -32,7 +33,7 @@ function AdminHome() {
     <Phone>
       <Header />
       <Sheet>
-        <CanvasHeading eyebrow="Platform management" title="Administration" />
+        <CanvasHeading eyebrow="Admin" title="Administration" />
         {!ready || (user && isLoading) ? (
           <p className="py-8 text-sm text-muted-foreground">Checking permissions…</p>
         ) : !user ? (
@@ -49,48 +50,7 @@ function AdminHome() {
             <p className="text-sm text-muted-foreground">
               Manage course creators and learning platform connections.
             </p>
-            <div
-              role="navigation"
-              aria-label="Administration sections"
-              className="flex flex-wrap gap-2 border-b border-border pb-4"
-            >
-              <Link
-                to="/admin/users"
-                className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-              >
-                Users
-              </Link>
-              <Link
-                to="/admin/analytics"
-                className="rounded-full border border-border px-4 py-2 text-sm font-semibold"
-              >
-                Analytics
-              </Link>
-              <Link
-                to="/admin/compliance"
-                className="rounded-full border border-border px-4 py-2 text-sm font-semibold"
-              >
-                Compliance
-              </Link>
-              <Link
-                to="/admin/creators"
-                className="rounded-full border border-border px-4 py-2 text-sm font-semibold"
-              >
-                Creator Approvals
-              </Link>
-              <Link
-                to="/admin/external-content"
-                className="rounded-full border border-border px-4 py-2 text-sm font-semibold"
-              >
-                Library
-              </Link>
-              <Link
-                to="/admin/api-connections"
-                className="rounded-full border border-border px-4 py-2 text-sm font-semibold"
-              >
-                API Connections
-              </Link>
-            </div>
+            <AdminNav />
             <p className="text-xs text-muted-foreground">
               Creator approvals are required before new courses can be published.
             </p>

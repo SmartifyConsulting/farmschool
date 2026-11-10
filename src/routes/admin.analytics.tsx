@@ -5,6 +5,7 @@ import { BarChart3 } from "lucide-react";
 import { useAuth } from "@/hooks/useLearning";
 import { supabase } from "@/integrations/supabase/client";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
+import { AdminNav } from "@/components/AdminNav";
 import { friendlyError } from "@/lib/friendly-error";
 import { getPlatformAnalytics } from "@/lib/admin-analytics.functions";
 import { pageMeta } from "@/lib/page-meta";
@@ -42,7 +43,7 @@ function PlatformAnalytics() {
     <Phone>
       <Header />
       <Sheet>
-        <CanvasHeading eyebrow="Administration" title="Analytics" />
+        <CanvasHeading eyebrow="Admin" title="Analytics" />
         {!ready || (user && checking) ? (
           <p className="py-8 text-sm text-muted-foreground">Checking permissions…</p>
         ) : !user ? (
@@ -56,6 +57,7 @@ function PlatformAnalytics() {
           <p className="py-8 text-sm text-muted-foreground">Administrator access required.</p>
         ) : (
           <div className="max-w-3xl space-y-4 pb-10">
+            <AdminNav />
             {isLoading && (
               <p className="text-sm text-muted-foreground">Loading platform activity…</p>
             )}

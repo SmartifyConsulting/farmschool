@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Trash2, Upload, Link2, RefreshCw, Download } from "lucide-react";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
+import { AdminNav } from "@/components/AdminNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -251,7 +252,7 @@ function ExternalContentAdmin() {
       <Header />
       <Sheet wide>
         <div className="mb-4">
-          <CanvasHeading eyebrow="Administration" title="Library" />
+          <CanvasHeading eyebrow="Admin" title="Library" />
         </div>
         {!ready || (user && isLoading) ? (
           <p className="py-8 text-sm text-muted-foreground">Checking permissions…</p>
@@ -267,7 +268,9 @@ function ExternalContentAdmin() {
             Only administrators can manage external content.
           </p>
         ) : (
-          <Tabs defaultValue="library" className="min-w-0">
+          <div className="space-y-4">
+            <AdminNav />
+            <Tabs defaultValue="library" className="min-w-0">
             <TabsList className="flex h-auto flex-wrap justify-start">
               <TabsTrigger value="providers">Providers</TabsTrigger>
               <TabsTrigger value="library">Video Library</TabsTrigger>
@@ -621,7 +624,8 @@ function ExternalContentAdmin() {
                 </p>
               </section>
             </TabsContent>
-          </Tabs>
+            </Tabs>
+          </div>
         )}
       </Sheet>
     </Phone>

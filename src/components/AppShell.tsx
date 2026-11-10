@@ -124,7 +124,7 @@ function AvatarMenu({
         </DropdownMenuItem>
         {isAdmin && (
           <DropdownMenuItem asChild>
-            <Link to="/admin">Administration</Link>
+            <Link to="/admin">Admin</Link>
           </DropdownMenuItem>
         )}
         <DropdownMenuItem

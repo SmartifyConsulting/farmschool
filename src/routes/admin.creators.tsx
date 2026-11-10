@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useLearning";
 import { supabase } from "@/integrations/supabase/client";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
+import { AdminNav } from "@/components/AdminNav";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -89,7 +90,7 @@ function CreatorReview() {
       <Header />
       <Sheet>
         <div className="mx-auto max-w-3xl space-y-4 pb-10">
-          <CanvasHeading eyebrow="Administration" title="Creator approvals" />
+          <CanvasHeading eyebrow="Admin" title="Creator approvals" />
           {!ready || checking ? (
             <p className="text-sm text-muted-foreground">Checking permissions…</p>
           ) : !user ? (
@@ -103,6 +104,7 @@ function CreatorReview() {
             <p className="text-sm text-muted-foreground">Administrator access required.</p>
           ) : (
             <>
+              <AdminNav />
               <p className="text-sm text-muted-foreground">
                 Review applicants' experience before granting permission to publish new courses.
                 Course content still requires its own review.

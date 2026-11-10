@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useLearning";
 import { supabase } from "@/integrations/supabase/client";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
+import { AdminNav } from "@/components/AdminNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -225,7 +226,7 @@ function AdminUsers() {
       <Header />
       <Sheet>
         <div className="mx-auto max-w-4xl space-y-4 pb-10">
-          <CanvasHeading eyebrow="Administration" title="Users" />
+          <CanvasHeading eyebrow="Admin" title="Users" />
           {!ready || checking ? (
             <p className="text-sm text-muted-foreground">Checking permissions…</p>
           ) : !user ? (
@@ -239,6 +240,7 @@ function AdminUsers() {
             <p className="text-sm text-muted-foreground">Administrator access required.</p>
           ) : (
             <>
+              <AdminNav />
               <p className="text-sm text-muted-foreground">
                 Manage learner and trainer profiles. Creating a brand-new sign-in isn't available
                 here — invite people to sign up directly; this screen manages their profile once

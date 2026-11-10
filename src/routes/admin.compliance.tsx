@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useLearning";
 import { supabase } from "@/integrations/supabase/client";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
+import { AdminNav } from "@/components/AdminNav";
 import { Button } from "@/components/ui/button";
 import { friendlyError } from "@/lib/friendly-error";
 import { exportXapiStatements, getComplianceReport } from "@/lib/admin-compliance.functions";
@@ -76,7 +77,7 @@ function CompliancePage() {
     <Phone>
       <Header />
       <Sheet>
-        <CanvasHeading eyebrow="Administration" title="Compliance" />
+        <CanvasHeading eyebrow="Admin" title="Compliance" />
         {!ready || (user && checking) ? (
           <p className="py-8 text-sm text-muted-foreground">Checking permissions…</p>
         ) : !user ? (
@@ -90,6 +91,7 @@ function CompliancePage() {
           <p className="py-8 text-sm text-muted-foreground">Administrator access required.</p>
         ) : (
           <div className="max-w-3xl space-y-4 pb-10">
+            <AdminNav />
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 font-semibold">
                 <ShieldCheck className="h-4 w-4 text-primary" />
