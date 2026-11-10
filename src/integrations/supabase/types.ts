@@ -907,6 +907,53 @@ export type Database = {
           },
         ]
       }
+      lesson_photo_submissions: {
+        Row: {
+          block_index: number
+          created_at: string
+          id: string
+          lesson_id: string
+          photo_path: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          trainer_note: string
+          user_id: string
+        }
+        Insert: {
+          block_index: number
+          created_at?: string
+          id?: string
+          lesson_id: string
+          photo_path: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          trainer_note?: string
+          user_id?: string
+        }
+        Update: {
+          block_index?: number
+          created_at?: string
+          id?: string
+          lesson_id?: string
+          photo_path?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          trainer_note?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_photo_submissions_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "studio_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       studio_lessons: {
         Row: {
           body: string
@@ -1092,6 +1139,15 @@ export type Database = {
       course_factory_reserve_ai_request: { Args: never; Returns: number }
       lesson_tutor_reserve_request: { Args: never; Returns: number }
       written_quiz_reserve_request: { Args: { _user_id: string }; Returns: number }
+      lesson_photo_submit: {
+        Args: { _lesson: string; _block: number; _path: string }
+        Returns: Database["public"]["Tables"]["lesson_photo_submissions"]["Row"]
+      }
+      lesson_photo_review: {
+        Args: { _submission: string; _status: string; _note: string }
+        Returns: Database["public"]["Tables"]["lesson_photo_submissions"]["Row"]
+      }
+      lesson_photo_course_owned: { Args: { _lesson: string }; Returns: boolean }
       studio_save_quiz: {
         Args: { _lesson_id: string; _title: string; _pass_mark: number; _questions: Json; _answers: Json }
         Returns: undefined

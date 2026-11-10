@@ -18,113 +18,322 @@ import { ScormLesson } from "@/components/ScormLesson";
 import { SlidePlayer } from "@/components/SlidePlayer";
 import { LessonNarration } from "@/components/LessonNarration";
 import { LessonTutor } from "@/components/LessonTutor";
-import { lessonContentKey, parseLessonSlides, slideText, splitLessonSource } from "@/lib/lesson-slides";
+import {
+  lessonContentKey,
+  parseLessonSlides,
+  slideText,
+  splitLessonSource,
+} from "@/lib/lesson-slides";
 
 export const Route = createFileRoute("/class/$id")({
-  head: () => ({ meta: [
-    { title: "Course — Mobile School" },
-    { name: "description", content: "A trainer-made farming course on Mobile School with video lessons and quizzes." },
-    { property: "og:title", content: "Course — Mobile School" },
-    { property: "og:description", content: "Learn with Mobile School trainers." },
-    { property: "og:type", content: "article" },
-    { name: "twitter:card", content: "summary_large_image" },
-  ] }),
+  head: () => ({
+    meta: [
+      { title: "Course — Mobile School" },
+      {
+        name: "description",
+        content: "A trainer-made farming course on Mobile School with video lessons and quizzes.",
+      },
+      { property: "og:title", content: "Course — Mobile School" },
+      { property: "og:description", content: "Learn with Mobile School trainers." },
+      { property: "og:type", content: "article" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: ClassPage,
 });
 
-type L = { id: string; kind: string; title: string; video_url: string | null; body: string; quiz: unknown };
+type L = {
+  id: string;
+  kind: string;
+  title: string;
+  video_url: string | null;
+  body: string;
+  quiz: unknown;
+};
 
 function ClassPage() {
   const { id } = Route.useParams();
   const { user } = useAuth();
-  const { data: course, isLoading } = useQuery({ queryKey: ["class", id], queryFn: async () => (await supabase.from("studio_courses").select("id, title, description, category, level, cover_url, published, author_id").eq("id", id).maybeSingle()).data });
-  const { data: lessons } = useQuery({ queryKey: ["class-lessons", id], queryFn: async () => ((await supabase.from("studio_lessons").select("id, kind, title, video_url, body, quiz").eq("course_id", id).order("position")).data ?? []) as unknown as L[] });
+  const { data: course, isLoading } = useQuery({
+    queryKey: ["class", id],
+    queryFn: async () =>
+      (
+        await supabase
+          .from("studio_courses")
+          .select("id, title, description, category, level, cover_url, published, author_id")
+          .eq("id", id)
+          .maybeSingle()
+      ).data,
+  });
+  const { data: lessons } = useQuery({
+    queryKey: ["class-lessons", id],
+    queryFn: async () =>
+      ((
+        await supabase
+          .from("studio_lessons")
+          .select("id, kind, title, video_url, body, quiz")
+          .eq("course_id", id)
+          .order("position")
+      ).data ?? []) as unknown as L[],
+  });
   const { data: activities = [] } = useQuery({
     queryKey: ["class-approved-activities", id],
     enabled: !!course?.published,
     queryFn: async () => {
-      const { data, error } = await supabase.from("studio_learning_activities")
-        .select("id,lesson_title,kind,prompt").eq("course_id", id).eq("approved", true).order("lesson_title");
+      const { data, error } = await supabase
+        .from("studio_learning_activities")
+        .select("id,lesson_title,kind,prompt")
+        .eq("course_id", id)
+        .eq("approved", true)
+        .order("lesson_title");
       if (error) throw error;
       return data ?? [];
     },
   });
-  const { data: linked = [] } = useQuery({ queryKey: ["class-videos", id], queryFn: async () => ((await supabase.from("course_external_content").select(LINKED_VIDEO_SELECT).eq("course_id", id)).data ?? []) as unknown as LinkedVideo[] });
+  const { data: linked = [] } = useQuery({
+    queryKey: ["class-videos", id],
+    queryFn: async () =>
+      ((
+        await supabase
+          .from("course_external_content")
+          .select(LINKED_VIDEO_SELECT)
+          .eq("course_id", id)
+      ).data ?? []) as unknown as LinkedVideo[],
+  });
   const { data: progress } = useProgress();
   const save = useSaveProgress();
   const claim = useServerFn(claimCertificate);
   const qc = useQueryClient();
   const [idx, setIdx] = useState(0);
-  const done = new Set((progress ?? []).filter((p) => p.course_id === id && p.completed).map((p) => p.lesson_id));
+  const done = new Set(
+    (progress ?? []).filter((p) => p.course_id === id && p.completed).map((p) => p.lesson_id),
+  );
   const total = lessons?.length ?? 0;
   const count = (lessons ?? []).filter((l) => done.has(l.id)).length;
   const pct = total ? Math.round((count / total) * 100) : 0;
   const lesson = lessons?.[idx];
   const slides = lesson?.kind === "slide" ? parseLessonSlides(lesson.body) : [];
-  const slideKey = lesson?.kind === "slide"
-    ? ["mobile-school", "slides", user?.id ?? "guest", lesson.id, lessonContentKey(JSON.stringify(slides))].join(":") : "";
-  const narration = lesson?.kind === "slide"
-    ? slides.map((slide) => slideText(slide, false)).join("\n\n")
-    : lesson && (lesson.kind === "reading" || lesson.kind === "video") ? splitLessonSource(lesson.body).content : "";
+  const slideKey =
+    lesson?.kind === "slide"
+      ? [
+          "mobile-school",
+          "slides",
+          user?.id ?? "guest",
+          lesson.id,
+          lessonContentKey(JSON.stringify(slides)),
+        ].join(":")
+      : "";
+  const narration =
+    lesson?.kind === "slide"
+      ? slides.map((slide) => slideText(slide, false)).join("\n\n")
+      : lesson && (lesson.kind === "reading" || lesson.kind === "video")
+        ? splitLessonSource(lesson.body).content
+        : "";
 
-  if (isLoading) return <Phone><Header title="Loading…" /></Phone>;
-  if (!course) return <Phone><Header title="Course not found" /><Sheet><Link to="/search" className="text-primary">Browse the catalogue</Link></Sheet></Phone>;
+  if (isLoading)
+    return (
+      <Phone>
+        <Header title="Loading…" />
+      </Phone>
+    );
+  if (!course)
+    return (
+      <Phone>
+        <Header title="Course not found" />
+        <Sheet>
+          <Link to="/search" className="text-primary">
+            Browse the catalogue
+          </Link>
+        </Sheet>
+      </Phone>
+    );
   const markDone = () => {
     if (!lesson || save.isPending || done.has(lesson.id)) return;
-    if (!user) { toast.error("Sign in to track progress."); return; }
-    save.mutate({ course_id: id, lesson_id: lesson.id, completed: true }, {
-      onSuccess: () => setIdx((current) => current === idx && idx < total - 1 ? idx + 1 : current),
-      onError: (error) => toast.error(friendlyError(error, "Could not save lesson progress.")),
-    });
+    if (!user) {
+      toast.error("Sign in to track progress.");
+      return;
+    }
+    save.mutate(
+      { course_id: id, lesson_id: lesson.id, completed: true },
+      {
+        onSuccess: () =>
+          setIdx((current) => (current === idx && idx < total - 1 ? idx + 1 : current)),
+        onError: (error) => toast.error(friendlyError(error, "Could not save lesson progress.")),
+      },
+    );
   };
 
   return (
     <Phone>
       <Header greeting="" title="" />
       <Sheet>
-        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">{course.category} · {course.level}</p>
-        <h1 className="mt-1 mb-4 text-xl font-bold tracking-tight text-navy md:text-3xl">{course.title}</h1>
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
+          {course.category} · {course.level}
+        </p>
+        <h1 className="mt-1 mb-4 text-xl font-bold tracking-tight text-navy md:text-3xl">
+          {course.title}
+        </h1>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           <div className="min-w-0 space-y-4">
-            {lesson ? (<>
-              {linked.find((v) => v.lesson_id === lesson.id) ? <ExternalVideo video={linked.find((v) => v.lesson_id === lesson.id)!} /> : lesson.kind === "video" && lesson.video_url && (youtubeEmbed(lesson.video_url)
-                ? <iframe src={youtubeEmbed(lesson.video_url)!} title={lesson.title} className="aspect-video w-full rounded-2xl" allow="accelerometer; encrypted-media; picture-in-picture" allowFullScreen />
-                : <video src={lesson.video_url} controls playsInline className="aspect-video w-full rounded-2xl bg-foreground" onEnded={markDone} />)}
-              <h2 className="text-lg font-semibold">{lesson.title}</h2>
-              {narration.trim() && <div className="flex flex-wrap gap-2">
-                <LessonNarration key={lesson.id + ":" + lessonContentKey(narration)} text={narration} />
-                {course.published && <LessonTutor key={lesson.id + ":" + (user?.id ?? "guest")} courseId={id} lessonId={lesson.id} title={lesson.title} signedIn={!!user} />}
-              </div>}
-              {lesson.kind === "scorm" && <ScormLesson key={lesson.id} body={lesson.body} onFinished={() => { if (user && !done.has(lesson.id)) save.mutate({ course_id: id, lesson_id: lesson.id, completed: true }); }} />}
-              {lesson.body && (lesson.kind === "reading" || lesson.kind === "video") && <FormattedLesson content={lesson.body} />}
-              {lesson.kind === "quiz" ? <StudioQuiz key={lesson.id} lessonId={lesson.id} quiz={lesson.quiz} passed={done.has(lesson.id)} />
-                : lesson.kind === "scorm" ? <p className="text-sm text-muted-foreground">{done.has(lesson.id) ? "Completed" : "This lesson completes automatically when you finish the e-learning."}</p>
-                : lesson.kind === "slide" ? <SlidePlayer key={slideKey} storageKey={slideKey} slides={slides} completed={done.has(lesson.id)} saving={save.isPending} onComplete={markDone} />
-                : <Button onClick={markDone} disabled={done.has(lesson.id) || save.isPending}>{done.has(lesson.id) ? "Completed" : "Mark as complete"}</Button>}
-            </>) : <p className="text-sm text-muted-foreground">This course has no lessons yet.</p>}
-            {course.published && activities.length > 0 && <section className="space-y-3" aria-label="Trainer-approved learning activities">
-              <h2 className="text-lg font-semibold">Practical activities</h2>
-              {activities.map(activity => <article key={activity.id} className="rounded-xl border border-border p-4">
-                <p className="text-xs text-muted-foreground">{activity.kind === "steps" ? "Practical exercise" : "Applied scenario"}</p>
-                <h3 className="mt-1 font-semibold">{activity.lesson_title}</h3>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{activity.prompt}</p>
-              </article>)}
-            </section>}
-            {course.description && <div className="rounded-2xl bg-muted/50 p-4 text-sm"><h3 className="mb-1 font-semibold">About this course</h3><p className="whitespace-pre-wrap text-muted-foreground">{course.description}</p></div>}
+            {lesson ? (
+              <>
+                {linked.find((v) => v.lesson_id === lesson.id) ? (
+                  <ExternalVideo video={linked.find((v) => v.lesson_id === lesson.id)!} />
+                ) : (
+                  lesson.kind === "video" &&
+                  lesson.video_url &&
+                  (youtubeEmbed(lesson.video_url) ? (
+                    <iframe
+                      src={youtubeEmbed(lesson.video_url)!}
+                      title={lesson.title}
+                      className="aspect-video w-full rounded-2xl"
+                      allow="accelerometer; encrypted-media; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <video
+                      src={lesson.video_url}
+                      controls
+                      playsInline
+                      className="aspect-video w-full rounded-2xl bg-foreground"
+                      onEnded={markDone}
+                    />
+                  ))
+                )}
+                <h2 className="text-lg font-semibold">{lesson.title}</h2>
+                {narration.trim() && (
+                  <div className="flex flex-wrap gap-2">
+                    <LessonNarration
+                      key={lesson.id + ":" + lessonContentKey(narration)}
+                      text={narration}
+                    />
+                    {course.published && (
+                      <LessonTutor
+                        key={lesson.id + ":" + (user?.id ?? "guest")}
+                        courseId={id}
+                        lessonId={lesson.id}
+                        title={lesson.title}
+                        signedIn={!!user}
+                      />
+                    )}
+                  </div>
+                )}
+                {lesson.kind === "scorm" && (
+                  <ScormLesson
+                    key={lesson.id}
+                    body={lesson.body}
+                    onFinished={() => {
+                      if (user && !done.has(lesson.id))
+                        save.mutate({ course_id: id, lesson_id: lesson.id, completed: true });
+                    }}
+                  />
+                )}
+                {lesson.body && (lesson.kind === "reading" || lesson.kind === "video") && (
+                  <FormattedLesson content={lesson.body} />
+                )}
+                {lesson.kind === "quiz" ? (
+                  <StudioQuiz
+                    key={lesson.id}
+                    lessonId={lesson.id}
+                    quiz={lesson.quiz}
+                    passed={done.has(lesson.id)}
+                  />
+                ) : lesson.kind === "scorm" ? (
+                  <p className="text-sm text-muted-foreground">
+                    {done.has(lesson.id)
+                      ? "Completed"
+                      : "This lesson completes automatically when you finish the e-learning."}
+                  </p>
+                ) : lesson.kind === "slide" ? (
+                  <SlidePlayer
+                    key={slideKey}
+                    storageKey={slideKey}
+                    slides={slides}
+                    completed={done.has(lesson.id)}
+                    saving={save.isPending}
+                    onComplete={markDone}
+                    lessonId={lesson.id}
+                    isTrainer={user?.id === course.author_id}
+                  />
+                ) : (
+                  <Button onClick={markDone} disabled={done.has(lesson.id) || save.isPending}>
+                    {done.has(lesson.id) ? "Completed" : "Mark as complete"}
+                  </Button>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">This course has no lessons yet.</p>
+            )}
+            {course.published && activities.length > 0 && (
+              <section className="space-y-3" aria-label="Trainer-approved learning activities">
+                <h2 className="text-lg font-semibold">Practical activities</h2>
+                {activities.map((activity) => (
+                  <article key={activity.id} className="rounded-xl border border-border p-4">
+                    <p className="text-xs text-muted-foreground">
+                      {activity.kind === "steps" ? "Practical exercise" : "Applied scenario"}
+                    </p>
+                    <h3 className="mt-1 font-semibold">{activity.lesson_title}</h3>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
+                      {activity.prompt}
+                    </p>
+                  </article>
+                ))}
+              </section>
+            )}
+            {course.description && (
+              <div className="rounded-2xl bg-muted/50 p-4 text-sm">
+                <h3 className="mb-1 font-semibold">About this course</h3>
+                <p className="whitespace-pre-wrap text-muted-foreground">{course.description}</p>
+              </div>
+            )}
           </div>
           <aside className="space-y-3">
             {user && <ProgressBar pct={pct} label={`${count}/${total} lessons`} />}
             <ol className="space-y-1.5">
-              {(lessons ?? []).map((l, i) => { const Icon = l.kind === "video" ? Video : l.kind === "quiz" ? HelpCircle : l.kind === "scorm" ? Package : FileText; return (
-                <li key={l.id}><button onClick={() => setIdx(i)} className={`flex w-full items-center gap-3 rounded-xl border p-2.5 text-left text-sm ${i === idx ? "border-primary bg-primary/5" : "border-border"}`}>
-                  <Icon className="h-4 w-4 shrink-0 text-primary" /><span className="min-w-0 flex-1 truncate">{l.title}</span>
-                  {done.has(l.id) ? <CheckCircle2 className="h-4 w-4 text-secondary-foreground" /> : <Circle className="h-4 w-4 text-muted-foreground" />}
-                </button></li>); })}
+              {(lessons ?? []).map((l, i) => {
+                const Icon =
+                  l.kind === "video"
+                    ? Video
+                    : l.kind === "quiz"
+                      ? HelpCircle
+                      : l.kind === "scorm"
+                        ? Package
+                        : FileText;
+                return (
+                  <li key={l.id}>
+                    <button
+                      onClick={() => setIdx(i)}
+                      className={`flex w-full items-center gap-3 rounded-xl border p-2.5 text-left text-sm ${i === idx ? "border-primary bg-primary/5" : "border-border"}`}
+                    >
+                      <Icon className="h-4 w-4 shrink-0 text-primary" />
+                      <span className="min-w-0 flex-1 truncate">{l.title}</span>
+                      {done.has(l.id) ? (
+                        <CheckCircle2 className="h-4 w-4 text-secondary-foreground" />
+                      ) : (
+                        <Circle className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
             </ol>
-            {user && pct === 100 && <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" onClick={async () => {
-              try { await claim({ data: { source: "studio", courseRef: id } }); toast.success("Certificate added to your profile!"); qc.invalidateQueries({ queryKey: ["certificates"] }); }
-              catch (e) { toast.error(friendlyError(e, "Could not issue certificate.")); }
-            }}><Award className="h-4 w-4" />Get my certificate</Button>}
+            {user && pct === 100 && (
+              <Button
+                className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+                onClick={async () => {
+                  try {
+                    await claim({ data: { source: "studio", courseRef: id } });
+                    toast.success("Certificate added to your profile!");
+                    qc.invalidateQueries({ queryKey: ["certificates"] });
+                  } catch (e) {
+                    toast.error(friendlyError(e, "Could not issue certificate."));
+                  }
+                }}
+              >
+                <Award className="h-4 w-4" />
+                Get my certificate
+              </Button>
+            )}
           </aside>
         </div>
       </Sheet>
