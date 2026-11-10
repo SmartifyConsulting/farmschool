@@ -1091,6 +1091,7 @@ export type Database = {
       }
       course_factory_reserve_ai_request: { Args: never; Returns: number }
       lesson_tutor_reserve_request: { Args: never; Returns: number }
+      written_quiz_reserve_request: { Args: { _user_id: string }; Returns: number }
       studio_save_quiz: {
         Args: { _lesson_id: string; _title: string; _pass_mark: number; _questions: Json; _answers: Json }
         Returns: undefined

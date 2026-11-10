@@ -6,6 +6,7 @@ import {
   newQuizQuestion,
   questionLabels,
   trueFalseOptions,
+  writtenRubricLimit,
   type QuestionKind,
   type QuizDraftQuestion,
 } from "@/lib/studio-quiz";
@@ -114,6 +115,21 @@ export function QuizQuestionEditor({
           />
           <span className="text-xs text-muted-foreground">
             Capitalisation and extra spaces are ignored.
+          </span>
+        </label>
+      )}
+      {question.kind === "written" && (
+        <label className="block space-y-1 text-sm">
+          <span>Private grading rubric</span>
+          <Textarea
+            rows={4}
+            maxLength={writtenRubricLimit}
+            value={question.rubric}
+            placeholder="List the facts or steps a complete answer must cover."
+            onChange={(event) => onChange({ ...question, rubric: event.target.value })}
+          />
+          <span className="block text-xs text-muted-foreground">
+            The AI grader uses this rubric to decide whether the answer earns one point.
           </span>
         </label>
       )}

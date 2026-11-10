@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useLearning";
 import { friendlyError } from "@/lib/friendly-error";
 import { submitQuiz } from "@/lib/learning.functions";
@@ -11,6 +12,7 @@ import {
   parseQuizQuestions,
   responseIsComplete,
   trueFalseOptions,
+  writtenResponseLimit,
   type QuizResponse,
 } from "@/lib/studio-quiz";
 
@@ -33,6 +35,7 @@ export function StudioQuiz({
   if (!questions)
     return <p className="text-sm text-muted-foreground">This quiz could not be loaded.</p>;
   if (!questions.length) return <p className="text-sm text-muted-foreground">No questions yet.</p>;
+  const hasWrittenQuestions = questions.some((question) => question.kind === "written");
 
   const choose = (index: number, answer: QuizResponse) => {
     setAnswers((previous) => Object.assign([...previous], { [index]: answer }));
@@ -50,7 +53,7 @@ export function StudioQuiz({
           return;
         }
         if (questions.some((question, index) => !responseIsComplete(question, answers[index]))) {
-          toast.error("Answer every question. Use each matching option once.");
+          toast.error("Complete every question before submitting.");
           return;
         }
         setSubmitting(true);
@@ -68,6 +71,12 @@ export function StudioQuiz({
       {passed && !result && (
         <p className="rounded-xl bg-secondary/30 px-3 py-2 text-sm">
           You already passed this quiz. You can try again.
+        </p>
+      )}
+      {hasWrittenQuestions && (
+        <p className="text-sm text-muted-foreground">
+          AI grades written answers against the trainer’s rubric and gives you feedback. Keep
+          personal details out of your answers.
         </p>
       )}
       {questions.map((question, index) => {
@@ -106,6 +115,15 @@ export function StudioQuiz({
                 onChange={(event) => choose(index, event.target.value)}
               />
             )}
+            {question.kind === "written" && (
+              <Textarea
+                aria-label={"Written answer to question " + (index + 1)}
+                rows={5}
+                maxLength={writtenResponseLimit}
+                value={typeof answer === "string" ? answer : ""}
+                onChange={(event) => choose(index, event.target.value)}
+              />
+            )}
             {question.kind === "match" && (
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
@@ -136,6 +154,9 @@ export function StudioQuiz({
                   </label>
                 ))}
               </div>
+            )}
+            {result?.feedback?.[index] && (
+              <p className="whitespace-pre-wrap break-words text-sm">{result.feedback[index]}</p>
             )}
             {result && (
               <p
