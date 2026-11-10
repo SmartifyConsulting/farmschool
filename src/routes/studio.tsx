@@ -67,7 +67,8 @@ function usePrerequisiteOptions(excludeId?: string) {
         .from("studio_courses")
         .select("id, title")
         .eq("published", true)
-        .order("title");
+        .order("title")
+        .limit(200);
       return (data ?? []).filter((c) => c.id !== excludeId);
     },
   });
@@ -329,6 +330,7 @@ function Studio() {
             )
             .eq("author_id", user.id)
             .order("updated_at", { ascending: false })
+            .limit(200)
         ).data ?? []
       );
     },
