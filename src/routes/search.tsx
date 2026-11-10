@@ -45,7 +45,8 @@ function SearchPage() {
         .from("studio_courses")
         .select("id,title,description,category,cover_url,price_cents,currency")
         .eq("published", true)
-        .order("updated_at", { ascending: false });
+        .order("updated_at", { ascending: false })
+        .limit(120);
       if (error) throw error;
       return data ?? [];
     },
