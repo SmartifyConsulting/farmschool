@@ -740,6 +740,8 @@ export type Database = {
       };
       profiles: {
         Row: {
+          avatar_url: string | null;
+          bio: string;
           created_at: string;
           full_name: string;
           learner_role: string;
@@ -749,6 +751,8 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          avatar_url?: string | null;
+          bio?: string;
           created_at?: string;
           full_name: string;
           learner_role: string;
@@ -758,6 +762,8 @@ export type Database = {
           user_id: string;
         };
         Update: {
+          avatar_url?: string | null;
+          bio?: string;
           created_at?: string;
           full_name?: string;
           learner_role?: string;
@@ -1384,6 +1390,10 @@ export type Database = {
         Returns: undefined;
       };
       course_factory_reserve_ai_request: { Args: never; Returns: number };
+      my_ai_usage: {
+        Args: never;
+        Returns: { feature: string; requests: number; usage_day: string }[];
+      };
       community_join: {
         Args: { _course_id: string };
         Returns: { course_id: string; joined_at: string; user_id: string };
