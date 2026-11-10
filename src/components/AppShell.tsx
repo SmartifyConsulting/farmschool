@@ -186,11 +186,8 @@ function HeaderAction() {
         </Link>
       </div>
     );
-  return (
-    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-navy-foreground/10">
-      <LayoutGrid className="h-5 w-5" />
-    </span>
-  );
+  if (!ready) return null;
+  return <AvatarMenu mobile horizontal />;
 }
 
 export function Header({ children, wide = false }: { children?: ReactNode; wide?: boolean }) {
