@@ -107,9 +107,17 @@ function SearchPage() {
 
   return (
     <Phone>
-      <Header greeting="Explore learning" title="Course catalogue" />
+      <Header greeting="" title="" />
       <Sheet>
         <div className="space-y-5 pb-10">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
+              Explore learning
+            </p>
+            <h1 className="mt-1 text-xl font-bold tracking-tight text-navy md:text-3xl">
+              Course catalogue
+            </h1>
+          </div>
           <div className="relative">
             <Search
               aria-hidden="true"
