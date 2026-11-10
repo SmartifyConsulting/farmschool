@@ -200,7 +200,7 @@ export function Header({ children, wide = false }: { children?: ReactNode; wide?
       <div className="mx-auto max-w-6xl">
         <div className="mb-5 hidden items-center justify-between gap-4 pb-4 md:flex">
           <Link to="/" aria-label="Home" className="shrink-0">
-            <img src={logo} alt="Plusticity" className="h-[144px] w-auto object-contain" />
+            <img src={logo} alt="Plusticity" className="h-[166px] w-auto object-contain" />
           </Link>
           <nav className="flex flex-1 items-center justify-center gap-1">
             {[...tabs, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const].map(
@@ -235,7 +235,7 @@ export function Header({ children, wide = false }: { children?: ReactNode; wide?
         </div>
         <div className="flex items-center justify-between gap-3 md:hidden">
           <Link to="/" aria-label="Home" className="shrink-0">
-            <img src={logo} alt="Plusticity" className="h-[54px] w-auto object-contain" />
+            <img src={logo} alt="Plusticity" className="h-[62px] w-auto object-contain" />
           </Link>
           <div className="flex shrink-0 items-center gap-2">
             <Link
