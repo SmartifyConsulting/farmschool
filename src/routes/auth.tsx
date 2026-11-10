@@ -10,9 +10,9 @@ import logo from "@/assets/plusticity-logo-navy.png";
 export const Route = createFileRoute("/auth")({
   validateSearch: (s: Record<string, unknown>): { mode?: "signup" } => (s['mode'] === "signup" ? { mode: "signup" } : {}),
   head: () => ({ meta: [
-    { title: "Sign in or sign up — Mobile School" },
-    { name: "description", content: "Sign in or create a free Mobile School learner account." },
-    { property: "og:title", content: "Sign in — Mobile School" },
+    { title: "Sign in or sign up — Plusticity" },
+    { name: "description", content: "Sign in or create a free Plusticity learner account." },
+    { property: "og:title", content: "Sign in — Plusticity" },
     { property: "og:description", content: "Access your agricultural courses." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary_large_image" },
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/auth")({
 export function AuthCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="grid min-h-screen place-items-center bg-primary p-5">
-      <div className="w-full max-w-sm rounded-3xl bg-card p-6 shadow-xl">
+      <div className="w-full max-w-sm rounded-3xl bg-card p-6 shadow-xl sm:max-w-md sm:p-8 md:max-w-lg">
         <Link to="/"><img src={logo} alt="Plusticity" className="mx-auto mb-4 h-[370px] w-auto object-contain" /></Link>
         <h1 className="mb-5 text-center text-xl font-semibold">{title}</h1>
         {children}

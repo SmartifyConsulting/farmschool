@@ -9,7 +9,7 @@ export const Route = createFileRoute("/admin/api-connections")({
   component: ApiConnections,
   head: () =>
     pageMeta(
-      "API connections — Mobile School",
+      "API connections — Plusticity",
       "Review active API key connections across all accounts.",
     ),
 });

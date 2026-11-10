@@ -12,8 +12,8 @@ export const Route = createFileRoute("/lesson/$courseId/$lessonId")({
     return { course: c, lesson: l };
   },
   head: ({ loaderData }) => ({ meta: [
-    { title: `${loaderData?.lesson.title ?? "Lesson"} — Mobile School` },
-    { name: "description", content: `Lesson from ${loaderData?.course.title ?? "a Mobile School course"}.` },
+    { title: `${loaderData?.lesson.title ?? "Lesson"} — Plusticity` },
+    { name: "description", content: `Lesson from ${loaderData?.course.title ?? "a Plusticity course"}.` },
     { property: "og:title", content: loaderData?.lesson.title ?? "Lesson" },
     { property: "og:description", content: loaderData?.course.title ?? "" },
     { property: "og:type", content: "website" },

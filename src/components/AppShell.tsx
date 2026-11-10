@@ -157,7 +157,7 @@ function AccountLinks({ horizontal = false }: { horizontal?: boolean }) {
         to="/auth"
         search={{ mode: "signup" }}
         aria-label="Sign up"
-        className="flex items-center justify-center gap-2 rounded-md border border-primary px-3 py-2 text-xs font-bold uppercase tracking-wider text-primary"
+        className="flex items-center justify-center gap-2 rounded-md border border-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-white"
       >
         <UserPlus className="h-4 w-4 shrink-0" />
         <span>Sign up</span>

@@ -13,7 +13,7 @@ export const Route = createFileRoute("/admin/analytics")({
   component: PlatformAnalytics,
   head: () =>
     pageMeta(
-      "Platform analytics — Mobile School",
+      "Platform analytics — Plusticity",
       "Learner activity and SCORM completion across every course.",
     ),
 });

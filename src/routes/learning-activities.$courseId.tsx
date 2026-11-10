@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { pageMeta } from "@/lib/page-meta";
 
 export const Route = createFileRoute("/learning-activities/$courseId")({
-  head: () => pageMeta("Learning activities — Mobile School", "Practice your skills with trainer-approved course exercises and scenarios."),
+  head: () => pageMeta("Learning activities — Plusticity", "Practice your skills with trainer-approved course exercises and scenarios."),
   component: PublishedLearningActivities,
 });
 

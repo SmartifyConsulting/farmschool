@@ -10,7 +10,7 @@ import { ScormFrame, type ScormResult } from "@/components/ScormFrame";
 import { pageMeta } from "@/lib/page-meta";
 
 export const Route = createFileRoute("/scorm/$id")({
-  head: () => pageMeta("SCORM course player — Mobile School", "Complete a SCORM e-learning course and save your score."),
+  head: () => pageMeta("SCORM course player — Plusticity", "Complete a SCORM e-learning course and save your score."),
   component: ScormPlayer,
 });
 

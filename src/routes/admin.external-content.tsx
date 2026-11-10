@@ -23,7 +23,7 @@ export const Route = createFileRoute("/admin/external-content")({
   component: ExternalContentAdmin,
   head: () =>
     pageMeta(
-      "External Content — Mobile School",
+      "External Content — Plusticity",
       "Manage approved training video providers, the shared video library and imports.",
     ),
 });

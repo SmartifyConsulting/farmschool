@@ -9,7 +9,7 @@ export const Route = createFileRoute("/admin/")({
   component: AdminHome,
   head: () =>
     pageMeta(
-      "Administration — Mobile School",
+      "Administration — Plusticity",
       "Manage course creators and learning platform connections.",
     ),
 });

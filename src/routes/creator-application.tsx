@@ -16,8 +16,8 @@ export const Route = createFileRoute("/creator-application")({
   component: CreatorApplication,
   head: () =>
     pageMeta(
-      "Become a creator — Mobile School",
-      "Apply to share your expertise and publish courses on Mobile School.",
+      "Become a creator — Plusticity",
+      "Apply to share your expertise and publish courses on Plusticity.",
     ),
 });
 
@@ -78,7 +78,7 @@ function CreatorApplication() {
       <Header />
       <Sheet>
         <div className="mx-auto max-w-xl space-y-5 pb-10">
-          <CanvasHeading eyebrow="Teach on Mobile School" title="Become a course creator" />
+          <CanvasHeading eyebrow="Teach on Plusticity" title="Become a course creator" />
           <p className="text-sm text-muted-foreground">
             Tell us about your experience. Our administrators review creator applications before new
             courses can be published.

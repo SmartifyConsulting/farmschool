@@ -98,7 +98,7 @@ export const syncMyMoodle = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const base = await moodleBase();
-    if (!base) return { ok: false, message: "The Moodle connection is not switched on yet. Your Mobile School courses still work." };
+    if (!base) return { ok: false, message: "The Moodle connection is not switched on yet. Your Plusticity courses still work." };
     const email = (context.claims as { email?: string }).email;
     if (!email) return { ok: false, message: "Your account has no email to match in Moodle." };
     const { callMoodle } = await import("./moodle.server");
@@ -128,7 +128,7 @@ export const publishToMoodle = createServerFn({ method: "POST" })
     if (!c || c.author_id !== context.userId) throw new Error("Only the author can publish this course.");
     if (c.moodle_id) return { ok: true, message: "Already in Moodle." };
     const base = await moodleBase();
-    if (!base) return { ok: false, message: "The Moodle connection is not switched on yet — the course is live in Mobile School." };
+    if (!base) return { ok: false, message: "The Moodle connection is not switched on yet — the course is live in Plusticity." };
     const { callMoodle } = await import("./moodle.server");
     try {
       const res = await callMoodle<{ id: number }[]>(base, "core_course_create_courses", {

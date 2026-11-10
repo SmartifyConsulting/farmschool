@@ -12,13 +12,13 @@ import { useAuth } from "@/hooks/useLearning";
 export const Route = createFileRoute("/ask")({
   head: () => ({
     meta: [
-      { title: "Ask the Farmer AI — Mobile School" },
+      { title: "Ask the Farmer AI — Plusticity" },
       {
         name: "description",
         content:
           "Ask practical farming questions and get clear answers with links to relevant courses.",
       },
-      { property: "og:title", content: "Ask the Farmer AI — Mobile School" },
+      { property: "og:title", content: "Ask the Farmer AI — Plusticity" },
       { property: "og:description", content: "Your farming assistant, available anytime." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

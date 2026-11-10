@@ -7,9 +7,9 @@ import { AuthCard } from "./auth";
 
 export const Route = createFileRoute("/forgot-password")({
   head: () => ({ meta: [
-    { title: "Forgot password — Mobile School" },
-    { name: "description", content: "Reset your Mobile School password." },
-    { property: "og:title", content: "Forgot password — Mobile School" },
+    { title: "Forgot password — Plusticity" },
+    { name: "description", content: "Reset your Plusticity password." },
+    { property: "og:title", content: "Forgot password — Plusticity" },
     { property: "og:description", content: "Reset your password." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary_large_image" },

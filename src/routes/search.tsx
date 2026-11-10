@@ -12,7 +12,7 @@ import { formatPrice } from "@/lib/marketplace";
 export const Route = createFileRoute("/search")({
   head: () =>
     pageMeta(
-      "Course Catalogue — Mobile School",
+      "Course Catalogue — Plusticity",
       "Discover courses from creators across industries.",
     ),
   component: SearchPage,
@@ -203,7 +203,7 @@ function SearchPage() {
                   </div>
                   <h3 className="line-clamp-2 text-sm font-semibold">{c.title}</h3>
                   <p className="line-clamp-2 text-xs text-muted-foreground">
-                    {c.description || "Explore this course on Mobile School."}
+                    {c.description || "Explore this course on Plusticity."}
                   </p>
                   {c.source === "sample" && (
                     <span className="inline-block rounded-full bg-muted px-2 py-1 text-[11px] text-muted-foreground">

@@ -18,7 +18,7 @@ export const Route = createFileRoute("/admin/compliance")({
   component: CompliancePage,
   head: () =>
     pageMeta(
-      "Compliance reporting — Mobile School",
+      "Compliance reporting — Plusticity",
       "Who has finished what, and an xAPI export for your LRS.",
     ),
 });
@@ -104,7 +104,7 @@ function CompliancePage() {
             </div>
             <p className="text-xs text-muted-foreground">
               Exports every tracked lesson, quiz, SCORM and certificate fact as xAPI 1.0.3
-              statements (NDJSON) for your LRS. Mobile School does not run its own LRS.
+              statements (NDJSON) for your LRS. Plusticity does not run its own LRS.
             </p>
             <div className="flex gap-2">
               {FILTERS.map((option) => (

@@ -13,13 +13,13 @@ import { courses } from "@/lib/courses";
 export const Route = createFileRoute("/developer")({
   head: () => ({
     meta: [
-      { title: "API Keys — Mobile School" },
+      { title: "API Keys — Plusticity" },
       {
         name: "description",
         content:
-          "Create, rotate and revoke scoped API keys with usage limits for Mobile School lessons.",
+          "Create, rotate and revoke scoped API keys with usage limits for Plusticity lessons.",
       },
-      { property: "og:title", content: "API Keys — Mobile School" },
+      { property: "og:title", content: "API Keys — Plusticity" },
       { property: "og:description", content: "Manage secure access to your lessons." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

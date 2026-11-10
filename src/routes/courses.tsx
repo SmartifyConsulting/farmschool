@@ -11,7 +11,7 @@ import { pageMeta } from "@/lib/page-meta";
 export const Route = createFileRoute("/courses")({
   head: () =>
     pageMeta(
-      "My Courses — Mobile School",
+      "My Courses — Plusticity",
       "Continue learning and track completed or saved courses.",
     ),
   component: MyCourses,

@@ -6,8 +6,8 @@ export const Route = createFileRoute("/terms")({
   component: Terms,
   head: () =>
     pageMeta(
-      "Terms and Conditions — Mobile School",
-      "Terms and conditions for using Mobile School.",
+      "Terms and Conditions — Plusticity",
+      "Terms and conditions for using Plusticity.",
     ),
 });
 
@@ -23,12 +23,12 @@ function Terms() {
             page before it is relied on as a binding agreement.
           </p>
           <p>
-            These Terms and Conditions govern your use of Mobile School, operated by Smartify
+            These Terms and Conditions govern your use of Plusticity, operated by Smartify
             Consulting (Pty) Ltd ("we", "us"). By creating an account or using the platform, you
             agree to these terms.
           </p>
           <p>
-            Mobile School provides access to training courses created by independent trainers and
+            Plusticity provides access to training courses created by independent trainers and
             course creators. We do not guarantee the accuracy, completeness or outcome of any course
             content, and course creators are responsible for the material they publish.
           </p>

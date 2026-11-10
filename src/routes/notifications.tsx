@@ -6,12 +6,12 @@ import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
 export const Route = createFileRoute("/notifications")({
   head: () => ({
     meta: [
-      { title: "Notifications — Mobile School" },
+      { title: "Notifications — Plusticity" },
       {
         name: "description",
-        content: "Course updates and messages from your Mobile School instructors.",
+        content: "Course updates and messages from your Plusticity instructors.",
       },
-      { property: "og:title", content: "Notifications — Mobile School" },
+      { property: "og:title", content: "Notifications — Plusticity" },
       { property: "og:description", content: "Stay up to date with your courses." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

@@ -14,9 +14,9 @@ import { useAuth, useBookmarks, useProgress, courseProgress } from "@/hooks/useL
 export const Route = createFileRoute("/profile")({
   head: () => ({
     meta: [
-      { title: "Profile — Mobile School" },
+      { title: "Profile — Plusticity" },
       { name: "description", content: "Your learner profile, saved courses and certificates." },
-      { property: "og:title", content: "Profile — Mobile School" },
+      { property: "og:title", content: "Profile — Plusticity" },
       { property: "og:description", content: "Your learner profile." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -155,7 +155,7 @@ function Profile() {
                     <span className="block text-sm font-medium">{c.title}</span>
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       <BadgeCheck className="h-3.5 w-3.5 text-primary" />
-                      Mobile School Certified · {new Date(c.issued_at).toLocaleDateString()} ·{" "}
+                      Plusticity Certified · {new Date(c.issued_at).toLocaleDateString()} ·{" "}
                       {credentialCode(c.id)}
                     </span>
                   </span>

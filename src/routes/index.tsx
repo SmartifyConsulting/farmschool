@@ -17,13 +17,13 @@ import { ChallengeFinder } from "@/components/ChallengeFinder";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Mobile School — Agricultural Courses" },
+      { title: "Plusticity — Agricultural Courses" },
       {
         name: "description",
         content:
-          "Learn aquaponics, water quality, farm operations and market access with Mobile School.",
+          "Learn aquaponics, water quality, farm operations and market access with Plusticity.",
       },
-      { property: "og:title", content: "Mobile School" },
+      { property: "og:title", content: "Plusticity" },
       { property: "og:description", content: "Practical agricultural courses on any device." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -136,7 +136,7 @@ function Hero() {
           </h2>
           <p className="mt-3 max-w-md text-sm opacity-85">
             Practical agricultural courses built with trainers and farmers. Learn at your own pace,
-            pass the quiz and earn a Mobile School certificate.
+            pass the quiz and earn a Plusticity certificate.
           </p>
           <Link
             to="/search"
@@ -156,14 +156,14 @@ function Hero() {
       </div>
       <div className="rounded-md border border-border bg-card p-4 md:p-6">
         <p className="text-center text-base md:text-lg">
-          Only at Mobile School: <b>Field-Ready Skills</b>
+          Only at Plusticity: <b>Field-Ready Skills</b>
         </p>
         <table className="mt-4 w-full text-xs">
           <thead>
             <tr>
               <th />
               <th className="w-20 bg-primary py-2 text-[10px] font-bold uppercase tracking-wider text-primary-foreground">
-                Mobile School
+                Plusticity
               </th>
               <th className="w-20 bg-muted-foreground/40 py-2 text-[10px] font-bold uppercase tracking-wider text-navy-foreground">
                 Others

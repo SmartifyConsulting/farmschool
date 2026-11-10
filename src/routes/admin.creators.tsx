@@ -14,7 +14,7 @@ export const Route = createFileRoute("/admin/creators")({
   component: CreatorReview,
   head: () =>
     pageMeta(
-      "Creator approvals — Mobile School",
+      "Creator approvals — Plusticity",
       "Review creator applications and manage publishing permissions.",
     ),
 });

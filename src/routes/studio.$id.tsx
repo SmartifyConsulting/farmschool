@@ -335,9 +335,9 @@ function SourceActivity({
 export const Route = createFileRoute("/studio/$id")({
   head: () => ({
     meta: [
-      { title: "Edit course — Mobile School Studio" },
+      { title: "Edit course — Plusticity Studio" },
       { name: "description", content: "Add lessons, videos and quizzes to your course." },
-      { property: "og:title", content: "Edit course — Mobile School Studio" },
+      { property: "og:title", content: "Edit course — Plusticity Studio" },
       { property: "og:description", content: "Build your farming course." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

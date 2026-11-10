@@ -17,12 +17,12 @@ import {
 export const Route = createFileRoute("/admin/moodle")({
   head: () => ({
     meta: [
-      { title: "Moodle connection — Mobile School" },
+      { title: "Moodle connection — Plusticity" },
       {
         name: "description",
-        content: "Administrator settings to connect Mobile School to a Moodle learning platform.",
+        content: "Administrator settings to connect Plusticity to a Moodle learning platform.",
       },
-      { property: "og:title", content: "Moodle connection — Mobile School" },
+      { property: "og:title", content: "Moodle connection — Plusticity" },
       { property: "og:description", content: "Configure, test and sync the Moodle integration." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

@@ -16,7 +16,7 @@ export const Route = createFileRoute("/admin/users")({
   component: AdminUsers,
   head: () =>
     pageMeta(
-      "Users — Mobile School Administration",
+      "Users — Plusticity Administration",
       "View and manage learner and trainer accounts.",
     ),
 });
@@ -182,7 +182,7 @@ function AdminUsers() {
         <>
           <p>
             This removes <strong className="text-foreground">{row.full_name}</strong>'s profile
-            record from Mobile School.
+            record from Plusticity.
           </p>
           <p>Their sign-in account is not deleted — only their profile data here.</p>
         </>

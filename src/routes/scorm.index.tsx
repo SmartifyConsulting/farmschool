@@ -15,8 +15,8 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/scorm/")({
   head: () =>
     pageMeta(
-      "SCORM courses — Mobile School",
-      "Upload SCORM e-learning packages and play them in Mobile School.",
+      "SCORM courses — Plusticity",
+      "Upload SCORM e-learning packages and play them in Plusticity.",
     ),
   component: ScormLibrary,
 });

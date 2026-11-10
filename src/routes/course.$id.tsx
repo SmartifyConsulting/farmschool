@@ -12,7 +12,7 @@ import { useAuth, useProgress, useSaveProgress, courseProgress } from "@/hooks/u
 export const Route = createFileRoute("/course/$id")({
   loader: ({ params }) => { const c = getCourse(params.id); if (!c) throw notFound(); return c; },
   head: ({ loaderData }) => ({ meta: [
-    { title: `${loaderData?.title ?? "Course"} — Mobile School` },
+    { title: `${loaderData?.title ?? "Course"} — Plusticity` },
     { name: "description", content: loaderData?.description ?? "" },
     { property: "og:title", content: loaderData?.title ?? "Course" },
     { property: "og:description", content: loaderData?.description ?? "" },

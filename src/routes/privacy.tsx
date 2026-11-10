@@ -6,8 +6,8 @@ export const Route = createFileRoute("/privacy")({
   component: Privacy,
   head: () =>
     pageMeta(
-      "Privacy Policy — Mobile School",
-      "How Mobile School collects, uses and protects your information.",
+      "Privacy Policy — Plusticity",
+      "How Plusticity collects, uses and protects your information.",
     ),
 });
 
@@ -24,7 +24,7 @@ function Privacy() {
             is relied on as a binding policy.
           </p>
           <p>
-            Smartify Consulting (Pty) Ltd ("we", "us") operates Mobile School. This policy describes
+            Smartify Consulting (Pty) Ltd ("we", "us") operates Plusticity. This policy describes
             the personal information we collect and how we use it.
           </p>
           <p>

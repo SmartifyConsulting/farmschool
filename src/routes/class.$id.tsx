@@ -32,13 +32,13 @@ import { Lock } from "lucide-react";
 export const Route = createFileRoute("/class/$id")({
   head: () => ({
     meta: [
-      { title: "Course — Mobile School" },
+      { title: "Course — Plusticity" },
       {
         name: "description",
-        content: "A trainer-made farming course on Mobile School with video lessons and quizzes.",
+        content: "A trainer-made farming course on Plusticity with video lessons and quizzes.",
       },
-      { property: "og:title", content: "Course — Mobile School" },
-      { property: "og:description", content: "Learn with Mobile School trainers." },
+      { property: "og:title", content: "Course — Plusticity" },
+      { property: "og:description", content: "Learn with Plusticity trainers." },
       { property: "og:type", content: "article" },
       { name: "twitter:card", content: "summary_large_image" },
     ],

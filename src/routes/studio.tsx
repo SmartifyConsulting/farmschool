@@ -25,12 +25,12 @@ import { StudioCourseActions } from "@/components/StudioCourseActions";
 export const Route = createFileRoute("/studio")({
   head: () => ({
     meta: [
-      { title: "Course Studio — Mobile School" },
+      { title: "Course Studio — Plusticity" },
       {
         name: "description",
         content: "Create courses with video lessons, readings and quizzes across industries.",
       },
-      { property: "og:title", content: "Course Studio — Mobile School" },
+      { property: "og:title", content: "Course Studio — Plusticity" },
       { property: "og:description", content: "Build and publish courses across industries." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
