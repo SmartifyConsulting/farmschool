@@ -139,11 +139,7 @@ function AdminUsers() {
         .order("full_name")
         .limit(100);
       const term = search.trim();
-      if (term) query = query.ilike("full_name", `%${term.replace(/[%_]/g, "\\const { data, error } = await supabase
-        .from("profiles")
-        .select("user_id, full_name, region, learner_role")
-        .order("full_name")
-        .limit(100);")}%`);
+      if (term) query = query.ilike("full_name", `%${term}%`);
       const { data, error } = await query;
       if (error) throw error;
       return data as ProfileRow[];
