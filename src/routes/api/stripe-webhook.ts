@@ -53,7 +53,7 @@ export const Route = createFileRoute("/api/stripe-webhook")({
         );
         if (error) return new Response("Could not record enrollment", { status: 500 });
         await supabaseAdmin.from("audit_events").insert({ actor_id: userId, action: "course.enrolled_paid", entity_type: "course", entity_id: courseId, metadata: { provider: "stripe", session_id: session.id, amount_cents: session.amount_total, currency: session.currency } });
-        await supabaseAdmin.from("payment_events").update({ status: "processed", processed_at: new Date().toISOString() }).eq("id", event.id);\n        return new Response("ok", { status: 200 });
+        return new Response("ok", { status: 200 });
       },
     },
   },
