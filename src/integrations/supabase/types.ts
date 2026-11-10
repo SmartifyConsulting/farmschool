@@ -1462,6 +1462,46 @@ export type Database = {
         };
         Returns: undefined;
       };
+      admin_update_api_key: {
+        Args: { _daily_limit: number; _id: string };
+        Returns: {
+          categories: string[] | null;
+          created_at: string;
+          daily_limit: number;
+          id: string;
+          key_hash: string;
+          last_used_at: string | null;
+          name: string;
+          prefix: string;
+          revoked_at: string | null;
+          rotated_at: string | null;
+          scopes: string[];
+          total_requests: number;
+          usage_count: number;
+          usage_date: string;
+          user_id: string;
+        };
+      };
+      admin_revoke_api_key: {
+        Args: { _id: string };
+        Returns: {
+          categories: string[] | null;
+          created_at: string;
+          daily_limit: number;
+          id: string;
+          key_hash: string;
+          last_used_at: string | null;
+          name: string;
+          prefix: string;
+          revoked_at: string | null;
+          rotated_at: string | null;
+          scopes: string[];
+          total_requests: number;
+          usage_count: number;
+          usage_date: string;
+          user_id: string;
+        };
+      };
       course_factory_reserve_ai_request: { Args: never; Returns: number };
       my_ai_usage: {
         Args: never;

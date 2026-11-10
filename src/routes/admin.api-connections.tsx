@@ -1,9 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useLearning";
 import { supabase } from "@/integrations/supabase/client";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
+import { AdminNav } from "@/components/AdminNav";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useConfirm } from "@/components/ConfirmDialog";
+import { friendlyError } from "@/lib/friendly-error";
 import { pageMeta } from "@/lib/page-meta";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/api-connections")({
   component: ApiConnections,
@@ -30,6 +37,10 @@ type KeyRow = {
 
 function ApiConnections() {
   const { user, ready } = useAuth();
+  const qc = useQueryClient();
+  const confirm = useConfirm();
+  const [editing, setEditing] = useState<{ id: string; limit: string } | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const { data: admin, isLoading: checking } = useQuery({
     queryKey: ["api-connections-admin", user?.id],
     enabled: !!user,
@@ -67,12 +78,55 @@ function ApiConnections() {
       return keys.map((k) => ({ ...k, ownerName: names.get(k.user_id) ?? "Unknown user" }));
     },
   });
+
+  const saveLimit = async (id: string) => {
+    const limit = Number(editing?.limit);
+    if (!editing || !Number.isFinite(limit) || limit < 1) {
+      toast.error("Enter a valid daily limit.");
+      return;
+    }
+    setBusyId(id);
+    const { error } = await supabase.rpc("admin_update_api_key", {
+      _id: id,
+      _daily_limit: Math.round(limit),
+    });
+    setBusyId(null);
+    if (error) {
+      toast.error(friendlyError(error, "Could not update this key."));
+      return;
+    }
+    toast.success("Daily limit updated.");
+    setEditing(null);
+    qc.invalidateQueries({ queryKey: ["admin-api-connections"] });
+  };
+
+  const revokeKey = async (id: string, name: string) => {
+    if (
+      !(await confirm({
+        title: "Revoke this API key?",
+        description: `"${name}" will stop working immediately. This cannot be undone.`,
+        confirmLabel: "Revoke",
+        tone: "danger",
+      }))
+    )
+      return;
+    setBusyId(id);
+    const { error } = await supabase.rpc("admin_revoke_api_key", { _id: id });
+    setBusyId(null);
+    if (error) {
+      toast.error(friendlyError(error, "Could not revoke this key."));
+      return;
+    }
+    toast.success("Key revoked.");
+    qc.invalidateQueries({ queryKey: ["admin-api-connections"] });
+  };
+
   return (
     <Phone>
       <Header />
       <Sheet>
         <div className="mx-auto max-w-4xl space-y-4 pb-10">
-          <CanvasHeading eyebrow="Administration" title="API connections" />
+          <CanvasHeading eyebrow="Admin" title="API connections" />
           {!ready || checking ? (
             <p className="text-sm text-muted-foreground">Checking permissions…</p>
           ) : !user ? (
@@ -86,6 +140,7 @@ function ApiConnections() {
             <p className="text-sm text-muted-foreground">Administrator access required.</p>
           ) : (
             <>
+              <AdminNav />
               <p className="text-sm text-muted-foreground">
                 Active API key connections across every account. Only the key's short prefix is ever
                 stored or shown here — the full secret key is never retrievable after it was
@@ -121,6 +176,44 @@ function ApiConnections() {
                       Created {new Date(k.created_at).toLocaleDateString()} · Last used{" "}
                       {k.last_used_at ? new Date(k.last_used_at).toLocaleDateString() : "never"}
                     </p>
+                    {editing?.id === k.id ? (
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <Input
+                          type="number"
+                          min="1"
+                          value={editing.limit}
+                          onChange={(e) => setEditing({ id: k.id, limit: e.target.value })}
+                          aria-label={`Daily limit for ${k.name}`}
+                          className="w-28"
+                        />
+                        <Button size="sm" disabled={busyId === k.id} onClick={() => saveLimit(k.id)}>
+                          Save
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="mt-2 flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={!!busyId}
+                          onClick={() => setEditing({ id: k.id, limit: String(k.daily_limit) })}
+                        >
+                          Edit limit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive"
+                          disabled={!!busyId}
+                          onClick={() => revokeKey(k.id, k.name)}
+                        >
+                          Revoke
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
