@@ -119,12 +119,79 @@ describe("manual structure", () => {
     const d = _build("Water", [
       { sourceId: "m.pdf", page: 3, text: "1. Water Resources\nWater is vital for every farm and catchment in the region.\n1.1 The Water Balance\nIncoming water is rainfall over the catchment area.\n1.2 Wetlands\nWetlands store and filter water for the farm.\nReferences\nSmith, J. (2020). Water. Pretoria." },
     ]);
+    // 1.1 and 1.2 are each just a couple of short lines, so they fold onto one screen.
     expect(d.lessons.map(l => [l.module, l.title])).toEqual([
       ["1. Water Resources", "1. Water Resources · Overview"],
-      ["1. Water Resources", "1.1 The Water Balance"],
-      ["1. Water Resources", "1.2 Wetlands"],
+      ["1. Water Resources", "1.1 The Water Balance & 1.2 Wetlands"],
     ]);
+    expect(d.lessons[1]?.body).toContain("Incoming water is rainfall");
+    expect(d.lessons[1]?.body).toContain("Wetlands store and filter water");
     expect(d.lessons.some(l => l.body.includes("Smith"))).toBe(false);
+  });
+
+  it("keeps a sub-heading separate when it has substantial content of its own", () => {
+    const d = _build("Water", [
+      {
+        sourceId: "m.pdf",
+        page: 3,
+        text: [
+          "1. Water Resources",
+          "Overview of water resources.",
+          "1.1 The Water Balance",
+          "Incoming water is rainfall over the catchment area, and it moves through several stages before reaching a usable form. Along the way it infiltrates soil, recharges groundwater and feeds rivers that communities and farms depend on throughout the year.",
+          "1.2 Wetlands",
+          "Wetlands store water.",
+        ].join("\n"),
+      },
+    ]);
+    expect(d.lessons.map(l => l.title)).toEqual([
+      "1. Water Resources · Overview",
+      "1.1 The Water Balance",
+      "1.2 Wetlands",
+    ]);
+  });
+
+  it("folds three or more short consecutive sub-headings into one screen", () => {
+    const d = _build("Chocolate", [
+      {
+        sourceId: "m.pdf",
+        page: 1,
+        text: [
+          "1. Types of Chocolate",
+          "1.1 Dark Chocolate",
+          "High cocoa content.",
+          "1.2 White Chocolate",
+          "No cocoa solids.",
+          "1.3 Milk Chocolate",
+          "Mild and sweet.",
+        ].join("\n"),
+      },
+    ]);
+    expect(d.lessons).toHaveLength(1);
+    expect(d.lessons[0]?.title).toBe(
+      "1.1 Dark Chocolate & 1.2 White Chocolate & 1.3 Milk Chocolate",
+    );
+    expect(d.lessons[0]?.body).toContain("High cocoa content.");
+    expect(d.lessons[0]?.body).toContain("No cocoa solids.");
+    expect(d.lessons[0]?.body).toContain("Mild and sweet.");
+  });
+
+  it("splits a sub-heading with a lot of material into several screens instead of one long one", () => {
+    const paragraphs = Array.from(
+      { length: 6 },
+      (_, i) => `Paragraph ${i}: ${"Dark chocolate has a high cocoa content. ".repeat(20)}`.trim(),
+    );
+    const d = _build("Chocolate", [
+      {
+        sourceId: "m.pdf",
+        page: 1,
+        text: `1. Types of Chocolate\n1.1 Dark Chocolate\n${paragraphs.join("\n")}`,
+      },
+    ]);
+    const parts = d.lessons.filter(l => l.title.startsWith("1.1 Dark Chocolate"));
+    expect(parts.length).toBeGreaterThan(1);
+    expect(parts.map(l => l.body).join("\n\n")).toBe(paragraphs.join("\n\n"));
+    expect(parts.every(l => l.module === "1. Types of Chocolate")).toBe(true);
   });
   it("splits a lesson before the chosen paragraph with a new title", () => {
     const [a, b] = _splitAt({ title: "T", body: "One.\n\nTwo.\n\nThree.", sourceRefs: [], reviewRequired: true, module: "M" }, 2, "Third part");

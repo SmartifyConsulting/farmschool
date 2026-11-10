@@ -106,22 +106,87 @@ export function buildCourseDraft(title: string, pages: SourcePage[], firstConten
         continue;
       }
       started = true;
-      // Split before a paragraph, never in the middle of its text.
-      if (body.length && body.join("\n\n").length + line.length > 16000) {
-        flush();
-        const sentence = line.split(/(?<=[.!?])\s+/)[0] ?? line;
-        currentTitle = sentence.length <= 100 ? sentence.replace(/[.!?]$/, "") : `${title.trim()} · Topic ${lessons.length + 1}`;
-      }
       body.push(line);
       if (!refs.some(ref => ref.sourceId === page.sourceId && ref.page === page.page)) refs.push({ sourceId: page.sourceId, page: page.page });
     }
   }
   flush();
-  for (const lesson of lessons) if (lesson.module && lesson.title === lesson.module && lessons.some(other => other !== lesson && other.module === lesson.module)) lesson.title = `${lesson.title} · Overview`.slice(0, 120);
+  const balanced = balanceDraftLessons(lessons);
+  for (const lesson of balanced) if (lesson.module && lesson.title === lesson.module && balanced.some(other => other !== lesson && other.module === lesson.module)) lesson.title = `${lesson.title} · Overview`.slice(0, 120);
   if (skipped) warnings.push("Cover, contents and reference list material excluded. Check the source page ranges below.");
-  if (!lessons.length) warnings.push("No substantial readable content was found. Check source extraction before publishing.");
-  if (lessons.length === 1 && pages.length > 3) warnings.push("One topic detected. Check its boundaries before generating lessons.");
-  return { title: title.trim(), lessons, status: "draft", warnings };
+  if (!balanced.length) warnings.push("No substantial readable content was found. Check source extraction before publishing.");
+  if (balanced.length === 1 && pages.length > 3) warnings.push("One topic detected. Check its boundaries before generating lessons.");
+  return { title: title.trim(), lessons: balanced, status: "draft", warnings };
+}
+
+// A sub-heading this short reads as "just a couple of lines" — not worth its own screen.
+const MERGE_UNDER_CHARS = 220;
+// A sub-heading with this much material needs to be broken into separate screens.
+const SPLIT_OVER_CHARS = 2400;
+const SPLIT_TARGET_CHARS = 1500;
+
+/** Breaks an overlong lesson into paragraph-aligned parts, never mid-paragraph. */
+function splitLongLesson(lesson: DraftLesson): DraftLesson[] {
+  if (lesson.body.length <= SPLIT_OVER_CHARS) return [lesson];
+  const paragraphs = lesson.body.split(/\n{2,}/).filter(Boolean);
+  if (paragraphs.length < 2) return [lesson];
+  const parts: string[][] = [[]];
+  let size = 0;
+  for (const para of paragraphs) {
+    if (size > 0 && size + para.length > SPLIT_TARGET_CHARS) { parts.push([]); size = 0; }
+    parts.at(-1)!.push(para);
+    size += para.length;
+  }
+  if (parts.length < 2) return [lesson];
+  return parts.map((paras, i) => ({
+    ...lesson,
+    title: `${lesson.title.slice(0, 100)} (${i + 1} of ${parts.length})`.slice(0, 120),
+    body: paras.join("\n\n"),
+  }));
+}
+
+/** Folds consecutive short sub-headings under the same module into one lesson, so a handful of sentences each don't become a handful of near-empty screens. The module's own overview lesson (title === module) is never folded in, so it stays a distinct landing screen. */
+function mergeShortLessons(lessons: DraftLesson[]): DraftLesson[] {
+  const merged: DraftLesson[] = [];
+  for (const lesson of lessons) {
+    const prev = merged.at(-1);
+    const prevIsOverview = prev && prev.module !== undefined && prev.title === prev.module;
+    const thisIsOverview = lesson.module !== undefined && lesson.title === lesson.module;
+    const canMerge =
+      prev &&
+      !prevIsOverview &&
+      !thisIsOverview &&
+      prev.module !== undefined &&
+      prev.module === lesson.module &&
+      prev.body.length < MERGE_UNDER_CHARS &&
+      prev.body.length + lesson.body.length <= SPLIT_OVER_CHARS;
+    if (prev && canMerge) {
+      merged[merged.length - 1] = {
+        ...prev,
+        title: `${prev.title} & ${lesson.title}`.slice(0, 120),
+        body: `${prev.body}\n\n${lesson.body}`,
+        sourceRefs: [
+          ...prev.sourceRefs,
+          ...lesson.sourceRefs.filter(
+            ref => !prev.sourceRefs.some(existing => existing.sourceId === ref.sourceId && existing.page === ref.page),
+          ),
+        ],
+      };
+    } else {
+      merged.push(lesson);
+    }
+  }
+  return merged;
+}
+
+/**
+ * Applies editorial discretion to a flat list of heading-bounded lessons: split any
+ * sub-heading with a lot of material into several screens, and fold consecutive short
+ * sub-headings under the same module into one screen. Order matters — splitting first
+ * means a merge pass never has to reconsider an already-oversized lesson.
+ */
+export function balanceDraftLessons(lessons: DraftLesson[]): DraftLesson[] {
+  return mergeShortLessons(lessons.flatMap(splitLongLesson));
 }
 
 /** Editing boundaries never changes source text or automatically approves a lesson. */
