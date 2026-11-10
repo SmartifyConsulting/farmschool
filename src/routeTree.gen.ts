@@ -10,7 +10,6 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AskRouteImport } from './routes/ask'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CoursesRouteImport } from './routes/courses'
 import { Route as CreatorApplicationRouteImport } from './routes/creator-application'
@@ -32,8 +31,6 @@ import { Route as AdminCreatorsRouteImport } from './routes/admin.creators'
 import { Route as AdminExternalContentRouteImport } from './routes/admin.external-content'
 import { Route as AdminMoodleRouteImport } from './routes/admin.moodle'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
-import { Route as ApiAskRouteImport } from './routes/api/ask'
-import { Route as ApiChallengeRouteImport } from './routes/api/challenge'
 import { Route as ApiCourseFactoryRouteImport } from './routes/api/course-factory'
 import { Route as ApiCourseWizardRouteImport } from './routes/api/course-wizard'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
@@ -53,11 +50,6 @@ import { Route as ApiPublicV1ProgressRouteImport } from './routes/api/public/v1/
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AskRoute = AskRouteImport.update({
-  id: '/ask',
-  path: '/ask',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -165,16 +157,6 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/admin/users',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAskRoute = ApiAskRouteImport.update({
-  id: '/api/ask',
-  path: '/api/ask',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiChallengeRoute = ApiChallengeRouteImport.update({
-  id: '/api/challenge',
-  path: '/api/challenge',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiCourseFactoryRoute = ApiCourseFactoryRouteImport.update({
   id: '/api/course-factory',
   path: '/api/course-factory',
@@ -254,7 +236,6 @@ const ApiPublicV1ProgressRoute = ApiPublicV1ProgressRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/ask': typeof AskRoute
   '/auth': typeof AuthRoute
   '/courses': typeof CoursesRoute
   '/creator-application': typeof CreatorApplicationRoute
@@ -275,8 +256,6 @@ export interface FileRoutesByFullPath {
   '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/moodle': typeof AdminMoodleRoute
   '/admin/users': typeof AdminUsersRoute
-  '/api/ask': typeof ApiAskRoute
-  '/api/challenge': typeof ApiChallengeRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
@@ -296,7 +275,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/ask': typeof AskRoute
   '/auth': typeof AuthRoute
   '/courses': typeof CoursesRoute
   '/creator-application': typeof CreatorApplicationRoute
@@ -317,8 +295,6 @@ export interface FileRoutesByTo {
   '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/moodle': typeof AdminMoodleRoute
   '/admin/users': typeof AdminUsersRoute
-  '/api/ask': typeof ApiAskRoute
-  '/api/challenge': typeof ApiChallengeRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
@@ -339,7 +315,6 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/ask': typeof AskRoute
   '/auth': typeof AuthRoute
   '/courses': typeof CoursesRoute
   '/creator-application': typeof CreatorApplicationRoute
@@ -360,8 +335,6 @@ export interface FileRoutesById {
   '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/moodle': typeof AdminMoodleRoute
   '/admin/users': typeof AdminUsersRoute
-  '/api/ask': typeof ApiAskRoute
-  '/api/challenge': typeof ApiChallengeRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
@@ -383,7 +356,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/ask'
     | '/auth'
     | '/courses'
     | '/creator-application'
@@ -404,8 +376,6 @@ export interface FileRouteTypes {
     | '/admin/external-content'
     | '/admin/moodle'
     | '/admin/users'
-    | '/api/ask'
-    | '/api/challenge'
     | '/api/course-factory'
     | '/api/course-wizard'
     | '/api/stripe-webhook'
@@ -425,7 +395,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/ask'
     | '/auth'
     | '/courses'
     | '/creator-application'
@@ -446,8 +415,6 @@ export interface FileRouteTypes {
     | '/admin/external-content'
     | '/admin/moodle'
     | '/admin/users'
-    | '/api/ask'
-    | '/api/challenge'
     | '/api/course-factory'
     | '/api/course-wizard'
     | '/api/stripe-webhook'
@@ -467,7 +434,6 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/ask'
     | '/auth'
     | '/courses'
     | '/creator-application'
@@ -488,8 +454,6 @@ export interface FileRouteTypes {
     | '/admin/external-content'
     | '/admin/moodle'
     | '/admin/users'
-    | '/api/ask'
-    | '/api/challenge'
     | '/api/course-factory'
     | '/api/course-wizard'
     | '/api/stripe-webhook'
@@ -510,7 +474,6 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AskRoute: typeof AskRoute
   AuthRoute: typeof AuthRoute
   CoursesRoute: typeof CoursesRoute
   CreatorApplicationRoute: typeof CreatorApplicationRoute
@@ -531,8 +494,6 @@ export interface RootRouteChildren {
   AdminExternalContentRoute: typeof AdminExternalContentRoute
   AdminMoodleRoute: typeof AdminMoodleRoute
   AdminUsersRoute: typeof AdminUsersRoute
-  ApiAskRoute: typeof ApiAskRoute
-  ApiChallengeRoute: typeof ApiChallengeRoute
   ApiCourseFactoryRoute: typeof ApiCourseFactoryRoute
   ApiCourseWizardRoute: typeof ApiCourseWizardRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
@@ -556,13 +517,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ask': {
-      id: '/ask'
-      path: '/ask'
-      fullPath: '/ask'
-      preLoaderRoute: typeof AskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -712,20 +666,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/ask': {
-      id: '/api/ask'
-      path: '/api/ask'
-      fullPath: '/api/ask'
-      preLoaderRoute: typeof ApiAskRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/challenge': {
-      id: '/api/challenge'
-      path: '/api/challenge'
-      fullPath: '/api/challenge'
-      preLoaderRoute: typeof ApiChallengeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/course-factory': {
       id: '/api/course-factory'
       path: '/api/course-factory'
@@ -859,7 +799,6 @@ const StudioRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AskRoute: AskRoute,
   AuthRoute: AuthRoute,
   CoursesRoute: CoursesRoute,
   CreatorApplicationRoute: CreatorApplicationRoute,
@@ -880,8 +819,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdminExternalContentRoute: AdminExternalContentRoute,
   AdminMoodleRoute: AdminMoodleRoute,
   AdminUsersRoute: AdminUsersRoute,
-  ApiAskRoute: ApiAskRoute,
-  ApiChallengeRoute: ApiChallengeRoute,
   ApiCourseFactoryRoute: ApiCourseFactoryRoute,
   ApiCourseWizardRoute: ApiCourseWizardRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,

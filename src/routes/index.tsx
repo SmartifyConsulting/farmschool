@@ -12,7 +12,6 @@ import {
 } from "@/components/AppShell";
 import { categories, courses, type Course } from "@/lib/courses";
 import { useAuth, useProgress, courseProgress } from "@/hooks/useLearning";
-import { ChallengeFinder } from "@/components/ChallengeFinder";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -249,7 +248,6 @@ function Index() {
             </p>
           </Link>
         </div>
-        <ChallengeFinder />
         <Schools />
         {inProgress.length > 0 && <Section title="Continue learning" list={inProgress} />}
         <Section title="Recommended for you" list={courses.slice(0, 6)} />
