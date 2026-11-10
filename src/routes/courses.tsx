@@ -40,7 +40,7 @@ function MyCourses() {
   );
   const { user } = useAuth();
   const { data: progress = [], isLoading: progressLoading } = useProgress();
-  const { ids, signedIn } = useBookmarks();
+  const { ids } = useBookmarks();
   const { data: prof } = useQuery({
     queryKey: ["profile", user?.id],
     enabled: !!user,
@@ -65,11 +65,18 @@ function MyCourses() {
     error: studioError,
   } = useQuery({
     queryKey: ["my-studio-courses", user?.id, progress.map((p) => p.course_id).join(","), ids.join(",")],
-    enabled: !!user && !progressLoading && signedIn,
+    enabled: !!user && !progressLoading,
     queryFn: async () => {
+      const { data: enrollments, error: enrollmentError } = await supabase
+        .from("course_enrollments")
+        .select("course_id")
+        .eq("user_id", user!.id)
+        .limit(200);
+      if (enrollmentError) throw enrollmentError;
       const studioIds = [...new Set([
         ...progress.map((p) => p.course_id),
         ...ids,
+        ...(enrollments ?? []).map((e) => e.course_id),
       ].filter((id) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id)))];
       if (!studioIds.length) return [];
       const { data, error } = await supabase
