@@ -9,7 +9,7 @@ export const Route = createFileRoute("/api/public/v1/progress")({
         if (auth instanceof Response) return auth;
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data, error } = await supabaseAdmin.from("lesson_progress")
-          .select("course_id, lesson_id, completed, position_seconds, updated_at").eq("user_id", auth.userId);
+          .select("course_id, lesson_id, completed, position_seconds, updated_at").eq("user_id", auth.userId).order("updated_at", { ascending: false }).limit(1000);
         if (error) return json({ error: "Could not load progress" }, 500);
         return json({ progress: data });
       },
