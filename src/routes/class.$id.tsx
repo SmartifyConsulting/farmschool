@@ -1,7 +1,7 @@
 import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, Circle, Video, FileText, HelpCircle, Award, Package } from "lucide-react";
 import { Phone, Header, Sheet, ProgressBar } from "@/components/AppShell";
@@ -24,6 +24,7 @@ import {
   slideText,
   splitLessonSource,
 } from "@/lib/lesson-slides";
+import { courseThemeStyle } from "@/lib/course-theme";
 
 export const Route = createFileRoute("/class/$id")({
   head: () => ({
@@ -60,7 +61,7 @@ function ClassPage() {
       (
         await supabase
           .from("studio_courses")
-          .select("id, title, description, category, level, cover_url, published, author_id")
+          .select("id, title, description, category, level, cover_url, published, author_id, theme")
           .eq("id", id)
           .maybeSingle()
       ).data,
@@ -164,179 +165,181 @@ function ClassPage() {
   };
 
   return (
-    <Phone>
-      <Header greeting="" title="" />
-      <Sheet>
-        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
-          {course.category} · {course.level}
-        </p>
-        <h1 className="mt-1 mb-4 text-xl font-bold tracking-tight text-navy md:text-3xl">
-          {course.title}
-        </h1>
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-          <div className="min-w-0 space-y-4">
-            {lesson ? (
-              <>
-                {linked.find((v) => v.lesson_id === lesson.id) ? (
-                  <ExternalVideo video={linked.find((v) => v.lesson_id === lesson.id)!} />
-                ) : (
-                  lesson.kind === "video" &&
-                  lesson.video_url &&
-                  (youtubeEmbed(lesson.video_url) ? (
-                    <iframe
-                      src={youtubeEmbed(lesson.video_url)!}
-                      title={lesson.title}
-                      className="aspect-video w-full rounded-2xl"
-                      allow="accelerometer; encrypted-media; picture-in-picture"
-                      allowFullScreen
+    <div style={courseThemeStyle(course.theme) as CSSProperties}>
+      <Phone>
+        <Header greeting="" title="" />
+        <Sheet>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
+            {course.category} · {course.level}
+          </p>
+          <h1 className="mt-1 mb-4 text-xl font-bold tracking-tight text-navy md:text-3xl">
+            {course.title}
+          </h1>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+            <div className="min-w-0 space-y-4">
+              {lesson ? (
+                <>
+                  {linked.find((v) => v.lesson_id === lesson.id) ? (
+                    <ExternalVideo video={linked.find((v) => v.lesson_id === lesson.id)!} />
+                  ) : (
+                    lesson.kind === "video" &&
+                    lesson.video_url &&
+                    (youtubeEmbed(lesson.video_url) ? (
+                      <iframe
+                        src={youtubeEmbed(lesson.video_url)!}
+                        title={lesson.title}
+                        className="aspect-video w-full rounded-2xl"
+                        allow="accelerometer; encrypted-media; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : (
+                      <video
+                        src={lesson.video_url}
+                        controls
+                        playsInline
+                        className="aspect-video w-full rounded-2xl bg-foreground"
+                        onEnded={markDone}
+                      />
+                    ))
+                  )}
+                  <h2 className="text-lg font-semibold">{lesson.title}</h2>
+                  {narration.trim() && (
+                    <div className="flex flex-wrap gap-2">
+                      <LessonNarration
+                        key={lesson.id + ":" + lessonContentKey(narration)}
+                        text={narration}
+                      />
+                      {course.published && (
+                        <LessonTutor
+                          key={lesson.id + ":" + (user?.id ?? "guest")}
+                          courseId={id}
+                          lessonId={lesson.id}
+                          title={lesson.title}
+                          signedIn={!!user}
+                        />
+                      )}
+                    </div>
+                  )}
+                  {lesson.kind === "scorm" && (
+                    <ScormLesson
+                      key={lesson.id}
+                      body={lesson.body}
+                      onFinished={() => {
+                        if (user && !done.has(lesson.id))
+                          save.mutate({ course_id: id, lesson_id: lesson.id, completed: true });
+                      }}
+                    />
+                  )}
+                  {lesson.body && (lesson.kind === "reading" || lesson.kind === "video") && (
+                    <FormattedLesson content={lesson.body} />
+                  )}
+                  {lesson.kind === "quiz" ? (
+                    <StudioQuiz
+                      key={lesson.id}
+                      lessonId={lesson.id}
+                      quiz={lesson.quiz}
+                      passed={done.has(lesson.id)}
+                    />
+                  ) : lesson.kind === "scorm" ? (
+                    <p className="text-sm text-muted-foreground">
+                      {done.has(lesson.id)
+                        ? "Completed"
+                        : "This lesson completes automatically when you finish the e-learning."}
+                    </p>
+                  ) : lesson.kind === "slide" ? (
+                    <SlidePlayer
+                      key={slideKey}
+                      storageKey={slideKey}
+                      slides={slides}
+                      completed={done.has(lesson.id)}
+                      saving={save.isPending}
+                      onComplete={markDone}
+                      lessonId={lesson.id}
+                      isTrainer={user?.id === course.author_id}
                     />
                   ) : (
-                    <video
-                      src={lesson.video_url}
-                      controls
-                      playsInline
-                      className="aspect-video w-full rounded-2xl bg-foreground"
-                      onEnded={markDone}
-                    />
-                  ))
-                )}
-                <h2 className="text-lg font-semibold">{lesson.title}</h2>
-                {narration.trim() && (
-                  <div className="flex flex-wrap gap-2">
-                    <LessonNarration
-                      key={lesson.id + ":" + lessonContentKey(narration)}
-                      text={narration}
-                    />
-                    {course.published && (
-                      <LessonTutor
-                        key={lesson.id + ":" + (user?.id ?? "guest")}
-                        courseId={id}
-                        lessonId={lesson.id}
-                        title={lesson.title}
-                        signedIn={!!user}
-                      />
-                    )}
-                  </div>
-                )}
-                {lesson.kind === "scorm" && (
-                  <ScormLesson
-                    key={lesson.id}
-                    body={lesson.body}
-                    onFinished={() => {
-                      if (user && !done.has(lesson.id))
-                        save.mutate({ course_id: id, lesson_id: lesson.id, completed: true });
-                    }}
-                  />
-                )}
-                {lesson.body && (lesson.kind === "reading" || lesson.kind === "video") && (
-                  <FormattedLesson content={lesson.body} />
-                )}
-                {lesson.kind === "quiz" ? (
-                  <StudioQuiz
-                    key={lesson.id}
-                    lessonId={lesson.id}
-                    quiz={lesson.quiz}
-                    passed={done.has(lesson.id)}
-                  />
-                ) : lesson.kind === "scorm" ? (
-                  <p className="text-sm text-muted-foreground">
-                    {done.has(lesson.id)
-                      ? "Completed"
-                      : "This lesson completes automatically when you finish the e-learning."}
-                  </p>
-                ) : lesson.kind === "slide" ? (
-                  <SlidePlayer
-                    key={slideKey}
-                    storageKey={slideKey}
-                    slides={slides}
-                    completed={done.has(lesson.id)}
-                    saving={save.isPending}
-                    onComplete={markDone}
-                    lessonId={lesson.id}
-                    isTrainer={user?.id === course.author_id}
-                  />
-                ) : (
-                  <Button onClick={markDone} disabled={done.has(lesson.id) || save.isPending}>
-                    {done.has(lesson.id) ? "Completed" : "Mark as complete"}
-                  </Button>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">This course has no lessons yet.</p>
-            )}
-            {course.published && activities.length > 0 && (
-              <section className="space-y-3" aria-label="Trainer-approved learning activities">
-                <h2 className="text-lg font-semibold">Practical activities</h2>
-                {activities.map((activity) => (
-                  <article key={activity.id} className="rounded-xl border border-border p-4">
-                    <p className="text-xs text-muted-foreground">
-                      {activity.kind === "steps" ? "Practical exercise" : "Applied scenario"}
-                    </p>
-                    <h3 className="mt-1 font-semibold">{activity.lesson_title}</h3>
-                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
-                      {activity.prompt}
-                    </p>
-                  </article>
-                ))}
-              </section>
-            )}
-            {course.description && (
-              <div className="rounded-2xl bg-muted/50 p-4 text-sm">
-                <h3 className="mb-1 font-semibold">About this course</h3>
-                <p className="whitespace-pre-wrap text-muted-foreground">{course.description}</p>
-              </div>
-            )}
+                    <Button onClick={markDone} disabled={done.has(lesson.id) || save.isPending}>
+                      {done.has(lesson.id) ? "Completed" : "Mark as complete"}
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">This course has no lessons yet.</p>
+              )}
+              {course.published && activities.length > 0 && (
+                <section className="space-y-3" aria-label="Trainer-approved learning activities">
+                  <h2 className="text-lg font-semibold">Practical activities</h2>
+                  {activities.map((activity) => (
+                    <article key={activity.id} className="rounded-xl border border-border p-4">
+                      <p className="text-xs text-muted-foreground">
+                        {activity.kind === "steps" ? "Practical exercise" : "Applied scenario"}
+                      </p>
+                      <h3 className="mt-1 font-semibold">{activity.lesson_title}</h3>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
+                        {activity.prompt}
+                      </p>
+                    </article>
+                  ))}
+                </section>
+              )}
+              {course.description && (
+                <div className="rounded-2xl bg-muted/50 p-4 text-sm">
+                  <h3 className="mb-1 font-semibold">About this course</h3>
+                  <p className="whitespace-pre-wrap text-muted-foreground">{course.description}</p>
+                </div>
+              )}
+            </div>
+            <aside className="space-y-3">
+              {user && <ProgressBar pct={pct} label={`${count}/${total} lessons`} />}
+              <ol className="space-y-1.5">
+                {(lessons ?? []).map((l, i) => {
+                  const Icon =
+                    l.kind === "video"
+                      ? Video
+                      : l.kind === "quiz"
+                        ? HelpCircle
+                        : l.kind === "scorm"
+                          ? Package
+                          : FileText;
+                  return (
+                    <li key={l.id}>
+                      <button
+                        onClick={() => setIdx(i)}
+                        className={`flex w-full items-center gap-3 rounded-xl border p-2.5 text-left text-sm ${i === idx ? "border-primary bg-primary/5" : "border-border"}`}
+                      >
+                        <Icon className="h-4 w-4 shrink-0 text-primary" />
+                        <span className="min-w-0 flex-1 truncate">{l.title}</span>
+                        {done.has(l.id) ? (
+                          <CheckCircle2 className="h-4 w-4 text-secondary-foreground" />
+                        ) : (
+                          <Circle className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+              {user && pct === 100 && (
+                <Button
+                  className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+                  onClick={async () => {
+                    try {
+                      await claim({ data: { source: "studio", courseRef: id } });
+                      toast.success("Certificate added to your profile!");
+                      qc.invalidateQueries({ queryKey: ["certificates"] });
+                    } catch (e) {
+                      toast.error(friendlyError(e, "Could not issue certificate."));
+                    }
+                  }}
+                >
+                  <Award className="h-4 w-4" />
+                  Get my certificate
+                </Button>
+              )}
+            </aside>
           </div>
-          <aside className="space-y-3">
-            {user && <ProgressBar pct={pct} label={`${count}/${total} lessons`} />}
-            <ol className="space-y-1.5">
-              {(lessons ?? []).map((l, i) => {
-                const Icon =
-                  l.kind === "video"
-                    ? Video
-                    : l.kind === "quiz"
-                      ? HelpCircle
-                      : l.kind === "scorm"
-                        ? Package
-                        : FileText;
-                return (
-                  <li key={l.id}>
-                    <button
-                      onClick={() => setIdx(i)}
-                      className={`flex w-full items-center gap-3 rounded-xl border p-2.5 text-left text-sm ${i === idx ? "border-primary bg-primary/5" : "border-border"}`}
-                    >
-                      <Icon className="h-4 w-4 shrink-0 text-primary" />
-                      <span className="min-w-0 flex-1 truncate">{l.title}</span>
-                      {done.has(l.id) ? (
-                        <CheckCircle2 className="h-4 w-4 text-secondary-foreground" />
-                      ) : (
-                        <Circle className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-            {user && pct === 100 && (
-              <Button
-                className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
-                onClick={async () => {
-                  try {
-                    await claim({ data: { source: "studio", courseRef: id } });
-                    toast.success("Certificate added to your profile!");
-                    qc.invalidateQueries({ queryKey: ["certificates"] });
-                  } catch (e) {
-                    toast.error(friendlyError(e, "Could not issue certificate."));
-                  }
-                }}
-              >
-                <Award className="h-4 w-4" />
-                Get my certificate
-              </Button>
-            )}
-          </aside>
-        </div>
-      </Sheet>
-    </Phone>
+        </Sheet>
+      </Phone>
+    </div>
   );
 }
