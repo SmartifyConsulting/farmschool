@@ -161,7 +161,7 @@ function ClassPage() {
   const slideKey =
     lesson?.kind === "slide"
       ? [
-          "mobile-school",
+          "plusticity",
           "slides",
           user?.id ?? "guest",
           lesson.id,
