@@ -38,6 +38,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         payment_status: "free",
       });
       if (error) return { error: "Could not enrol you in this course." } as const;
+      await context.supabase.rpc("record_audit_event", { _action: "course.enrolled_free", _entity_type: "course", _entity_id: course.id, _metadata: {} });
       return { kind: "enrolled" as const };
     }
 
