@@ -7,10 +7,14 @@ describe("detectContentFileType", () => {
     expect(detectContentFileType("Manual.PDF")).toBe("pdf");
     expect(detectContentFileType("notes.txt")).toBe("text");
     expect(detectContentFileType("package.zip")).toBe("scorm");
+    expect(detectContentFileType("slides.pptx")).toBe("document");
+    expect(detectContentFileType("handout.docx")).toBe("document");
+    expect(detectContentFileType("photo.png")).toBe("image");
+    expect(detectContentFileType("photo.JPG")).toBe("image");
   });
 
   it("returns null for unsupported extensions", () => {
-    expect(detectContentFileType("photo.png")).toBeNull();
+    expect(detectContentFileType("archive.rar")).toBeNull();
     expect(detectContentFileType("noextension")).toBeNull();
   });
 });

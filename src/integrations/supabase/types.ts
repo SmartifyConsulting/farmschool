@@ -1197,32 +1197,47 @@ export type Database = {
       };
       studio_content_files: {
         Row: {
+          classification: string;
           course_id: string;
           created_at: string;
+          description: string;
+          file_hash: string | null;
           file_name: string;
           file_type: string;
           id: string;
+          keywords: string[];
           module_id: string | null;
+          original_file_name: string;
           size_bytes: number;
           storage_path: string;
         };
         Insert: {
+          classification?: string;
           course_id: string;
           created_at?: string;
+          description?: string;
+          file_hash?: string | null;
           file_name: string;
           file_type: string;
           id?: string;
+          keywords?: string[];
           module_id?: string | null;
+          original_file_name: string;
           size_bytes: number;
           storage_path: string;
         };
         Update: {
+          classification?: string;
           course_id?: string;
           created_at?: string;
+          description?: string;
+          file_hash?: string | null;
           file_name?: string;
           file_type?: string;
           id?: string;
+          keywords?: string[];
           module_id?: string | null;
+          original_file_name?: string;
           size_bytes?: number;
           storage_path?: string;
         };

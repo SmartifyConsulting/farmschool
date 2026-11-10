@@ -25,6 +25,78 @@ async function ownCourse(supabase: any, userId: string, courseId: string) {
   return data as { id: string; title: string };
 }
 
+const EMPTY_FILE_ANALYSIS = {
+  suggestedFileName: null as string | null,
+  description: "",
+  classification: "",
+  keywords: [] as string[],
+  suggestedModuleTitle: null as string | null,
+};
+
+/**
+ * Suggests a descriptive file name, short description, classification, keywords and a best-fit
+ * module for an uploaded content file, from text already extracted client-side. Never throws —
+ * degrades to the "unsure" result (keep the original name) on any quota, key or model failure, per
+ * the design principle that AI naming must never block or break an upload.
+ */
+export const analyzeContentFile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        courseId: z.string().uuid(),
+        fileName: z.string().min(1).max(260),
+        extractedText: z.string().max(20000).optional(),
+        moduleTitles: z.array(z.string().max(200)).max(50).default([]),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    await ownCourse(context.supabase, context.userId, data.courseId);
+    const text = (data.extractedText ?? "").trim();
+    const apiKey = process.env["OPENAI_API_KEY"];
+    if (!text || !apiKey) return EMPTY_FILE_ANALYSIS;
+    const { data: count, error: quotaError } = await context.supabase.rpc(
+      "course_factory_reserve_ai_request" as never,
+    );
+    if (quotaError || typeof count !== "number") return EMPTY_FILE_ANALYSIS;
+    const ext = data.fileName.includes(".") ? data.fileName.split(".").pop() : "";
+    const { createOpenAI } = await import("@ai-sdk/openai");
+    const { generateText, Output } = await import("ai");
+    try {
+      const { output } = await generateText({
+        model: createOpenAI({ apiKey }).responses("gpt-6-luna"),
+        maxRetries: 1,
+        system: `${SAFETY} Read this excerpt of an uploaded training file and suggest a short, descriptive, human-readable file name (no extension, 3-8 words, title case, spaces or hyphens only — never copy the original file name) based on its actual subject matter. Also write a one-sentence description, a short classification label (e.g. "Lesson reading", "Reference guide", "Worksheet", "Slide deck"), up to 6 keywords, and — only if one of the given module titles is clearly the best fit — that exact module title, else null. If the excerpt is too thin, generic or unclear to name confidently, return null for suggestedFileName and suggestedModuleTitle rather than guessing.`,
+        prompt: JSON.stringify({
+          originalFileName: data.fileName,
+          excerpt: text.slice(0, 12000),
+          moduleTitles: data.moduleTitles,
+        }),
+        output: Output.object({
+          schema: z.object({
+            suggestedFileName: z.string().min(1).max(100).nullable(),
+            description: z.string().max(400),
+            classification: z.string().max(60),
+            keywords: z.array(z.string().min(1).max(40)).max(6),
+            suggestedModuleTitle: z.string().max(200).nullable(),
+          }),
+        }),
+      });
+      return {
+        ...output,
+        suggestedFileName: output.suggestedFileName
+          ? ext
+            ? `${output.suggestedFileName}.${ext}`
+            : output.suggestedFileName
+          : null,
+      };
+    } catch (e) {
+      console.error("analyzeContentFile failed", e);
+      return EMPTY_FILE_ANALYSIS;
+    }
+  });
+
 /** Inline AI help for trainers: rewrite a lesson or draft quiz questions. Results are suggestions; nothing is saved here. */
 export const assistLesson = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

@@ -1,4 +1,4 @@
-export type ContentFileType = "video" | "pdf" | "text" | "scorm";
+export type ContentFileType = "video" | "pdf" | "text" | "document" | "image" | "scorm";
 
 const EXTENSION_TYPES: Record<string, ContentFileType> = {
   mp4: "video",
@@ -8,6 +8,12 @@ const EXTENSION_TYPES: Record<string, ContentFileType> = {
   pdf: "pdf",
   txt: "text",
   md: "text",
+  docx: "document",
+  pptx: "document",
+  jpg: "image",
+  jpeg: "image",
+  png: "image",
+  webp: "image",
   zip: "scorm",
 };
 
@@ -20,8 +26,20 @@ export const CONTENT_TYPE_LABELS: Record<ContentFileType, string> = {
   video: "MP4 video",
   pdf: "PDF",
   text: "Text",
+  document: "Word / PowerPoint",
+  image: "Image",
   scorm: "SCORM package",
 };
+
+/** Text-extractable types the AI naming assistant can read (reuses extractDocument). */
+export const TEXT_EXTRACTABLE_TYPES: ContentFileType[] = ["pdf", "text", "document"];
+
+export async function sha256Hex(file: File): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
 
 const STOPWORDS = new Set([
   "the",
