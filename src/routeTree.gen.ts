@@ -35,6 +35,7 @@ import { Route as ApiAskRouteImport } from './routes/api/ask'
 import { Route as ApiChallengeRouteImport } from './routes/api/challenge'
 import { Route as ApiCourseFactoryRouteImport } from './routes/api/course-factory'
 import { Route as ApiCourseWizardRouteImport } from './routes/api/course-wizard'
+import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
 import { Route as ClassIdRouteImport } from './routes/class.$id'
 import { Route as CourseIdRouteImport } from './routes/course.$id'
 import { Route as LearningActivitiesCourseIdRouteImport } from './routes/learning-activities.$courseId'
@@ -176,6 +177,11 @@ const ApiCourseWizardRoute = ApiCourseWizardRouteImport.update({
   path: '/api/course-wizard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
+  id: '/api/stripe-webhook',
+  path: '/api/stripe-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClassIdRoute = ClassIdRouteImport.update({
   id: '/class/$id',
   path: '/class/$id',
@@ -254,6 +260,7 @@ export interface FileRoutesByFullPath {
   '/api/challenge': typeof ApiChallengeRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/class/$id': typeof ClassIdRoute
   '/course/$id': typeof CourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
@@ -292,6 +299,7 @@ export interface FileRoutesByTo {
   '/api/challenge': typeof ApiChallengeRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/class/$id': typeof ClassIdRoute
   '/course/$id': typeof CourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
@@ -331,6 +339,7 @@ export interface FileRoutesById {
   '/api/challenge': typeof ApiChallengeRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/class/$id': typeof ClassIdRoute
   '/course/$id': typeof CourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
@@ -371,6 +380,7 @@ export interface FileRouteTypes {
     | '/api/challenge'
     | '/api/course-factory'
     | '/api/course-wizard'
+    | '/api/stripe-webhook'
     | '/class/$id'
     | '/course/$id'
     | '/learning-activities/$courseId'
@@ -409,6 +419,7 @@ export interface FileRouteTypes {
     | '/api/challenge'
     | '/api/course-factory'
     | '/api/course-wizard'
+    | '/api/stripe-webhook'
     | '/class/$id'
     | '/course/$id'
     | '/learning-activities/$courseId'
@@ -447,6 +458,7 @@ export interface FileRouteTypes {
     | '/api/challenge'
     | '/api/course-factory'
     | '/api/course-wizard'
+    | '/api/stripe-webhook'
     | '/class/$id'
     | '/course/$id'
     | '/learning-activities/$courseId'
@@ -486,6 +498,7 @@ export interface RootRouteChildren {
   ApiChallengeRoute: typeof ApiChallengeRoute
   ApiCourseFactoryRoute: typeof ApiCourseFactoryRoute
   ApiCourseWizardRoute: typeof ApiCourseWizardRoute
+  ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ClassIdRoute: typeof ClassIdRoute
   CourseIdRoute: typeof CourseIdRoute
   LearningActivitiesCourseIdRoute: typeof LearningActivitiesCourseIdRoute
@@ -682,6 +695,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCourseWizardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/stripe-webhook': {
+      id: '/api/stripe-webhook'
+      path: '/api/stripe-webhook'
+      fullPath: '/api/stripe-webhook'
+      preLoaderRoute: typeof ApiStripeWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/class/$id': {
       id: '/class/$id'
       path: '/class/$id'
@@ -792,6 +812,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChallengeRoute: ApiChallengeRoute,
   ApiCourseFactoryRoute: ApiCourseFactoryRoute,
   ApiCourseWizardRoute: ApiCourseWizardRoute,
+  ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ClassIdRoute: ClassIdRoute,
   CourseIdRoute: CourseIdRoute,
   LearningActivitiesCourseIdRoute: LearningActivitiesCourseIdRoute,

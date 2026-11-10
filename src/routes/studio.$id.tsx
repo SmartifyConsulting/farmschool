@@ -912,6 +912,7 @@ function Editor() {
     level: "Beginner",
     cover_url: "",
     theme: "default" as CourseThemeName,
+    price: "0",
   });
   useEffect(() => {
     if (course)
@@ -922,6 +923,7 @@ function Editor() {
         level: course.level,
         cover_url: course.cover_url ?? "",
         theme: isCourseTheme(course.theme) ? course.theme : "default",
+        price: (course.price_cents / 100).toFixed(2),
       });
   }, [course]);
   const refresh = () => {
@@ -1270,9 +1272,15 @@ function Editor() {
       toast.error("Cover image link must start with https://");
       return;
     }
+    const price = Number(form.price);
+    if (!Number.isFinite(price) || price < 0) {
+      toast.error("Enter a valid price.");
+      return;
+    }
+    const { price: _price, ...rest } = form;
     const { error } = await supabase
       .from("studio_courses")
-      .update({ ...form, cover_url: form.cover_url || null })
+      .update({ ...rest, cover_url: form.cover_url || null, price_cents: Math.round(price * 100) })
       .eq("id", id);
     if (error) toast.error("Could not save — check the title is 3–120 letters.");
     else {
@@ -1981,6 +1989,21 @@ function Editor() {
                           </button>
                         ))}
                       </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium">Price (USD)</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={form.price}
+                        onChange={(e) => setForm({ ...form, price: e.target.value })}
+                        className="mt-1"
+                        aria-label="Price in US dollars"
+                      />
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        0 is free. Buyers pay this once to enrol via Stripe Checkout.
+                      </p>
                     </div>
                   </div>
                   <Button onClick={saveDetails} className="mt-auto w-full">

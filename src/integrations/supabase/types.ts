@@ -128,6 +128,44 @@ export type Database = {
         };
         Relationships: [];
       };
+      course_enrollments: {
+        Row: {
+          amount_cents: number;
+          course_id: string;
+          created_at: string;
+          currency: string;
+          id: string;
+          stripe_session_id: string | null;
+          user_id: string;
+        };
+        Insert: {
+          amount_cents?: number;
+          course_id: string;
+          created_at?: string;
+          currency?: string;
+          id?: string;
+          stripe_session_id?: string | null;
+          user_id: string;
+        };
+        Update: {
+          amount_cents?: number;
+          course_id?: string;
+          created_at?: string;
+          currency?: string;
+          id?: string;
+          stripe_session_id?: string | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "course_enrollments_course_id_fkey";
+            columns: ["course_id"];
+            isOneToOne: false;
+            referencedRelation: "studio_courses";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       course_external_content: {
         Row: {
           course_id: string;
@@ -745,10 +783,12 @@ export type Database = {
           category: string;
           cover_url: string | null;
           created_at: string;
+          currency: string;
           description: string;
           id: string;
           level: string;
           moodle_id: number | null;
+          price_cents: number;
           published: boolean;
           revision_base: number | null;
           revision_of: string | null;
@@ -762,10 +802,12 @@ export type Database = {
           category?: string;
           cover_url?: string | null;
           created_at?: string;
+          currency?: string;
           description?: string;
           id?: string;
           level?: string;
           moodle_id?: number | null;
+          price_cents?: number;
           published?: boolean;
           revision_base?: number | null;
           revision_of?: string | null;
@@ -779,10 +821,12 @@ export type Database = {
           category?: string;
           cover_url?: string | null;
           created_at?: string;
+          currency?: string;
           description?: string;
           id?: string;
           level?: string;
           moodle_id?: number | null;
+          price_cents?: number;
           published?: boolean;
           revision_base?: number | null;
           revision_of?: string | null;

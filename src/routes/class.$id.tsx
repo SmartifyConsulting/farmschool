@@ -25,6 +25,9 @@ import {
   splitLessonSource,
 } from "@/lib/lesson-slides";
 import { courseThemeStyle } from "@/lib/course-theme";
+import { createCheckoutSession } from "@/lib/checkout.functions";
+import { formatPrice, isPaidCourse } from "@/lib/marketplace";
+import { Lock } from "lucide-react";
 
 export const Route = createFileRoute("/class/$id")({
   head: () => ({
@@ -61,7 +64,9 @@ function ClassPage() {
       (
         await supabase
           .from("studio_courses")
-          .select("id, title, description, category, level, cover_url, published, author_id, theme")
+          .select(
+            "id, title, description, category, level, cover_url, published, author_id, theme, price_cents, currency",
+          )
           .eq("id", id)
           .maybeSingle()
       ).data,
@@ -104,6 +109,24 @@ function ClassPage() {
   const { data: progress } = useProgress();
   const save = useSaveProgress();
   const claim = useServerFn(claimCertificate);
+  const checkout = useServerFn(createCheckoutSession);
+  const [buying, setBuying] = useState(false);
+  const isAuthor = !!user && user.id === course?.author_id;
+  const paid = isPaidCourse(course?.price_cents ?? 0);
+  const { data: enrollment, isLoading: enrollmentLoading } = useQuery({
+    queryKey: ["class-enrollment", id, user?.id],
+    enabled: paid && !!user && !isAuthor,
+    queryFn: async () =>
+      (
+        await supabase
+          .from("course_enrollments")
+          .select("id")
+          .eq("course_id", id)
+          .eq("user_id", user!.id)
+          .maybeSingle()
+      ).data,
+  });
+  const locked = paid && !isAuthor && (!user || (!enrollmentLoading && !enrollment));
   const qc = useQueryClient();
   const [idx, setIdx] = useState(0);
   const done = new Set(
@@ -177,7 +200,53 @@ function ClassPage() {
           </h1>
           <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
             <div className="min-w-0 space-y-4">
-              {lesson ? (
+              {locked ? (
+                <div className="space-y-3 rounded-2xl border border-border p-6 text-center">
+                  <Lock className="mx-auto h-6 w-6 text-muted-foreground" />
+                  <p className="font-semibold">This is a paid course</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatPrice(course.price_cents, course.currency)} · one-time purchase
+                  </p>
+                  <Button
+                    disabled={buying || !user}
+                    onClick={async () => {
+                      if (!user) {
+                        toast.error("Sign in to buy this course.");
+                        return;
+                      }
+                      setBuying(true);
+                      try {
+                        const result = await checkout({ data: { courseId: id } });
+                        if ("error" in result) {
+                          toast.error(result.error);
+                        } else if (result.kind === "checkout") {
+                          window.location.href = result.url;
+                        } else {
+                          await qc.invalidateQueries({
+                            queryKey: ["class-enrollment", id, user.id],
+                          });
+                        }
+                      } catch (e) {
+                        toast.error(friendlyError(e, "Could not start checkout."));
+                      } finally {
+                        setBuying(false);
+                      }
+                    }}
+                  >
+                    {buying
+                      ? "Starting checkout…"
+                      : "Buy for " + formatPrice(course.price_cents, course.currency)}
+                  </Button>
+                  {!user && (
+                    <p className="text-xs text-muted-foreground">
+                      <Link to="/auth" className="font-semibold text-primary">
+                        Sign in
+                      </Link>{" "}
+                      first.
+                    </p>
+                  )}
+                </div>
+              ) : lesson ? (
                 <>
                   {linked.find((v) => v.lesson_id === lesson.id) ? (
                     <ExternalVideo video={linked.find((v) => v.lesson_id === lesson.id)!} />
