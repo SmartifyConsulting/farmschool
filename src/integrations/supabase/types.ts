@@ -1088,6 +1088,54 @@ export type Database = {
           },
         ];
       };
+      studio_content_files: {
+        Row: {
+          course_id: string;
+          created_at: string;
+          file_name: string;
+          file_type: string;
+          id: string;
+          module_id: string | null;
+          size_bytes: number;
+          storage_path: string;
+        };
+        Insert: {
+          course_id: string;
+          created_at?: string;
+          file_name: string;
+          file_type: string;
+          id?: string;
+          module_id?: string | null;
+          size_bytes: number;
+          storage_path: string;
+        };
+        Update: {
+          course_id?: string;
+          created_at?: string;
+          file_name?: string;
+          file_type?: string;
+          id?: string;
+          module_id?: string | null;
+          size_bytes?: number;
+          storage_path?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "studio_content_files_course_id_fkey";
+            columns: ["course_id"];
+            isOneToOne: false;
+            referencedRelation: "studio_courses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "studio_content_files_module_id_fkey";
+            columns: ["module_id"];
+            isOneToOne: false;
+            referencedRelation: "studio_modules";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       studio_modules: {
         Row: {
           course_id: string;

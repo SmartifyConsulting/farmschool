@@ -41,6 +41,7 @@ import { CourseAnalytics } from "@/components/CourseAnalytics";
 import { LessonAssistant } from "@/components/LessonAssistant";
 import { VideoLibraryPicker } from "@/components/VideoLibraryPicker";
 import { CoverImageInput } from "@/components/CoverImageInput";
+import { StudioContentLibrary } from "@/components/StudioContentLibrary";
 import {
   COURSE_THEMES,
   COURSE_THEME_NAMES,
@@ -457,6 +458,11 @@ function Editor() {
           .order("position")
       ).data ?? []) as unknown as ModuleRow[],
   });
+  useEffect(() => {
+    if (lessons && studioModules && lessons.length === 0 && studioModules.length === 0) {
+      setScreen((current) => (current === "overview" ? "import" : current));
+    }
+  }, [lessons, studioModules]);
   const [sourceText, setSourceText] = useState("");
   const [sourcePages, setSourcePages] = useState<SourcePage[] | null>(null);
   const [sourceName, setSourceName] = useState("Training manual");
@@ -1657,7 +1663,8 @@ function Editor() {
             >
               {[
                 { key: "overview", label: "Course details" },
-                { key: "import", label: "Manual & learning design" },
+                { key: "import", label: "Course Design" },
+                { key: "content", label: "Content" },
                 { key: "performance", label: "Performance" },
                 { key: "history", label: "Version history" },
                 { key: "publish", label: "Review & publish" },
@@ -2023,6 +2030,13 @@ function Editor() {
                   </Button>
                 </section>
               </fieldset>
+            )}
+            {screen === "content" && (
+              <StudioContentLibrary
+                courseId={id}
+                modules={(studioModules ?? []).map((m) => ({ id: m.id, title: m.title }))}
+                readOnly={course.published}
+              />
             )}
             {screen === "import" && (
               <div
@@ -2772,9 +2786,15 @@ function Editor() {
                 </div>
               </div>
             )}
-            {!["overview", "performance", "publish", "import", "history", "lesson"].includes(
-              screen,
-            ) &&
+            {![
+              "overview",
+              "performance",
+              "publish",
+              "import",
+              "history",
+              "lesson",
+              "content",
+            ].includes(screen) &&
               (() => {
                 const moduleIndex = modules.findIndex((m) => m.key === screen);
                 const mod = modules[moduleIndex];
