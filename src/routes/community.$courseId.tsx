@@ -64,15 +64,18 @@ function CommunityPage() {
   const { data: messages = [] } = useQuery({
     queryKey: ["community-messages", courseId],
     enabled: !!joined,
-    refetchInterval: 8000,
+    refetchInterval: 30000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("community_messages")
         .select("id, user_id, body, created_at")
         .eq("course_id", courseId)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: false })
+        .limit(200);
       if (error) throw error;
-      return (data ?? []) as Message[];
+      return ((data ?? []) as Message[]).reverse();
     },
   });
 
