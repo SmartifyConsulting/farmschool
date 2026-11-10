@@ -76,7 +76,7 @@ function CompliancePage() {
     <Phone>
       <Header />
       <Sheet>
-        <CanvasHeading eyebrow="Platform management" title="Compliance" />
+        <CanvasHeading eyebrow="Administration" title="Compliance" />
         {!ready || (user && checking) ? (
           <p className="py-8 text-sm text-muted-foreground">Checking permissions…</p>
         ) : !user ? (
@@ -90,9 +90,6 @@ function CompliancePage() {
           <p className="py-8 text-sm text-muted-foreground">Administrator access required.</p>
         ) : (
           <div className="max-w-3xl space-y-4 pb-10">
-            <Link to="/admin" className="text-sm font-semibold text-primary">
-              ← Administration
-            </Link>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 font-semibold">
                 <ShieldCheck className="h-4 w-4 text-primary" />

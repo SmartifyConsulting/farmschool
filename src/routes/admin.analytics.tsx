@@ -42,7 +42,7 @@ function PlatformAnalytics() {
     <Phone>
       <Header />
       <Sheet>
-        <CanvasHeading eyebrow="Platform management" title="Analytics" />
+        <CanvasHeading eyebrow="Administration" title="Analytics" />
         {!ready || (user && checking) ? (
           <p className="py-8 text-sm text-muted-foreground">Checking permissions…</p>
         ) : !user ? (
@@ -56,9 +56,6 @@ function PlatformAnalytics() {
           <p className="py-8 text-sm text-muted-foreground">Administrator access required.</p>
         ) : (
           <div className="max-w-3xl space-y-4 pb-10">
-            <Link to="/admin" className="text-sm font-semibold text-primary">
-              ← Administration
-            </Link>
             {isLoading && (
               <p className="text-sm text-muted-foreground">Loading platform activity…</p>
             )}

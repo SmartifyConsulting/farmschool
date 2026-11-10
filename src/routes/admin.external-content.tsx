@@ -249,10 +249,7 @@ function ExternalContentAdmin() {
     <Phone>
       <Header />
       <Sheet wide>
-        <div className="mb-4 space-y-3">
-          <Link to="/admin" className="text-sm font-semibold text-primary">
-            ← Administration
-          </Link>
+        <div className="mb-4">
           <CanvasHeading eyebrow="Administration" title="Library" />
         </div>
         {!ready || (user && isLoading) ? (
