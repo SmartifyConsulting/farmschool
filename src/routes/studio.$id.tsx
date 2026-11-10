@@ -19,7 +19,7 @@ import {
   ArrowDown,
   Package,
 } from "lucide-react";
-import { Phone, Header, Sheet } from "@/components/AppShell";
+import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -1571,15 +1571,19 @@ function Editor() {
   if (isLoading || !authReady)
     return (
       <Phone>
-        <Header title="Loading…" />
+        <Header />
+        <Sheet>
+          <CanvasHeading title="Loading…" />
+        </Sheet>
       </Phone>
     );
   if (!course)
     return (
       <Phone>
-        <Header title="Course not found" />
+        <Header />
         <Sheet>
-          <Link to="/studio" className="text-primary">
+          <CanvasHeading title="Course not found" />
+          <Link to="/studio" className="mt-4 inline-block text-primary">
             Back to Studio
           </Link>
         </Sheet>
@@ -1588,9 +1592,10 @@ function Editor() {
   if (course.author_id !== user?.id)
     return (
       <Phone>
-        <Header title="Course Studio" />
+        <Header />
         <Sheet>
-          <p>Only the course owner can open this editor.</p>
+          <CanvasHeading title="Course Studio" />
+          <p className="mt-4">Only the course owner can open this editor.</p>
           <Link to="/studio" className="text-primary">
             Back to Studio
           </Link>
@@ -1599,35 +1604,37 @@ function Editor() {
     );
   return (
     <Phone>
-      <Header wide greeting={course.published ? "Published" : "Draft"} title="Course editor">
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Link
-            to="/studio"
-            className="flex items-center gap-1 rounded-full border border-primary-foreground/50 px-3 py-1 text-xs"
-          >
-            <ArrowLeft className="h-3 w-3" />
-            All my courses
-          </Link>
-          <Link
-            to="/class/$id"
-            params={{ id }}
-            className="flex items-center gap-1 rounded-full border border-primary-foreground/50 px-3 py-1 text-xs"
-          >
-            <Eye className="h-3 w-3" />
-            Preview
-          </Link>
-          {course.published && (
-            <Link
-              to="/learning-activities/$courseId"
-              params={{ courseId: id }}
-              className="flex items-center gap-1 rounded-full border border-primary-foreground/50 px-3 py-1 text-xs"
-            >
-              Learner activities
-            </Link>
-          )}
-        </div>
-      </Header>
+      <Header />
       <Sheet wide>
+        <div className="mb-5 space-y-3">
+          <CanvasHeading eyebrow={course.published ? "Published" : "Draft"} title="Course editor" />
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to="/studio"
+              className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs"
+            >
+              <ArrowLeft className="h-3 w-3" />
+              All my courses
+            </Link>
+            <Link
+              to="/class/$id"
+              params={{ id }}
+              className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs"
+            >
+              <Eye className="h-3 w-3" />
+              Preview
+            </Link>
+            {course.published && (
+              <Link
+                to="/learning-activities/$courseId"
+                params={{ courseId: id }}
+                className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs"
+              >
+                Learner activities
+              </Link>
+            )}
+          </div>
+        </div>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
           <div className="min-w-0">
             <h2 className="break-words text-xl font-semibold">{course.title}</h2>

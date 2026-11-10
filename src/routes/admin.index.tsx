@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useLearning";
 import { supabase } from "@/integrations/supabase/client";
-import { Phone, Header, Sheet } from "@/components/AppShell";
+import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
 import { pageMeta } from "@/lib/page-meta";
 
 export const Route = createFileRoute("/admin/")({
@@ -30,8 +30,9 @@ function AdminHome() {
   });
   return (
     <Phone>
-      <Header greeting="Platform management" title="Administration" />
+      <Header />
       <Sheet>
+        <CanvasHeading eyebrow="Platform management" title="Administration" />
         {!ready || (user && isLoading) ? (
           <p className="py-8 text-sm text-muted-foreground">Checking permissions…</p>
         ) : !user ? (

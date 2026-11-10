@@ -193,20 +193,10 @@ function HeaderAction() {
   );
 }
 
-export function Header({
-  greeting = "Hi there",
-  title,
-  children,
-  wide = false,
-}: {
-  greeting?: string;
-  title: string;
-  children?: ReactNode;
-  wide?: boolean;
-}) {
+export function Header({ children, wide = false }: { children?: ReactNode; wide?: boolean }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   return (
-    <header className="bg-gradient-brand px-5 pb-6 pt-5 text-navy-foreground md:px-10">
+    <header className="bg-[#2765BC] px-5 pb-6 pt-5 text-navy-foreground md:px-10">
       <div className="mx-auto max-w-6xl">
         <div className="mb-5 hidden items-center justify-between gap-4 pb-4 md:flex">
           <Link to="/" aria-label="Home" className="shrink-0">
@@ -243,17 +233,11 @@ export function Header({
             <AvatarMenu horizontal />
           </div>
         </div>
-        <Link to="/" aria-label="Home" className="mb-3 inline-block shrink-0 md:hidden">
-          <img src={logo} alt="Plusticity" className="h-[54px] w-auto object-contain" />
-        </Link>
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-navy-foreground/80">
-              {greeting}
-            </p>
-            <h1 className="mt-1 text-xl font-bold tracking-tight md:text-3xl">{title}</h1>
-          </div>
-          <div className="flex shrink-0 items-center gap-2 md:hidden">
+        <div className="flex items-center justify-between gap-3 md:hidden">
+          <Link to="/" aria-label="Home" className="shrink-0">
+            <img src={logo} alt="Plusticity" className="h-[54px] w-auto object-contain" />
+          </Link>
+          <div className="flex shrink-0 items-center gap-2">
             <Link
               to="/notifications"
               aria-label="Notifications"
@@ -268,6 +252,18 @@ export function Header({
         {children}
       </div>
     </header>
+  );
+}
+
+/** The page title block, placed in the white canvas (Sheet) rather than the gradient banner. */
+export function CanvasHeading({ eyebrow, title }: { eyebrow?: string; title: string }) {
+  return (
+    <div>
+      {eyebrow && (
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">{eyebrow}</p>
+      )}
+      <h1 className="mt-1 text-xl font-bold tracking-tight text-navy md:text-3xl">{title}</h1>
+    </div>
   );
 }
 

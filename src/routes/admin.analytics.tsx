@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { BarChart3 } from "lucide-react";
 import { useAuth } from "@/hooks/useLearning";
 import { supabase } from "@/integrations/supabase/client";
-import { Phone, Header, Sheet } from "@/components/AppShell";
+import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
 import { friendlyError } from "@/lib/friendly-error";
 import { getPlatformAnalytics } from "@/lib/admin-analytics.functions";
 import { pageMeta } from "@/lib/page-meta";
@@ -40,8 +40,9 @@ function PlatformAnalytics() {
   });
   return (
     <Phone>
-      <Header greeting="Platform management" title="Analytics" />
+      <Header />
       <Sheet>
+        <CanvasHeading eyebrow="Platform management" title="Analytics" />
         {!ready || (user && checking) ? (
           <p className="py-8 text-sm text-muted-foreground">Checking permissions…</p>
         ) : !user ? (

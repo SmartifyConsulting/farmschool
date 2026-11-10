@@ -8,6 +8,7 @@ import {
   Sheet,
   BookmarkButton,
   ProgressBar,
+  CanvasHeading,
 } from "@/components/AppShell";
 import { categories, courses, type Course } from "@/lib/courses";
 import { useAuth, useProgress, courseProgress } from "@/hooks/useLearning";
@@ -230,14 +231,12 @@ function Index() {
   });
   return (
     <Phone>
-      <Header greeting="" title="" />
+      <Header />
       <Sheet>
-        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
-          {user ? `Hi, ${user.email?.split("@")[0]}` : "Welcome"}
-        </p>
-        <h1 className="mt-1 text-xl font-bold tracking-tight text-navy md:text-3xl">
-          How will you grow today?
-        </h1>
+        <CanvasHeading
+          eyebrow={user ? `Hi, ${user.email?.split("@")[0]}` : "Welcome"}
+          title="How will you grow today?"
+        />
         <div className="mt-4">
           <SearchBox />
         </div>

@@ -6,7 +6,7 @@ import { Download, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useLearning";
 import { supabase } from "@/integrations/supabase/client";
-import { Phone, Header, Sheet } from "@/components/AppShell";
+import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { friendlyError } from "@/lib/friendly-error";
 import { exportXapiStatements, getComplianceReport } from "@/lib/admin-compliance.functions";
@@ -74,8 +74,9 @@ function CompliancePage() {
 
   return (
     <Phone>
-      <Header greeting="Platform management" title="Compliance" />
+      <Header />
       <Sheet>
+        <CanvasHeading eyebrow="Platform management" title="Compliance" />
         {!ready || (user && checking) ? (
           <p className="py-8 text-sm text-muted-foreground">Checking permissions…</p>
         ) : !user ? (

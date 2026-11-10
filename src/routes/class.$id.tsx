@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type CSSProperties } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, Circle, Video, FileText, HelpCircle, Award, Package } from "lucide-react";
-import { Phone, Header, Sheet, ProgressBar } from "@/components/AppShell";
+import { Phone, Header, Sheet, ProgressBar, CanvasHeading } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useProgress, useSaveProgress } from "@/hooks/useLearning";
@@ -157,15 +157,19 @@ function ClassPage() {
   if (isLoading)
     return (
       <Phone>
-        <Header title="Loading…" />
+        <Header />
+        <Sheet>
+          <CanvasHeading title="Loading…" />
+        </Sheet>
       </Phone>
     );
   if (!course)
     return (
       <Phone>
-        <Header title="Course not found" />
+        <Header />
         <Sheet>
-          <Link to="/search" className="text-primary">
+          <CanvasHeading title="Course not found" />
+          <Link to="/search" className="mt-4 inline-block text-primary">
             Browse the catalogue
           </Link>
         </Sheet>
@@ -190,14 +194,11 @@ function ClassPage() {
   return (
     <div style={courseThemeStyle(course.theme) as CSSProperties}>
       <Phone>
-        <Header greeting="" title="" />
+        <Header />
         <Sheet>
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
-            {course.category} · {course.level}
-          </p>
-          <h1 className="mt-1 mb-4 text-xl font-bold tracking-tight text-navy md:text-3xl">
-            {course.title}
-          </h1>
+          <div className="mb-4">
+            <CanvasHeading eyebrow={`${course.category} · ${course.level}`} title={course.title} />
+          </div>
           <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
             <div className="min-w-0 space-y-4">
               {locked ? (

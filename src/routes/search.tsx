@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { BookOpen, Search, X } from "lucide-react";
-import { Phone, Header, Sheet } from "@/components/AppShell";
+import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
 import { courses } from "@/lib/courses";
 import { courseIndustry } from "@/lib/industries";
 import { pageMeta } from "@/lib/page-meta";
@@ -107,17 +107,10 @@ function SearchPage() {
 
   return (
     <Phone>
-      <Header greeting="" title="" />
+      <Header />
       <Sheet>
         <div className="space-y-5 pb-10">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
-              Explore learning
-            </p>
-            <h1 className="mt-1 text-xl font-bold tracking-tight text-navy md:text-3xl">
-              Course catalogue
-            </h1>
-          </div>
+          <CanvasHeading eyebrow="Explore learning" title="Course catalogue" />
           <div className="relative">
             <Search
               aria-hidden="true"
