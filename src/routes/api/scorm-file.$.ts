@@ -23,12 +23,13 @@ export const Route = createFileRoute("/api/scorm-file/$")({
       .maybeSingle();
     if (error || !pkg) return new Response("Not found", { status: 404 });
 
-    const base = process.env["SUPABASE_URL"];
-    if (!base) return new Response("SCORM storage is unavailable", { status: 503 });
-    const url = `${base}/storage/v1/object/public/scorm-packages/${path.split("/").map(encodeURIComponent).join("/")}`;
-    const res = await fetch(url);
-    if (!res.ok) return new Response("Not found", { status: 404 });
-    return new Response(res.body, {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: file, error: storageError } = await supabaseAdmin.storage
+      .from("scorm-packages")
+      .download(path);
+    if (storageError || !file) return new Response("Not found", { status: 404 });
+
+    return new Response(file.stream(), {
       headers: {
         "Content-Type": mimeFor(path),
         "Cache-Control": "private, max-age=3600",
