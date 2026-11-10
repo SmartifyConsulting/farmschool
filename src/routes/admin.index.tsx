@@ -82,7 +82,7 @@ function AdminHome() {
                 to="/admin/external-content"
                 className="rounded-full border border-border px-4 py-2 text-sm font-semibold"
               >
-                External Content
+                Library
               </Link>
               <Link
                 to="/admin/api-connections"
@@ -90,16 +90,9 @@ function AdminHome() {
               >
                 API Connections
               </Link>
-              <Link
-                to="/admin/moodle"
-                className="rounded-full border border-border px-4 py-2 text-sm font-semibold"
-              >
-                Moodle Settings
-              </Link>
             </div>
             <p className="text-xs text-muted-foreground">
-              Creator approvals are required before new courses can be published. Moodle connection
-              settings are optional.
+              Creator approvals are required before new courses can be published.
             </p>
           </div>
         )}

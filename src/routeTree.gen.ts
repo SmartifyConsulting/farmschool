@@ -29,7 +29,6 @@ import { Route as AdminApiConnectionsRouteImport } from './routes/admin.api-conn
 import { Route as AdminComplianceRouteImport } from './routes/admin.compliance'
 import { Route as AdminCreatorsRouteImport } from './routes/admin.creators'
 import { Route as AdminExternalContentRouteImport } from './routes/admin.external-content'
-import { Route as AdminMoodleRouteImport } from './routes/admin.moodle'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as ApiCourseFactoryRouteImport } from './routes/api/course-factory'
 import { Route as ApiCourseWizardRouteImport } from './routes/api/course-wizard'
@@ -147,11 +146,6 @@ const AdminExternalContentRoute = AdminExternalContentRouteImport.update({
   path: '/admin/external-content',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminMoodleRoute = AdminMoodleRouteImport.update({
-  id: '/admin/moodle',
-  path: '/admin/moodle',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/admin/users',
   path: '/admin/users',
@@ -254,7 +248,6 @@ export interface FileRoutesByFullPath {
   '/admin/compliance': typeof AdminComplianceRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
-  '/admin/moodle': typeof AdminMoodleRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
@@ -293,7 +286,6 @@ export interface FileRoutesByTo {
   '/admin/compliance': typeof AdminComplianceRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
-  '/admin/moodle': typeof AdminMoodleRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
@@ -333,7 +325,6 @@ export interface FileRoutesById {
   '/admin/compliance': typeof AdminComplianceRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
-  '/admin/moodle': typeof AdminMoodleRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
@@ -374,7 +365,6 @@ export interface FileRouteTypes {
     | '/admin/compliance'
     | '/admin/creators'
     | '/admin/external-content'
-    | '/admin/moodle'
     | '/admin/users'
     | '/api/course-factory'
     | '/api/course-wizard'
@@ -413,7 +403,6 @@ export interface FileRouteTypes {
     | '/admin/compliance'
     | '/admin/creators'
     | '/admin/external-content'
-    | '/admin/moodle'
     | '/admin/users'
     | '/api/course-factory'
     | '/api/course-wizard'
@@ -452,7 +441,6 @@ export interface FileRouteTypes {
     | '/admin/compliance'
     | '/admin/creators'
     | '/admin/external-content'
-    | '/admin/moodle'
     | '/admin/users'
     | '/api/course-factory'
     | '/api/course-wizard'
@@ -492,7 +480,6 @@ export interface RootRouteChildren {
   AdminComplianceRoute: typeof AdminComplianceRoute
   AdminCreatorsRoute: typeof AdminCreatorsRoute
   AdminExternalContentRoute: typeof AdminExternalContentRoute
-  AdminMoodleRoute: typeof AdminMoodleRoute
   AdminUsersRoute: typeof AdminUsersRoute
   ApiCourseFactoryRoute: typeof ApiCourseFactoryRoute
   ApiCourseWizardRoute: typeof ApiCourseWizardRoute
@@ -650,13 +637,6 @@ declare module '@tanstack/react-router' {
       path: '/admin/external-content'
       fullPath: '/admin/external-content'
       preLoaderRoute: typeof AdminExternalContentRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/moodle': {
-      id: '/admin/moodle'
-      path: '/admin/moodle'
-      fullPath: '/admin/moodle'
-      preLoaderRoute: typeof AdminMoodleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/users': {
@@ -817,7 +797,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdminComplianceRoute: AdminComplianceRoute,
   AdminCreatorsRoute: AdminCreatorsRoute,
   AdminExternalContentRoute: AdminExternalContentRoute,
-  AdminMoodleRoute: AdminMoodleRoute,
   AdminUsersRoute: AdminUsersRoute,
   ApiCourseFactoryRoute: ApiCourseFactoryRoute,
   ApiCourseWizardRoute: ApiCourseWizardRoute,

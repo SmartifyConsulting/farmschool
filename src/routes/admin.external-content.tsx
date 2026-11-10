@@ -23,7 +23,7 @@ export const Route = createFileRoute("/admin/external-content")({
   component: ExternalContentAdmin,
   head: () =>
     pageMeta(
-      "External Content — Plusticity",
+      "Library — Plusticity",
       "Manage approved training video providers, the shared video library and imports.",
     ),
 });
@@ -253,7 +253,7 @@ function ExternalContentAdmin() {
           <Link to="/admin" className="text-sm font-semibold text-primary">
             ← Administration
           </Link>
-          <CanvasHeading eyebrow="Administration" title="External Content" />
+          <CanvasHeading eyebrow="Administration" title="Library" />
         </div>
         {!ready || (user && isLoading) ? (
           <p className="py-8 text-sm text-muted-foreground">Checking permissions…</p>
