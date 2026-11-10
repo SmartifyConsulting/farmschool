@@ -157,7 +157,7 @@ function AccountLinks({ horizontal = false }: { horizontal?: boolean }) {
         to="/auth"
         search={{ mode: "signup" }}
         aria-label="Sign up"
-        className="flex items-center justify-center gap-2 rounded-md border border-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-white"
+        className="flex items-center justify-center gap-2 rounded-md border border-primary px-3 py-2 text-xs font-bold uppercase tracking-wider text-primary"
       >
         <UserPlus className="h-4 w-4 shrink-0" />
         <span>Sign up</span>
@@ -173,7 +173,7 @@ function HeaderAction() {
       <div className="flex shrink-0 gap-2 md:hidden">
         <Link
           to="/auth"
-          className="rounded-full bg-navy-foreground/10 px-3 py-2 text-xs font-semibold"
+          className="rounded-full bg-muted px-3 py-2 text-xs font-semibold text-navy"
         >
           Sign in
         </Link>
@@ -193,8 +193,8 @@ function HeaderAction() {
 export function Header({ children, wide = false }: { children?: ReactNode; wide?: boolean }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   return (
-    <header className="relative bg-[#2765BC] px-5 pb-6 pt-5 text-navy-foreground md:px-10 md:py-0">
-      <div className="mx-auto max-w-6xl">
+    <header className="relative bg-white px-5 pb-6 pt-5 text-navy md:px-10 md:py-0">
+      <div className="mx-auto max-w-[1600px]">
         <div className="hidden h-[104px] items-center justify-between gap-4 md:flex">
           <Link to="/" aria-label="Home" className="shrink-0">
             <img src={logo} alt="Plusticity" className="h-[144px] w-auto object-contain" />
@@ -208,7 +208,7 @@ export function Header({ children, wide = false }: { children?: ReactNode; wide?
                     key={t.to}
                     to={t.to}
                     aria-label={t.label}
-                    className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${active ? "bg-navy-foreground/20 text-navy-foreground" : "text-navy-foreground/80 hover:bg-navy-foreground/10"}`}
+                    className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${active ? "bg-primary/10 text-primary" : "text-navy/80 hover:bg-muted"}`}
                   >
                     <t.icon className="h-4 w-4 shrink-0" />
                     {t.label}
@@ -221,7 +221,7 @@ export function Header({ children, wide = false }: { children?: ReactNode; wide?
             <Link
               to="/notifications"
               aria-label="Notifications"
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-navy-foreground/10 text-navy-foreground hover:bg-navy-foreground/20"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-muted text-navy hover:bg-muted/70"
             >
               <Bell className="h-4 w-4" />
             </Link>
@@ -238,7 +238,7 @@ export function Header({ children, wide = false }: { children?: ReactNode; wide?
             <Link
               to="/notifications"
               aria-label="Notifications"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-navy-foreground/10 text-navy-foreground hover:bg-navy-foreground/20"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-navy hover:bg-muted/70"
             >
               <Bell className="h-5 w-5" />
             </Link>

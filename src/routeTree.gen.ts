@@ -32,6 +32,7 @@ import { Route as AdminExternalContentRouteImport } from './routes/admin.externa
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as ApiCourseFactoryRouteImport } from './routes/api/course-factory'
 import { Route as ApiCourseWizardRouteImport } from './routes/api/course-wizard'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
 import { Route as ClassIdRouteImport } from './routes/class.$id'
 import { Route as CommunityCourseIdRouteImport } from './routes/community.$courseId'
@@ -161,6 +162,11 @@ const ApiCourseWizardRoute = ApiCourseWizardRouteImport.update({
   path: '/api/course-wizard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
   id: '/api/stripe-webhook',
   path: '/api/stripe-webhook',
@@ -251,6 +257,7 @@ export interface FileRoutesByFullPath {
   '/admin/users': typeof AdminUsersRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
+  '/api/health': typeof ApiHealthRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/class/$id': typeof ClassIdRoute
   '/community/$courseId': typeof CommunityCourseIdRoute
@@ -289,6 +296,7 @@ export interface FileRoutesByTo {
   '/admin/users': typeof AdminUsersRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
+  '/api/health': typeof ApiHealthRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/class/$id': typeof ClassIdRoute
   '/community/$courseId': typeof CommunityCourseIdRoute
@@ -328,6 +336,7 @@ export interface FileRoutesById {
   '/admin/users': typeof AdminUsersRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
+  '/api/health': typeof ApiHealthRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/class/$id': typeof ClassIdRoute
   '/community/$courseId': typeof CommunityCourseIdRoute
@@ -368,6 +377,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/api/course-factory'
     | '/api/course-wizard'
+    | '/api/health'
     | '/api/stripe-webhook'
     | '/class/$id'
     | '/community/$courseId'
@@ -406,6 +416,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/api/course-factory'
     | '/api/course-wizard'
+    | '/api/health'
     | '/api/stripe-webhook'
     | '/class/$id'
     | '/community/$courseId'
@@ -444,6 +455,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/api/course-factory'
     | '/api/course-wizard'
+    | '/api/health'
     | '/api/stripe-webhook'
     | '/class/$id'
     | '/community/$courseId'
@@ -483,6 +495,7 @@ export interface RootRouteChildren {
   AdminUsersRoute: typeof AdminUsersRoute
   ApiCourseFactoryRoute: typeof ApiCourseFactoryRoute
   ApiCourseWizardRoute: typeof ApiCourseWizardRoute
+  ApiHealthRoute: typeof ApiHealthRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ClassIdRoute: typeof ClassIdRoute
   CommunityCourseIdRoute: typeof CommunityCourseIdRoute
@@ -660,6 +673,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCourseWizardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/stripe-webhook': {
       id: '/api/stripe-webhook'
       path: '/api/stripe-webhook'
@@ -800,6 +820,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminUsersRoute: AdminUsersRoute,
   ApiCourseFactoryRoute: ApiCourseFactoryRoute,
   ApiCourseWizardRoute: ApiCourseWizardRoute,
+  ApiHealthRoute: ApiHealthRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ClassIdRoute: ClassIdRoute,
   CommunityCourseIdRoute: CommunityCourseIdRoute,
