@@ -134,6 +134,44 @@ export type Database = {
         }
         Relationships: []
       }
+      course_enrollments: {
+        Row: {
+          amount_cents: number
+          course_id: string
+          created_at: string
+          currency: string
+          id: string
+          stripe_session_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_cents?: number
+          course_id: string
+          created_at?: string
+          currency?: string
+          id?: string
+          stripe_session_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          course_id?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          stripe_session_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_enrollments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_external_content: {
         Row: {
           course_id: string
@@ -391,6 +429,53 @@ export type Database = {
         }
         Relationships: []
       }
+      lesson_photo_submissions: {
+        Row: {
+          block_index: number
+          created_at: string
+          id: string
+          lesson_id: string
+          photo_path: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          trainer_note: string
+          user_id: string
+        }
+        Insert: {
+          block_index: number
+          created_at?: string
+          id?: string
+          lesson_id: string
+          photo_path: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          trainer_note?: string
+          user_id?: string
+        }
+        Update: {
+          block_index?: number
+          created_at?: string
+          id?: string
+          lesson_id?: string
+          photo_path?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          trainer_note?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_photo_submissions_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "studio_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lesson_progress: {
         Row: {
           completed: boolean
@@ -417,6 +502,24 @@ export type Database = {
           lesson_id?: string
           position_seconds?: number
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      lesson_tutor_usage: {
+        Row: {
+          requests: number
+          usage_day: string
+          user_id: string
+        }
+        Insert: {
+          requests: number
+          usage_day: string
+          user_id: string
+        }
+        Update: {
+          requests?: number
+          usage_day?: string
           user_id?: string
         }
         Relationships: []
@@ -751,13 +854,16 @@ export type Database = {
           category: string
           cover_url: string | null
           created_at: string
+          currency: string
           description: string
           id: string
           level: string
           moodle_id: number | null
+          price_cents: number
           published: boolean
           revision_base: number | null
           revision_of: string | null
+          theme: string
           title: string
           updated_at: string
           version_number: number
@@ -767,13 +873,16 @@ export type Database = {
           category?: string
           cover_url?: string | null
           created_at?: string
+          currency?: string
           description?: string
           id?: string
           level?: string
           moodle_id?: number | null
+          price_cents?: number
           published?: boolean
           revision_base?: number | null
           revision_of?: string | null
+          theme?: string
           title: string
           updated_at?: string
           version_number?: number
@@ -783,13 +892,16 @@ export type Database = {
           category?: string
           cover_url?: string | null
           created_at?: string
+          currency?: string
           description?: string
           id?: string
           level?: string
           moodle_id?: number | null
+          price_cents?: number
           published?: boolean
           revision_base?: number | null
           revision_of?: string | null
+          theme?: string
           title?: string
           updated_at?: string
           version_number?: number
@@ -1090,11 +1202,6 @@ export type Database = {
         Returns: undefined
       }
       course_factory_reserve_ai_request: { Args: never; Returns: number }
-      lesson_tutor_reserve_request: { Args: never; Returns: number }
-      studio_save_quiz: {
-        Args: { _lesson_id: string; _title: string; _pass_mark: number; _questions: Json; _answers: Json }
-        Returns: undefined
-      }
       creator_review_application: {
         Args: { _approve: boolean; _notes?: string; _user_id: string }
         Returns: undefined
@@ -1115,6 +1222,50 @@ export type Database = {
         }
         Returns: boolean
       }
+      lesson_photo_course_owned: { Args: { _lesson: string }; Returns: boolean }
+      lesson_photo_review: {
+        Args: { _note: string; _status: string; _submission: string }
+        Returns: {
+          block_index: number
+          created_at: string
+          id: string
+          lesson_id: string
+          photo_path: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          trainer_note: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "lesson_photo_submissions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      lesson_photo_submit: {
+        Args: { _block: number; _lesson: string; _path: string }
+        Returns: {
+          block_index: number
+          created_at: string
+          id: string
+          lesson_id: string
+          photo_path: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          trainer_note: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "lesson_photo_submissions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      lesson_tutor_reserve_request: { Args: never; Returns: number }
       studio_approve_review: {
         Args: { _course_id: string }
         Returns: undefined
@@ -1146,6 +1297,16 @@ export type Database = {
           _pass_mark: number
         }
         Returns: string
+      }
+      studio_save_quiz: {
+        Args: {
+          _answers: Json
+          _lesson_id: string
+          _pass_mark: number
+          _questions: Json
+          _title: string
+        }
+        Returns: undefined
       }
       studio_snapshot: { Args: { _id: string }; Returns: Json }
     }
