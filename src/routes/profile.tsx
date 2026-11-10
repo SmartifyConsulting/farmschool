@@ -13,11 +13,9 @@ import { Phone, Header, Sheet, useIsAdmin, CanvasHeading } from "@/components/Ap
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { CourseCard } from "./index";
-import { courses } from "@/lib/courses";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAuth, useBookmarks } from "@/hooks/useLearning";
+import { useAuth } from "@/hooks/useLearning";
 import { friendlyError } from "@/lib/friendly-error";
 import { toast } from "sonner";
 
@@ -25,7 +23,7 @@ export const Route = createFileRoute("/profile")({
   head: () => ({
     meta: [
       { title: "Profile — Plusticity" },
-      { name: "description", content: "Your profile, account, billing and saved courses." },
+      { name: "description", content: "Your profile, account and billing." },
       { property: "og:title", content: "Profile — Plusticity" },
       { property: "og:description", content: "Your Plusticity profile." },
       { property: "og:type", content: "website" },
@@ -35,7 +33,7 @@ export const Route = createFileRoute("/profile")({
   component: Profile,
 });
 
-const TABS = ["About Me", "Account", "Billing", "My Library", "Token Ledger"] as const;
+const TABS = ["About Me", "Account", "Billing", "Token Ledger"] as const;
 type Tab = (typeof TABS)[number];
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
@@ -44,7 +42,6 @@ function Profile() {
   const [tab, setTab] = useState<Tab>("About Me");
   const { user, ready } = useAuth();
   const isAdmin = useIsAdmin();
-  const { ids } = useBookmarks();
   const nav = useNavigate();
   const qc = useQueryClient();
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -280,7 +277,7 @@ function Profile() {
                 className="flex items-center gap-2 rounded-xl border border-border p-3 text-sm hover:bg-muted"
               >
                 <ShieldCheck className="h-4 w-4 shrink-0 text-muted-foreground" />
-                Administration
+                Admin
               </Link>
             )}
             <button
@@ -313,24 +310,6 @@ function Profile() {
               </p>
             </div>
           </div>
-        )}
-
-        {tab === "My Library" && (
-          <>
-            <h2 className="mt-5 font-semibold">Saved for later</h2>
-            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 [&>a]:w-auto">
-              {courses
-                .filter((c) => ids.includes(c.id))
-                .map((c) => (
-                  <CourseCard key={c.id} c={c} />
-                ))}
-            </div>
-            {ids.length === 0 && (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                No saved courses yet. Tap the bookmark on any course to keep it here.
-              </p>
-            )}
-          </>
         )}
 
         {tab === "Token Ledger" && (
