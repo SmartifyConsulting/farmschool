@@ -193,9 +193,9 @@ function HeaderAction() {
 export function Header({ children, wide = false }: { children?: ReactNode; wide?: boolean }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   return (
-    <header className="bg-[#2765BC] px-5 pb-6 pt-5 text-navy-foreground md:px-10">
+    <header className="relative bg-[#2765BC] px-5 pb-6 pt-5 text-navy-foreground md:px-10 md:py-0">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-5 hidden items-center justify-between gap-4 pb-4 md:flex">
+        <div className="hidden h-[104px] items-center justify-between gap-4 md:flex">
           <Link to="/" aria-label="Home" className="shrink-0">
             <img src={logo} alt="Plusticity" className="h-[144px] w-auto object-contain" />
           </Link>
