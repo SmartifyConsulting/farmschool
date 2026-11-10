@@ -17,14 +17,14 @@ import { ChallengeFinder } from "@/components/ChallengeFinder";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Plusticity — Agricultural Courses" },
+      { title: "Plusticity — Flex Your Brain" },
       {
         name: "description",
         content:
-          "Learn aquaponics, water quality, farm operations and market access with Plusticity.",
+          "Plusticity is the app that flexes your brain. Bite-sized courses, quizzes and real skills you can build anywhere, on any device.",
       },
       { property: "og:title", content: "Plusticity" },
-      { property: "og:description", content: "Practical agricultural courses on any device." },
+      { property: "og:description", content: "The app that flexes your brain, on any device." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -113,10 +113,10 @@ function Section({ title, list }: { title: string; list: Course[] }) {
 }
 
 const COMPARE = [
-  "Learn by doing in the field",
-  "Practical, farmer-level skills",
+  "Learn by doing, not just reading",
+  "Practical, real-world skills",
   "Short video & reading lessons",
-  "AI farming assistant on hand",
+  "AI learning assistant on hand",
   "Graded quizzes",
   "Recognised certificates",
 ];
@@ -132,11 +132,11 @@ function Hero() {
         />
         <div className="relative p-6 md:p-10">
           <h2 className="max-w-lg text-2xl font-extrabold tracking-tight md:text-4xl">
-            Field-ready farming skills, on any phone
+            The app that flexes your brain, on any phone
           </h2>
           <p className="mt-3 max-w-md text-sm opacity-85">
-            Practical agricultural courses built with trainers and farmers. Learn at your own pace,
-            pass the quiz and earn a Plusticity certificate.
+            Practical courses built with expert trainers, covering real skills across every topic.
+            Learn at your own pace, pass the quiz and earn a Plusticity certificate.
           </p>
           <Link
             to="/search"
@@ -156,7 +156,7 @@ function Hero() {
       </div>
       <div className="rounded-md border border-border bg-card p-4 md:p-6">
         <p className="text-center text-base md:text-lg">
-          Only at Plusticity: <b>Field-Ready Skills</b>
+          Only at Plusticity: <b>Brain-Flexing Skills</b>
         </p>
         <table className="mt-4 w-full text-xs">
           <thead>
@@ -235,7 +235,7 @@ function Index() {
       <Sheet>
         <CanvasHeading
           eyebrow={user ? `Hi, ${user.email?.split("@")[0]}` : "Welcome"}
-          title="How will you grow today?"
+          title="How will you flex your brain today?"
         />
         <div className="mt-4">
           <SearchBox />
