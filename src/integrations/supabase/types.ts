@@ -233,6 +233,64 @@ export type Database = {
         };
         Relationships: [];
       };
+      community_members: {
+        Row: {
+          course_id: string;
+          joined_at: string;
+          user_id: string;
+        };
+        Insert: {
+          course_id: string;
+          joined_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          course_id?: string;
+          joined_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "community_members_course_id_fkey";
+            columns: ["course_id"];
+            isOneToOne: false;
+            referencedRelation: "studio_courses";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      community_messages: {
+        Row: {
+          body: string;
+          course_id: string;
+          created_at: string;
+          id: string;
+          user_id: string;
+        };
+        Insert: {
+          body: string;
+          course_id: string;
+          created_at?: string;
+          id?: string;
+          user_id?: string;
+        };
+        Update: {
+          body?: string;
+          course_id?: string;
+          created_at?: string;
+          id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "community_messages_course_id_fkey";
+            columns: ["course_id"];
+            isOneToOne: false;
+            referencedRelation: "studio_courses";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       creator_applications: {
         Row: {
           display_name: string;
@@ -266,6 +324,33 @@ export type Database = {
           status?: string;
           submitted_at?: string;
           user_id?: string;
+        };
+        Relationships: [];
+      };
+      direct_messages: {
+        Row: {
+          body: string;
+          created_at: string;
+          id: string;
+          read_at: string | null;
+          recipient_id: string;
+          sender_id: string;
+        };
+        Insert: {
+          body: string;
+          created_at?: string;
+          id?: string;
+          read_at?: string | null;
+          recipient_id: string;
+          sender_id?: string;
+        };
+        Update: {
+          body?: string;
+          created_at?: string;
+          id?: string;
+          read_at?: string | null;
+          recipient_id?: string;
+          sender_id?: string;
         };
         Relationships: [];
       };
@@ -864,6 +949,7 @@ export type Database = {
         Row: {
           author_id: string;
           category: string;
+          core_messaging: string;
           cover_url: string | null;
           created_at: string;
           currency: string;
@@ -871,18 +957,23 @@ export type Database = {
           id: string;
           level: string;
           moodle_id: number | null;
+          outcomes_timeline: string;
+          prerequisite_course_id: string | null;
           price_cents: number;
           published: boolean;
           revision_base: number | null;
           revision_of: string | null;
+          target_audience: string;
           theme: string;
           title: string;
           updated_at: string;
+          value_proposition: string;
           version_number: number;
         };
         Insert: {
           author_id?: string;
           category?: string;
+          core_messaging?: string;
           cover_url?: string | null;
           created_at?: string;
           currency?: string;
@@ -890,18 +981,23 @@ export type Database = {
           id?: string;
           level?: string;
           moodle_id?: number | null;
+          outcomes_timeline?: string;
+          prerequisite_course_id?: string | null;
           price_cents?: number;
           published?: boolean;
           revision_base?: number | null;
           revision_of?: string | null;
+          target_audience?: string;
           theme?: string;
           title: string;
           updated_at?: string;
+          value_proposition?: string;
           version_number?: number;
         };
         Update: {
           author_id?: string;
           category?: string;
+          core_messaging?: string;
           cover_url?: string | null;
           created_at?: string;
           currency?: string;
@@ -909,19 +1005,30 @@ export type Database = {
           id?: string;
           level?: string;
           moodle_id?: number | null;
+          outcomes_timeline?: string;
+          prerequisite_course_id?: string | null;
           price_cents?: number;
           published?: boolean;
           revision_base?: number | null;
           revision_of?: string | null;
+          target_audience?: string;
           theme?: string;
           title?: string;
           updated_at?: string;
+          value_proposition?: string;
           version_number?: number;
         };
         Relationships: [
           {
             foreignKeyName: "studio_courses_revision_of_fkey";
             columns: ["revision_of"];
+            isOneToOne: false;
+            referencedRelation: "studio_courses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "studio_courses_prerequisite_course_id_fkey";
+            columns: ["prerequisite_course_id"];
             isOneToOne: false;
             referencedRelation: "studio_courses";
             referencedColumns: ["id"];
@@ -1262,6 +1369,36 @@ export type Database = {
         Returns: undefined;
       };
       course_factory_reserve_ai_request: { Args: never; Returns: number };
+      community_join: {
+        Args: { _course_id: string };
+        Returns: { course_id: string; joined_at: string; user_id: string };
+      };
+      community_roster: {
+        Args: { _course_id: string };
+        Returns: { full_name: string | null; joined_at: string; user_id: string }[];
+      };
+      shares_community: { Args: { _a: string; _b: string }; Returns: boolean };
+      send_direct_message: {
+        Args: { _body: string; _recipient: string };
+        Returns: {
+          body: string;
+          created_at: string;
+          id: string;
+          read_at: string | null;
+          recipient_id: string;
+          sender_id: string;
+        };
+      };
+      dm_threads: {
+        Args: never;
+        Returns: {
+          last_at: string;
+          last_message: string;
+          partner_id: string;
+          partner_name: string | null;
+          unread: boolean;
+        }[];
+      };
       creator_review_application: {
         Args: { _approve: boolean; _notes?: string; _user_id: string };
         Returns: undefined;

@@ -16,6 +16,7 @@ import { Route as CoursesRouteImport } from './routes/courses'
 import { Route as CreatorApplicationRouteImport } from './routes/creator-application'
 import { Route as DeveloperRouteImport } from './routes/developer'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -37,8 +38,10 @@ import { Route as ApiCourseFactoryRouteImport } from './routes/api/course-factor
 import { Route as ApiCourseWizardRouteImport } from './routes/api/course-wizard'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
 import { Route as ClassIdRouteImport } from './routes/class.$id'
+import { Route as CommunityCourseIdRouteImport } from './routes/community.$courseId'
 import { Route as CourseIdRouteImport } from './routes/course.$id'
 import { Route as LearningActivitiesCourseIdRouteImport } from './routes/learning-activities.$courseId'
+import { Route as MessagesPartnerIdRouteImport } from './routes/messages.$partnerId'
 import { Route as ScormIndexRouteImport } from './routes/scorm.index'
 import { Route as ScormIdRouteImport } from './routes/scorm.$id'
 import { Route as StudioIdRouteImport } from './routes/studio.$id'
@@ -80,6 +83,11 @@ const DeveloperRoute = DeveloperRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MessagesRoute = MessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificationsRoute = NotificationsRouteImport.update({
@@ -187,6 +195,11 @@ const ClassIdRoute = ClassIdRouteImport.update({
   path: '/class/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CommunityCourseIdRoute = CommunityCourseIdRouteImport.update({
+  id: '/community/$courseId',
+  path: '/community/$courseId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CourseIdRoute = CourseIdRouteImport.update({
   id: '/course/$id',
   path: '/course/$id',
@@ -198,6 +211,11 @@ const LearningActivitiesCourseIdRoute =
     path: '/learning-activities/$courseId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const MessagesPartnerIdRoute = MessagesPartnerIdRouteImport.update({
+  id: '/$partnerId',
+  path: '/$partnerId',
+  getParentRoute: () => MessagesRoute,
+} as any)
 const ScormIndexRoute = ScormIndexRouteImport.update({
   id: '/scorm/',
   path: '/scorm/',
@@ -242,6 +260,7 @@ export interface FileRoutesByFullPath {
   '/creator-application': typeof CreatorApplicationRoute
   '/developer': typeof DeveloperRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/messages': typeof MessagesRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
@@ -262,8 +281,10 @@ export interface FileRoutesByFullPath {
   '/api/course-wizard': typeof ApiCourseWizardRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/class/$id': typeof ClassIdRoute
+  '/community/$courseId': typeof CommunityCourseIdRoute
   '/course/$id': typeof CourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
+  '/messages/$partnerId': typeof MessagesPartnerIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
   '/admin/': typeof AdminIndexRoute
@@ -281,6 +302,7 @@ export interface FileRoutesByTo {
   '/creator-application': typeof CreatorApplicationRoute
   '/developer': typeof DeveloperRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/messages': typeof MessagesRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
@@ -301,8 +323,10 @@ export interface FileRoutesByTo {
   '/api/course-wizard': typeof ApiCourseWizardRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/class/$id': typeof ClassIdRoute
+  '/community/$courseId': typeof CommunityCourseIdRoute
   '/course/$id': typeof CourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
+  '/messages/$partnerId': typeof MessagesPartnerIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
   '/admin': typeof AdminIndexRoute
@@ -321,6 +345,7 @@ export interface FileRoutesById {
   '/creator-application': typeof CreatorApplicationRoute
   '/developer': typeof DeveloperRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/messages': typeof MessagesRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
@@ -341,8 +366,10 @@ export interface FileRoutesById {
   '/api/course-wizard': typeof ApiCourseWizardRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/class/$id': typeof ClassIdRoute
+  '/community/$courseId': typeof CommunityCourseIdRoute
   '/course/$id': typeof CourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
+  '/messages/$partnerId': typeof MessagesPartnerIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
   '/admin/': typeof AdminIndexRoute
@@ -362,6 +389,7 @@ export interface FileRouteTypes {
     | '/creator-application'
     | '/developer'
     | '/forgot-password'
+    | '/messages'
     | '/notifications'
     | '/privacy'
     | '/profile'
@@ -382,8 +410,10 @@ export interface FileRouteTypes {
     | '/api/course-wizard'
     | '/api/stripe-webhook'
     | '/class/$id'
+    | '/community/$courseId'
     | '/course/$id'
     | '/learning-activities/$courseId'
+    | '/messages/$partnerId'
     | '/scorm/$id'
     | '/studio/$id'
     | '/admin/'
@@ -401,6 +431,7 @@ export interface FileRouteTypes {
     | '/creator-application'
     | '/developer'
     | '/forgot-password'
+    | '/messages'
     | '/notifications'
     | '/privacy'
     | '/profile'
@@ -421,8 +452,10 @@ export interface FileRouteTypes {
     | '/api/course-wizard'
     | '/api/stripe-webhook'
     | '/class/$id'
+    | '/community/$courseId'
     | '/course/$id'
     | '/learning-activities/$courseId'
+    | '/messages/$partnerId'
     | '/scorm/$id'
     | '/studio/$id'
     | '/admin'
@@ -440,6 +473,7 @@ export interface FileRouteTypes {
     | '/creator-application'
     | '/developer'
     | '/forgot-password'
+    | '/messages'
     | '/notifications'
     | '/privacy'
     | '/profile'
@@ -460,8 +494,10 @@ export interface FileRouteTypes {
     | '/api/course-wizard'
     | '/api/stripe-webhook'
     | '/class/$id'
+    | '/community/$courseId'
     | '/course/$id'
     | '/learning-activities/$courseId'
+    | '/messages/$partnerId'
     | '/scorm/$id'
     | '/studio/$id'
     | '/admin/'
@@ -480,6 +516,7 @@ export interface RootRouteChildren {
   CreatorApplicationRoute: typeof CreatorApplicationRoute
   DeveloperRoute: typeof DeveloperRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  MessagesRoute: typeof MessagesRouteWithChildren
   NotificationsRoute: typeof NotificationsRoute
   PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
@@ -500,6 +537,7 @@ export interface RootRouteChildren {
   ApiCourseWizardRoute: typeof ApiCourseWizardRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ClassIdRoute: typeof ClassIdRoute
+  CommunityCourseIdRoute: typeof CommunityCourseIdRoute
   CourseIdRoute: typeof CourseIdRoute
   LearningActivitiesCourseIdRoute: typeof LearningActivitiesCourseIdRoute
   ScormIdRoute: typeof ScormIdRoute
@@ -560,6 +598,13 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/messages': {
+      id: '/messages'
+      path: '/messages'
+      fullPath: '/messages'
+      preLoaderRoute: typeof MessagesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notifications': {
@@ -709,6 +754,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClassIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/community/$courseId': {
+      id: '/community/$courseId'
+      path: '/community/$courseId'
+      fullPath: '/community/$courseId'
+      preLoaderRoute: typeof CommunityCourseIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/course/$id': {
       id: '/course/$id'
       path: '/course/$id'
@@ -722,6 +774,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/learning-activities/$courseId'
       preLoaderRoute: typeof LearningActivitiesCourseIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/messages/$partnerId': {
+      id: '/messages/$partnerId'
+      path: '/$partnerId'
+      fullPath: '/messages/$partnerId'
+      preLoaderRoute: typeof MessagesPartnerIdRouteImport
+      parentRoute: typeof MessagesRoute
     }
     '/scorm/': {
       id: '/scorm/'
@@ -775,6 +834,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface MessagesRouteChildren {
+  MessagesPartnerIdRoute: typeof MessagesPartnerIdRoute
+}
+
+const MessagesRouteChildren: MessagesRouteChildren = {
+  MessagesPartnerIdRoute: MessagesPartnerIdRoute,
+}
+
+const MessagesRouteWithChildren = MessagesRoute._addFileChildren(
+  MessagesRouteChildren,
+)
+
 interface StudioRouteChildren {
   StudioIdRoute: typeof StudioIdRoute
 }
@@ -794,6 +865,7 @@ const rootRouteChildren: RootRouteChildren = {
   CreatorApplicationRoute: CreatorApplicationRoute,
   DeveloperRoute: DeveloperRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  MessagesRoute: MessagesRouteWithChildren,
   NotificationsRoute: NotificationsRoute,
   PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
@@ -814,6 +886,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCourseWizardRoute: ApiCourseWizardRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ClassIdRoute: ClassIdRoute,
+  CommunityCourseIdRoute: CommunityCourseIdRoute,
   CourseIdRoute: CourseIdRoute,
   LearningActivitiesCourseIdRoute: LearningActivitiesCourseIdRoute,
   ScormIdRoute: ScormIdRoute,

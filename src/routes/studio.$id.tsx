@@ -921,6 +921,11 @@ function Editor() {
     cover_url: "",
     theme: "default" as CourseThemeName,
     price: "0",
+    prerequisite_course_id: "",
+    target_audience: "",
+    value_proposition: "",
+    outcomes_timeline: "",
+    core_messaging: "",
   });
   useEffect(() => {
     if (course)
@@ -932,8 +937,24 @@ function Editor() {
         cover_url: course.cover_url ?? "",
         theme: isCourseTheme(course.theme) ? course.theme : "default",
         price: (course.price_cents / 100).toFixed(2),
+        prerequisite_course_id: course.prerequisite_course_id ?? "",
+        target_audience: course.target_audience ?? "",
+        value_proposition: course.value_proposition ?? "",
+        outcomes_timeline: course.outcomes_timeline ?? "",
+        core_messaging: course.core_messaging ?? "",
       });
   }, [course]);
+  const { data: prereqOptions = [] } = useQuery({
+    queryKey: ["prerequisite-options", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("studio_courses")
+        .select("id, title")
+        .eq("published", true)
+        .order("title");
+      return (data ?? []).filter((c) => c.id !== id);
+    },
+  });
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["studio-course", id] });
     qc.invalidateQueries({ queryKey: ["studio-lessons", id] });
@@ -1288,7 +1309,12 @@ function Editor() {
     const { price: _price, ...rest } = form;
     const { error } = await supabase
       .from("studio_courses")
-      .update({ ...rest, cover_url: form.cover_url || null, price_cents: Math.round(price * 100) })
+      .update({
+        ...rest,
+        cover_url: form.cover_url || null,
+        prerequisite_course_id: form.prerequisite_course_id || null,
+        price_cents: Math.round(price * 100),
+      })
       .eq("id", id);
     if (error) toast.error("Could not save — check the title is 3–120 letters.");
     else {
@@ -2032,6 +2058,69 @@ function Editor() {
                         0 is free. Buyers pay this once to enrol via Stripe Checkout.
                       </p>
                     </div>
+                  </div>
+                  <div className="space-y-3 border-t border-border pt-4">
+                    <div>
+                      <label className="block text-xs font-medium">Prerequisites</label>
+                      <p className="text-xs text-muted-foreground">
+                        Require a learner to finish another published course first.
+                      </p>
+                      <select
+                        value={form.prerequisite_course_id}
+                        onChange={(e) =>
+                          setForm({ ...form, prerequisite_course_id: e.target.value })
+                        }
+                        className="mt-1 w-full rounded-md border border-input bg-background px-2 py-2 text-sm"
+                        aria-label="Prerequisite course"
+                      >
+                        <option value="">None</option>
+                        {prereqOptions.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.title}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <label className="block space-y-1 text-xs font-medium">
+                      Target Audience
+                      <Textarea
+                        value={form.target_audience}
+                        onChange={(e) => setForm({ ...form, target_audience: e.target.value })}
+                        placeholder="Ideal audience & market profile"
+                        rows={2}
+                        maxLength={2000}
+                      />
+                    </label>
+                    <label className="block space-y-1 text-xs font-medium">
+                      Value Proposition
+                      <Textarea
+                        value={form.value_proposition}
+                        onChange={(e) => setForm({ ...form, value_proposition: e.target.value })}
+                        placeholder="Value of certification / qualification"
+                        rows={2}
+                        maxLength={2000}
+                      />
+                    </label>
+                    <label className="block space-y-1 text-xs font-medium">
+                      Outcomes & Timeline
+                      <Textarea
+                        value={form.outcomes_timeline}
+                        onChange={(e) => setForm({ ...form, outcomes_timeline: e.target.value })}
+                        placeholder="Key learning outcomes & program duration"
+                        rows={2}
+                        maxLength={2000}
+                      />
+                    </label>
+                    <label className="block space-y-1 text-xs font-medium">
+                      Core Messaging
+                      <Textarea
+                        value={form.core_messaging}
+                        onChange={(e) => setForm({ ...form, core_messaging: e.target.value })}
+                        placeholder="Key messaging on ROI"
+                        rows={2}
+                        maxLength={2000}
+                      />
+                    </label>
                   </div>
                   <Button onClick={saveDetails} className="mt-auto w-full">
                     Save details

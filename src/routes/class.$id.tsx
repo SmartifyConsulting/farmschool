@@ -3,7 +3,16 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type CSSProperties } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Circle, Video, FileText, HelpCircle, Award, Package } from "lucide-react";
+import {
+  CheckCircle2,
+  Circle,
+  Video,
+  FileText,
+  HelpCircle,
+  Award,
+  Package,
+  Users,
+} from "lucide-react";
 import { Phone, Header, Sheet, ProgressBar, CanvasHeading } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -404,6 +413,14 @@ function ClassPage() {
                 >
                   <Award className="h-4 w-4" />
                   Get my certificate
+                </Button>
+              )}
+              {user && pct === 100 && (
+                <Button asChild variant="outline" className="w-full">
+                  <Link to="/community/$courseId" params={{ courseId: id }}>
+                    <Users className="h-4 w-4" />
+                    Join the community
+                  </Link>
                 </Button>
               )}
             </aside>
