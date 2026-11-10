@@ -9,7 +9,7 @@ export function ScormPicker({ value, onChange }: { value: string | null; onChang
   const { user } = useAuth();
   const { data: pkgs = [], isLoading } = useQuery({
     queryKey: ["my-scorm-packages", user?.id], enabled: !!user,
-    queryFn: async () => (await supabase.from("scorm_packages").select("id, title, scorm_version, created_at").eq("author_id", user!.id).order("created_at", { ascending: false })).data ?? [],
+    queryFn: async () => (await supabase.from("scorm_packages").select("id, title, scorm_version, created_at").eq("author_id", user!.id).order("created_at", { ascending: false }).limit(100)).data ?? [],
   });
   return (
     <div className="space-y-2">

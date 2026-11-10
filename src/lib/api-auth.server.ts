@@ -17,12 +17,20 @@ export async function verifyApiKey(request: Request, scope: Scope): Promise<{ us
   const k = row as unknown as { id: string; user_id: string; scopes: string[]; daily_limit: number; usage_count: number; usage_date: string; total_requests: number; revoked_at: string | null; categories: string[] | null } | null;
   if (!k || k.revoked_at) return json({ error: "Missing or invalid API key" }, 401);
   if (!k.scopes.includes(scope)) return json({ error: `This key lacks the '${scope}' scope` }, 403);
-  const today = new Date().toISOString().slice(0, 10);
-  const used = k.usage_date === today ? k.usage_count : 0;
-  if (used >= k.daily_limit) return json({ error: "Daily request limit reached" }, 429, { "retry-after": "3600" });
-  await supabaseAdmin.from("api_keys").update({
-    usage_count: used + 1, usage_date: today, total_requests: k.total_requests + 1, last_used_at: new Date().toISOString(),
-  }).eq("id", k.id);
+  // Reserve capacity in a single database UPDATE, preventing concurrent
+  // requests from racing the daily limit. The RPC also rechecks revocation
+  // and scope at the moment the request is reserved.
+  const { data: reserved, error: reserveError } = await supabaseAdmin.rpc(
+    "reserve_api_key_request",
+    { _key_id: k.id, _scope: scope },
+  );
+  if (reserveError) {
+    console.error("API key reservation failed", reserveError);
+    return json({ error: "API access temporarily unavailable" }, 503);
+  }
+  if (reserved !== true) {
+    return json({ error: "API key revoked or daily request limit reached" }, 429, { "retry-after": "3600" });
+  }
   return { userId: k.user_id, categories: k.categories?.length ? k.categories : null };
 }
 

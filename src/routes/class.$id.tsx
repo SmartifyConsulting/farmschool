@@ -74,7 +74,7 @@ function ClassPage() {
         await supabase
           .from("studio_courses")
           .select(
-            "id, title, description, category, level, cover_url, published, author_id, theme, price_cents, currency",
+            "id, title, description, category, level, cover_url, published, author_id, theme, price_cents, currency, prerequisite_course_id",
           )
           .eq("id", id)
           .maybeSingle()
@@ -135,7 +135,19 @@ function ClassPage() {
           .maybeSingle()
       ).data,
   });
-  const locked = paid && !isAuthor && (!user || (!enrollmentLoading && !enrollment));
+  const { data: prerequisiteOk = true, isLoading: prerequisiteLoading } = useQuery({
+    queryKey: ["class-prerequisite", id, course?.prerequisite_course_id, user?.id],
+    enabled: !!course?.prerequisite_course_id && !isAuthor,
+    queryFn: async () => {
+      if (!user) return false;
+      const { data, error } = await supabase.rpc("studio_prerequisite_satisfied", { _course: id });
+      if (error) throw error;
+      return !!data;
+    },
+  });
+  const prerequisiteLocked =
+    !!course?.prerequisite_course_id && !isAuthor && !prerequisiteLoading && !prerequisiteOk;
+  const locked = prerequisiteLocked || (paid && !isAuthor && (!user || (!enrollmentLoading && !enrollment)));
   const qc = useQueryClient();
   const [idx, setIdx] = useState(0);
   const done = new Set(
@@ -149,7 +161,7 @@ function ClassPage() {
   const slideKey =
     lesson?.kind === "slide"
       ? [
-          "mobile-school",
+          "plusticity",
           "slides",
           user?.id ?? "guest",
           lesson.id,
@@ -213,12 +225,12 @@ function ClassPage() {
               {locked ? (
                 <div className="space-y-3 rounded-2xl border border-border p-6 text-center">
                   <Lock className="mx-auto h-6 w-6 text-muted-foreground" />
-                  <p className="font-semibold">This is a paid course</p>
+                  <p className="font-semibold">{prerequisiteLocked ? "Complete the prerequisite course first" : "This is a paid course"}</p>
                   <p className="text-sm text-muted-foreground">
-                    {formatPrice(course.price_cents, course.currency)} · one-time purchase
+                    {prerequisiteLocked ? "This course unlocks after you earn the prerequisite certificate." : `${formatPrice(course.price_cents, course.currency)} · one-time purchase`}
                   </p>
-                  <Button
-                    disabled={buying || !user}
+                  {!prerequisiteLocked && <Button
+                    disabled={buying || !user || prerequisiteLoading}
                     onClick={async () => {
                       if (!user) {
                         toast.error("Sign in to buy this course.");
@@ -246,8 +258,8 @@ function ClassPage() {
                     {buying
                       ? "Starting checkout…"
                       : "Buy for " + formatPrice(course.price_cents, course.currency)}
-                  </Button>
-                  {!user && (
+                  </Button>}
+                  {!prerequisiteLocked && !user && (
                     <p className="text-xs text-muted-foreground">
                       <Link to="/auth" className="font-semibold text-primary">
                         Sign in

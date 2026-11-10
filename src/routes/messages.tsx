@@ -29,7 +29,9 @@ function Inbox() {
   const { data: threads = [] } = useQuery({
     queryKey: ["dm-threads", user?.id],
     enabled: !!user,
-    refetchInterval: 10000,
+    refetchInterval: 30000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("dm_threads");
       if (error) throw error;

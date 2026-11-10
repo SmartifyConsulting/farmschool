@@ -39,7 +39,9 @@ function ThreadPage() {
   const { data: thread = [] } = useQuery({
     queryKey: ["dm-thread", partnerId],
     enabled: !!user,
-    refetchInterval: 6000,
+    refetchInterval: 20000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("direct_messages")
@@ -47,9 +49,11 @@ function ThreadPage() {
         .or(
           `and(sender_id.eq.${user!.id},recipient_id.eq.${partnerId}),and(sender_id.eq.${partnerId},recipient_id.eq.${user!.id})`,
         )
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: false })
+        .limit(200);
       if (error) throw error;
-      const unread = (data ?? []).filter((m) => m.recipient_id === user!.id && !m.read_at);
+      const ordered = [...(data ?? [])].reverse();
+      const unread = ordered.filter((m) => m.recipient_id === user!.id && !m.read_at);
       if (unread.length)
         await supabase
           .from("direct_messages")
@@ -58,7 +62,7 @@ function ThreadPage() {
             "id",
             unread.map((m) => m.id),
           );
-      return (data ?? []) as DM[];
+      return ordered as DM[];
     },
   });
 

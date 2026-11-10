@@ -26,6 +26,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      audit_events: {
+        Row: {
+          id: string;
+          actor_id: string | null;
+          action: string;
+          entity_type: string;
+          entity_id: string | null;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          actor_id?: string | null;
+          action: string;
+          entity_type: string;
+          entity_id?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          actor_id?: string | null;
+          action?: string;
+          entity_type?: string;
+          entity_id?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       api_keys: {
         Row: {
           categories: string[] | null;
@@ -136,6 +166,9 @@ export type Database = {
           currency: string;
           id: string;
           stripe_session_id: string | null;
+          payment_provider: string | null;
+          payment_status: string | null;
+          paid_at: string | null;
           user_id: string;
         };
         Insert: {
@@ -145,6 +178,9 @@ export type Database = {
           currency?: string;
           id?: string;
           stripe_session_id?: string | null;
+          payment_provider?: string | null;
+          payment_status?: string | null;
+          paid_at?: string | null;
           user_id: string;
         };
         Update: {
@@ -154,6 +190,9 @@ export type Database = {
           currency?: string;
           id?: string;
           stripe_session_id?: string | null;
+          payment_provider?: string | null;
+          payment_status?: string | null;
+          paid_at?: string | null;
           user_id?: string;
         };
         Relationships: [
@@ -735,6 +774,36 @@ export type Database = {
           id?: string;
           message?: string;
           ok?: boolean;
+        };
+        Relationships: [];
+      };
+      payment_events: {
+        Row: {
+          id: string;
+          provider: string;
+          event_type: string;
+          received_at: string;
+          processed_at: string | null;
+          status: string;
+          error: string | null;
+        };
+        Insert: {
+          id: string;
+          provider: string;
+          event_type: string;
+          received_at?: string;
+          processed_at?: string | null;
+          status?: string;
+          error?: string | null;
+        };
+        Update: {
+          id?: string;
+          provider?: string;
+          event_type?: string;
+          received_at?: string;
+          processed_at?: string | null;
+          status?: string;
+          error?: string | null;
         };
         Relationships: [];
       };
@@ -1381,6 +1450,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      admin_platform_analytics: { Args: never; Returns: Json };
+      record_audit_event: { Args: { _action: string; _entity_type: string; _entity_id?: string; _metadata?: Json }; Returns: string };
+      reserve_api_key_request: { Args: { _key_id: string; _scope: string }; Returns: boolean };
+      studio_prerequisite_satisfied: { Args: { _course: string }; Returns: boolean };
       admin_set_user_role: {
         Args: {
           _grant: boolean;

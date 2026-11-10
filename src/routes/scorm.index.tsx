@@ -38,6 +38,7 @@ function ScormLibrary() {
           .from("scorm_packages")
           .select("id, title, scorm_version, created_at, author_id, entry_url")
           .order("created_at", { ascending: false })
+          .limit(100)
       ).data ?? [],
   });
 

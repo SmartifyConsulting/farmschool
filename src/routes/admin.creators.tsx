@@ -59,7 +59,8 @@ function CreatorReview() {
         .from("creator_applications" as never)
         .select("user_id,display_name,expertise,industry,status,submitted_at,review_notes" as never)
         .eq("status" as never, filter)
-        .order("submitted_at" as never, { ascending: true });
+        .order("submitted_at" as never, { ascending: true })
+        .limit(100);
       if (error) throw error;
       return (data ?? []) as unknown as Application[];
     },

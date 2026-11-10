@@ -69,8 +69,18 @@ export const claimCertificate = createServerFn({ method: "POST" })
       if (!allLessons(c).every((l) => done.has(l.id))) throw new Error("Finish every lesson first.");
       title = c.title;
     } else {
-      const { data: c } = await context.supabase.from("studio_courses").select("id, title").eq("id", data.courseRef).maybeSingle();
+      const { data: c } = await context.supabase.from("studio_courses").select("id, title, published, price_cents, author_id").eq("id", data.courseRef).maybeSingle();
       if (!c) throw new Error("Course not found.");
+      if (!c.published && c.author_id !== context.userId) throw new Error("Course is not available.");
+      if ((c.price_cents ?? 0) > 0 && c.author_id !== context.userId) {
+        const { data: enrollment } = await supabaseAdmin
+          .from("course_enrollments")
+          .select("id")
+          .eq("user_id", context.userId)
+          .eq("course_id", c.id)
+          .maybeSingle();
+        if (!enrollment) throw new Error("Enroll in this course before claiming its certificate.");
+      }
       const { data: lessons } = await supabaseAdmin.from("studio_lessons").select("id, kind, body").eq("course_id", c.id);
       const { data: passes } = await supabaseAdmin.from("quiz_attempts").select("lesson_id").eq("user_id", context.userId).eq("course_id", c.id).eq("passed", true);
       const passed = new Set((passes ?? []).map((p) => p.lesson_id));
