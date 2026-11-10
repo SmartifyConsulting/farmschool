@@ -87,6 +87,7 @@ function ExternalContentAdmin() {
             "id, title, category, language, import_status, is_sample, embed_url, original_url, last_synced_at, provider_id, provider:external_content_providers(name), links:course_external_content(course:studio_courses(id, title, published))",
           )
           .order("created_at", { ascending: false })
+          .limit(250)
       ).data ?? []) as unknown as Item[],
   });
   const { data: imports = [] } = useQuery({
