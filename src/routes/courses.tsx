@@ -40,7 +40,7 @@ function MyCourses() {
   );
   const { user } = useAuth();
   const { data: progress = [], isLoading: progressLoading } = useProgress();
-  const { ids } = useBookmarks();
+  const { ids, signedIn } = useBookmarks();
   const { data: prof } = useQuery({
     queryKey: ["profile", user?.id],
     enabled: !!user,
@@ -65,7 +65,7 @@ function MyCourses() {
     error: studioError,
   } = useQuery({
     queryKey: ["my-studio-courses", user?.id, progress.map((p) => p.course_id).join(","), ids.join(",")],
-    enabled: !!user && !progressLoading,
+    enabled: !!user && !progressLoading && signedIn,
     queryFn: async () => {
       const studioIds = [...new Set([
         ...progress.map((p) => p.course_id),
