@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { STUDIO_CATEGORIES } from "@/lib/studio";
 import { INDUSTRIES, courseIndustry } from "@/lib/industries";
 import { CourseWizard } from "@/components/CourseWizard";
+import { PolishButton } from "@/components/PolishButton";
 import { CoverImageInput } from "@/components/CoverImageInput";
 import { StudioCourseActions } from "@/components/StudioCourseActions";
 
@@ -133,6 +134,11 @@ function NewCourseDialog({
             placeholder="What will learners gain from this course?"
             rows={3}
             maxLength={4000}
+          />
+          <PolishButton
+            title={form.title}
+            text={form.description}
+            onText={(t) => setForm({ ...form, description: t })}
           />
           <div className="grid grid-cols-2 gap-2">
             <div className="col-span-2 space-y-2">

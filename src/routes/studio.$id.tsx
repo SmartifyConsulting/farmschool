@@ -39,6 +39,7 @@ import { extractDocument } from "@/lib/document-extraction";
 import { suggestReviewQuestions } from "@/lib/course-quiz-suggestions";
 import { CourseAnalytics } from "@/components/CourseAnalytics";
 import { LessonAssistant } from "@/components/LessonAssistant";
+import { PolishButton } from "@/components/PolishButton";
 import { VideoLibraryPicker } from "@/components/VideoLibraryPicker";
 import { CoverImageInput } from "@/components/CoverImageInput";
 import { StudioContentLibrary } from "@/components/StudioContentLibrary";
@@ -1899,6 +1900,12 @@ function Editor() {
                         sourceText={sourceText}
                         onText={(t) => setForm((f) => ({ ...f, description: t }))}
                       />
+                      <PolishButton
+                        courseId={id}
+                        title={form.title}
+                        text={form.description}
+                        onText={(t) => setForm((f) => ({ ...f, description: t }))}
+                      />
                       <div>
                         <label className="block text-xs font-medium">Industry</label>
                         <select
@@ -3488,6 +3495,9 @@ function LessonEditor({
               )
             }
           />
+        )}
+        {!readOnly && quizLoad === "ready" && kind !== "quiz" && kind !== "scorm" && kind !== "slide" && (
+          <PolishButton courseId={courseId} title={title} text={body} onText={setBody} />
         )}
         {quizLoad !== "ready" && (
           <p role="status" className="text-sm text-muted-foreground">

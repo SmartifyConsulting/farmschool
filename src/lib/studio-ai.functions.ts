@@ -86,6 +86,59 @@ export const getCourseAnalytics = createServerFn({ method: "POST" })
     return summariseRoster(input);
   });
 
+const TONES = ["professional", "friendly", "concise", "simple"] as const;
+export type PolishTone = (typeof TONES)[number];
+export const TONE_OPTIONS: { value: PolishTone; label: string }[] = [
+  { value: "professional", label: "Professional" },
+  { value: "friendly", label: "Friendly" },
+  { value: "concise", label: "Concise" },
+  { value: "simple", label: "Simple" },
+];
+const TONE_PROMPTS: Record<PolishTone, string> = {
+  professional: "Rewrite in a clear, professional tone suitable for a course catalogue.",
+  friendly: "Rewrite in a warm, friendly, conversational tone.",
+  concise: "Rewrite to be as concise as possible without losing any facts.",
+  simple: "Rewrite in simple, plain language with short sentences, easy for beginners to follow.",
+};
+
+/** Rewrites existing text in a chosen tone, keeping the same facts. Usable before a course exists (courseId omitted) or on an owned course. Nothing is saved here. */
+export const polishText = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        courseId: z.string().uuid().optional(),
+        title: z.string().max(120),
+        text: z.string().min(1).max(20000),
+        tone: z.enum(TONES),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    if (data.courseId) await ownCourse(context.supabase, context.userId, data.courseId);
+    if (!data.text.trim()) throw new Error("Add some text first.");
+    const apiKey = process.env["OPENAI_API_KEY"];
+    if (!apiKey) throw new Error("The AI connection is not configured yet.");
+    const { data: count, error: quotaError } = await context.supabase.rpc("course_factory_reserve_ai_request" as never);
+    if (quotaError || typeof count !== "number") {
+      throw new Error(quotaError?.message.includes("Daily AI generation limit") ? "Your daily AI allowance is used up. Try again tomorrow." : "Your AI allowance could not be checked. Please try later.");
+    }
+    const { createOpenAI } = await import("@ai-sdk/openai");
+    const { generateText, Output } = await import("ai");
+    try {
+      const { output } = await generateText({
+        model: createOpenAI({ apiKey }).responses("gpt-6-luna"), maxRetries: 1,
+        system: `${SAFETY} ${TONE_PROMPTS[data.tone]} Keep the same facts and meaning — do not add or remove information. Return only the rewritten text.`,
+        prompt: JSON.stringify({ title: data.title, text: data.text }),
+        output: Output.object({ schema: z.object({ text: z.string().min(1).max(20000) }) }),
+      });
+      return { text: output.text };
+    } catch (e) {
+      console.error("polishText failed", e);
+      throw new Error("The AI assistant couldn't finish. Please try again.");
+    }
+  });
+
 /** Drafts a course description from the uploaded manual (when given) or the course's lessons. Nothing is saved here. */
 export const generateCourseDescription = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
