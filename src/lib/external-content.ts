@@ -22,9 +22,18 @@ export function officialEmbed(url: string): string | null {
   return yt ? `https://www.youtube-nocookie.com/embed/${yt}` : null;
 }
 
+/** Spreadsheet links often arrive without a scheme (e.g. "www.example.com/video"); add https:// before validating. */
+function withScheme(url: string): string {
+  const trimmed = url.trim();
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
 export const videoRow = z.object({
   title: z.string().trim().max(200).optional().default(""),
-  url: z.string().trim().url().regex(/^https:\/\//, "Links must start with https://"),
+  url: z.preprocess(
+    (v) => (typeof v === "string" ? withScheme(v) : v),
+    z.string().trim().url().regex(/^https:\/\//, "Links must start with https://"),
+  ),
   description: z.string().trim().max(4000).optional().default(""),
   category: z.string().trim().optional().default(""),
   language: z.string().trim().max(40).optional().default("English"),
@@ -48,8 +57,12 @@ export function parseDuration(v: string): number | null {
   return parts.reduce((t, n) => t * 60 + n, 0);
 }
 
-/** Minimal CSV parser (quoted fields, commas, newlines in quotes). Header row required. */
+/** Minimal CSV/TSV parser (quoted fields, newlines in quotes). Header row required.
+ * Delimiter is auto-detected from the header line, so a tab-separated (.tsv) paste or file
+ * works the same as comma-separated — "all file types" in practice means these two. */
 export function parseCsv(text: string): Record<string, string>[] {
+  const firstLine = text.split(/\r?\n/, 1)[0] ?? "";
+  const delimiter = (firstLine.match(/\t/g)?.length ?? 0) > (firstLine.match(/,/g)?.length ?? 0) ? "\t" : ",";
   const rows: string[][] = [];
   let row: string[] = [], field = "", q = false;
   for (let i = 0; i < text.length; i++) {
@@ -59,7 +72,7 @@ export function parseCsv(text: string): Record<string, string>[] {
       else if (c === '"') q = false;
       else field += c;
     } else if (c === '"') q = true;
-    else if (c === ",") { row.push(field); field = ""; }
+    else if (c === delimiter) { row.push(field); field = ""; }
     else if (c === "\n" || c === "\r") {
       if (c === "\r" && text[i + 1] === "\n") i++;
       row.push(field); field = ""; if (row.some((f) => f.trim())) rows.push(row); row = [];

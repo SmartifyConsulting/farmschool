@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canonicalKey, officialEmbed, parseCsv, parseDuration } from "./external-content";
+import { canonicalKey, officialEmbed, parseCsv, parseDuration, videoRow } from "./external-content";
 
 describe("external video library", () => {
   it("treats different YouTube link styles as the same video (duplicate detection)", () => {
@@ -21,5 +21,13 @@ describe("external video library", () => {
   it("reads durations", () => {
     expect(parseDuration("5:30")).toBe(330);
     expect(parseDuration("1:02:03")).toBe(3723);
+  });
+  it("auto-detects a tab-separated paste or file", () => {
+    const rows = parseCsv("title\turl\nSow, then thin\thttps://youtu.be/K8HaLSDlUgA\n");
+    expect(rows).toEqual([{ title: "Sow, then thin", url: "https://youtu.be/K8HaLSDlUgA" }]);
+  });
+  it("accepts a link pasted without a scheme by adding https:// automatically", () => {
+    const parsed = videoRow.parse({ url: "www.accessagriculture.org/managing-vegetable-nematodes" });
+    expect(parsed.url).toBe("https://www.accessagriculture.org/managing-vegetable-nematodes");
   });
 });

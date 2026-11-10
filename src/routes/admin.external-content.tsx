@@ -475,17 +475,19 @@ function ExternalContentAdmin() {
                 <section className="space-y-2 rounded-2xl border border-border p-4">
                   <h3 className="flex items-center gap-2 font-semibold">
                     <Upload className="h-4 w-4" />
-                    CSV import
+                    Bulk import
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    Columns: title, url, description, category, language, thumbnail, duration,
-                    published. Duplicates are skipped automatically.
+                    CSV or TSV (tab-separated), file or pasted text. Columns: title, url,
+                    description, category, language, thumbnail, duration, published. A link
+                    without "https://" is accepted — it's added automatically. Duplicates are
+                    skipped automatically.
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <input
                       type="file"
-                      accept=".csv,text/csv"
-                      aria-label="CSV file"
+                      accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain"
+                      aria-label="CSV or TSV file"
                       className="text-xs file:mr-2 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-primary"
                       onChange={async (e) => {
                         const f = e.target.files?.[0];
