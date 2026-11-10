@@ -777,6 +777,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      payment_events: {
+        Row: {
+          id: string;
+          provider: string;
+          event_type: string;
+          received_at: string;
+          processed_at: string | null;
+          status: string;
+          error: string | null;
+        };
+        Insert: {
+          id: string;
+          provider: string;
+          event_type: string;
+          received_at?: string;
+          processed_at?: string | null;
+          status?: string;
+          error?: string | null;
+        };
+        Update: {
+          id?: string;
+          provider?: string;
+          event_type?: string;
+          received_at?: string;
+          processed_at?: string | null;
+          status?: string;
+          error?: string | null;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           avatar_url: string | null;
