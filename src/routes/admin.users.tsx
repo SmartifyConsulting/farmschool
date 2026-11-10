@@ -130,13 +130,21 @@ function AdminUsers() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["admin-users"],
+    queryKey: ["admin-users", search.trim()],
     enabled: !!admin,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("profiles")
         .select("user_id, full_name, region, learner_role")
-        .order("full_name");
+        .order("full_name")
+        .limit(100);
+      const term = search.trim();
+      if (term) query = query.ilike("full_name", `%${term.replace(/[%_]/g, "\\const { data, error } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, region, learner_role")
+        .order("full_name")
+        .limit(100);")}%`);
+      const { data, error } = await query;
       if (error) throw error;
       return data as ProfileRow[];
     },
@@ -214,9 +222,7 @@ function AdminUsers() {
     refresh();
   };
 
-  const filtered = (rows ?? []).filter(
-    (r) => !search.trim() || r.full_name.toLowerCase().includes(search.trim().toLowerCase()),
-  );
+  const filtered = rows ?? [];
 
   return (
     <Phone>
@@ -245,7 +251,7 @@ function AdminUsers() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name"
+                placeholder="Search by name (up to 100 results)"
                 aria-label="Search users"
                 className="max-w-sm"
               />
