@@ -1,6 +1,6 @@
 /** Builds xAPI 1.0.3-shaped statements from existing progress/quiz/SCORM/certificate rows, so they can be exported to any LRS. We don't run our own LRS; this is the interop boundary. */
 
-const BASE = "https://mobile-school.app/xapi";
+const BASE = "https://plusticity.app/xapi";
 
 export type XapiStatement = {
   id: string;
