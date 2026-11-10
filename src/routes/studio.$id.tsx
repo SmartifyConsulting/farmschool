@@ -3350,9 +3350,40 @@ function LessonEditor({
   link?: VideoLink | undefined;
   readOnly?: boolean;
 }) {
+  const { user: lessonUser } = useAuth();
   const [objectives, setObjectives] = useState(link?.objectives ?? "");
   const [title, setTitle] = useState(lesson.title);
   const [video, setVideo] = useState(lesson.video_url ?? "");
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
+  const uploadVideoFile = async (file: File) => {
+    if (!lessonUser) return;
+    if (!file.type.startsWith("video/")) {
+      toast.error("Choose a video file.");
+      return;
+    }
+    if (file.size > 500 * 1024 * 1024) {
+      toast.error("Video must be smaller than 500MB.");
+      return;
+    }
+    setUploadingVideo(true);
+    try {
+      const path = `${lessonUser.id}/${courseId}/${crypto.randomUUID()}-${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from("lesson-videos")
+        .upload(path, file, { contentType: file.type });
+      if (uploadError) throw uploadError;
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("lesson-videos").getPublicUrl(path);
+      setVideo(publicUrl);
+      toast.success("Video uploaded. Save the lesson to keep it.");
+    } catch (error) {
+      toast.error(friendlyError(error, "Could not upload the video."));
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
   const [body, setBody] = useState(lesson.body);
   const [kind, setKind] = useState(lesson.kind);
   const [initialQuiz] = useState(lesson.quiz);
@@ -3526,11 +3557,36 @@ function LessonEditor({
           />
         )}
         {lesson.kind === "video" && !link && (
-          <Input
-            value={video}
-            onChange={(e) => setVideo(e.target.value)}
-            placeholder="Video link (https://… .mp4 or YouTube)"
-          />
+          <div className="space-y-2">
+            <Input
+              value={video}
+              onChange={(e) => setVideo(e.target.value)}
+              placeholder="Video link (https://… .mp4 or YouTube)"
+            />
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={uploadingVideo}
+                onClick={() => videoFileInputRef.current?.click()}
+              >
+                {uploadingVideo ? "Uploading…" : "Upload a video file"}
+              </Button>
+              <span className="text-xs text-muted-foreground">MP4, up to 500MB</span>
+              <input
+                ref={videoFileInputRef}
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void uploadVideoFile(file);
+                  e.target.value = "";
+                }}
+              />
+            </div>
+          </div>
         )}
         {lesson.kind === "scorm" && (
           <ScormPicker value={scormLessonRef(body)} onChange={(pid) => setBody(`scorm:${pid}`)} />
