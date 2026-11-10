@@ -1,35 +1,32 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { summarisePlatform } from "@/lib/studio-analytics";
 
-/** Platform-wide performance for administrators: every course rolled up, plus SCORM completion. */
+type PlatformAnalytics = {
+  totals: {
+    courses: number;
+    publishedCourses: number;
+    learners: number;
+    avgScore: number | null;
+    certificates: number;
+    scormAttempts: number;
+    scormCompletionRate: number | null;
+    scormAvgScore: number | null;
+  };
+  courses: {
+    id: string;
+    title: string;
+    published: boolean;
+    learners: number;
+    completionRate: number;
+    avgScore: number | null;
+  }[];
+};
+
+/** Platform-wide analytics are aggregated in Postgres to avoid transferring all learner events. */
 export const getPlatformAnalytics = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    if (!isAdmin) throw new Error("Only administrators can view platform analytics.");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [
-      { data: courses },
-      { data: progress },
-      { data: attempts },
-      { data: certs },
-      { data: scormAttempts },
-    ] = await Promise.all([
-      supabaseAdmin.from("studio_courses").select("id, title, published"),
-      supabaseAdmin.from("lesson_progress").select("course_id, user_id, completed"),
-      supabaseAdmin.from("quiz_attempts").select("course_id, user_id, score, passed"),
-      supabaseAdmin.from("certificates").select("user_id").eq("source", "studio"),
-      supabaseAdmin.from("scorm_attempts").select("lesson_status, score_raw, score_max"),
-    ]);
-    return summarisePlatform({
-      courses: courses ?? [],
-      progress: progress ?? [],
-      attempts: attempts ?? [],
-      certificates: certs ?? [],
-      scormAttempts: scormAttempts ?? [],
-    });
+    const { data, error } = await context.supabase.rpc("admin_platform_analytics");
+    if (error) throw new Error("Could not load platform analytics.");
+    return data as PlatformAnalytics;
   });
