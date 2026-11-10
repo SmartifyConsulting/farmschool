@@ -10,11 +10,15 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: course } = await context.supabase
       .from("studio_courses")
-      .select("id, title, price_cents, currency, published")
+      .select("id, title, price_cents, currency, published, prerequisite_course_id")
       .eq("id", data.courseId)
       .eq("published", true)
       .maybeSingle();
     if (!course) return { error: "This course is not available." } as const;
+    if (course.prerequisite_course_id) {
+      const { data: prerequisiteOk } = await context.supabase.rpc("studio_prerequisite_satisfied", { _course: course.id });
+      if (!prerequisiteOk) return { error: "Complete the prerequisite course before enrolling." } as const;
+    }
     const { data: existing } = await context.supabase
       .from("course_enrollments")
       .select("id")
@@ -30,6 +34,8 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         course_id: course.id,
         amount_cents: 0,
         currency: course.currency,
+        payment_provider: "internal",
+        payment_status: "free",
       });
       if (error) return { error: "Could not enrol you in this course." } as const;
       return { kind: "enrolled" as const };
