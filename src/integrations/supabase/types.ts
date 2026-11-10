@@ -1392,7 +1392,7 @@ export type Database = {
     Functions: {
       admin_platform_analytics: { Args: never; Returns: Json };
       record_audit_event: { Args: { _action: string; _entity_type: string; _entity_id?: string; _metadata?: Json }; Returns: string };
-      reserve_api_key_request: { Args: { _key_id: string; _scope: string }; Returns: Json };
+      reserve_api_key_request: { Args: { _key_id: string; _scope: string }; Returns: boolean };
       studio_prerequisite_satisfied: { Args: { _course: string }; Returns: boolean };
       admin_set_user_role: {
         Args: {
