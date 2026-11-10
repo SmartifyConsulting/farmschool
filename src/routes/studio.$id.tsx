@@ -431,6 +431,7 @@ function Editor() {
   const [reviewingLessons, setReviewingLessons] = useState(false);
   const { user, ready: authReady } = useAuth();
   const [factoryStep, setFactoryStep] = useState(0);
+  const [showExtractedText, setShowExtractedText] = useState(false);
   const [firstContentPage, setFirstContentPage] = useState(1);
   const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
   const qc = useQueryClient();
@@ -2277,18 +2278,32 @@ function Editor() {
                         aria-label="Source document name"
                         maxLength={160}
                       />
-                      <Textarea
-                        value={sourceText}
-                        onChange={(e) => {
-                          setSourceText(e.target.value);
-                          setSourcePages(null);
-                          setDraft(null);
-                        }}
-                        placeholder={"Module 1: Introduction\\nYour training content..."}
-                        rows={6}
-                        maxLength={1000000}
-                        aria-label="Extracted manual text"
-                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowExtractedText((v) => !v)}
+                      >
+                        {showExtractedText
+                          ? "Hide extracted text"
+                          : sourceText
+                            ? "Edit extracted text"
+                            : "Paste text manually instead"}
+                      </Button>
+                      {showExtractedText && (
+                        <Textarea
+                          value={sourceText}
+                          onChange={(e) => {
+                            setSourceText(e.target.value);
+                            setSourcePages(null);
+                            setDraft(null);
+                          }}
+                          placeholder={"Module 1: Introduction\\nYour training content..."}
+                          rows={6}
+                          maxLength={1000000}
+                          aria-label="Extracted manual text"
+                        />
+                      )}
                       <Button
                         type="button"
                         variant="outline"
