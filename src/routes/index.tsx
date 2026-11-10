@@ -21,10 +21,10 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Plusticity is the app that flexes your brain. Bite-sized courses, quizzes and real skills you can build anywhere, on any device.",
+          "Plusticity is the app that flexes your brain. Bite-sized courses, quizzes and real skills you can build at your own pace.",
       },
       { property: "og:title", content: "Plusticity" },
-      { property: "og:description", content: "The app that flexes your brain, on any device." },
+      { property: "og:description", content: "The app that flexes your brain." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -132,7 +132,7 @@ function Hero() {
         />
         <div className="relative p-6 md:p-10">
           <h2 className="max-w-lg text-2xl font-extrabold tracking-tight md:text-4xl">
-            The app that flexes your brain, on any phone
+            The app that flexes your brain
           </h2>
           <p className="mt-3 max-w-md text-sm opacity-85">
             Practical courses built with expert trainers, covering real skills across every topic.

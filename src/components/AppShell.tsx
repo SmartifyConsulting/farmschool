@@ -28,7 +28,7 @@ import {
 const tabs = [
   { to: "/", icon: Home, label: "Home" },
   { to: "/search", icon: Search, label: "Catalogue" },
-  { to: "/courses", icon: BookOpen, label: "My Courses" },
+  { to: "/courses", icon: BookOpen, label: "My Learning" },
 ] as const;
 
 export function useIsAdmin() {

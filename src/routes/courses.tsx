@@ -11,8 +11,8 @@ import { pageMeta } from "@/lib/page-meta";
 export const Route = createFileRoute("/courses")({
   head: () =>
     pageMeta(
-      "My Courses — Plusticity",
-      "Continue learning and track completed or saved courses.",
+      "My Learning — Plusticity",
+      "Continue learning and track completed or saved courses you're taking.",
     ),
   component: MyCourses,
 });
@@ -101,7 +101,7 @@ function MyCourses() {
     <Phone>
       <Header />
       <Sheet>
-        <CanvasHeading title="My courses" />
+        <CanvasHeading title="My learning" />
         <div className="mt-4">
           <SearchBox />
         </div>
