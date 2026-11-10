@@ -1644,7 +1644,10 @@ function Editor() {
         </div>
         <div className="grid min-w-0 gap-6 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
           <aside className="min-w-0 border-b border-border pb-4 lg:border-b-0 lg:border-r lg:pr-5">
-            <nav aria-label="Course workspace" className="grid grid-cols-2 gap-1 lg:grid-cols-1">
+            <nav
+              aria-label="Course workspace"
+              className="grid grid-cols-2 gap-1.5 lg:grid-cols-1 lg:gap-1"
+            >
               {[
                 { key: "overview", label: "Course details" },
                 { key: "import", label: "Manual & learning design" },
@@ -1677,7 +1680,7 @@ function Editor() {
             </div>
             <div className="mt-2 max-h-72 space-y-4 overflow-y-auto lg:max-h-[65vh]">
               {modules.map((mod) => (
-                <div key={mod.key}>
+                <div key={mod.key} className="space-y-0.5">
                   <Button
                     variant={screen === mod.key ? "secondary" : "ghost"}
                     className="h-auto w-full justify-start whitespace-normal text-left text-xs font-bold"
@@ -1686,37 +1689,39 @@ function Editor() {
                     {mod.title}
                     <span className="ml-auto pl-2 text-muted-foreground">{mod.lessons.length}</span>
                   </Button>
-                  {mod.lessons.map((lesson) => {
-                    const Icon =
-                      lesson.kind === "quiz"
-                        ? HelpCircle
-                        : lesson.kind === "video"
-                          ? Video
-                          : lesson.kind === "scorm"
-                            ? Package
-                            : FileText;
-                    return (
-                      <Button
-                        key={lesson.id}
-                        variant={
-                          screen === "lesson" && selectedLesson === lesson.id
-                            ? "secondary"
-                            : "ghost"
-                        }
-                        className="h-auto min-h-10 w-full justify-start whitespace-normal text-left text-xs"
-                        onClick={() => {
-                          setSelectedLesson(lesson.id);
-                          setScreen("lesson");
-                        }}
-                      >
-                        <Icon className="h-4 w-4 shrink-0" />
-                        <span className="min-w-0 flex-1 break-words">{lesson.title}</span>
-                        {lessonIsComplete(lesson) && (
-                          <Check className="h-3 w-3 shrink-0 text-primary" />
-                        )}
-                      </Button>
-                    );
-                  })}
+                  <div className="space-y-0.5 border-l border-border pl-2">
+                    {mod.lessons.map((lesson) => {
+                      const Icon =
+                        lesson.kind === "quiz"
+                          ? HelpCircle
+                          : lesson.kind === "video"
+                            ? Video
+                            : lesson.kind === "scorm"
+                              ? Package
+                              : FileText;
+                      return (
+                        <Button
+                          key={lesson.id}
+                          variant={
+                            screen === "lesson" && selectedLesson === lesson.id
+                              ? "secondary"
+                              : "ghost"
+                          }
+                          className="h-auto min-h-10 w-full justify-start whitespace-normal text-left text-xs"
+                          onClick={() => {
+                            setSelectedLesson(lesson.id);
+                            setScreen("lesson");
+                          }}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          <span className="min-w-0 flex-1 break-words">{lesson.title}</span>
+                          {lessonIsComplete(lesson) && (
+                            <Check className="h-3 w-3 shrink-0 text-primary" />
+                          )}
+                        </Button>
+                      );
+                    })}
+                  </div>
                 </div>
               ))}
             </div>
