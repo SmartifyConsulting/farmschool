@@ -24,6 +24,7 @@ import { Route as SearchRouteImport } from './routes/search'
 import { Route as StudioRouteImport } from './routes/studio'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminApiConnectionsRouteImport } from './routes/admin.api-connections'
 import { Route as AdminCreatorsRouteImport } from './routes/admin.creators'
 import { Route as AdminExternalContentRouteImport } from './routes/admin.external-content'
@@ -117,6 +118,11 @@ const TermsRoute = TermsRouteImport.update({
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
+  id: '/admin/analytics',
+  path: '/admin/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminApiConnectionsRoute = AdminApiConnectionsRouteImport.update({
@@ -231,6 +237,7 @@ export interface FileRoutesByFullPath {
   '/search': typeof SearchRoute
   '/studio': typeof StudioRouteWithChildren
   '/terms': typeof TermsRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/api-connections': typeof AdminApiConnectionsRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
@@ -267,6 +274,7 @@ export interface FileRoutesByTo {
   '/search': typeof SearchRoute
   '/studio': typeof StudioRouteWithChildren
   '/terms': typeof TermsRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/api-connections': typeof AdminApiConnectionsRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
@@ -304,6 +312,7 @@ export interface FileRoutesById {
   '/search': typeof SearchRoute
   '/studio': typeof StudioRouteWithChildren
   '/terms': typeof TermsRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/api-connections': typeof AdminApiConnectionsRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
@@ -342,6 +351,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/studio'
     | '/terms'
+    | '/admin/analytics'
     | '/admin/api-connections'
     | '/admin/creators'
     | '/admin/external-content'
@@ -378,6 +388,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/studio'
     | '/terms'
+    | '/admin/analytics'
     | '/admin/api-connections'
     | '/admin/creators'
     | '/admin/external-content'
@@ -414,6 +425,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/studio'
     | '/terms'
+    | '/admin/analytics'
     | '/admin/api-connections'
     | '/admin/creators'
     | '/admin/external-content'
@@ -451,6 +463,7 @@ export interface RootRouteChildren {
   SearchRoute: typeof SearchRoute
   StudioRoute: typeof StudioRouteWithChildren
   TermsRoute: typeof TermsRoute
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminApiConnectionsRoute: typeof AdminApiConnectionsRoute
   AdminCreatorsRoute: typeof AdminCreatorsRoute
   AdminExternalContentRoute: typeof AdminExternalContentRoute
@@ -577,6 +590,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/admin/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/api-connections': {
@@ -741,6 +761,7 @@ const rootRouteChildren: RootRouteChildren = {
   SearchRoute: SearchRoute,
   StudioRoute: StudioRouteWithChildren,
   TermsRoute: TermsRoute,
+  AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminApiConnectionsRoute: AdminApiConnectionsRoute,
   AdminCreatorsRoute: AdminCreatorsRoute,
   AdminExternalContentRoute: AdminExternalContentRoute,
