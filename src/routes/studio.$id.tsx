@@ -21,6 +21,8 @@ import { LessonAssistant } from "@/components/LessonAssistant";
 import { VideoLibraryPicker } from "@/components/VideoLibraryPicker";
 import { CoverImageInput } from "@/components/CoverImageInput";
 import { FormattedLesson } from "@/components/FormattedLesson";
+import { SlideEditor } from "@/components/SlideEditor";
+import { formatManualAsSlides, parseLessonSlides, splitLessonSource } from "@/lib/lesson-slides";
 import { ManualLessonReview } from "@/components/ManualLessonReview";
 import { StudioVersions } from "@/components/StudioVersions";
 import { StudioCourseActions } from "@/components/StudioCourseActions";
@@ -186,6 +188,7 @@ function lessonIsComplete(lesson: LessonRow) {
   if (lesson.kind === "quiz") return Array.isArray(lesson.quiz) && (lesson.quiz as unknown[]).length > 0;
   if (lesson.kind === "video") return !!lesson.video_url;
   if (lesson.kind === "scorm") return !!scormLessonRef(lesson.body);
+  if (lesson.kind === "slide") return parseLessonSlides(lesson.body).some((slide) => slide.blocks.length > 0);
   return lesson.body.trim().length > 0 && !lesson.body.includes("Review required before publishing.");
 }
 
@@ -213,6 +216,7 @@ function Editor() {
   const [sourceName, setSourceName] = useState("Training manual");
   const [draft, setDraft] = useState<DraftCourse | null>(null);
   const [importing, setImporting] = useState(false);
+  const [manualFormat, setManualFormat] = useState<"reading" | "slide">("reading");
   const [readingFile, setReadingFile] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiDraft, setAiDraft] = useState<{ lessonTitle: string; lessonSummary: string; questions: { question: string; options: string[]; correctIndex: number; sourceQuote: string }[]; droppedUnsupportedQuestions: number } | null>(null);
@@ -505,7 +509,11 @@ function Editor() {
   };
   const importDraft = async () => {
     if (!draft?.lessons.length || importing || course?.published) return;
-    if (draft.lessons.some((lesson) => lesson.body.length > 19000)) { toast.error("A lesson exceeds the 20,000-character limit. Split the source into smaller modules."); return; }
+    const bodies = draft.lessons.map((lesson) => {
+      const body = manualFormat === "slide" ? formatManualAsSlides(lesson.body) : lesson.body;
+      return body + "\n\nSource: " + lesson.sourceRefs.map((ref) => ref.sourceId + ", page " + ref.page).join("; ") + "\nReview required before publishing.";
+    });
+    if (bodies.some((body) => body.length > 20000)) { toast.error("A lesson exceeds the 20,000-character limit. Split the source into smaller lessons."); return; }
     setImporting(true);
     try {
       const start = lessons?.length ?? 0;
@@ -518,12 +526,12 @@ function Editor() {
         for (const m of (created ?? []) as unknown as { id: string; title: string }[]) moduleIds.set(m.title, m.id);
       }
       const rows = draft.lessons.map((lesson, index) => ({
-        course_id: id, kind: "reading", position: start + index, title: lesson.title, module_id: lesson.module ? moduleIds.get(lesson.module) ?? null : null,
-        body: `${lesson.body}\n\nSource: ${lesson.sourceRefs.map((ref) => `${ref.sourceId}, page ${ref.page}`).join("; ")}\nReview required before publishing.`,
+        course_id: id, kind: manualFormat, position: start + index, title: lesson.title, module_id: lesson.module ? moduleIds.get(lesson.module) ?? null : null,
+        body: bodies[index]!,
       }));
       const { error } = await supabase.from("studio_lessons").insert(rows);
       if (error) throw error;
-      toast.success(`Imported ${rows.length} reading lessons for review.`);
+      toast.success(`Imported ${rows.length} ${manualFormat === "slide" ? "slide" : "reading"} lessons for review.`);
       setDraft(null); setSourceText(""); refresh(); qc.invalidateQueries({ queryKey: ["studio-modules", id] });
     } catch (error) { toast.error(friendlyError(error, "Import failed.")); }
     finally { setImporting(false); }
@@ -651,7 +659,7 @@ function Editor() {
     queryFn: async () => ((await supabase.from("course_external_content").select("id, lesson_id, item_id, objectives, item:external_content_items(title, provider:external_content_providers(name))").eq("course_id", id)).data ?? []) as unknown as VideoLink[],
   });
   const addLesson = async (kind: string, moduleId?: string | null) => {
-    const title = kind === "quiz" ? "Knowledge check" : kind === "video" ? "New video lesson" : kind === "scorm" ? "SCORM e-learning" : "New reading";
+    const title = kind === "quiz" ? "Knowledge check" : kind === "video" ? "New video lesson" : kind === "scorm" ? "SCORM e-learning" : kind === "slide" ? "New slide lesson" : "New reading";
     const { data, error } = await supabase.from("studio_lessons").insert({ course_id: id, kind, position: (lessons?.at(-1)?.position ?? -1) + 1, title, module_id: moduleId ?? null }).select("id").single();
     if (error || !data) toast.error("Could not add lesson."); else { refresh(); setSelectedLesson(data.id); setScreen("lesson"); }
   };
@@ -791,6 +799,7 @@ function Editor() {
           </div>
           <div className="mt-4 flex flex-wrap gap-1">
             <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("reading")}><Plus className="h-3 w-3" />Reading</Button>
+            <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("slide")}><LayoutGrid className="h-3 w-3" />Slides</Button>
             <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("video")}><Video className="h-3 w-3" />Video</Button>
             <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("quiz")}><HelpCircle className="h-3 w-3" />Quiz</Button>
             <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("scorm")}><Package className="h-3 w-3" />SCORM</Button>
@@ -871,6 +880,7 @@ function Editor() {
               <Button size="sm" variant="outline" onClick={() => addLesson("video")}><Video className="h-4 w-4" />Video</Button>
               <VideoLibraryPicker courseId={id} position={lessons?.length ?? 0} usedItemIds={videoLinks.map((v) => v.item_id)} onAdded={() => { refresh(); void refetchLinks(); }} />
               <Button size="sm" variant="outline" onClick={() => addLesson("reading")}><FileText className="h-4 w-4" />Reading</Button>
+              <Button size="sm" variant="outline" onClick={() => addLesson("slide")}><LayoutGrid className="h-4 w-4" />Slides</Button>
               <Button size="sm" variant="outline" onClick={() => addLesson("quiz")}><HelpCircle className="h-4 w-4" />Quiz</Button>
               <Button size="sm" variant="outline" onClick={() => addLesson("scorm")}><Package className="h-4 w-4" />SCORM</Button>
             </div>
@@ -1010,6 +1020,11 @@ function Editor() {
               </div>
               <div className="flex items-center justify-between border-t border-border pt-3">
                 <Button variant="outline" onClick={() => setFactoryStep(1)}>Back: Review & approve</Button>
+                <label className="flex flex-wrap items-center gap-2 text-sm">Import as
+                  <select className="rounded-md border border-input bg-background px-2 py-1" value={manualFormat} disabled={importing || !!course.published} onChange={(event) => setManualFormat(event.target.value === "slide" ? "slide" : "reading")}>
+                    <option value="reading">Reading lessons</option><option value="slide">Interactive slides</option>
+                  </select>
+                </label>
                 <Button type="button" onClick={importDraft} disabled={!draft.lessons.length || importing || !!course.published}>{importing ? "Importing…" : "Add draft lessons to course"}</Button>
               </div>
               {course.published && <p className="text-xs text-destructive">Unpublish the course before importing draft material.</p>}
@@ -1157,13 +1172,14 @@ function LessonEditor({ lesson, index, onChange, courseId, sourceText, link, rea
   const [title, setTitle] = useState(lesson.title);
   const [video, setVideo] = useState(lesson.video_url ?? "");
   const [body, setBody] = useState(lesson.body);
+  const [kind, setKind] = useState(lesson.kind);
   const [qs, setQs] = useState<Q[]>(() => ((lesson.quiz as { q: string; options: string[] }[]) ?? []).map((x) => ({ ...x, answer: 0 })));
   const [passMark, setPassMark] = useState(() => parsePassMark(lesson.body));
   const [open] = useState(true);
   const confirm = useConfirm();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(true);
-  const baseline = useRef(JSON.stringify({ title: lesson.title, video: lesson.video_url ?? "", body: lesson.body, qs, passMark, objectives }));
+  const baseline = useRef(JSON.stringify({ title: lesson.title, video: lesson.video_url ?? "", body: lesson.body, kind: lesson.kind, qs, passMark, objectives }));
   useEffect(() => {
     if (!open || lesson.kind !== "quiz") return;
     supabase.from("studio_quiz_answers").select("answers").eq("lesson_id", lesson.id).maybeSingle().then(({ data }) => {
@@ -1176,8 +1192,12 @@ function LessonEditor({ lesson, index, onChange, courseId, sourceText, link, rea
     setSaving(true);
     try {
     if (video && !/^https:\/\//.test(video)) { if (!silent) toast.error("Video link must start with https://"); return; }
+    if (kind === "slide" && !parseLessonSlides(body).some((slide) => slide.blocks.length > 0)) {
+      if (!silent) toast.error("Add teaching text or an activity to your slides before saving.");
+      return;
+    }
     const clean = qs.filter((q) => q.q.trim() && q.options.filter((o) => o.trim()).length >= 2);
-    const { error } = await supabase.from("studio_lessons").update({ title, video_url: video || null, body: lesson.kind === "quiz" ? `pass:${passMark}` : body, quiz: clean.map(({ q, options }) => ({ q, options })) }).eq("id", lesson.id);
+    const { error } = await supabase.from("studio_lessons").update({ title, kind, video_url: video || null, body: kind === "quiz" ? `pass:${passMark}` : body, quiz: clean.map(({ q, options }) => ({ q, options })) }).eq("id", lesson.id);
     if (error) { if (!silent) toast.error("Could not save lesson."); return; }
     if (link) {
       const { error: e3 } = await supabase.from("course_external_content").update({ objectives }).eq("id", link.id);
@@ -1188,14 +1208,14 @@ function LessonEditor({ lesson, index, onChange, courseId, sourceText, link, rea
       if (e2) { if (!silent) toast.error("Could not save answers."); return; }
     }
     if (!silent) toast.success("Lesson saved");
-    baseline.current = JSON.stringify({ title, video, body, qs, passMark, objectives });
+    baseline.current = JSON.stringify({ title, video, body, kind, qs, passMark, objectives });
     setSaved(true);
     onChange();
     } finally { setSaving(false); }
   };
   useEffect(() => {
-    setSaved(baseline.current === JSON.stringify({ title, video, body, qs, passMark, objectives }));
-  }, [title, video, body, qs, passMark, objectives]);
+    setSaved(baseline.current === JSON.stringify({ title, video, body, kind, qs, passMark, objectives }));
+  }, [title, video, body, kind, qs, passMark, objectives]);
   const del = async () => {
     if (readOnly || !(await confirm({ tone: "danger", title: "Delete this lesson?", description: `“${lesson.title}” will be removed from this course. This cannot be undone.`, confirmLabel: "Delete lesson" }))) return;
     const { error } = await supabase.from("studio_lessons").delete().eq("id", lesson.id);
@@ -1212,8 +1232,15 @@ function LessonEditor({ lesson, index, onChange, courseId, sourceText, link, rea
         {link && <Textarea value={objectives} onChange={(e) => setObjectives(e.target.value)} rows={3} maxLength={2000} placeholder="Learning objectives, one per line" aria-label="Learning objectives" />}
         {lesson.kind === "video" && !link && <Input value={video} onChange={(e) => setVideo(e.target.value)} placeholder="Video link (https://… .mp4 or YouTube)" />}
         {lesson.kind === "scorm" && <ScormPicker value={scormLessonRef(body)} onChange={(pid) => setBody(`scorm:${pid}`)} />}
-        {lesson.kind !== "quiz" && lesson.kind !== "scorm" && <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={14} aria-label="Lesson notes" placeholder="Lesson notes, steps or checklist" maxLength={20000} />}
-        {!readOnly && lesson.kind !== "scorm" && <LessonAssistant courseId={courseId} title={title} kind={lesson.kind} text={lesson.kind === "quiz" ? sourceText : body} onText={setBody} onQuestions={(n) => setQs((cur) => [...cur.filter((q) => q.q.trim()), ...n])} />}
+        {kind === "slide" && !readOnly && <SlideEditor value={body} onChange={setBody} readOnly={false} />}
+        {kind !== "quiz" && kind !== "scorm" && kind !== "slide" && <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={14} aria-label="Lesson notes" placeholder="Lesson notes, steps or checklist" maxLength={20000} />}
+        {kind === "reading" && !readOnly && <Button type="button" size="sm" variant="outline" onClick={() => {
+          const { content, footer } = splitLessonSource(body);
+          const next = formatManualAsSlides(content) + footer;
+          if (next.length > 20000) { toast.error("Shorten the reading before converting it to slides."); return; }
+          setBody(next); setKind("slide");
+        }}><LayoutGrid />Turn reading into slides</Button>}
+        {!readOnly && kind !== "scorm" && kind !== "slide" && <LessonAssistant courseId={courseId} title={title} kind={kind} text={kind === "quiz" ? sourceText : body} onText={setBody} onQuestions={(n) => setQs((cur) => [...cur.filter((q) => q.q.trim()), ...n])} />}
         {lesson.kind === "quiz" && <div className="space-y-3">
           {qs.map((q, qi) => (
             <div key={qi} className="space-y-1.5 rounded-xl bg-muted/50 p-2">
@@ -1231,6 +1258,7 @@ function LessonEditor({ lesson, index, onChange, courseId, sourceText, link, rea
         </div>}
         <div className="flex gap-2"><Button size="sm" disabled={saving || readOnly} onClick={() => void save()}>{saving ? "Saving…" : "Save lesson"}</Button><Button size="sm" variant="ghost" className="text-destructive" onClick={del}>{link ? "Remove from course" : "Delete"}</Button></div>
       </fieldset>
+      {kind === "slide" && readOnly && <div className="px-4 pb-4 md:px-6 md:pb-6"><SlideEditor value={body} onChange={setBody} readOnly /></div>}
     </div>
   );
 }

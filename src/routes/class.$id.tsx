@@ -14,6 +14,10 @@ import { toast } from "sonner";
 import { ExternalVideo, LINKED_VIDEO_SELECT, type LinkedVideo } from "@/components/ExternalVideo";
 import { FormattedLesson } from "@/components/FormattedLesson";
 import { ScormLesson } from "@/components/ScormLesson";
+import { SlidePlayer } from "@/components/SlidePlayer";
+import { LessonNarration } from "@/components/LessonNarration";
+import { LessonTutor } from "@/components/LessonTutor";
+import { lessonContentKey, parseLessonSlides, slideText, splitLessonSource } from "@/lib/lesson-slides";
 
 export const Route = createFileRoute("/class/$id")({
   head: () => ({ meta: [
@@ -55,10 +59,23 @@ function ClassPage() {
   const count = (lessons ?? []).filter((l) => done.has(l.id)).length;
   const pct = total ? Math.round((count / total) * 100) : 0;
   const lesson = lessons?.[idx];
+  const slides = lesson?.kind === "slide" ? parseLessonSlides(lesson.body) : [];
+  const slideKey = lesson?.kind === "slide"
+    ? ["mobile-school", "slides", user?.id ?? "guest", lesson.id, lessonContentKey(JSON.stringify(slides))].join(":") : "";
+  const narration = lesson?.kind === "slide"
+    ? slides.map((slide) => slideText(slide, false)).join("\n\n")
+    : lesson && (lesson.kind === "reading" || lesson.kind === "video") ? splitLessonSource(lesson.body).content : "";
 
   if (isLoading) return <Phone><Header title="Loading…" /></Phone>;
   if (!course) return <Phone><Header title="Course not found" /><Sheet><Link to="/search" className="text-primary">Browse the catalogue</Link></Sheet></Phone>;
-  const markDone = () => { if (!user) { toast.error("Sign in to track progress."); return; } save.mutate({ course_id: id, lesson_id: lesson!.id, completed: true }); if (idx < total - 1) setIdx(idx + 1); };
+  const markDone = () => {
+    if (!lesson || save.isPending || done.has(lesson.id)) return;
+    if (!user) { toast.error("Sign in to track progress."); return; }
+    save.mutate({ course_id: id, lesson_id: lesson.id, completed: true }, {
+      onSuccess: () => setIdx((current) => current === idx && idx < total - 1 ? idx + 1 : current),
+      onError: (error) => toast.error(friendlyError(error, "Could not save lesson progress.")),
+    });
+  };
 
   return (
     <Phone>
@@ -73,11 +90,16 @@ function ClassPage() {
                 ? <iframe src={youtubeEmbed(lesson.video_url)!} title={lesson.title} className="aspect-video w-full rounded-2xl" allow="accelerometer; encrypted-media; picture-in-picture" allowFullScreen />
                 : <video src={lesson.video_url} controls playsInline className="aspect-video w-full rounded-2xl bg-foreground" onEnded={markDone} />)}
               <h2 className="text-lg font-semibold">{lesson.title}</h2>
+              {narration.trim() && <div className="flex flex-wrap gap-2">
+                <LessonNarration key={lesson.id + ":" + lessonContentKey(narration)} text={narration} />
+                {course.published && <LessonTutor key={lesson.id + ":" + (user?.id ?? "guest")} courseId={id} lessonId={lesson.id} title={lesson.title} signedIn={!!user} />}
+              </div>}
               {lesson.kind === "scorm" && <ScormLesson key={lesson.id} body={lesson.body} onFinished={() => { if (user && !done.has(lesson.id)) save.mutate({ course_id: id, lesson_id: lesson.id, completed: true }); }} />}
-              {lesson.body && lesson.kind !== "quiz" && lesson.kind !== "scorm" && <FormattedLesson content={lesson.body} />}
+              {lesson.body && (lesson.kind === "reading" || lesson.kind === "video") && <FormattedLesson content={lesson.body} />}
               {lesson.kind === "quiz" ? <Quiz key={lesson.id} lesson={lesson} courseId={id} passed={done.has(lesson.id)} />
                 : lesson.kind === "scorm" ? <p className="text-sm text-muted-foreground">{done.has(lesson.id) ? "Completed" : "This lesson completes automatically when you finish the e-learning."}</p>
-                : <Button onClick={markDone} disabled={done.has(lesson.id)}>{done.has(lesson.id) ? "Completed" : "Mark as complete"}</Button>}
+                : lesson.kind === "slide" ? <SlidePlayer key={slideKey} storageKey={slideKey} slides={slides} completed={done.has(lesson.id)} saving={save.isPending} onComplete={markDone} />
+                : <Button onClick={markDone} disabled={done.has(lesson.id) || save.isPending}>{done.has(lesson.id) ? "Completed" : "Mark as complete"}</Button>}
             </>) : <p className="text-sm text-muted-foreground">This course has no lessons yet.</p>}
             {course.published && activities.length > 0 && <section className="space-y-3" aria-label="Trainer-approved learning activities">
               <h2 className="text-lg font-semibold">Practical activities</h2>

@@ -1090,6 +1090,7 @@ export type Database = {
         Returns: undefined
       }
       course_factory_reserve_ai_request: { Args: never; Returns: number }
+      lesson_tutor_reserve_request: { Args: never; Returns: number }
       creator_review_application: {
         Args: { _approve: boolean; _notes?: string; _user_id: string }
         Returns: undefined
