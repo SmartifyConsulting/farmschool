@@ -230,7 +230,7 @@ function ClassPage() {
                     {prerequisiteLocked ? "This course unlocks after you earn the prerequisite certificate." : `${formatPrice(course.price_cents, course.currency)} · one-time purchase`}
                   </p>
                   {!prerequisiteLocked && <Button
-                    disabled={buying || !user}
+                    disabled={buying || !user || prerequisiteLoading}
                     onClick={async () => {
                       if (!user) {
                         toast.error("Sign in to buy this course.");
