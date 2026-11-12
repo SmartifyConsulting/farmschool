@@ -29,7 +29,8 @@
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
   --font-sans: "Manrope Variable", "Manrope", system-ui, sans-serif;
-  --font-display: "Manrope Variable", "Manrope", system-ui, sans-serif;
+  --font-display: "Sora Variable", "Sora", system-ui, sans-serif;
+  --font-script: "Sora Variable", "Sora", system-ui, sans-serif;
   --shadow-card: 0 1px 2px rgb(13 13 13 / 0.05), 0 8px 24px -12px rgb(13 13 13 / 0.10);
   --shadow-elevated: 0 1px 2px rgb(13 13 13 / 0.06), 0 16px 40px -16px rgb(13 13 13 / 0.18);
   --color-background: var(--background);
@@ -187,4 +188,9 @@
   body * { visibility: hidden; }
   #certificate, #certificate * { visibility: visible; }
   #certificate { position: fixed; inset: 0; margin: auto; height: fit-content; }
+}
+
+@layer base {
+  body { font-family: var(--font-sans); }
+  h1, h2, h3 { font-family: var(--font-sans); text-transform: none; letter-spacing: -0.01em; font-weight: 700; }
 }

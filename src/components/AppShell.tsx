@@ -52,7 +52,7 @@ export function useIsAdmin() {
 export function Phone({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   return (
-    <div className="min-h-screen bg-muted md:pl-[230.4px]">
+    <div className="min-h-screen bg-muted md:pl-[240px]">
       <DesktopSidebar />
       <div className="relative mx-auto min-h-screen w-full max-w-md overflow-hidden bg-card pb-32 md:max-w-none md:pb-14">
         {children}
@@ -81,16 +81,16 @@ export function Phone({ children }: { children: ReactNode }) {
 function DesktopSidebar() {
   const path = useRouterState({ select: (state) => state.location.pathname });
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[230.4px] flex-col overflow-y-auto bg-[#2765BC] px-4 py-6 text-white md:flex">
-      <Link to="/" aria-label="Plusticity home" className="mb-6 flex shrink-0 justify-center">
-        <img src={logo} alt="Plusticity" className="h-[149.04px] max-w-full object-contain" />
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[240px] flex-col overflow-y-auto bg-[#2765BC] px-4 py-6 text-white md:flex">
+      <Link to="/" aria-label="Plusticity home" className="flex shrink-0 justify-center px-1 pb-5">
+        <img src={logo} alt="Plusticity" className="h-[173px] w-auto max-w-full rounded-lg object-contain" />
       </Link>
       <nav aria-label="Main navigation" className="space-y-2">
         {[...tabs, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const].map((item) => {
           const active = path === item.to || (item.to !== "/" && path.startsWith(item.to + "/"));
           return (
             <Link key={item.to} to={item.to} aria-current={active ? "page" : undefined}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-colors ${active ? "bg-white/25 text-white shadow-sm" : "text-white hover:bg-white/15"}`}>
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium transition-colors ${active ? "bg-white/15 font-semibold text-white" : "text-white/85 hover:bg-white/10 hover:text-white"}`}>
               <item.icon aria-hidden="true" className="h-5 w-5 shrink-0" />
               {item.label}
             </Link>
@@ -246,11 +246,11 @@ export function Header({ children, wide = false }: { children?: ReactNode; wide?
 /** The page title block, placed in the white canvas (Sheet) rather than the gradient banner. */
 export function CanvasHeading({ eyebrow, title }: { eyebrow?: string; title: string }) {
   return (
-    <div>
+    <div className="mb-5 border-b border-border pb-4">
       {eyebrow && (
         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">{eyebrow}</p>
       )}
-      <h1 className="mt-1 text-xl font-bold tracking-tight text-navy md:text-3xl">{title}</h1>
+      <h1 className="mt-1 font-sans text-3xl font-bold normal-case tracking-tight text-navy md:text-4xl">{title}</h1>
     </div>
   );
 }
@@ -268,7 +268,7 @@ export function SearchBox() {
 
 function Footer() {
   return (
-    <footer className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-card px-5 py-2 text-[11px] text-muted-foreground md:left-[230.4px] md:px-10">
+    <footer className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-card px-5 py-2 text-[11px] text-muted-foreground md:left-[240px] md:px-10">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-1 sm:flex-row sm:justify-between">
         <p>© 2026 Smartify Consulting (Pty) Ltd. All rights reserved.</p>
         <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-3">
@@ -296,7 +296,7 @@ function Footer() {
 
 export function Sheet({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   return (
-    <div className="bg-card px-5 pt-8 md:px-10">
+    <div className="bg-card px-5 pt-8 md:px-10 md:pt-12">
       <div className={wide ? "mx-auto w-full max-w-none" : "mx-auto max-w-6xl"}>{children}</div>
     </div>
   );
