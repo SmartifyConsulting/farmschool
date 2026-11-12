@@ -385,12 +385,12 @@ deferred at the user's request until sender details/configuration are supplied.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041 through 0051 and 0053 through 0075. Migration 0052 belongs to the intervening
+migrations 0041 through 0051 and 0053 through 0076. Migration 0052 belongs to the intervening
 Lovable API-management update and was not deployed by this certificate work.
 Test fixtures were rolled back; existing learner
 records were not edited.
 
-Dynamic cohort rules are implemented in migrations 0069–0070, including saved-rule previews, manual-member protection, exclusion controls, scoped history/CSV, atomic capacity checks and a bounded database scheduler. Rules default to paused. Scheduled company cohort progress snapshots and CSV downloads are implemented in migration 0071; email remains deferred. See docs/SCHEDULED_COHORT_REPORTS.md. See docs/DYNAMIC_COHORT_RULES.md. Current checks: 298 passed, 17 environment-gated skipped; production build/type checks passed. The cohort-rule timer succeeded at 17:45 UTC on 12 November 2026. The report timer succeeded at 17:52 UTC. Browser verification remains.
+Dynamic cohort rules are implemented in migrations 0069–0070, including saved-rule previews, manual-member protection, exclusion controls, scoped history/CSV, atomic capacity checks and a bounded database scheduler. Rules default to paused. Scheduled company cohort progress snapshots and CSV downloads are implemented in migration 0071; email remains deferred. See docs/SCHEDULED_COHORT_REPORTS.md. See docs/DYNAMIC_COHORT_RULES.md. Current checks: 301 passed, 17 environment-gated skipped; production build/type checks passed. The cohort-rule timer succeeded at 17:45 UTC on 12 November 2026. The report timer succeeded at 17:52 UTC. Browser verification remains.
 
 Studio manual import now offers opt-in, local English scanned-PDF recognition with progress, cancellation, page/pixel limits and author review. See docs/SCANNED_DOCUMENT_IMPORT.md. Broader media conversion and browser verification remain.
 
@@ -403,3 +403,5 @@ Optional private exam pools are implemented in migration 0073. Learner-readable 
 Select-all exact-set and numerical-tolerance assessments are implemented in migration 0074, with author/learner controls, private keys, native archive/library transfers and SCORM grading. Numerical XML transfer is supported; exact-set XML export is blocked to preserve grading semantics. See docs/EXTENDED_ASSESSMENTS.md. Broader exam policy/partial-credit/adaptive formats remain.
 
 Exam attempt controls and durable answer recovery are implemented in migration 0075: cycle-based start caps, time limits, minimum spacing between starts, idempotent starts, saved-answer conflict checks, immutable resumption and protected replacement. Renewal opens a fresh allowance after closing unfinished prior-cycle attempts. Copies/revisions/archives preserve controls. See docs/EXAM_ATTEMPT_CONTROLS.md. Alternative grade aggregation, accommodations, browser verification and broader assessment formats remain.
+
+Contextual organization branding now follows authorized workspace, native course, Studio and gradebook screens via migration 0076. Branding does not grant content or management access; former-member and cross-tenant checks passed. Readable brand shades and safe logo fallback are implemented. See docs/SCOPED_LEARNING_BRANDING.md. Custom domains, public sign-in and branded email/certificate templates remain.

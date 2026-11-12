@@ -11,7 +11,7 @@ import {
   BarChart3,
   Building2,
 } from "lucide-react";
-import { type ReactNode } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 import logo from "@/assets/plusticity-logo.png";
 import mobileLogo from "@/assets/plusticity-logo-navy.png";
 import { useBookmarks, useAuth } from "@/hooks/useLearning";
@@ -21,6 +21,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
+import { LearningBrandContext, OrganizationLogo, useLearningBrand, useLearningBrandForPath } from "@/components/LearningBrand";
+import { accessibleBrandColor } from "@/lib/learning-brand";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,8 +55,11 @@ export function useIsAdmin() {
 
 export function Phone({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const brand = useLearningBrandForPath(path);
+  const theme = brand ? { "--primary": accessibleBrandColor(brand.color).css, "--primary-foreground": "oklch(1 0 0)", "--ring": accessibleBrandColor(brand.color).css } as CSSProperties : undefined;
   return (
-    <div className="min-h-screen bg-muted md:pl-[240px]">
+    <LearningBrandContext.Provider value={brand}>
+    <div style={theme} className="min-h-screen bg-muted md:pl-[240px]">
       <DesktopSidebar />
       <div className="relative mx-auto min-h-screen w-full max-w-md overflow-hidden bg-card pb-32 md:max-w-none md:pb-14">
         {children}
@@ -77,16 +82,19 @@ export function Phone({ children }: { children: ReactNode }) {
         </nav>
       </div>
     </div>
+    </LearningBrandContext.Provider>
   );
 }
 
 function DesktopSidebar() {
   const path = useRouterState({ select: (state) => state.location.pathname });
+  const brand = useLearningBrand();
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[240px] flex-col overflow-y-auto bg-[#2765BC] px-4 py-6 text-white md:flex">
-      <Link to="/" aria-label="Plusticity home" className="flex shrink-0 justify-center px-1 pb-5">
+    <aside style={brand ? { backgroundColor: accessibleBrandColor(brand.color).css } : undefined} className="fixed inset-y-0 left-0 z-30 hidden w-[240px] flex-col overflow-y-auto bg-[#2765BC] px-4 py-6 text-white md:flex">
+      {brand ? <Link to="/organizations/$id" params={{ id: brand.id }} aria-label={brand.name + " workspace"} className="flex shrink-0 justify-center px-1 pb-5"><OrganizationLogo key={brand.id + brand.logo} brand={brand} /></Link> : <Link to="/" aria-label="Plusticity home" className="flex shrink-0 justify-center px-1 pb-5">
         <img src={logo} alt="Plusticity" className="h-[173px] w-auto max-w-full rounded-lg object-contain" />
-      </Link>
+      </Link>}
+      {brand && <Link to="/organizations/$id" params={{ id: brand.id }} className="mb-3 break-words rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold">{brand.name} workspace</Link>}
       <nav aria-label="Main navigation" className="space-y-2">
         {[...tabs, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const, { to: "/studio/reports", icon: BarChart3, label: "Reports" } as const, { to: "/organizations", icon: Building2, label: "Organizations" } as const].map((item) => {
           const active = path === item.to || (item.to !== "/" && path.startsWith(item.to + "/") && !(item.to === "/studio" && path.startsWith("/studio/reports")));
@@ -239,13 +247,14 @@ function DesktopTopAccount() {
 }
 
 export function Header({ children, wide = false }: { children?: ReactNode; wide?: boolean }) {
+  const brand = useLearningBrand();
   return (
     <header className="relative bg-card px-5 pb-4 pt-5 text-foreground md:contents">
       <div className="mx-auto max-w-[1760px]">
         <div className="flex items-center justify-between gap-3 md:hidden">
-          <Link to="/" aria-label="Home" className="shrink-0">
+          {brand ? <Link to="/organizations/$id" params={{ id: brand.id }} aria-label={brand.name + " workspace"} className="min-w-0 max-w-[40%]"><OrganizationLogo key={brand.id + brand.logo} brand={brand} mobile /></Link> : <Link to="/" aria-label="Home" className="shrink-0">
             <img src={mobileLogo} alt="Plusticity" className="h-[55.89px] w-auto object-contain" />
-          </Link>
+          </Link>}
           <div className="flex shrink-0 items-center gap-2">
             <NotificationBell className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-foreground hover:bg-muted/75" />
             <LanguageSwitcher />
@@ -253,6 +262,7 @@ export function Header({ children, wide = false }: { children?: ReactNode; wide?
           </div>
         </div>
         <div className="hidden items-center justify-end gap-2 px-10 pt-5 md:flex">
+          {brand && <Link to="/organizations/$id" params={{ id: brand.id }} className="mr-auto max-w-sm truncate text-sm font-semibold text-primary">{brand.name}</Link>}
           <NotificationBell className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-muted text-foreground hover:bg-muted/75" />
           <LanguageSwitcher />
           <DesktopTopAccount />
@@ -287,10 +297,11 @@ export function SearchBox() {
 }
 
 function Footer() {
+  const brand = useLearningBrand();
   return (
     <footer className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-card px-5 py-2 text-[11px] text-muted-foreground md:left-[240px] md:px-10">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-1 sm:flex-row sm:justify-between">
-        <p>© 2026 Smartify Consulting (Pty) Ltd. All rights reserved.</p>
+        <p className="line-clamp-2 min-w-0 text-center sm:max-w-[55%] sm:truncate sm:text-left">{brand && <span>{brand.name} · Powered by Plusticity · </span>}© 2026 Smartify Consulting (Pty) Ltd. All rights reserved.</p>
         <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-3">
           <Link to="/terms" className="hover:text-foreground">
             Terms and Conditions

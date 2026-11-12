@@ -2114,6 +2114,7 @@ export type Database = {
       remove_quiz_exam_policy: { Args: { _lesson: string; _expected: number }; Returns: undefined }
       save_quiz_exam_answers: { Args: { _session: string; _user: string; _responses: Json; _expected: number }; Returns: number }
       my_quiz_exam_status: { Args: { _lesson: string }; Returns: Json }
+      learning_shell_brand: { Args: { _course?: string | null; _organization?: string | null }; Returns: Json }
       studio_save_private_quiz: { Args: { _lesson: string; _title: string; _pass_mark: number; _questions: Json; _answers: Json; _sample_size: number }; Returns: string }
       save_cohort_report_schedule: { Args: { _cohort: string; _enabled: boolean; _interval: number; _expected: number }; Returns: number }
       generate_cohort_report_snapshot: { Args: { _cohort: string; _request: string }; Returns: string }
