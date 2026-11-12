@@ -13,6 +13,7 @@ import { readAllPages } from "@/lib/database-pages";
 import { friendlyError } from "@/lib/friendly-error";
 import { CohortLicenses } from "@/components/CohortLicenses";
 import { CohortBillingManagers } from "@/components/CohortBillingManagers";
+import { CohortAssignmentRules } from "@/components/CohortAssignmentRules";
 
 const summarySchema = z.object({
   members: z.number(),
@@ -500,6 +501,7 @@ export function OrganizationTraining({ organizationId }: { organizationId: strin
                   ))
                 )}
               </section>
+              <CohortAssignmentRules key={selected+":rules"} cohortId={selected} organizationId={organizationId} />
               <CohortBillingManagers key={selected+":billing"} cohortId={selected} organizationId={organizationId} />
               {current.can_bill && assignments.data && (
                 <CohortLicenses

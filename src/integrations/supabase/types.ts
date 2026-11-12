@@ -368,6 +368,12 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      cohort_assignment_rules: {
+        Row: { id: string; cohort_id: string; department_id: string | null; include_descendants: boolean; job_contains: string | null; role_filter: string; add_only: boolean; enabled: boolean; interval_minutes: number; version: number; changed_by: string; next_run: string; last_run: string | null; last_status: string | null; last_run_version: number | null; last_added: number; last_removed: number }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       organization_cohorts: {
         Row: { cohort_id: string; organization_id: string }
         Insert: never
@@ -2086,6 +2092,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      save_cohort_assignment_rule: { Args: { _cohort: string; _department: string | null; _descendants: boolean; _job: string | null; _role: string; _add_only: boolean; _enabled: boolean; _interval: number; _expected: number }; Returns: number }
+      preview_cohort_assignment_rule: { Args: { _cohort: string; _expected: number }; Returns: Json }
+      run_cohort_assignment_rule: { Args: { _cohort: string; _expected: number; _hash: string; _request: string }; Returns: Json }
+      set_cohort_assignment_schedule: { Args: { _cohort: string; _expected: number; _enabled: boolean; _hash?: string | null }; Returns: number }
+      allow_cohort_rule_member: { Args: { _cohort: string; _user: string }; Returns: undefined }
+      cohort_rule_excluded_people: { Args: { _cohort: string }; Returns: { user_id: string; full_name: string; excluded_at: string }[] }
+      cohort_assignment_rule_history: { Args: { _cohort: string }; Returns: { request_id: string; created_at: string; actor_name: string; result: Json }[] }
+      cohort_assignment_rule_changes: { Args: { _request: string }; Returns: Json }
+      organization_automation_status: { Args: { _organization: string }; Returns: Json }
+      run_due_organization_assignment_rules: { Args: { _organization?: string | null; _limit?: number }; Returns: Json }
       cohort_billing_management: { Args: { _cohort: string }; Returns: Json }
       set_cohort_billing_manager: { Args: { _cohort: string; _user: string; _allow: boolean; _expected: number; _reason: string }; Returns: undefined }
       save_organization_program: { Args: { _organization: string; _program: string; _title: string; _description: string; _stages: Json; _expected: number }; Returns: number }
