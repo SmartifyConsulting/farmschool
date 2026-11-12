@@ -11,6 +11,7 @@ import { pageMeta } from "@/lib/page-meta";
 import { credentialCode } from "@/lib/studio";
 import logo from "@/assets/plusticity-logo-navy.png";
 import { CourseViewToggle, useCourseView } from "@/components/CourseViewToggle";
+import { readAllPages } from "@/lib/database-pages";
 
 export const Route = createFileRoute("/courses")({
   head: () =>
@@ -32,6 +33,8 @@ type LearningItem = {
   pct: number;
   started: boolean;
   saved: boolean;
+  assigned: boolean;
+  dueAt: string | null;
 };
 
 function MyCourses() {
@@ -46,8 +49,7 @@ function MyCourses() {
   const { data: prof } = useQuery({
     queryKey: ["profile", user?.id],
     enabled: !!user,
-    queryFn: async () =>
-      (await supabase.from("profiles").select("full_name").maybeSingle()).data,
+    queryFn: async () => (await supabase.from("profiles").select("full_name").maybeSingle()).data,
   });
   const { data: certs = [] } = useQuery({
     queryKey: ["certificates", user?.id],
@@ -62,12 +64,48 @@ function MyCourses() {
   });
   const name = prof?.full_name ?? user?.email?.split("@")[0] ?? "Guest";
   const {
+    data: assignments = [],
+    isLoading: assignmentsLoading,
+    error: assignmentsError,
+  } = useQuery({
+    queryKey: ["my-course-assignments", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data: memberships } = await readAllPages(
+        supabase
+          .from("cohort_members")
+          .select("cohort_id", { count: "exact" })
+          .eq("user_id", user!.id)
+          .order("cohort_id"),
+      );
+      if (!memberships?.length) return [];
+      const { data } = await readAllPages(
+        supabase
+          .from("cohort_course_assignments")
+          .select("course_id,due_at", { count: "exact" })
+          .in(
+            "cohort_id",
+            memberships.map((item) => item.cohort_id),
+          )
+          .order("cohort_id")
+          .order("course_id"),
+      );
+      return data ?? [];
+    },
+  });
+  const {
     data: studio = [],
     isLoading: studioLoading,
     error: studioError,
   } = useQuery({
-    queryKey: ["my-studio-courses", user?.id, progress.map((p) => p.course_id).join(","), ids.join(",")],
-    enabled: !!user && !progressLoading,
+    queryKey: [
+      "my-studio-courses",
+      user?.id,
+      progress.map((p) => p.course_id).join(","),
+      ids.join(","),
+      assignments.map((item) => item.course_id).join(","),
+    ],
+    enabled: !!user && !progressLoading && !assignmentsLoading,
     queryFn: async () => {
       const { data: enrollments, error: enrollmentError } = await supabase
         .from("course_enrollments")
@@ -75,11 +113,16 @@ function MyCourses() {
         .eq("user_id", user!.id)
         .limit(200);
       if (enrollmentError) throw enrollmentError;
-      const studioIds = [...new Set([
-        ...progress.map((p) => p.course_id),
-        ...ids,
-        ...(enrollments ?? []).map((e) => e.course_id),
-      ].filter((id) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id)))];
+      const studioIds = [
+        ...new Set(
+          [
+            ...progress.map((p) => p.course_id),
+            ...ids,
+            ...assignments.map((item) => item.course_id),
+            ...(enrollments ?? []).map((e) => e.course_id),
+          ].filter((id) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id)),
+        ),
+      ];
       if (!studioIds.length) return [];
       const { data, error } = await supabase
         .from("studio_courses")
@@ -106,6 +149,8 @@ function MyCourses() {
         pct: p.pct,
         started: p.started,
         saved: ids.includes(c.id),
+        assigned: false,
+        dueAt: null,
       };
     });
     const creatorCourses: LearningItem[] = studio.map((c) => {
@@ -121,6 +166,12 @@ function MyCourses() {
         category: c.category || "General",
         cover: c.cover_url,
         source: "studio",
+        assigned: assignments.some((item) => item.course_id === c.id),
+        dueAt:
+          assignments
+            .filter((item) => item.course_id === c.id && item.due_at)
+            .map((item) => item.due_at!)
+            .sort()[0] ?? null,
         total,
         done: completed.size,
         pct: total ? Math.round((completed.size / total) * 100) : 0,
@@ -129,9 +180,10 @@ function MyCourses() {
       };
     });
     return [...creatorCourses, ...originals];
-  }, [studio, progress, ids]);
+  }, [studio, progress, ids, assignments]);
 
   const visible = items.filter((c) => {
+    if (tab === "Assigned") return c.assigned;
     if (tab === "Saved") return c.saved;
     if (tab === "Completed") return c.started && c.total > 0 && c.pct === 100;
     return c.started && c.pct < 100;
@@ -149,11 +201,11 @@ function MyCourses() {
           <SearchBox />
         </div>
         <div
-          className="mt-4 flex rounded-full bg-muted p-1 text-sm md:max-w-md"
+          className="mt-4 flex flex-wrap gap-1 rounded-2xl bg-muted p-1 text-sm md:max-w-xl"
           role="group"
           aria-label="Filter my courses"
         >
-          {["In progress", "Completed", "Saved", "Certifications"].map((t) => (
+          {["In progress", "Assigned", "Completed", "Saved", "Certifications"].map((t) => (
             <button
               key={t}
               type="button"
@@ -200,13 +252,22 @@ function MyCourses() {
             )}
           </ul>
         ) : (
-          <div className={view === "cards" ? "mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3" : "mt-4 grid gap-3"}>
-            {(progressLoading || studioLoading) && (
+          <div
+            className={
+              view === "cards" ? "mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3" : "mt-4 grid gap-3"
+            }
+          >
+            {(progressLoading || studioLoading || assignmentsLoading) && (
               <p className="col-span-full text-sm text-muted-foreground">Loading your courses…</p>
             )}
             {studioError && (
               <p role="alert" className="col-span-full text-sm text-destructive">
                 Could not load creator courses. Please try again.
+              </p>
+            )}
+            {assignmentsError && (
+              <p role="alert" className="col-span-full text-sm text-destructive">
+                Could not load assigned courses. Please try again.
               </p>
             )}
             {visible.map((c) => (
@@ -220,10 +281,16 @@ function MyCourses() {
                   <img
                     src={c.cover}
                     alt=""
-                    className={view === "cards" ? "h-36 w-full rounded-xl object-cover" : "h-20 w-20 shrink-0 rounded-xl object-cover"}
+                    className={
+                      view === "cards"
+                        ? "h-36 w-full rounded-xl object-cover"
+                        : "h-20 w-20 shrink-0 rounded-xl object-cover"
+                    }
                   />
                 ) : (
-                  <div className={`grid shrink-0 place-items-center rounded-xl bg-muted ${view === "cards" ? "h-36 w-full" : "h-20 w-20"}`}>
+                  <div
+                    className={`grid shrink-0 place-items-center rounded-xl bg-muted ${view === "cards" ? "h-36 w-full" : "h-20 w-20"}`}
+                  >
                     <BookOpen className="h-6 w-6 text-primary" />
                   </div>
                 )}
@@ -237,6 +304,16 @@ function MyCourses() {
                     <FileText className="h-3 w-3" />
                     {c.total} lessons
                   </p>
+                  {c.assigned && (
+                    <p className="mt-2 text-xs font-medium text-primary">
+                      {c.dueAt
+                        ? "Due " +
+                          new Date(c.dueAt).toLocaleDateString("en-ZA", {
+                            timeZone: "Africa/Johannesburg",
+                          })
+                        : "Assigned · No deadline"}
+                    </p>
+                  )}
                   {c.started && (
                     <div className="mt-3">
                       <ProgressBar pct={c.pct} label={`${c.done}/${c.total} lessons`} />
@@ -245,20 +322,27 @@ function MyCourses() {
                 </div>
               </Link>
             ))}
-            {!progressLoading && !studioLoading && !studioError && visible.length === 0 && (
-              <div className="col-span-full py-10 text-center text-sm text-muted-foreground">
-                {tab === "Saved"
-                  ? "No saved courses yet."
-                  : tab === "Completed"
-                    ? "No completed courses yet."
-                    : "No courses in progress yet."}
-                <p className="mt-3">
-                  <Link to="/search" className="font-semibold text-primary">
-                    Explore the catalogue
-                  </Link>
-                </p>
-              </div>
-            )}
+            {!progressLoading &&
+              !studioLoading &&
+              !assignmentsLoading &&
+              !studioError &&
+              !assignmentsError &&
+              visible.length === 0 && (
+                <div className="col-span-full py-10 text-center text-sm text-muted-foreground">
+                  {tab === "Assigned"
+                    ? "No courses assigned yet."
+                    : tab === "Saved"
+                      ? "No saved courses yet."
+                      : tab === "Completed"
+                        ? "No completed courses yet."
+                        : "No courses in progress yet."}
+                  <p className="mt-3">
+                    <Link to="/search" className="font-semibold text-primary">
+                      Explore the catalogue
+                    </Link>
+                  </p>
+                </div>
+              )}
           </div>
         )}
       </Sheet>

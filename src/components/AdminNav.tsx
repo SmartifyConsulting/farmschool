@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 
 const SECTIONS = [
   { to: "/admin/users", label: "Users" },
+  { to: "/admin/cohorts", label: "Cohorts" },
   { to: "/admin/analytics", label: "Analytics" },
   { to: "/admin/compliance", label: "Compliance" },
   { to: "/admin/creators", label: "Creator Approvals" },

@@ -26,6 +26,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminApiConnectionsRouteImport } from './routes/admin.api-connections'
+import { Route as AdminCohortsRouteImport } from './routes/admin.cohorts'
 import { Route as AdminComplianceRouteImport } from './routes/admin.compliance'
 import { Route as AdminCreatorsRouteImport } from './routes/admin.creators'
 import { Route as AdminExternalContentRouteImport } from './routes/admin.external-content'
@@ -130,6 +131,11 @@ const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
 const AdminApiConnectionsRoute = AdminApiConnectionsRouteImport.update({
   id: '/admin/api-connections',
   path: '/admin/api-connections',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCohortsRoute = AdminCohortsRouteImport.update({
+  id: '/admin/cohorts',
+  path: '/admin/cohorts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminComplianceRoute = AdminComplianceRouteImport.update({
@@ -251,6 +257,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/api-connections': typeof AdminApiConnectionsRoute
+  '/admin/cohorts': typeof AdminCohortsRoute
   '/admin/compliance': typeof AdminComplianceRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
@@ -290,6 +297,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/api-connections': typeof AdminApiConnectionsRoute
+  '/admin/cohorts': typeof AdminCohortsRoute
   '/admin/compliance': typeof AdminComplianceRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
@@ -330,6 +338,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/api-connections': typeof AdminApiConnectionsRoute
+  '/admin/cohorts': typeof AdminCohortsRoute
   '/admin/compliance': typeof AdminComplianceRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
@@ -371,6 +380,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/admin/analytics'
     | '/admin/api-connections'
+    | '/admin/cohorts'
     | '/admin/compliance'
     | '/admin/creators'
     | '/admin/external-content'
@@ -410,6 +420,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/admin/analytics'
     | '/admin/api-connections'
+    | '/admin/cohorts'
     | '/admin/compliance'
     | '/admin/creators'
     | '/admin/external-content'
@@ -449,6 +460,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/admin/analytics'
     | '/admin/api-connections'
+    | '/admin/cohorts'
     | '/admin/compliance'
     | '/admin/creators'
     | '/admin/external-content'
@@ -489,6 +501,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminApiConnectionsRoute: typeof AdminApiConnectionsRoute
+  AdminCohortsRoute: typeof AdminCohortsRoute
   AdminComplianceRoute: typeof AdminComplianceRoute
   AdminCreatorsRoute: typeof AdminCreatorsRoute
   AdminExternalContentRoute: typeof AdminExternalContentRoute
@@ -629,6 +642,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/api-connections'
       fullPath: '/admin/api-connections'
       preLoaderRoute: typeof AdminApiConnectionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/cohorts': {
+      id: '/admin/cohorts'
+      path: '/admin/cohorts'
+      fullPath: '/admin/cohorts'
+      preLoaderRoute: typeof AdminCohortsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/compliance': {
@@ -814,6 +834,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminApiConnectionsRoute: AdminApiConnectionsRoute,
+  AdminCohortsRoute: AdminCohortsRoute,
   AdminComplianceRoute: AdminComplianceRoute,
   AdminCreatorsRoute: AdminCreatorsRoute,
   AdminExternalContentRoute: AdminExternalContentRoute,

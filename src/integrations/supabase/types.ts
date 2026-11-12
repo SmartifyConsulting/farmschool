@@ -1762,6 +1762,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cohort_visible: { Args: { _cohort: string }; Returns: boolean }
       apply_learning_payment_event: { Args: { _event: Json }; Returns: string }
       admin_platform_analytics: { Args: never; Returns: Json }
       admin_revoke_api_key: {

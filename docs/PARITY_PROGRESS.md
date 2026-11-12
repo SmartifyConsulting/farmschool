@@ -41,8 +41,9 @@ Database migrations saved in Git are not evidence of deployed database state.
   configured STUDIO_TEST_DATABASE_URL.
 - Studio and Catalogue default to cards; My Learning defaults to a list. Each
   page has a card/list toggle with its own saved browser preference.
-- The logo is 15 percent larger. Desktop primary navigation is now a fixed left
-  sidebar; mobile keeps its compact navigation. Sidebar/logo/view-toggle changes
+- The logo and sidebar have been resized and the top blue banner removed.
+  Desktop primary navigation is a fixed left sidebar; mobile keeps its compact
+  navigation. Sidebar/logo/view-toggle changes
   were pushed to main in commit ddb0491. This change set saves the remaining
   learning, reporting, security and payment work.
 - Payment lifecycle handling is implemented locally: signed webhook validation,
@@ -52,11 +53,23 @@ Database migrations saved in Git are not evidence of deployed database state.
 - Migration 0042 adds transactional payment-event recording and entitlement
   updates, event deduplication, refund precedence and dispute ordering. Revocation
   applies to database content visibility as well as the learner interface.
-  The migration is not applied and its database integration tests have not run.
-  Deploy it before the new webhook code. Subscribe the Stripe webhook to
+  The migration is now applied. Rollback-only database assertions passed for
+  duplicate events, refund precedence, dispute ordering, repurchases and RPC
+  permissions. Reproducible SQL checks are in drizzle/tests/0042_payment_lifecycle.sql.
+  The environment-gated Vitest database suite still requires a dedicated test
+  connection. Subscribe the Stripe webhook to
   checkout.session.completed, checkout.session.async_payment_succeeded,
   charge.refunded, charge.dispute.created and charge.dispute.closed.
   Test in Stripe test mode before production deployment. No payments were made.
+- Cohort owners can create groups, add/remove learners and assign published
+  courses with optional due dates through Administration > Cohorts. Assigned
+  courses appear in My Learning > Assigned, including learners who have not
+  started. Assignments preserve prerequisite and payment requirements.
+- Migration 0043 fixes cohort member read access. It was verified with actual
+  authenticated-role RLS queries in a rollback-only transaction: members can
+  read their cohort/assignments but cannot change membership, unrelated users
+  cannot read them, and owners retain access. The migration is applied.
+  Reproducible SQL checks are in drizzle/tests/0043_cohort_access.sql.
 
 ## Remaining work
 
@@ -65,13 +78,14 @@ Database migrations saved in Git are not evidence of deployed database state.
 2. Make certificate validation and issuance transactional with course revision
    and trainer approval; add historical-certificate validity/revocation rules.
 3. Verify reporting at production scale and under concurrent changes.
-4. Apply and test payment migration 0042 in an isolated database; verify real
-   Stripe test-mode deliveries, retries and refund/dispute purchase recovery.
+4. Verify real Stripe test-mode deliveries, webhook subscriptions, retries and
+   refund/dispute purchase recovery; the payment migration is applied and its
+   state transitions have passed rollback-only database assertions.
 5. Validate xAPI with an LRS; implement portable SCORM export and LTI delivery.
 6. Transfer actual lessons/assessments to Moodle or clearly expose shell-only
    publishing; verify user matching and completion synchronisation.
-7. Build cohort administration, enrolment, due dates, notifications and manager
-   reporting on the existing database foundations.
+7. Extend cohort administration with enrolment/licensing policies, notifications,
+   manager reporting and browser-tested trainer/learner workflows.
 8. Build competency/rubric authoring, assessment, mastery evidence, reusable
    question banks, gradebook and assignment workflows.
 9. Expand authoring/media conversion and review against Coursebox workflows,
@@ -82,5 +96,6 @@ Database migrations saved in Git are not evidence of deployed database state.
     programs, recurring certification, dynamic rules and scheduled reports.
 
 No Lovable AI generation or paid AI calls were made. Committing application
-code does not establish production deployment. The connected database received only the permission
-migration described above; learner records were not edited.
+code does not establish production deployment. The connected database received
+migrations 0041, 0042 and 0043. Test fixtures were rolled back; existing learner
+records were not edited.
