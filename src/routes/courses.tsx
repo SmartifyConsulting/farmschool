@@ -194,6 +194,7 @@ function MyCourses() {
       <Header />
       <Sheet>
         <CanvasHeading title="My learning" />
+        <Link to="/skills" className="mt-3 inline-block text-sm font-semibold text-primary">My skills & trainer feedback</Link>
         <div className="mt-3 flex justify-end">
           <CourseViewToggle view={view} onChange={setView} />
         </div>

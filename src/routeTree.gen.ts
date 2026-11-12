@@ -21,6 +21,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as StudioRouteImport } from './routes/studio'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
@@ -37,6 +38,7 @@ import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
 import { Route as ClassIdRouteImport } from './routes/class.$id'
 import { Route as CommunityCourseIdRouteImport } from './routes/community.$courseId'
+import { Route as CompetenciesCourseIdRouteImport } from './routes/competencies.$courseId'
 import { Route as CourseIdRouteImport } from './routes/course.$id'
 import { Route as LearningActivitiesCourseIdRouteImport } from './routes/learning-activities.$courseId'
 import { Route as MessagesPartnerIdRouteImport } from './routes/messages.$partnerId'
@@ -106,6 +108,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SkillsRoute = SkillsRouteImport.update({
+  id: '/skills',
+  path: '/skills',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StudioRoute = StudioRouteImport.update({
@@ -188,6 +195,11 @@ const CommunityCourseIdRoute = CommunityCourseIdRouteImport.update({
   path: '/community/$courseId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CompetenciesCourseIdRoute = CompetenciesCourseIdRouteImport.update({
+  id: '/competencies/$courseId',
+  path: '/competencies/$courseId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CourseIdRoute = CourseIdRouteImport.update({
   id: '/course/$id',
   path: '/course/$id',
@@ -253,6 +265,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
+  '/skills': typeof SkillsRoute
   '/studio': typeof StudioRouteWithChildren
   '/terms': typeof TermsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -268,6 +281,7 @@ export interface FileRoutesByFullPath {
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/class/$id': typeof ClassIdRoute
   '/community/$courseId': typeof CommunityCourseIdRoute
+  '/competencies/$courseId': typeof CompetenciesCourseIdRoute
   '/course/$id': typeof CourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
@@ -293,6 +307,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
+  '/skills': typeof SkillsRoute
   '/studio': typeof StudioRouteWithChildren
   '/terms': typeof TermsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -308,6 +323,7 @@ export interface FileRoutesByTo {
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/class/$id': typeof ClassIdRoute
   '/community/$courseId': typeof CommunityCourseIdRoute
+  '/competencies/$courseId': typeof CompetenciesCourseIdRoute
   '/course/$id': typeof CourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
@@ -334,6 +350,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
+  '/skills': typeof SkillsRoute
   '/studio': typeof StudioRouteWithChildren
   '/terms': typeof TermsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -349,6 +366,7 @@ export interface FileRoutesById {
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/class/$id': typeof ClassIdRoute
   '/community/$courseId': typeof CommunityCourseIdRoute
+  '/competencies/$courseId': typeof CompetenciesCourseIdRoute
   '/course/$id': typeof CourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
@@ -376,6 +394,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/reset-password'
     | '/search'
+    | '/skills'
     | '/studio'
     | '/terms'
     | '/admin/analytics'
@@ -391,6 +410,7 @@ export interface FileRouteTypes {
     | '/api/stripe-webhook'
     | '/class/$id'
     | '/community/$courseId'
+    | '/competencies/$courseId'
     | '/course/$id'
     | '/learning-activities/$courseId'
     | '/messages/$partnerId'
@@ -416,6 +436,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/reset-password'
     | '/search'
+    | '/skills'
     | '/studio'
     | '/terms'
     | '/admin/analytics'
@@ -431,6 +452,7 @@ export interface FileRouteTypes {
     | '/api/stripe-webhook'
     | '/class/$id'
     | '/community/$courseId'
+    | '/competencies/$courseId'
     | '/course/$id'
     | '/learning-activities/$courseId'
     | '/messages/$partnerId'
@@ -456,6 +478,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/reset-password'
     | '/search'
+    | '/skills'
     | '/studio'
     | '/terms'
     | '/admin/analytics'
@@ -471,6 +494,7 @@ export interface FileRouteTypes {
     | '/api/stripe-webhook'
     | '/class/$id'
     | '/community/$courseId'
+    | '/competencies/$courseId'
     | '/course/$id'
     | '/learning-activities/$courseId'
     | '/messages/$partnerId'
@@ -497,6 +521,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SearchRoute: typeof SearchRoute
+  SkillsRoute: typeof SkillsRoute
   StudioRoute: typeof StudioRouteWithChildren
   TermsRoute: typeof TermsRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
@@ -512,6 +537,7 @@ export interface RootRouteChildren {
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ClassIdRoute: typeof ClassIdRoute
   CommunityCourseIdRoute: typeof CommunityCourseIdRoute
+  CompetenciesCourseIdRoute: typeof CompetenciesCourseIdRoute
   CourseIdRoute: typeof CourseIdRoute
   LearningActivitiesCourseIdRoute: typeof LearningActivitiesCourseIdRoute
   ScormIdRoute: typeof ScormIdRoute
@@ -607,6 +633,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/skills': {
+      id: '/skills'
+      path: '/skills'
+      fullPath: '/skills'
+      preLoaderRoute: typeof SkillsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/studio': {
@@ -721,6 +754,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CommunityCourseIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/competencies/$courseId': {
+      id: '/competencies/$courseId'
+      path: '/competencies/$courseId'
+      fullPath: '/competencies/$courseId'
+      preLoaderRoute: typeof CompetenciesCourseIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/course/$id': {
       id: '/course/$id'
       path: '/course/$id'
@@ -830,6 +870,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SearchRoute: SearchRoute,
+  SkillsRoute: SkillsRoute,
   StudioRoute: StudioRouteWithChildren,
   TermsRoute: TermsRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
@@ -845,6 +886,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ClassIdRoute: ClassIdRoute,
   CommunityCourseIdRoute: CommunityCourseIdRoute,
+  CompetenciesCourseIdRoute: CompetenciesCourseIdRoute,
   CourseIdRoute: CourseIdRoute,
   LearningActivitiesCourseIdRoute: LearningActivitiesCourseIdRoute,
   ScormIdRoute: ScormIdRoute,

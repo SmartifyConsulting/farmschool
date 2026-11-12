@@ -1768,6 +1768,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_course_competency: { Args: { _course: string; _code: string; _title: string; _description?: string }; Returns: string }
+      course_assessment_learners: { Args: { _course: string }; Returns: { user_id: string; full_name: string }[] }
+      record_competency_assessment: { Args: { _competency: string; _learner: string; _achieved: boolean; _score: number; _notes: string }; Returns: string }
       cohort_visible: { Args: { _cohort: string }; Returns: boolean }
       apply_learning_payment_event: { Args: { _event: Json }; Returns: string }
       admin_platform_analytics: { Args: never; Returns: Json }

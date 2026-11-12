@@ -73,6 +73,20 @@ Database migrations saved in Git are not evidence of deployed database state.
 
 ## Remaining work
 
+Trainer competency assessment is available from each Studio course card.
+Course authors can define competencies, select eligible learners and record
+observed outcomes with scores and supporting feedback. Assessments are appended
+to history rather than overwritten. Revision cards link to the original course's
+assessment workspace so deleting a revision cannot remove assessment records.
+Learners can open My Learning > My skills
+to view the latest outcome per competency and its assessment history.
+This is manual trainer assessment; it does not yet implement criterion-level
+rubric scoring or automatically affect certificate eligibility.
+Migration 0045 is applied. Rollback-only authenticated-role checks verified
+author-only assessment, learner-private results, immutable assessment history,
+score validation and exclusion of refunded paid-course learners. Checks are
+saved in drizzle/tests/0045_competency_access.sql.
+
 The notifications page now uses real cohort assignments instead of sample
 activity. In-app reminders show new assignments, deadlines within seven days
 and overdue work. Read status is saved per learner; changed deadlines and
@@ -96,8 +110,8 @@ refreshed while using the app, not scheduled email or push delivery.
    publishing; verify user matching and completion synchronisation.
 7. Extend cohort administration with enrolment/licensing policies, scheduled email/push reminders,
    manager reporting and browser-tested trainer/learner workflows.
-8. Build competency/rubric authoring, assessment, mastery evidence, reusable
-   question banks, gradebook and assignment workflows.
+8. Extend trainer competency assessment with criterion-level rubric authoring
+   and scoring, learner submissions, reusable question banks and a full gradebook.
 9. Expand authoring/media conversion and review against Coursebox workflows,
    including scanned-document handling and export fidelity.
 10. Verify accessible, multilingual and mobile/offline delivery, backup/restore,
@@ -107,5 +121,5 @@ refreshed while using the app, not scheduled email or push delivery.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041 through 0044. Test fixtures were rolled back; existing learner
+migrations 0041 through 0045. Test fixtures were rolled back; existing learner
 records were not edited.

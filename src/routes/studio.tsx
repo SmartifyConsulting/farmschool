@@ -448,6 +448,7 @@ function Studio() {
                         · {(c.studio_lessons as unknown as { count: number }[])[0]?.count ?? 0}{" "}
                         lessons
                       </p>
+                      <Link to="/competencies/$courseId" params={{ courseId: c.revision_of ?? c.id }} className="mt-3 inline-block text-xs font-semibold text-primary">Competencies & assessment</Link>
                       <div className="mt-2 flex gap-2 text-[11px]">
                         <span
                           className={`rounded-full px-2 py-0.5 ${c.published ? "bg-secondary text-secondary-foreground" : "bg-muted text-muted-foreground"}`}
