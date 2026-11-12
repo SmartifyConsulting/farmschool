@@ -4,6 +4,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { courses, allLessons } from "@/lib/courses";
 import { parsePassMark } from "@/lib/studio";
 import { gradeQuiz, parseQuizQuestions, quizSubmission } from "@/lib/studio-quiz";
+import { parseLessonSlides, practicalTaskIndex } from "@/lib/lesson-slides";
+import { hasActiveEnrollment } from "@/lib/marketplace";
 
 /** Grades a studio quiz on the server so answer keys never reach learners. */
 export const submitQuiz = createServerFn({ method: "POST" })
@@ -18,6 +20,8 @@ export const submitQuiz = createServerFn({ method: "POST" })
     if (!lesson?.studio_courses || (!lesson.studio_courses.published && lesson.studio_courses.author_id !== context.userId)) {
       throw new Error("Quiz not found.");
     }
+    const { data: visible, error: accessError } = await context.supabase.rpc("studio_course_visible", { _course: lesson.course_id });
+    if (accessError || visible !== true) throw new Error("This course is not available to you.");
     const questions = parseQuizQuestions(lesson.quiz);
     const key = lesson.studio_quiz_answers;
     if (!questions || !key || key.course_id !== lesson.course_id) throw new Error("This quiz is not ready to be graded.");
@@ -72,14 +76,16 @@ export const claimCertificate = createServerFn({ method: "POST" })
       const { data: c } = await context.supabase.from("studio_courses").select("id, title, published, price_cents, author_id").eq("id", data.courseRef).maybeSingle();
       if (!c) throw new Error("Course not found.");
       if (!c.published && c.author_id !== context.userId) throw new Error("Course is not available.");
+      const { data: visible, error: accessError } = await context.supabase.rpc("studio_course_visible", { _course: c.id });
+      if (accessError || visible !== true) throw new Error("This course is not available to you.");
       if ((c.price_cents ?? 0) > 0 && c.author_id !== context.userId) {
         const { data: enrollment } = await supabaseAdmin
           .from("course_enrollments")
-          .select("id")
+          .select("id, payment_status")
           .eq("user_id", context.userId)
           .eq("course_id", c.id)
           .maybeSingle();
-        if (!enrollment) throw new Error("Enroll in this course before claiming its certificate.");
+        if (!hasActiveEnrollment(enrollment)) throw new Error("Enroll in this course before claiming its certificate.");
       }
       const { data: lessons } = await supabaseAdmin.from("studio_lessons").select("id, kind, body").eq("course_id", c.id);
       const { data: passes } = await supabaseAdmin.from("quiz_attempts").select("lesson_id").eq("user_id", context.userId).eq("course_id", c.id).eq("passed", true);
@@ -89,6 +95,24 @@ export const claimCertificate = createServerFn({ method: "POST" })
       const { data: scormDone } = scormIds.length ? await supabaseAdmin.from("scorm_attempts").select("package_id").eq("user_id", context.userId).in("package_id", scormIds).in("lesson_status", ["passed", "completed"]) : { data: [] };
       const finishedPkgs = new Set((scormDone ?? []).map((a) => a.package_id));
       if (!lessons?.length || !lessons.every((l) => (l.kind === "quiz" ? passed.has(l.id) : l.kind === "scorm" ? finishedPkgs.has(scormLessonRef(String((l as { body?: string }).body ?? "")) ?? "") : done.has(l.id)))) throw new Error("Finish every lesson and pass every quiz first.");
+      const photoTasks = lessons.flatMap((lesson) => {
+        if (lesson.kind !== "slide") return [];
+        const slides = parseLessonSlides(lesson.body ?? "");
+        return slides.flatMap((slide, slideIndex) => slide.blocks.flatMap((block, blockIndex) =>
+          block.kind === "photo" ? [{ lessonId: lesson.id, blockIndex: practicalTaskIndex(slides, slideIndex, blockIndex) }] : [],
+        ));
+      });
+      if (photoTasks.length) {
+        const { data: evidence, error: evidenceError } = await supabaseAdmin.from("lesson_photo_submissions")
+          .select("lesson_id, block_index, reviewed_by")
+          .eq("user_id", context.userId)
+          .in("lesson_id", [...new Set(photoTasks.map((task) => task.lessonId))])
+          .eq("status", "approved");
+        if (evidenceError) throw new Error("Could not verify practical evidence. Please try again.");
+        if (!photoTasks.every((task) => evidence?.some((row) =>
+          row.lesson_id === task.lessonId && row.block_index === task.blockIndex && row.reviewed_by === c.author_id,
+        ))) throw new Error("Your trainer must approve every practical photo task before you can claim a certificate.");
+      }
       title = c.title;
     }
     const { error } = await supabaseAdmin.from("certificates").upsert({ user_id: context.userId, source: data.source, course_ref: data.courseRef, title }, { onConflict: "user_id,source,course_ref", ignoreDuplicates: true });

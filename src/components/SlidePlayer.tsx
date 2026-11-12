@@ -5,6 +5,7 @@ import { PhotoEvidence } from "@/components/PhotoEvidence";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { LessonSlide, SlideBlock } from "@/lib/lesson-slides";
+import { practicalTaskIndex } from "@/lib/lesson-slides";
 
 type State = { index: number; seen: number[]; checked: string[] };
 const initial: State = { index: 0, seen: [0], checked: [] };
@@ -115,7 +116,7 @@ export function SlidePlayer({
             key={state.index + ":" + i}
             block={block}
             lessonId={lessonId}
-            blockIndex={i}
+            blockIndex={practicalTaskIndex(slides, state.index, i)}
             isTrainer={!!isTrainer}
             checked={(item) => state.checked.includes([state.index, i, item].join(":"))}
             toggle={(item) => {

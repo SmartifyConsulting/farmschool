@@ -121,7 +121,7 @@ function CompliancePage() {
             {error && <p className="text-sm text-destructive">{friendlyError(error)}</p>}
             {rows && visible.length === 0 && (
               <p className="text-sm text-muted-foreground">
-                {filter === "All" ? "No activity yet." : "Everyone with activity is compliant."}
+                {filter === "All" ? "No learning records yet." : "All learners in this report are certified."}
               </p>
             )}
             <div className="space-y-1.5">

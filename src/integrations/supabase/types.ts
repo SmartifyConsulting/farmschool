@@ -1762,6 +1762,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_learning_payment_event: { Args: { _event: Json }; Returns: string }
       admin_platform_analytics: { Args: never; Returns: Json }
       admin_revoke_api_key: {
         Args: { _id: string }

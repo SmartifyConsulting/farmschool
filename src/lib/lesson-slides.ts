@@ -13,6 +13,12 @@ export type SlideBlock =
 
 export type LessonSlide = { title: string; blocks: SlideBlock[] };
 
+export function practicalTaskIndex(slides: LessonSlide[], slideIndex: number, blockIndex: number): number {
+  return slides.reduce((total, slide) => total + slide.blocks.length, 0)
+    + slides.slice(0, slideIndex).reduce((total, slide) => total + slide.blocks.length, 0)
+    + blockIndex;
+}
+
 /** Plain manual text remains readable. Only complete, recognised widgets become interactive. */
 function parseBlocks(lines: string[]): SlideBlock[] {
   const blocks: SlideBlock[] = [];

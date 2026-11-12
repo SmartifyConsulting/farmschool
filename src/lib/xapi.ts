@@ -1,5 +1,7 @@
 /** Builds xAPI 1.0.3-shaped statements from existing progress/quiz/SCORM/certificate rows, so they can be exported to any LRS. We don't run our own LRS; this is the interop boundary. */
 
+import { createHash } from "node:crypto";
+
 const BASE = "https://plusticity.app/xapi";
 
 export type XapiStatement = {
@@ -22,12 +24,19 @@ const VERB = {
 };
 /** A stable id so re-exporting the same facts never produces a different statement. */
 function stableId(...parts: string[]): string {
-  let hash = 2166136261;
-  for (const part of parts.join(":")) hash = Math.imul(hash ^ part.charCodeAt(0), 16777619);
-  return (hash >>> 0).toString(16).padStart(8, "0");
+  const bytes = createHash("sha1")
+    .update(Buffer.from("6ba7b8119dad11d180b400c04fd430c8", "hex"))
+    .update(JSON.stringify(parts)).digest().subarray(0, 16);
+  bytes[6] = (bytes[6]! & 0x0f) | 0x50;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+  const hex = bytes.toString("hex");
+  return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join("-");
 }
 
 export type XapiInput = {
+  enrollments?: { user_id: string; course_id: string }[];
+  cohortMembers?: { cohort_id: string; user_id: string }[];
+  cohortAssignments?: { cohort_id: string; course_id: string }[];
   courses: { id: string; title: string }[];
   lessons: { id: string; course_id: string; title: string }[];
   progress: {
@@ -69,7 +78,7 @@ export function buildXapiStatements(input: XapiInput): XapiStatement[] {
   const statements: XapiStatement[] = [];
   for (const p of input.progress.filter((p) => p.completed)) {
     statements.push({
-      id: stableId("lesson", p.user_id, p.lesson_id),
+      id: stableId("lesson", p.user_id, p.course_id, p.lesson_id, p.updated_at),
       timestamp: p.updated_at,
       actor: actor(p.user_id),
       verb: VERB.completed,
@@ -109,13 +118,13 @@ export function buildXapiStatements(input: XapiInput): XapiStatement[] {
       },
       result:
         s.score_raw !== null && s.score_max
-          ? { completion: done, score: { scaled: s.score_raw / s.score_max } }
+          ? { completion: done, score: { scaled: Math.max(-1, Math.min(1, s.score_raw / s.score_max)) } }
           : { completion: done },
     });
   }
   for (const c of input.certificates) {
     statements.push({
-      id: stableId("certificate", c.user_id, c.source, c.course_ref),
+      id: stableId("certificate", c.user_id, c.source, c.course_ref, c.issued_at),
       timestamp: c.issued_at,
       actor: actor(c.user_id),
       verb: VERB.completed,
@@ -149,15 +158,23 @@ export function summariseCompliance(input: XapiInput): ComplianceRow[] {
     input.certificates.map((c) => c.source + ":" + c.course_ref + ":" + c.user_id),
   );
   const pairs = new Set(
-    [...input.progress, ...input.attempts].map((row) => row.user_id + ":" + row.course_id),
+    [...input.progress, ...input.attempts, ...(input.enrollments ?? [])].map((row) => row.user_id + ":" + row.course_id),
   );
+  for (const assignment of input.cohortAssignments ?? []) {
+    for (const member of input.cohortMembers ?? []) {
+      if (member.cohort_id === assignment.cohort_id) pairs.add(member.user_id + ":" + assignment.course_id);
+    }
+  }
+  for (const certificate of input.certificates) {
+    if (certificate.source === "studio") pairs.add(certificate.user_id + ":" + certificate.course_ref);
+  }
   const rows: ComplianceRow[] = [];
   for (const pair of pairs) {
     const [userId, courseId] = pair.split(":") as [string, string];
     const total = lessonsByCourse.get(courseId)?.length ?? 0;
     const done = new Set(
       input.progress
-        .filter((p) => p.user_id === userId && p.course_id === courseId && p.completed)
+        .filter((p) => p.user_id === userId && p.course_id === courseId && p.completed && lessonsByCourse.get(courseId)?.includes(p.lesson_id))
         .map((p) => p.lesson_id),
     ).size;
     const completionRate = total ? Math.round((done / total) * 100) : 0;
@@ -168,7 +185,7 @@ export function summariseCompliance(input: XapiInput): ComplianceRow[] {
       courseTitle: courseTitle.get(courseId) ?? "Course",
       completionRate,
       certified: certificate,
-      compliant: completionRate === 100 || certificate,
+      compliant: certificate,
     });
   }
   return rows.sort((a, b) => a.completionRate - b.completionRate);

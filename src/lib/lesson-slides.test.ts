@@ -4,9 +4,15 @@ import {
   parseLessonSlides,
   slideText,
   splitLessonSource,
+  practicalTaskIndex,
 } from "./lesson-slides";
 
 describe("native lessons", () => {
+  it("gives practical tasks unique indices outside the legacy slide-local range", () => {
+    const slides = parseLessonSlides("## One\n:::photo\nFirst task\n:::\n## Two\n:::photo\nSecond task\n:::");
+    expect(practicalTaskIndex(slides, 0, 0)).toBe(2);
+    expect(practicalTaskIndex(slides, 1, 0)).toBe(3);
+  });
   it("converts explicit manual callouts and checklists without changing the teaching text", () => {
     const original = [
       "## Hive inspection",

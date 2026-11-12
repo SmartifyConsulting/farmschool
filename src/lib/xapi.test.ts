@@ -32,6 +32,7 @@ describe("buildXapiStatements", () => {
     expect(statements[0]!.verb.display["en-US"]).toBe("completed");
     expect(statements[0]!.actor.account.name).toBe("u1");
     expect(statements[0]!.object.id).toContain("l1");
+    expect(statements[0]!.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   });
 
   it("emits passed vs failed for quiz attempts, with a scaled score", () => {
@@ -83,6 +84,32 @@ describe("buildXapiStatements", () => {
 });
 
 describe("summariseCompliance", () => {
+  it("includes enrolled learners and cohort assignees who have never started", () => {
+    const rows = summariseCompliance({
+      ...base,
+      enrollments: [{ user_id: "u1", course_id: "c1" }],
+      cohortMembers: [{ cohort_id: "team", user_id: "u2" }, { cohort_id: "unrelated", user_id: "u3" }],
+      cohortAssignments: [{ cohort_id: "team", course_id: "c1" }],
+    });
+    expect(rows.map((row) => row.userId)).toEqual(["u1", "u2"]);
+    expect(rows.every((row) => row.completionRate === 0 && !row.compliant)).toBe(true);
+  });
+
+  it("does not equate self-reported lesson completion with certification", () => {
+    const rows = summariseCompliance({
+      ...base,
+      progress: ["l1", "l2", "unknown"].map((lesson_id) => ({ user_id: "u1", course_id: "c1", lesson_id, completed: true, updated_at: "t" })),
+    });
+    expect(rows[0]).toMatchObject({ completionRate: 100, compliant: false });
+  });
+
+  it("includes certificate holders even without activity rows", () => {
+    const rows = summariseCompliance({
+      ...base,
+      certificates: [{ user_id: "u1", source: "studio", course_ref: "c1", title: "Beekeeping", issued_at: "t" }],
+    });
+    expect(rows[0]).toMatchObject({ userId: "u1", compliant: true, certified: true });
+  });
   it("flags a learner who hasn't finished every lesson as not compliant", () => {
     const rows = summariseCompliance({
       ...base,

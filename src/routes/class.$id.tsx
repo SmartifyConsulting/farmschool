@@ -35,7 +35,7 @@ import {
 } from "@/lib/lesson-slides";
 import { courseThemeStyle } from "@/lib/course-theme";
 import { createCheckoutSession } from "@/lib/checkout.functions";
-import { formatPrice, isPaidCourse } from "@/lib/marketplace";
+import { formatPrice, hasActiveEnrollment, isPaidCourse } from "@/lib/marketplace";
 import { Lock } from "lucide-react";
 
 export const Route = createFileRoute("/class/$id")({
@@ -129,7 +129,7 @@ function ClassPage() {
       (
         await supabase
           .from("course_enrollments")
-          .select("id")
+          .select("id, payment_status")
           .eq("course_id", id)
           .eq("user_id", user!.id)
           .maybeSingle()
@@ -147,7 +147,8 @@ function ClassPage() {
   });
   const prerequisiteLocked =
     !!course?.prerequisite_course_id && !isAuthor && !prerequisiteLoading && !prerequisiteOk;
-  const locked = prerequisiteLocked || (paid && !isAuthor && (!user || (!enrollmentLoading && !enrollment)));
+  const disputed = enrollment?.payment_status === "disputed";
+  const locked = prerequisiteLocked || (paid && !isAuthor && (!user || !hasActiveEnrollment(enrollment)));
   const qc = useQueryClient();
   const [idx, setIdx] = useState(0);
   const done = new Set(
@@ -225,12 +226,12 @@ function ClassPage() {
               {locked ? (
                 <div className="space-y-3 rounded-2xl border border-border p-6 text-center">
                   <Lock className="mx-auto h-6 w-6 text-muted-foreground" />
-                  <p className="font-semibold">{prerequisiteLocked ? "Complete the prerequisite course first" : "This is a paid course"}</p>
+                  <p className="font-semibold">{prerequisiteLocked ? "Complete the prerequisite course first" : disputed ? "Your payment is under review" : enrollment?.payment_status === "refunded" ? "This purchase was refunded" : "This is a paid course"}</p>
                   <p className="text-sm text-muted-foreground">
-                    {prerequisiteLocked ? "This course unlocks after you earn the prerequisite certificate." : `${formatPrice(course.price_cents, course.currency)} · one-time purchase`}
+                    {prerequisiteLocked ? "This course unlocks after you earn the prerequisite certificate." : disputed ? "Course access is paused while the payment dispute is resolved. Please contact support for help." : `${formatPrice(course.price_cents, course.currency)} · one-time purchase`}
                   </p>
-                  {!prerequisiteLocked && <Button
-                    disabled={buying || !user || prerequisiteLoading}
+                  {!prerequisiteLocked && !disputed && <Button
+                    disabled={buying || !user || prerequisiteLoading || enrollmentLoading}
                     onClick={async () => {
                       if (!user) {
                         toast.error("Sign in to buy this course.");
