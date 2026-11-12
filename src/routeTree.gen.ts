@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CohortsRouteImport } from './routes/cohorts'
 import { Route as CoursesRouteImport } from './routes/courses'
 import { Route as CreatorApplicationRouteImport } from './routes/creator-application'
 import { Route as DeveloperRouteImport } from './routes/developer'
@@ -31,6 +32,7 @@ import { Route as AdminCohortsRouteImport } from './routes/admin.cohorts'
 import { Route as AdminComplianceRouteImport } from './routes/admin.compliance'
 import { Route as AdminCreatorsRouteImport } from './routes/admin.creators'
 import { Route as AdminExternalContentRouteImport } from './routes/admin.external-content'
+import { Route as AdminGradeModerationRouteImport } from './routes/admin.grade-moderation'
 import { Route as AdminTokenLedgerRouteImport } from './routes/admin.token-ledger'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as ApiCourseFactoryRouteImport } from './routes/api/course-factory'
@@ -61,6 +63,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CohortsRoute = CohortsRouteImport.update({
+  id: '/cohorts',
+  path: '/cohorts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CoursesRoute = CoursesRouteImport.update({
@@ -161,6 +168,11 @@ const AdminCreatorsRoute = AdminCreatorsRouteImport.update({
 const AdminExternalContentRoute = AdminExternalContentRouteImport.update({
   id: '/admin/external-content',
   path: '/admin/external-content',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminGradeModerationRoute = AdminGradeModerationRouteImport.update({
+  id: '/admin/grade-moderation',
+  path: '/admin/grade-moderation',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminTokenLedgerRoute = AdminTokenLedgerRouteImport.update({
@@ -273,6 +285,7 @@ const ApiPublicV1ProgressRoute = ApiPublicV1ProgressRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/cohorts': typeof CohortsRoute
   '/courses': typeof CoursesRoute
   '/creator-application': typeof CreatorApplicationRoute
   '/developer': typeof DeveloperRoute
@@ -292,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/admin/compliance': typeof AdminComplianceRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
+  '/admin/grade-moderation': typeof AdminGradeModerationRoute
   '/admin/token-ledger': typeof AdminTokenLedgerRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
@@ -318,6 +332,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/cohorts': typeof CohortsRoute
   '/courses': typeof CoursesRoute
   '/creator-application': typeof CreatorApplicationRoute
   '/developer': typeof DeveloperRoute
@@ -337,6 +352,7 @@ export interface FileRoutesByTo {
   '/admin/compliance': typeof AdminComplianceRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
+  '/admin/grade-moderation': typeof AdminGradeModerationRoute
   '/admin/token-ledger': typeof AdminTokenLedgerRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
@@ -364,6 +380,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/cohorts': typeof CohortsRoute
   '/courses': typeof CoursesRoute
   '/creator-application': typeof CreatorApplicationRoute
   '/developer': typeof DeveloperRoute
@@ -383,6 +400,7 @@ export interface FileRoutesById {
   '/admin/compliance': typeof AdminComplianceRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
+  '/admin/grade-moderation': typeof AdminGradeModerationRoute
   '/admin/token-ledger': typeof AdminTokenLedgerRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
@@ -411,6 +429,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/cohorts'
     | '/courses'
     | '/creator-application'
     | '/developer'
@@ -430,6 +449,7 @@ export interface FileRouteTypes {
     | '/admin/compliance'
     | '/admin/creators'
     | '/admin/external-content'
+    | '/admin/grade-moderation'
     | '/admin/token-ledger'
     | '/admin/users'
     | '/api/course-factory'
@@ -456,6 +476,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/cohorts'
     | '/courses'
     | '/creator-application'
     | '/developer'
@@ -475,6 +496,7 @@ export interface FileRouteTypes {
     | '/admin/compliance'
     | '/admin/creators'
     | '/admin/external-content'
+    | '/admin/grade-moderation'
     | '/admin/token-ledger'
     | '/admin/users'
     | '/api/course-factory'
@@ -501,6 +523,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/auth'
+    | '/cohorts'
     | '/courses'
     | '/creator-application'
     | '/developer'
@@ -520,6 +543,7 @@ export interface FileRouteTypes {
     | '/admin/compliance'
     | '/admin/creators'
     | '/admin/external-content'
+    | '/admin/grade-moderation'
     | '/admin/token-ledger'
     | '/admin/users'
     | '/api/course-factory'
@@ -547,6 +571,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  CohortsRoute: typeof CohortsRoute
   CoursesRoute: typeof CoursesRoute
   CreatorApplicationRoute: typeof CreatorApplicationRoute
   DeveloperRoute: typeof DeveloperRoute
@@ -566,6 +591,7 @@ export interface RootRouteChildren {
   AdminComplianceRoute: typeof AdminComplianceRoute
   AdminCreatorsRoute: typeof AdminCreatorsRoute
   AdminExternalContentRoute: typeof AdminExternalContentRoute
+  AdminGradeModerationRoute: typeof AdminGradeModerationRoute
   AdminTokenLedgerRoute: typeof AdminTokenLedgerRoute
   AdminUsersRoute: typeof AdminUsersRoute
   ApiCourseFactoryRoute: typeof ApiCourseFactoryRoute
@@ -601,6 +627,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cohorts': {
+      id: '/cohorts'
+      path: '/cohorts'
+      fullPath: '/cohorts'
+      preLoaderRoute: typeof CohortsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/courses': {
@@ -741,6 +774,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/external-content'
       fullPath: '/admin/external-content'
       preLoaderRoute: typeof AdminExternalContentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/grade-moderation': {
+      id: '/admin/grade-moderation'
+      path: '/admin/grade-moderation'
+      fullPath: '/admin/grade-moderation'
+      preLoaderRoute: typeof AdminGradeModerationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/token-ledger': {
@@ -921,6 +961,7 @@ const StudioRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  CohortsRoute: CohortsRoute,
   CoursesRoute: CoursesRoute,
   CreatorApplicationRoute: CreatorApplicationRoute,
   DeveloperRoute: DeveloperRoute,
@@ -940,6 +981,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminComplianceRoute: AdminComplianceRoute,
   AdminCreatorsRoute: AdminCreatorsRoute,
   AdminExternalContentRoute: AdminExternalContentRoute,
+  AdminGradeModerationRoute: AdminGradeModerationRoute,
   AdminTokenLedgerRoute: AdminTokenLedgerRoute,
   AdminUsersRoute: AdminUsersRoute,
   ApiCourseFactoryRoute: ApiCourseFactoryRoute,

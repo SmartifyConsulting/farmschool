@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useLearning";
 import { supabase } from "@/integrations/supabase/client";
 import { readAllPages } from "@/lib/database-pages";
 import { assignmentNotifications } from "@/lib/assignment-notifications";
+import { extendedDeadline } from "@/lib/deadline-extension";
 
 export function useAssignmentNotifications() {
   const { user } = useAuth();
@@ -20,7 +21,7 @@ export function useAssignmentNotifications() {
           .order("cohort_id"),
       );
       if (!memberships.length) return [];
-      const [assignments, certificates, receipts] = await Promise.all([
+      const [assignments, certificates, receipts, extensions] = await Promise.all([
         readAllPages(
           supabase
             .from("cohort_course_assignments")
@@ -51,6 +52,13 @@ export function useAssignmentNotifications() {
             .eq("user_id", user!.id)
             .order("notification_key"),
         ),
+        readAllPages(
+          supabase
+            .from("course_deadline_extensions")
+            .select("course_id,due_at", { count: "exact" })
+            .eq("user_id", user!.id)
+            .order("course_id"),
+        ),
       ]);
       return assignmentNotifications(
         assignments.data
@@ -61,7 +69,10 @@ export function useAssignmentNotifications() {
             courseId: item.course_id,
             courseTitle: item.studio_courses!.title,
             assignedAt: item.assigned_at,
-            dueAt: item.due_at,
+            dueAt: extendedDeadline(
+              item.due_at,
+              extensions.data.find((extension) => extension.course_id === item.course_id)?.due_at,
+            ),
           })),
         new Set(certificates.data.map((item) => item.course_ref)),
         new Set(receipts.data.map((item) => item.notification_key)),

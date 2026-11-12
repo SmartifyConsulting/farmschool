@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      course_deadline_extensions: {
+        Row: { course_id: string; user_id: string; due_at: string | null; reason: string; changed_by: string; changed_at: string; version: number }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      course_deadline_events: {
+        Row: { id: string; course_id: string; user_id: string; due_at: string | null; reason: string; changed_by: string; changed_at: string; version: number }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      cohort_report_managers: {
+        Row: { cohort_id: string; user_id: string; granted_by: string; granted_at: string }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      course_grading_schemes: {
+        Row: { course_id: string; version: number; categories: Json; updated_at: string }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      course_grade_decisions: {
+        Row: { id: string; course_id: string; user_id: string; proposed_by: string; proposed_at: string; score: number; reason: string; scheme_version: number; previous_decision: string | null; status: string; reviewed_by: string | null; reviewed_at: string | null; review_note: string | null }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       activity_rubric_criteria: {
         Row: {
           activity_id: string
@@ -348,6 +378,10 @@ export type Database = {
       }
       cohorts: {
         Row: {
+          seat_limit: number | null
+          policy_version: number
+          auto_enrol_free: boolean
+          reminders_enabled: boolean
           created_at: string
           description: string
           id: string
@@ -355,6 +389,10 @@ export type Database = {
           owner_id: string
         }
         Insert: {
+          seat_limit?: number | null
+          policy_version?: number
+          auto_enrol_free?: boolean
+          reminders_enabled?: boolean
           created_at?: string
           description?: string
           id?: string
@@ -362,6 +400,10 @@ export type Database = {
           owner_id?: string
         }
         Update: {
+          seat_limit?: number | null
+          policy_version?: number
+          auto_enrol_free?: boolean
+          reminders_enabled?: boolean
           created_at?: string
           description?: string
           id?: string
@@ -1965,6 +2007,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      save_cohort_policy: { Args: { _cohort: string; _seats: number | null; _auto_free: boolean; _reminders: boolean; _expected_version: number }; Returns: number }
+      my_reporting_cohorts: { Args: never; Returns: { id: string; name: string }[] }
+      set_learner_deadline: { Args: { _course: string; _learner: string; _due_at: string | null; _reason: string; _expected_version: number }; Returns: number }
+      set_cohort_report_manager: { Args: { _cohort: string; _user: string; _allow: boolean }; Returns: undefined }
+      cohort_report_access: { Args: { _cohort: string }; Returns: boolean }
+      cohort_progress_report: { Args: { _cohort: string; _offset?: number; _limit?: number }; Returns: Json }
+      cohort_progress_export: { Args: { _cohort: string }; Returns: Json }
+      grade_moderation_queue: { Args: { _offset?: number }; Returns: Json }
+      save_course_grading: { Args: { _course: string; _categories: Json; _expected_version: number }; Returns: number }
+      propose_course_grade: { Args: { _course: string; _learner: string; _score: number; _reason: string; _expected_version: number; _previous_decision: string | null }; Returns: string }
+      review_course_grade: { Args: { _decision: string; _approve: boolean; _note: string }; Returns: undefined }
+      course_gradebook_export: { Args: { _course: string }; Returns: Json }
       issue_studio_certificate: { Args: { _user: string; _course: string; _expected_version: number; _expected_lessons: Json; _photo_tasks: Json }; Returns: Json }
       revoke_studio_certificate: { Args: { _certificate: string; _reason: string }; Returns: undefined }
       course_certificates: { Args: { _course: string; _offset?: number; _limit?: number }; Returns: Json }

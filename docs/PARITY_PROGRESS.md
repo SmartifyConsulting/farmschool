@@ -211,6 +211,44 @@ renewal, public credential verification and certificate design templates are
 not implemented by this change. Existing retained-lesson progress/quiz-credit
 rules remain; this does not reset learning when a course revision is published.
 
+Advanced grading now supports author-configured weighted categories (quiz and
+competency items, weights totalling 100%). Missing scores leave the weighted
+grade empty. Item membership is course-scoped, each item can appear once, and
+configuration saves reject stale versions. Course authors may propose final
+grade overrides with reasons; a different administrator must approve/reject
+them through Administration > Grade Moderation. Decisions retain reasons and
+review notes. Approved overrides apply only to their grading-scheme version;
+they never rewrite quiz attempts or grant certificates. Whole-course CSV export
+uses one database snapshot, reads every page, and fails above 10,000 learners
+rather than presenting a partial export as complete.
+
+Cohort policies now include seat limits, automatic enrolment for free published
+assignments and explicit reporting-manager appointments. Automatic enrolment
+never grants paid access or overwrites a purchase/refund. Seat enforcement locks
+the cohort during membership changes. Reporting managers can view/export only
+their appointed cohorts; administrators retain control of membership and policy
+changes. Reports include unstarted learner/course pairs and separate payment
+access from certification. Whole-cohort export reads all pages in one snapshot,
+with a 10,000-pair ceiling and formula-safe CSV cells.
+
+Individual course submission extensions retain a reason, version and append-only
+event history. Only the course author can grant/remove them. The server uses the
+later of the extension and earliest dated cohort deadline; an undated course
+remains undated. Text and file-submission checks share the effective deadline,
+while prior submissions retain their original deadline snapshots. My Learning
+and in-app reminders reflect extensions. Managers see effective dates but do
+not receive private accommodation reasons.
+
+Migrations 0054 and 0055 are applied. Rollback-only role tests cover weighted
+scores, missing/zero grades, self-review denial, stale reviews/configuration,
+override retirement, 202-learner export, seat limits, free auto-enrolment,
+purchase preservation, manager appointment/revocation and extension enforcement.
+Validation: 184 tests passed, 17 environment-gated tests skipped; TypeScript and
+production build passed. Signed-in browser journeys remain unverified.
+Resend reminders are the next implementation stage; delivery is not enabled.
+Shared banks, per-attempt random exam pools, portable question import/export,
+paid licence pools and push delivery remain outstanding within priorities 3/4.
+
 1. Run database integration tests against a migrated isolated database, then
    exercise cross-user access and complete learner/trainer journeys.
 2. Browser-test certificate claiming and revocation; add public credential
@@ -240,7 +278,7 @@ rules remain; this does not reset learning when a course revision is published.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041 through 0051 and 0053. Migration 0052 belongs to the intervening
+migrations 0041 through 0051 and 0053 through 0055. Migration 0052 belongs to the intervening
 Lovable API-management update and was not deployed by this certificate work.
 Test fixtures were rolled back; existing learner
 records were not edited.

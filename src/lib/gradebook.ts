@@ -1,7 +1,20 @@
 import { z } from "zod";
 
 const score = z.number().finite().min(0).max(100);
+export const gradingCategory = z.object({
+  id: z.string().uuid(),
+  title: z.string().trim().min(1).max(100),
+  weight: z.number().positive().max(100),
+  items: z
+    .array(z.object({ kind: z.enum(["quiz", "competency"]), id: z.string().uuid() }))
+    .min(1)
+    .max(100),
+});
+export type GradingCategory = z.infer<typeof gradingCategory>;
 export const gradebookReport = z.object({
+  grading: z
+    .object({ version: z.number().int().nonnegative(), categories: z.array(gradingCategory) })
+    .optional(),
   course: z.object({ id: z.string(), title: z.string() }),
   total: z.number().int().nonnegative(),
   offset: z.number().int().nonnegative(),
@@ -15,6 +28,23 @@ export const gradebookReport = z.object({
       completedLessons: z.array(z.string()),
       certified: z.boolean(),
       pendingSubmissions: z.number().int().nonnegative(),
+      finalGrade: z
+        .object({
+          calculated: score.nullable(),
+          score: score.nullable(),
+          decisionId: z.string().uuid().nullable(),
+          headId: z.string().uuid().nullable(),
+          overridden: z.boolean(),
+          categories: z.array(
+            z.object({
+              id: z.string(),
+              title: z.string(),
+              score: score.nullable(),
+              weight: z.number(),
+            }),
+          ),
+        })
+        .optional(),
       quizScores: z.record(
         z.object({ score, passed: z.boolean(), attempts: z.number().int().positive() }),
       ),
@@ -78,6 +108,9 @@ export function gradebookCsv(report: Gradebook): string {
     ...report.competencies.map(
       (competency) => "Competency: " + competency.code + " " + competency.title,
     ),
+    "Weighted grade (%)",
+    "Final grade (%)",
+    "Approved override",
   ];
   const rows = report.learners.map((learner) => {
     const summary = gradebookSummary(learner, report);
@@ -95,6 +128,9 @@ export function gradebookCsv(report: Gradebook): string {
       ...report.competencies.map(
         (competency) => learner.competencyScores[competency.id]?.score ?? null,
       ),
+      learner.finalGrade?.calculated ?? null,
+      learner.finalGrade?.score ?? null,
+      learner.finalGrade?.overridden ? "Yes" : "No",
     ];
   });
   return [header, ...rows].map((row) => row.map(cell).join(",")).join("\r\n");

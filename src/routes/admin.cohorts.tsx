@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { friendlyError } from "@/lib/friendly-error";
 import { pageMeta } from "@/lib/page-meta";
 import { readAllPages } from "@/lib/database-pages";
+import { CohortPolicies } from "@/components/CohortPolicies";
 
 export const Route = createFileRoute("/admin/cohorts")({
   component: CohortsPage,
@@ -172,6 +173,7 @@ function CohortsPage() {
               <>
                 {detail.isLoading && <p>Loading cohort…</p>}
                 {detail.error && <p role="alert">Could not load this cohort.</p>}
+                <CohortPolicies key={selected} cohortId={selected} people={options.data?.profiles ?? []} />
                 <section className="space-y-3">
                   <h2 className="font-semibold">Learners ({detail.data?.members.length ?? 0})</h2>
                   <Input

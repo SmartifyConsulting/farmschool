@@ -96,7 +96,7 @@ export function SubmissionPolicy({
           </label>
           <p className="text-xs text-muted-foreground">
             When disabled, the server blocks attempts after the deadline. Extend the learner's
-            cohort due date to reopen submissions.
+            individual deadline or cohort due date to reopen submissions.
           </p>
           <Button
             disabled={busy || allowed === policy.data.late_submissions_allowed}

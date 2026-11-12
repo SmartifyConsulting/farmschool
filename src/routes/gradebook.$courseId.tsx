@@ -8,6 +8,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { gradebookCsv, gradebookReport, gradebookSummary } from "@/lib/gradebook";
 import { pageMeta } from "@/lib/page-meta";
 import { CourseCertificates } from "@/components/CourseCertificates";
+import { CourseGrading } from "@/components/CourseGrading";
+import { toast } from "sonner";
+import { friendlyError } from "@/lib/friendly-error";
 
 export const Route = createFileRoute("/gradebook/$courseId")({
   component: GradebookPage,
@@ -22,6 +25,7 @@ function GradebookPage() {
   const { courseId } = Route.useParams();
   const { user, ready } = useAuth();
   const [page, setPage] = useState(0);
+  const [exporting, setExporting] = useState(false);
   useEffect(() => {
     setPage(0);
   }, [courseId]);
@@ -50,6 +54,29 @@ function GradebookPage() {
     URL.revokeObjectURL(url);
   };
   const quizzes = report.data?.lessons.filter((lesson) => lesson.kind === "quiz") ?? [];
+  const exportAll = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const { data, error } = await supabase.rpc("course_gradebook_export", { _course: courseId });
+      if (error) throw error;
+      const complete = gradebookReport.parse(data);
+      if (complete.learners.length !== complete.total)
+        throw new Error("Could not load the complete export.");
+      const url = URL.createObjectURL(
+        new Blob(["\uFEFF", gradebookCsv(complete)], { type: "text/csv;charset=utf-8" }),
+      );
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `gradebook-${courseId}-all.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(friendlyError(error));
+    } finally {
+      setExporting(false);
+    }
+  };
   return (
     <Phone>
       <Header />
@@ -103,6 +130,13 @@ function GradebookPage() {
                 >
                   Export this page (CSV)
                 </Button>
+                <Button
+                  variant="outline"
+                  disabled={exporting || !report.data.total}
+                  onClick={exportAll}
+                >
+                  {exporting ? "Preparing export…" : "Export whole course (CSV)"}
+                </Button>
               </div>
               {!report.data.total ? (
                 <p className="py-8 text-sm text-muted-foreground">
@@ -123,6 +157,7 @@ function GradebookPage() {
                           "Pending work",
                           "Quiz mean",
                           "Competency mean",
+                          "Final grade",
                           ...quizzes.map((quiz) => "Quiz: " + quiz.title),
                           ...report.data.competencies.map(
                             (competency) => competency.code + ": " + competency.title,
@@ -158,6 +193,17 @@ function GradebookPage() {
                             </td>
                             <td className="p-3">
                               {summary.competencyMean === null ? "—" : summary.competencyMean + "%"}
+                            </td>
+                            <td className="p-3">
+                              {learner.finalGrade?.score === null ||
+                              learner.finalGrade?.score === undefined
+                                ? "—"
+                                : learner.finalGrade.score + "%"}
+                              {learner.finalGrade?.overridden && (
+                                <span className="block text-xs text-muted-foreground">
+                                  Approved override
+                                </span>
+                              )}
                             </td>
                             {quizzes.map((quiz) => (
                               <td key={quiz.id} className="p-3">
@@ -219,6 +265,7 @@ function GradebookPage() {
           )
         )}
         {report.data && <CourseCertificates key={courseId} courseId={courseId} />}
+        {report.data && <CourseGrading key={"grading:" + courseId} report={report.data} />}
       </Sheet>
     </Phone>
   );

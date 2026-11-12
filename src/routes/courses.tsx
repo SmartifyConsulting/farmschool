@@ -13,6 +13,7 @@ import logo from "@/assets/plusticity-logo-navy.png";
 import { CourseViewToggle, useCourseView } from "@/components/CourseViewToggle";
 import { readAllPages } from "@/lib/database-pages";
 import { certificateStatus } from "@/lib/certificates";
+import { extendedDeadline } from "@/lib/deadline-extension";
 
 export const Route = createFileRoute("/courses")({
   head: () =>
@@ -98,7 +99,20 @@ function MyCourses() {
           .order("cohort_id")
           .order("course_id"),
       );
-      return data ?? [];
+      const extensions = await readAllPages(
+        supabase
+          .from("course_deadline_extensions")
+          .select("course_id,due_at", { count: "exact" })
+          .eq("user_id", user!.id)
+          .order("course_id"),
+      );
+      return data.map((item) => ({
+        ...item,
+        due_at: extendedDeadline(
+          item.due_at,
+          extensions.data.find((extension) => extension.course_id === item.course_id)?.due_at,
+        ),
+      }));
     },
   });
   const {
@@ -202,6 +216,9 @@ function MyCourses() {
       <Header />
       <Sheet>
         <CanvasHeading title="My learning" />
+        <Link to="/cohorts" className="mt-2 inline-block text-sm font-semibold text-primary">
+          Cohort reports for managers
+        </Link>
         <Link to="/skills" className="mt-3 inline-block text-sm font-semibold text-primary">
           My skills & trainer feedback
         </Link>

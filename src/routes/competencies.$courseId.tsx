@@ -15,6 +15,7 @@ import { CompetencyRubric } from "@/components/CompetencyRubric";
 import { RubricBreakdown } from "@/components/RubricBreakdown";
 import { SubmissionReview } from "@/components/SubmissionReview";
 import { SubmissionPolicy } from "@/components/SubmissionPolicy";
+import { LearnerDeadlineExtensions } from "@/components/LearnerDeadlineExtensions";
 
 export const Route = createFileRoute("/competencies/$courseId")({
   component: Competencies,
@@ -142,6 +143,10 @@ function Competencies() {
               key={courseId + ":policy"}
               courseId={courseId}
               competencies={workspace.data?.competencies ?? []}
+            />
+            <LearnerDeadlineExtensions
+              courseId={courseId}
+              learners={workspace.data?.learners ?? []}
             />
             <SubmissionReview
               key={courseId}
