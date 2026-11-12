@@ -37,6 +37,7 @@ class Node {
   children: Node[] = [];
   value = "";
   disabled = false;
+  checked = false;
   listeners: Record<string, (event: { preventDefault(): void }) => void> = {};
   constructor(tag: string) {
     this.tag = tag;
@@ -161,6 +162,16 @@ describe("portable SCORM export", () => {
     expect(resumed.calls.filter((call) => call === "finish")).toHaveLength(1);
   });
   it("grades choice, boolean, blanks and matches before reporting passed", () => {
+    const extended = portableCourse(fixture());
+    extended.lessons[0] = { title: "Extended assessment", kind: "quiz", body: "", video_url: null, passMark: 100, questions: [{ kind: "multi", q: "Select crops", options: ["Maize", "Bean", "Stone"] }, { kind: "numeric", q: "Required litres" }], answers: [[0, 1], { value: 10.5, tolerance: 0.1 }] };
+    const checked = launch(extended);
+    const entries = checked.main.all().filter(node => node.tag === "input");
+    entries[0]!.checked = true; entries[1]!.checked = true; entries[3]!.value = "10.6";
+    checked.main.all().find(node => node.tag === "form")!.trigger("submit");
+    expect(checked.values["cmi.core.score.raw"]).toBe("100");
+    entries[2]!.checked = true;
+    checked.main.all().find(node => node.tag === "form")!.trigger("submit");
+    expect(checked.values["cmi.core.score.raw"]).toBe("50");
     const course = portableCourse(fixture());
     course.lessons[0] = {
       title: "Assessment",

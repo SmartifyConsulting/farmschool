@@ -10,6 +10,8 @@ const rubricSchema = z.string().trim().min(20).max(writtenRubricLimit);
 
 const questionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("choice"), q: prompt, options: z.array(option).min(2).max(50) }),
+  z.object({ kind: z.literal("multi"), q: prompt, options: z.array(option).min(2).max(50) }),
+  z.object({ kind: z.literal("numeric"), q: prompt }),
   z.object({ kind: z.literal("boolean"), q: prompt }),
   z.object({ kind: z.literal("blank"), q: prompt }),
   z.object({ kind: z.literal("written"), q: prompt }),
@@ -27,7 +29,7 @@ export type QuestionKind = QuizQuestion["kind"];
 const responseSchema = z.union([
   choiceIndex,
   z.string().trim().min(1).max(writtenResponseLimit),
-  z.array(choiceIndex).min(2).max(8),
+  z.array(choiceIndex).min(1).max(50),
 ]);
 export const quizSubmission = z.object({
   lessonId: z.string().uuid(),
@@ -39,13 +41,19 @@ export type QuizResponse = z.infer<typeof responseSchema>;
 const keySchema = z.union([
   choiceIndex,
   z.array(z.string().trim().min(1).max(500)).min(1).max(10),
-  z.array(choiceIndex).min(2).max(8),
+  z.array(choiceIndex).min(1).max(50),
   z.object({ rubric: rubricSchema }),
+  z.object({
+    value: z.number().finite().min(-1e12).max(1e12),
+    tolerance: z.number().finite().min(0).max(1e12),
+  }),
 ]);
 type QuizKey = z.infer<typeof keySchema>;
 
 export type QuizDraftQuestion =
   | { kind: "choice"; q: string; options: string[]; answer: number }
+  | { kind: "multi"; q: string; options: string[]; answers: number[] }
+  | { kind: "numeric"; q: string; value: string; tolerance: string }
   | { kind: "boolean"; q: string; answer: number }
   | { kind: "blank"; q: string; accepted: string }
   | { kind: "written"; q: string; rubric: string }
@@ -53,6 +61,8 @@ export type QuizDraftQuestion =
 
 export const questionLabels: Record<QuestionKind, string> = {
   choice: "Multiple choice",
+  multi: "Select all correct answers",
+  numeric: "Numerical answer",
   boolean: "True / false",
   blank: "Fill in the blank",
   written: "Written response (AI graded)",
@@ -64,6 +74,10 @@ export function newQuizQuestion(kind: QuestionKind, q = ""): QuizDraftQuestion {
   switch (kind) {
     case "choice":
       return { kind, q, options: ["", "", "", ""], answer: -1 };
+    case "multi":
+      return { kind, q, options: ["", "", "", ""], answers: [] };
+    case "numeric":
+      return { kind, q, value: "", tolerance: "0" };
     case "boolean":
       return { kind, q, answer: -1 };
     case "blank":
@@ -116,6 +130,26 @@ export function loadQuizDraft(questions: QuizQuestion[], rawKeys: unknown): Quiz
         };
       case "boolean":
         return { ...question, answer: typeof answer === "number" ? answer : -1 };
+      case "multi":
+        return {
+          ...question,
+          options: [
+            ...question.options,
+            ...Array<string>(Math.max(0, 4 - question.options.length)).fill(""),
+          ],
+          answers:
+            Array.isArray(answer) && answer.every((item) => typeof item === "number") ? answer : [],
+        };
+      case "numeric":
+        return {
+          ...question,
+          value:
+            answer && typeof answer === "object" && "value" in answer ? String(answer.value) : "",
+          tolerance:
+            answer && typeof answer === "object" && "tolerance" in answer
+              ? String(answer.tolerance)
+              : "0",
+        };
       case "blank":
         return {
           ...question,
@@ -145,6 +179,25 @@ export function loadQuizDraft(questions: QuizQuestion[], rawKeys: unknown): Quiz
 const normalize = (value: string) =>
   value.normalize("NFKC").trim().toLowerCase().replace(/\s+/gu, " ");
 const allDifferent = (values: string[]) => new Set(values.map(normalize)).size === values.length;
+export function numericResponse(value: unknown): number | null {
+  if (
+    typeof value !== "string" ||
+    value.trim().length > 64 ||
+    !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(value.trim())
+  )
+    return null;
+  const number = Number(value);
+  if (number === 0 && /[1-9]/.test(value.trim().split(/[eE]/)[0]!)) return null;
+  return Number.isFinite(number) && Math.abs(number) <= 1e12 ? number : null;
+}
+export function numericMatches(actual: number, expected: number, tolerance: number): boolean {
+  const difference = Math.abs(actual - expected);
+  return (
+    difference <= tolerance ||
+    (tolerance > 0 &&
+      difference - tolerance <= Number.EPSILON * 4 * Math.max(1, difference, tolerance))
+  );
+}
 
 export function buildQuiz(draft: QuizDraftQuestion[]): {
   questions: QuizQuestion[];
@@ -173,6 +226,32 @@ export function buildQuiz(draft: QuizDraftQuestion[]): {
       const filled = options.filter(Boolean);
       questions.push({ kind: "choice", q, options: filled });
       keys.push(filled.indexOf(selected!));
+    } else if (question.kind === "multi") {
+      const options = question.options.map((item) => item.trim());
+      const filled = options.filter(Boolean);
+      if (
+        !z.array(option).max(50).safeParse(options).success ||
+        filled.length < 2 ||
+        !allDifferent(filled)
+      )
+        error("Enter at least two different options, up to 500 characters each.");
+      if (
+        !question.answers.length ||
+        new Set(question.answers).size !== question.answers.length ||
+        question.answers.some((index) => !Number.isInteger(index) || index < 0 || !options[index])
+      )
+        error("Select one or more correct options with text.");
+      questions.push({ kind: "multi", q, options: filled });
+      keys.push(
+        question.answers.map((index) => filled.indexOf(options[index]!)).sort((a, b) => a - b),
+      );
+    } else if (question.kind === "numeric") {
+      const value = numericResponse(question.value);
+      const tolerance = numericResponse(question.tolerance);
+      if (value === null || tolerance === null || tolerance < 0)
+        error("Enter a finite answer and a nonnegative absolute tolerance, within one trillion.");
+      questions.push({ kind: "numeric", q });
+      keys.push({ value: value!, tolerance: tolerance! });
     } else if (question.kind === "boolean") {
       if (question.answer !== 0 && question.answer !== 1)
         error("Select True or False as the correct answer.");
@@ -228,6 +307,18 @@ export function responseIsComplete(
       );
     case "choice":
       return typeof value === "number" && !!question.options[value]?.trim();
+    case "multi":
+      return (
+        Array.isArray(value) &&
+        value.length > 0 &&
+        value.length <= question.options.length &&
+        new Set(value).size === value.length &&
+        value.every(
+          (index) => Number.isInteger(index) && index >= 0 && !!question.options[index]?.trim(),
+        )
+      );
+    case "numeric":
+      return numericResponse(value) !== null;
     case "boolean":
       return value === 0 || value === 1;
     case "match":
@@ -268,6 +359,24 @@ export function gradeQuiz(
   return questions.map((question, i) => {
     const key = keys.data[i];
     const response = responses[i];
+    if (
+      question.kind === "numeric" &&
+      key &&
+      typeof key === "object" &&
+      "value" in key &&
+      "tolerance" in key
+    ) {
+      return numericMatches(numericResponse(response)!, key.value, key.tolerance);
+    }
+    if (
+      question.kind === "multi" &&
+      Array.isArray(key) &&
+      key.every((item) => typeof item === "number") &&
+      responseIsComplete(question, key) &&
+      Array.isArray(response)
+    ) {
+      return key.length === response.length && key.every((item) => response.includes(item));
+    }
     if (
       question.kind === "written" &&
       typeof response === "string" &&

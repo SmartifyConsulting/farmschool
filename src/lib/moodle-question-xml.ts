@@ -58,6 +58,10 @@ export function exportMoodleQuestionXml(entries: Entry[]): string {
   let category = "";
   for (const entry of entries) {
     const draft = readBankQuestion(entry.question, entry.answer);
+    if (draft.kind === "multi")
+      throw new Error(
+        "Exact-set multiple-response grading cannot be preserved in standard Moodle XML. Use the native question-bank export.",
+      );
     if (entry.category !== category) {
       category = entry.category;
       parts.push(
@@ -68,6 +72,7 @@ export function exportMoodleQuestionXml(entries: Entry[]): string {
     }
     const kind = {
       choice: "multichoice",
+      numeric: "numerical",
       boolean: "truefalse",
       blank: "shortanswer",
       written: "essay",
@@ -105,6 +110,14 @@ export function exportMoodleQuestionXml(entries: Entry[]): string {
             textTag(answer) +
             "</answer>",
         ),
+      );
+    } else if (draft.kind === "numeric") {
+      parts.push(
+        '<answer fraction="100" format="plain_text">' +
+          textTag(draft.value) +
+          "<tolerance>" +
+          escape(draft.tolerance) +
+          "</tolerance></answer><unitgradingtype>0</unitgradingtype><showunits>0</showunits>",
       );
     } else if (draft.kind === "blank") {
       parts.push("<usecase>0</usecase>");
@@ -213,6 +226,24 @@ export function importMoodleQuestionXml(source: string) {
           throw new Error("Invalid true/false question.");
         draft = { kind: "boolean", q, answer: labels[fractions.indexOf(100)] === "true" ? 0 : 1 };
       }
+    } else if (kind === "numerical") {
+      if (
+        answers.length !== 1 ||
+        Number(answers[0]?.getAttribute("fraction")) !== 100 ||
+        element.getElementsByTagName("unit").length ||
+        Number(value(element, "unitgradingtype") || 0) !== 0 ||
+        Number(value(element, "showunits") || 0) !== 0 ||
+        !["", "1"].includes(value(answers[0]!, "tolerancetype"))
+      )
+        throw new Error(
+          "Numerical import supports one full-credit answer with absolute tolerance and no unit conversion.",
+        );
+      draft = {
+        kind: "numeric",
+        q,
+        value: formatted(answers[0]),
+        tolerance: value(answers[0]!, "tolerance") || "0",
+      };
     } else if (kind === "shortanswer") {
       if (value(element, "usecase") === "1")
         throw new Error("Case-sensitive short answers are not supported.");
@@ -255,7 +286,7 @@ export function importMoodleQuestionXml(source: string) {
       draft = { kind: "written", q, rubric };
     } else
       throw new Error(
-        "Unsupported Moodle question type. Use multiple choice, true/false, short answer, matching or essay questions.",
+        "Unsupported Moodle question type. Use single-choice, numerical, true/false, short answer, matching or essay questions.",
       );
     const built = buildQuiz([draft]);
     const question = built.questions[0];

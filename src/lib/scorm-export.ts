@@ -294,7 +294,17 @@ export function portablePlayer() {
         };
         if (question.kind === "choice") select(question.options, "Answer");
         else if (question.kind === "boolean") select(["True", "False"], "Answer");
-        else if (question.kind === "match")
+        else if (question.kind === "multi") {
+          group.append(element("p", "Select all correct answers. Exact set required."));
+          question.options.forEach((option) => {
+            const label = element("label", option);
+            const input = element("input");
+            input.type = "checkbox";
+            label.append(input);
+            group.append(label);
+            fields[qi]!.push(input);
+          });
+        } else if (question.kind === "match")
           question.left.forEach((left) => select(question.right, left));
         else {
           const label = element("label", "Your answer");
@@ -317,7 +327,13 @@ export function portablePlayer() {
       form.addEventListener("submit", (event) => {
         event.preventDefault();
         const norm = (v: string) => v.normalize("NFKC").trim().toLowerCase().replace(/\s+/gu, " ");
-        if (fields.some((items) => items.some((f) => !f.value.trim()))) {
+        if (
+          fields.some((items, qi) =>
+            lesson.questions[qi]?.kind === "multi"
+              ? !items.some((f) => (f as HTMLInputElement).checked)
+              : items.some((f) => !f.value.trim()),
+          )
+        ) {
           feedback.textContent = "Answer every question.";
           return;
         }
@@ -325,7 +341,42 @@ export function portablePlayer() {
         lesson.questions.forEach((question, qi) => {
           const inputs = fields[qi]!;
           const key = lesson.answers[qi];
-          if (
+          if (question.kind === "multi" && Array.isArray(key)) {
+            const chosen = inputs.flatMap((input, index) =>
+              (input as HTMLInputElement).checked ? [index] : [],
+            );
+            if (
+              chosen.length === key.length &&
+              key.every((index) => typeof index === "number" && chosen.includes(index))
+            )
+              correct++;
+          } else if (
+            question.kind === "numeric" &&
+            key &&
+            typeof key === "object" &&
+            "value" in key &&
+            "tolerance" in key &&
+            typeof key.value === "number" &&
+            typeof key.tolerance === "number"
+          ) {
+            const raw = inputs[0]!.value.trim();
+            const actual = Number(raw);
+            if (
+              raw.length <= 64 &&
+              /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw) &&
+              Number.isFinite(actual) &&
+              Math.abs(actual) <= 1e12 &&
+              !(actual === 0 && /[1-9]/.test(raw.split(/[eE]/)[0]!))
+            ) {
+              const diff = Math.abs(actual - key.value);
+              if (
+                diff <= key.tolerance ||
+                (key.tolerance > 0 &&
+                  diff - key.tolerance <= Number.EPSILON * 4 * Math.max(1, diff, key.tolerance))
+              )
+                correct++;
+            }
+          } else if (
             (question.kind === "choice" || question.kind === "boolean") &&
             Number(inputs[0]!.value) === key
           )

@@ -24,7 +24,8 @@ export function QuizQuestionEditor({
   onChange: (value: QuizDraftQuestion) => void;
   onRemove: () => void;
 }) {
-  const choices = question.kind === "choice" ? question.options : trueFalseOptions;
+  const choices =
+    question.kind === "choice" || question.kind === "multi" ? question.options : trueFalseOptions;
   return (
     <fieldset className="min-w-0 space-y-2 rounded-xl border border-border p-3">
       <legend className="px-1 text-sm font-semibold">Question {index + 1}</legend>
@@ -66,23 +67,40 @@ export function QuizQuestionEditor({
         maxLength={500}
         onChange={(event) => onChange({ ...question, q: event.target.value })}
       />
-      {(question.kind === "choice" || question.kind === "boolean") && (
+      {(question.kind === "choice" || question.kind === "boolean" || question.kind === "multi") && (
         <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">Select the correct answer.</p>
+          <p className="text-xs text-muted-foreground">
+            {question.kind === "multi"
+              ? "Select every correct option. Learners earn one point only for the exact set."
+              : "Select the correct answer."}
+          </p>
           {choices.map((choice, position) => (
             <div key={position} className="flex items-center gap-2 text-sm">
               <input
-                type="radio"
+                type={question.kind === "multi" ? "checkbox" : "radio"}
                 name={"quiz-key-" + index}
-                checked={question.answer === position}
+                checked={
+                  question.kind === "multi"
+                    ? question.answers.includes(position)
+                    : question.answer === position
+                }
                 aria-label={
-                  question.kind === "choice"
+                  question.kind !== "boolean"
                     ? "Mark option " + (position + 1) + " correct"
                     : "Correct answer: " + choice
                 }
-                onChange={() => onChange({ ...question, answer: position })}
+                onChange={() =>
+                  question.kind === "multi"
+                    ? onChange({
+                        ...question,
+                        answers: question.answers.includes(position)
+                          ? question.answers.filter((value) => value !== position)
+                          : [...question.answers, position],
+                      })
+                    : onChange({ ...question, answer: position })
+                }
               />
-              {question.kind === "choice" ? (
+              {question.kind !== "boolean" ? (
                 <Input
                   aria-label={"Option " + (position + 1)}
                   maxLength={500}
@@ -117,6 +135,30 @@ export function QuizQuestionEditor({
             Capitalisation and extra spaces are ignored.
           </span>
         </label>
+      )}
+      {question.kind === "numeric" && (
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label>
+            Private correct number
+            <Input
+              value={question.value}
+              maxLength={64}
+              onChange={(event) => onChange({ ...question, value: event.target.value })}
+            />
+          </label>
+          <label>
+            Absolute tolerance
+            <Input
+              value={question.tolerance}
+              maxLength={64}
+              onChange={(event) => onChange({ ...question, tolerance: event.target.value })}
+            />
+          </label>
+          <p className="text-xs text-muted-foreground sm:col-span-2">
+            Use a decimal point or scientific notation; no commas or units. Put the required unit in
+            the prompt. Zero tolerance requires the exact numeric value.
+          </p>
+        </div>
       )}
       {question.kind === "written" && (
         <label className="block space-y-1 text-sm">

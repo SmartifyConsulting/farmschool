@@ -153,7 +153,10 @@ export function StudioQuiz({
       )}
       {questions.map((question, index) => {
         const answer = answers[index];
-        const options = question.kind === "choice" ? question.options : trueFalseOptions;
+        const options =
+          question.kind === "choice" || question.kind === "multi"
+            ? question.options
+            : trueFalseOptions;
         const pairs = Array.isArray(answer) ? answer : [];
         return (
           <fieldset
@@ -179,6 +182,44 @@ export function StudioQuiz({
                     </label>
                   ),
               )}
+            {question.kind === "multi" && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Select all correct answers. One point is awarded for the exact set.
+                </p>
+                {question.options.map((option, position) => (
+                  <label key={position} className="flex min-h-8 items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={pairs.includes(position)}
+                      onChange={() =>
+                        choose(
+                          index,
+                          pairs.includes(position)
+                            ? pairs.filter((value) => value !== position)
+                            : [...pairs, position],
+                        )
+                      }
+                    />
+                    {option}
+                  </label>
+                ))}
+              </div>
+            )}
+            {question.kind === "numeric" && (
+              <label className="block space-y-1 text-sm">
+                <span>Numerical answer</span>
+                <Input
+                  inputMode="decimal"
+                  maxLength={64}
+                  value={typeof answer === "string" ? answer : ""}
+                  onChange={(event) => choose(index, event.target.value)}
+                />
+                <span className="text-xs text-muted-foreground">
+                  Use a decimal point or scientific notation, without commas or units.
+                </span>
+              </label>
+            )}
             {question.kind === "blank" && (
               <Input
                 aria-label={"Answer to question " + (index + 1)}
