@@ -14,6 +14,18 @@ export type Database = {
   }
   public: {
     Tables: {
+      question_libraries: {
+        Row: { id: string; owner_id: string; name: string; created_at: string }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      question_library_members: {
+        Row: { library_id: string; user_id: string; member_email: string; role: string; granted_at: string }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       cohort_email_preferences: {
         Row: { user_id: string; enabled: boolean }
         Insert: { user_id?: string; enabled: boolean }
@@ -1387,6 +1399,7 @@ export type Database = {
       }
       quiz_question_bank: {
         Row: {
+          library_id: string | null
           answer: Json
           category: string
           created_at: string
@@ -2013,6 +2026,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      my_question_libraries: { Args: never; Returns: { id: string; name: string; can_edit: boolean; owner: boolean }[] }
+      create_question_library: { Args: { _name: string }; Returns: string }
+      grant_question_library_access: { Args: { _library: string; _email: string; _role: string }; Returns: undefined }
+      remove_question_library_access: { Args: { _library: string; _user: string }; Returns: undefined }
+      save_library_question: { Args: { _library: string; _id: string | null; _category: string; _question: Json; _answer: Json; _expected_version: number }; Returns: string }
+      import_bank_questions: { Args: { _library: string | null; _entries: Json }; Returns: number }
+      export_bank_questions: { Args: { _library?: string | null }; Returns: Json }
       enqueue_cohort_reminders: { Args: { _cohort?: string | null }; Returns: number }
       claim_cohort_reminders: { Args: { _limit?: number; _cohort?: string | null }; Returns: Json }
       authorize_cohort_reminder: { Args: { _id: string; _lease: string }; Returns: boolean }

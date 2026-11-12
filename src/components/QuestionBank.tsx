@@ -12,6 +12,8 @@ import { useAuth } from "@/hooks/useLearning";
 import { buildQuiz, newQuizQuestion, type QuizDraftQuestion } from "@/lib/studio-quiz";
 import { readBankQuestion } from "@/lib/question-bank";
 import { friendlyError } from "@/lib/friendly-error";
+import { QuestionLibraryTools } from "@/components/QuestionLibraryTools";
+import { useQuestionLibraries } from "@/hooks/useQuestionLibraries";
 
 type BankRow = Database["public"]["Tables"]["quiz_question_bank"]["Row"];
 
@@ -35,6 +37,10 @@ export function QuestionBank({
   const [editing, setEditing] = useState<BankRow | null>(null);
   const [category, setCategory] = useState("General");
   const [busy, setBusy] = useState(false);
+  const [scope, setScope] = useState("");
+  const libraries = useQuestionLibraries();
+  const canEdit =
+    !scope || libraries.data?.some((item) => item.id === scope && item.can_edit) === true;
   useEffect(() => {
     setOpen(false);
     setDraft(null);
@@ -42,17 +48,20 @@ export function QuestionBank({
     setSearch("");
     setFilter("");
     setPage(0);
+    setScope("");
   }, [user?.id]);
   const library = useQuery({
-    queryKey: ["question-bank", user?.id, search, filter, page],
+    queryKey: ["question-bank", user?.id, scope, search, filter, page],
     enabled: open && !!user,
     queryFn: async () => {
       let query = supabase
         .from("quiz_question_bank")
         .select("*", { count: "exact" })
-        .eq("owner_id", user!.id)
         .order("updated_at", { ascending: false })
         .order("id");
+      query = scope
+        ? query.eq("library_id", scope)
+        : query.eq("owner_id", user!.id).is("library_id", null);
       const literal = (value: string) => value.replace(/[\\%_]/g, "\\$&");
       if (search.trim()) query = query.ilike("question->>q", `%${literal(search.trim())}%`);
       if (filter.trim()) query = query.ilike("category", `%${literal(filter.trim())}%`);
@@ -77,18 +86,21 @@ export function QuestionBank({
       if (!question || answer === undefined) throw new Error("Check the question before saving.");
       if (!category.trim() || category.trim().length > 80)
         throw new Error("Enter a category of up to 80 characters.");
-      const { error } = await supabase.rpc("save_bank_question", {
+      const args = {
         _id: (editing?.id ?? null) as string,
         _category: category.trim(),
         _question: question,
         _answer: answer,
         _expected_version: editing?.version ?? 0,
-      });
+      };
+      const { error } = scope
+        ? await supabase.rpc("save_library_question", { ...args, _library: scope })
+        : await supabase.rpc("save_bank_question", args);
       if (error) throw error;
       setDraft(null);
       setEditing(null);
       await refresh();
-      toast.success("Question saved to your private library.");
+      toast.success("Question saved to the selected library.");
     } catch (error) {
       toast.error(
         friendlyError(error, "Could not save the question. Refresh the library and try again."),
@@ -152,9 +164,20 @@ export function QuestionBank({
             <DialogTitle>My question bank</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Private to you. Add copies to draft quizzes; library edits never change existing
-            courses. Save the lesson to keep added questions.
+            Personal questions are private. Shared libraries give selected people access to
+            questions and correct answers. Add copies to draft quizzes; library edits never change
+            existing courses. Save the lesson to keep added questions.
           </p>
+          <QuestionLibraryTools
+            scope={scope}
+            disabled={busy || !!draft}
+            onScopeChange={(next) => {
+              setScope(next);
+              setPage(0);
+              setSearch("");
+              setFilter("");
+            }}
+          />
           {draft ? (
             <div className="space-y-3">
               <Input
@@ -176,7 +199,7 @@ export function QuestionBank({
                 />
               </fieldset>
               <div className="flex gap-2">
-                <Button type="button" onClick={save} disabled={busy}>
+                <Button type="button" onClick={save} disabled={busy || !canEdit}>
                   {busy ? "Saving…" : "Save to library"}
                 </Button>
                 <Button
@@ -194,7 +217,12 @@ export function QuestionBank({
             </div>
           ) : (
             <div className="space-y-3">
-              <Button type="button" size="sm" onClick={() => begin(newQuizQuestion("choice"))}>
+              <Button
+                type="button"
+                size="sm"
+                disabled={!canEdit}
+                onClick={() => begin(newQuizQuestion("choice"))}
+              >
                 Create library question
               </Button>
               {questions.length > 0 && (
@@ -213,6 +241,7 @@ export function QuestionBank({
                           size="sm"
                           variant="outline"
                           onClick={() => begin(structuredClone(question))}
+                          disabled={!canEdit}
                         >
                           Save copy
                         </Button>
@@ -289,7 +318,7 @@ export function QuestionBank({
                           type="button"
                           size="sm"
                           variant="outline"
-                          disabled={busy}
+                          disabled={busy || !canEdit}
                           onClick={() => {
                             try {
                               begin(readBankQuestion(row.question, row.answer), row);
@@ -304,7 +333,7 @@ export function QuestionBank({
                           type="button"
                           size="sm"
                           variant="outline"
-                          disabled={busy}
+                          disabled={busy || !canEdit}
                           onClick={() => remove(row)}
                         >
                           Delete

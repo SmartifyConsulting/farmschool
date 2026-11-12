@@ -258,8 +258,26 @@ leases, retry payloads, stale acknowledgements, opt-out and recipient changes.
 Mocked provider/worker tests passed; no real emails were sent. The full suite
 now has 194 passing tests and 17 environment-gated skips. Real-provider delivery,
 the hosting scheduler and bounce/delivery-event handling remain unverified.
-Shared banks, per-attempt random exam pools, portable question import/export,
-paid licence pools and push delivery remain outstanding within priorities 3/4.
+Question banks now include shared libraries with explicit owner/reader/editor
+permissions. Only owners grant/remove access, and verified existing accounts are
+required. Membership removal blocks future reads/edits, including the former
+creator's shared entries; independent personal/course copies are retained.
+Private save/delete paths cannot bypass shared-library permissions. Imports are
+atomic, capped at 500 questions/10 MB, and never replace existing entries.
+Library exports include private answers/rubrics and require library read access.
+The interface supports Plusticity JSON and a documented subset of Moodle XML:
+single-answer multiple choice, true/false, literal case-insensitive short answer,
+matching and essays with grader notes. Rich media, partial credit, wildcard
+answers, essay attachments/word limits/templates and unsupported question types
+are rejected. Custom Moodle feedback is not transferred; the interface states
+this limitation. No real Moodle counterpart round trip has been performed.
+Migration 0057 is applied. Rollback-only role tests passed for reader/editor
+permissions, revocation, private-route bypass denial and atomic invalid imports.
+File tests round-trip all five types and reject unsupported XML/declarations.
+Validation: 206 tests passed, 17 environment-gated skips, TypeScript/build passed.
+Per-attempt random exam pools, paid licence pools and push delivery remain
+outstanding within priorities 3/4. Email activation is deferred at the user's
+request until sender details and server configuration are supplied.
 
 1. Run database integration tests against a migrated isolated database, then
    exercise cross-user access and complete learner/trainer journeys.
@@ -290,7 +308,7 @@ paid licence pools and push delivery remain outstanding within priorities 3/4.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041 through 0051 and 0053 through 0056. Migration 0052 belongs to the intervening
+migrations 0041 through 0051 and 0053 through 0057. Migration 0052 belongs to the intervening
 Lovable API-management update and was not deployed by this certificate work.
 Test fixtures were rolled back; existing learner
 records were not edited.
