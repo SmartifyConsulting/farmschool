@@ -368,6 +368,12 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      organization_portals: {
+        Row: { organization_id: string; slug: string; enabled: boolean; public_message: string; version: number }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       studio_quiz_policies: {
         Row: { lesson_id: string; course_id: string; max_attempts: number | null; duration_minutes: number; retry_minutes: number; version: number }
         Insert: never
@@ -2115,6 +2121,10 @@ export type Database = {
       save_quiz_exam_answers: { Args: { _session: string; _user: string; _responses: Json; _expected: number }; Returns: number }
       my_quiz_exam_status: { Args: { _lesson: string }; Returns: Json }
       learning_shell_brand: { Args: { _course?: string | null; _organization?: string | null }; Returns: Json }
+      save_organization_portal: { Args: { _organization: string; _slug: string; _enabled: boolean; _message: string; _expected: number }; Returns: number }
+      organization_portal: { Args: { _slug: string }; Returns: Json }
+      portal_course_report: { Args: { _slug: string; _learning?: boolean; _query?: string; _offset?: number; _limit?: number }; Returns: Json }
+      portal_learning_brand: { Args: { _slug: string; _course?: string | null }; Returns: Json }
       studio_save_private_quiz: { Args: { _lesson: string; _title: string; _pass_mark: number; _questions: Json; _answers: Json; _sample_size: number }; Returns: string }
       save_cohort_report_schedule: { Args: { _cohort: string; _enabled: boolean; _interval: number; _expected: number }; Returns: number }
       generate_cohort_report_snapshot: { Args: { _cohort: string; _request: string }; Returns: string }

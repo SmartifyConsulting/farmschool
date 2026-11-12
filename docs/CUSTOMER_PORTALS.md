@@ -1,0 +1,11 @@
+# Customer training portals
+
+Plusticity hosts the training, assessments, scoring and records. A customer portal at `/portal/<slug>` provides a published company-branded sign-in page and member-only catalogue and My Learning views. It does not connect another LMS.
+
+Managers configure the portal from their organization workspace. Publishing explicitly exposes the organization name, logo, colour and a separate public welcome message. The private workspace welcome and directory are not part of the public response. Addresses are permanent and stay reserved when disabled. Configuration changes require management permission and the latest saved version.
+
+Catalogue inventory includes published organization courses and shared courses assigned through organization cohorts or their active program versions. Membership in multiple organizations does not combine their catalogues. My Learning further filters inventory to the learner's assignments, enrolments, paid entitlements or recorded learning. Payment, prerequisites and lesson-access checks still apply. Public branding lookup and account registration never grant membership.
+
+Sign-in, signup, recovery, profile and course navigation retain validated portal context. Portal navigation defaults My Learning to list view and Catalogue to cards, with a saved toggle for each portal/view. Managers can open and copy the portal address. Supabase email redirect allowlists must cover the deployed application and recovery/portal destinations; no emails were sent during verification.
+
+Migration 0077 was checked in a rolled-back transaction, installed, then checked again with synthetic rollback-only fixtures. Checks cover anonymous field limits, disabled portals, manager-only configuration, stale edits, permanent/reserved addresses, cross-tenant inventory, My Learning selection, unpaid lesson denial, scoped course branding and no automatic membership. Type checking and production build passed; 307 unit tests passed and 17 environment-dependent tests skipped. Browser journeys and deployed redirect configuration remain unverified. Custom domains and certificate issuer templates are separate work.

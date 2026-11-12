@@ -1,4 +1,5 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useLearning";
@@ -8,18 +9,32 @@ import {
   safeBrandLogo,
   type LearningBrand,
 } from "@/lib/learning-brand";
+import { publicPortalSchema, readPortalSlug } from "@/lib/customer-portal";
 
 export const LearningBrandContext = createContext<LearningBrand | null>(null);
 export const useLearningBrand = () => useContext(LearningBrandContext);
-export function useLearningBrandForPath(path: string) {
+export function useLearningBrandForPath(path: string, portalSearch?: string) {
   const { user } = useAuth();
   const scope = brandContext(path);
+  const routeSlug = readPortalSlug(path.match(/^\/portal\/([^/]+)\/?$/)?.[1]);
+  const publicSlug = routeSlug ?? (["/auth", "/forgot-password", "/reset-password"].includes(path) ? portalSearch : undefined);
+  const enabled = !!publicSlug || (!!user && !!(scope.course || scope.organization || portalSearch));
   const query = useQuery({
-    queryKey: ["learning-shell-brand", user?.id, scope.course, scope.organization],
-    enabled: !!user && !!(scope.course || scope.organization),
+    queryKey: ["learning-shell-brand", user?.id, scope.course, scope.organization, publicSlug, portalSearch],
+    enabled,
     staleTime: 15000,
     refetchInterval: 30000,
     queryFn: async () => {
+      if (publicSlug) {
+        const { data, error } = await supabase.rpc("organization_portal", { _slug: publicSlug });
+        if (error) throw error;
+        return data === null ? null : publicPortalSchema.parse(data).brand;
+      }
+      if (portalSearch && !scope.organization) {
+        const { data, error } = await supabase.rpc("portal_learning_brand", { _slug: portalSearch, _course: scope.course });
+        if (error) throw error;
+        return data === null ? null : learningBrandSchema.parse(data);
+      }
       const { data, error } = await supabase.rpc("learning_shell_brand", {
         _course: scope.course,
         _organization: scope.organization,
@@ -28,9 +43,12 @@ export function useLearningBrandForPath(path: string) {
       return data === null ? null : learningBrandSchema.parse(data);
     },
   });
-  return user && (scope.course || scope.organization) && !query.isError
+  return enabled && !query.isError
     ? (query.data ?? null)
     : null;
+}
+export function BrandHome({ brand, children, className = "" }: { brand: LearningBrand; children: ReactNode; className?: string }) {
+  return brand.portalSlug ? <Link to="/portal/$slug" params={{ slug: brand.portalSlug }} className={className} aria-label={brand.name + " training portal"}>{children}</Link> : <Link to="/organizations/$id" params={{ id: brand.id }} className={className} aria-label={brand.name + " workspace"}>{children}</Link>;
 }
 export function OrganizationLogo({
   brand,

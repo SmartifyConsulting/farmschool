@@ -5,6 +5,7 @@ export const learningBrandSchema = z.object({
   name: z.string().min(1).max(200),
   color: z.string().regex(/^#[0-9a-f]{6}$/i),
   logo: z.string().nullable(),
+  portalSlug: z.string().regex(/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/).optional(),
 });
 export type LearningBrand = z.infer<typeof learningBrandSchema>;
 export function brandContext(path: string): { course: string | null; organization: string | null } {

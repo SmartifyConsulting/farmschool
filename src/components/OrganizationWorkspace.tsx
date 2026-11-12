@@ -13,6 +13,7 @@ import { readAllPages } from "@/lib/database-pages";
 import { friendlyError } from "@/lib/friendly-error";
 import { departmentPath } from "@/lib/organizations";
 import { OrganizationTraining } from "@/components/OrganizationTraining";
+import { OrganizationPortalSettings } from "@/components/OrganizationPortalSettings";
 
 export function OrganizationWorkspace({ organizationId }: { organizationId: string }) {
   const { user, ready } = useAuth();
@@ -238,9 +239,11 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
               </Link>
             </section>
             {org.can_manage && <OrganizationTraining key={organizationId} organizationId={organizationId} />}
+            {org.can_manage && <OrganizationPortalSettings key={"portal:" + organizationId} organizationId={organizationId} />}
             {org.can_manage && (
               <section className="space-y-3 rounded-xl border p-4">
                 <h2 className="font-semibold">Workspace branding</h2>
+                <p className="text-xs text-muted-foreground">If your customer portal is published, its public name, logo and colours update when you save branding.</p>
                 <label className="block text-sm">
                   Name
                   <Input

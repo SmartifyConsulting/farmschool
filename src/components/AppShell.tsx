@@ -21,8 +21,9 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
-import { LearningBrandContext, OrganizationLogo, useLearningBrand, useLearningBrandForPath } from "@/components/LearningBrand";
+import { BrandHome, LearningBrandContext, OrganizationLogo, useLearningBrand, useLearningBrandForPath } from "@/components/LearningBrand";
 import { accessibleBrandColor } from "@/lib/learning-brand";
+import { readPortalSlug } from "@/lib/customer-portal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,7 +56,8 @@ export function useIsAdmin() {
 
 export function Phone({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const brand = useLearningBrandForPath(path);
+  const search = useRouterState({ select: (s) => s.location.searchStr });
+  const brand = useLearningBrandForPath(path, readPortalSlug(new URLSearchParams(search).get("portal")));
   const theme = brand ? { "--primary": accessibleBrandColor(brand.color).css, "--primary-foreground": "oklch(1 0 0)", "--ring": accessibleBrandColor(brand.color).css } as CSSProperties : undefined;
   return (
     <LearningBrandContext.Provider value={brand}>
@@ -65,7 +67,7 @@ export function Phone({ children }: { children: ReactNode }) {
         {children}
         <Footer />
         <nav className="fixed bottom-10 left-1/2 z-20 flex w-[calc(100%-2rem)] max-w-[400px] -translate-x-1/2 items-center justify-around rounded-full bg-navy px-4 py-3 shadow-lg md:hidden">
-          {tabs.map((t) => {
+          {brand?.portalSlug ? <PortalNavigation slug={brand.portalSlug} mobile /> : tabs.map((t) => {
             const active = path === t.to;
             return (
               <Link
@@ -91,11 +93,11 @@ function DesktopSidebar() {
   const brand = useLearningBrand();
   return (
     <aside style={brand ? { backgroundColor: accessibleBrandColor(brand.color).css } : undefined} className="fixed inset-y-0 left-0 z-30 hidden w-[240px] flex-col overflow-y-auto bg-[#2765BC] px-4 py-6 text-white md:flex">
-      {brand ? <Link to="/organizations/$id" params={{ id: brand.id }} aria-label={brand.name + " workspace"} className="flex shrink-0 justify-center px-1 pb-5"><OrganizationLogo key={brand.id + brand.logo} brand={brand} /></Link> : <Link to="/" aria-label="Plusticity home" className="flex shrink-0 justify-center px-1 pb-5">
+      {brand ? <BrandHome brand={brand} className="flex shrink-0 justify-center px-1 pb-5"><OrganizationLogo key={brand.id + brand.logo} brand={brand} /></BrandHome> : <Link to="/" aria-label="Plusticity home" className="flex shrink-0 justify-center px-1 pb-5">
         <img src={logo} alt="Plusticity" className="h-[173px] w-auto max-w-full rounded-lg object-contain" />
       </Link>}
-      {brand && <Link to="/organizations/$id" params={{ id: brand.id }} className="mb-3 break-words rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold">{brand.name} workspace</Link>}
-      <nav aria-label="Main navigation" className="space-y-2">
+      {brand && <BrandHome brand={brand} className="mb-3 break-words rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold">{brand.name} {brand.portalSlug ? "training" : "workspace"}</BrandHome>}
+      {brand?.portalSlug ? <nav aria-label="Portal navigation" className="space-y-2"><PortalNavigation slug={brand.portalSlug} /></nav> : <nav aria-label="Main navigation" className="space-y-2">
         {[...tabs, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const, { to: "/studio/reports", icon: BarChart3, label: "Reports" } as const, { to: "/organizations", icon: Building2, label: "Organizations" } as const].map((item) => {
           const active = path === item.to || (item.to !== "/" && path.startsWith(item.to + "/") && !(item.to === "/studio" && path.startsWith("/studio/reports")));
           return (
@@ -106,13 +108,16 @@ function DesktopSidebar() {
             </Link>
           );
         })}
-      </nav>
+      </nav>}
       <div className="mt-auto space-y-4 pt-8">
         <AvatarMenu />
         <AccountLinks />
       </div>
     </aside>
   );
+}
+function PortalNavigation({ slug, mobile = false }: { slug: string; mobile?: boolean }) {
+  return <>{([{ view: "learning", label: "My Learning", icon: BookOpen }, { view: "catalogue", label: "Catalogue", icon: Search }] as const).map(item => <Link key={item.view} to="/portal/$slug" params={{ slug }} search={{ view: item.view }} aria-label={item.label} className={mobile ? "grid h-10 w-10 place-items-center rounded-full text-navy-foreground" : "flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium text-white hover:bg-white/10"}><item.icon aria-hidden="true" className="h-5 w-5 shrink-0" />{!mobile && item.label}</Link>)}</>;
 }
 
 function AvatarMenu({
@@ -124,6 +129,7 @@ function AvatarMenu({
 }) {
   const { user, ready } = useAuth();
   const nav = useNavigate();
+  const brand = useLearningBrand();
   const isAdmin = useIsAdmin();
   const { data: prof } = useQuery({
     queryKey: ["avatar-profile", user?.id],
@@ -161,11 +167,11 @@ function AvatarMenu({
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" side={mobile || horizontal ? "bottom" : "top"}>
-        <DropdownMenuItem asChild><Link to="/organizations"><Building2 className="mr-2 h-4 w-4" />Organizations</Link></DropdownMenuItem>
+        {!brand?.portalSlug && <DropdownMenuItem asChild><Link to="/organizations"><Building2 className="mr-2 h-4 w-4" />Organizations</Link></DropdownMenuItem>}
         <DropdownMenuItem asChild>
-          <Link to="/profile">Profile</Link>
+          <Link to="/profile" search={brand?.portalSlug ? { portal: brand.portalSlug } : {}}>Profile</Link>
         </DropdownMenuItem>
-        {isAdmin && (
+        {isAdmin && !brand?.portalSlug && (
           <DropdownMenuItem asChild>
             <Link to="/admin">Admin</Link>
           </DropdownMenuItem>
@@ -173,7 +179,8 @@ function AvatarMenu({
         <DropdownMenuItem
           onClick={() => {
             void supabase.auth.signOut();
-            nav({ to: "/" });
+            if (brand?.portalSlug) nav({ to: "/portal/$slug", params: { slug: brand.portalSlug } });
+            else nav({ to: "/" });
           }}
         >
           Sign out
@@ -184,6 +191,7 @@ function AvatarMenu({
 }
 
 function AccountLinks({ horizontal = false }: { horizontal?: boolean }) {
+  const brand = useLearningBrand();
   const { user, ready } = useAuth();
   if (!ready || user) return null;
   return (
@@ -191,6 +199,7 @@ function AccountLinks({ horizontal = false }: { horizontal?: boolean }) {
       <Link
         to="/auth"
         aria-label="Sign in"
+        search={brand?.portalSlug ? { portal: brand.portalSlug } : {}}
         className="flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
       >
         <LogIn className="h-4 w-4 shrink-0" />
@@ -198,7 +207,7 @@ function AccountLinks({ horizontal = false }: { horizontal?: boolean }) {
       </Link>
       <Link
         to="/auth"
-        search={{ mode: "signup" }}
+        search={{ mode: "signup", ...(brand?.portalSlug ? { portal: brand.portalSlug } : {}) }}
         aria-label="Sign up"
         className="flex items-center justify-center gap-2 rounded-xl border border-white px-3 py-2 text-sm font-semibold text-white"
       >
@@ -210,19 +219,21 @@ function AccountLinks({ horizontal = false }: { horizontal?: boolean }) {
 }
 
 function HeaderAction() {
+  const brand = useLearningBrand();
   const { user, ready } = useAuth();
   if (ready && !user)
     return (
       <div className="flex shrink-0 gap-2 md:hidden">
         <Link
           to="/auth"
+          search={brand?.portalSlug ? { portal: brand.portalSlug } : {}}
           className="rounded-xl bg-muted px-3 py-2 text-xs font-semibold text-foreground"
         >
           Sign in
         </Link>
         <Link
           to="/auth"
-          search={{ mode: "signup" }}
+          search={{ mode: "signup", ...(brand?.portalSlug ? { portal: brand.portalSlug } : {}) }}
           className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground"
         >
           Get started
@@ -234,13 +245,14 @@ function HeaderAction() {
 }
 
 function DesktopTopAccount() {
+  const brand = useLearningBrand();
   const { user, ready } = useAuth();
   if (!ready) return null;
   if (!user)
     return (
       <div className="flex gap-2">
-        <Link to="/auth" className="rounded-xl bg-muted px-3 py-2 text-sm font-semibold text-foreground">Sign in</Link>
-        <Link to="/auth" search={{ mode: "signup" }} className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">Sign up</Link>
+        <Link to="/auth" search={brand?.portalSlug ? { portal: brand.portalSlug } : {}} className="rounded-xl bg-muted px-3 py-2 text-sm font-semibold text-foreground">Sign in</Link>
+        <Link to="/auth" search={{ mode: "signup", ...(brand?.portalSlug ? { portal: brand.portalSlug } : {}) }} className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">Sign up</Link>
       </div>
     );
   return <AvatarMenu horizontal />;
@@ -252,18 +264,18 @@ export function Header({ children, wide = false }: { children?: ReactNode; wide?
     <header className="relative bg-card px-5 pb-4 pt-5 text-foreground md:contents">
       <div className="mx-auto max-w-[1760px]">
         <div className="flex items-center justify-between gap-3 md:hidden">
-          {brand ? <Link to="/organizations/$id" params={{ id: brand.id }} aria-label={brand.name + " workspace"} className="min-w-0 max-w-[40%]"><OrganizationLogo key={brand.id + brand.logo} brand={brand} mobile /></Link> : <Link to="/" aria-label="Home" className="shrink-0">
+          {brand ? <BrandHome brand={brand} className="min-w-0 max-w-[40%]"><OrganizationLogo key={brand.id + brand.logo} brand={brand} mobile /></BrandHome> : <Link to="/" aria-label="Home" className="shrink-0">
             <img src={mobileLogo} alt="Plusticity" className="h-[55.89px] w-auto object-contain" />
           </Link>}
           <div className="flex shrink-0 items-center gap-2">
-            <NotificationBell className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-foreground hover:bg-muted/75" />
+            {!brand?.portalSlug && <NotificationBell className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-foreground hover:bg-muted/75" />}
             <LanguageSwitcher />
             <HeaderAction />
           </div>
         </div>
         <div className="hidden items-center justify-end gap-2 px-10 pt-5 md:flex">
-          {brand && <Link to="/organizations/$id" params={{ id: brand.id }} className="mr-auto max-w-sm truncate text-sm font-semibold text-primary">{brand.name}</Link>}
-          <NotificationBell className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-muted text-foreground hover:bg-muted/75" />
+          {brand && <BrandHome brand={brand} className="mr-auto max-w-sm truncate text-sm font-semibold text-primary">{brand.name}</BrandHome>}
+          {!brand?.portalSlug && <NotificationBell className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-muted text-foreground hover:bg-muted/75" />}
           <LanguageSwitcher />
           <DesktopTopAccount />
         </div>
@@ -301,7 +313,7 @@ function Footer() {
   return (
     <footer className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-card px-5 py-2 text-[11px] text-muted-foreground md:left-[240px] md:px-10">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-1 sm:flex-row sm:justify-between">
-        <p className="line-clamp-2 min-w-0 text-center sm:max-w-[55%] sm:truncate sm:text-left">{brand && <span>{brand.name} · Powered by Plusticity · </span>}© 2026 Smartify Consulting (Pty) Ltd. All rights reserved.</p>
+        <p className="line-clamp-2 min-w-0 text-center sm:max-w-[55%] sm:truncate sm:text-left">{brand?.portalSlug ? brand.name : <>{brand && <span>{brand.name} · Powered by Plusticity · </span>}© 2026 Smartify Consulting (Pty) Ltd. All rights reserved.</>}</p>
         <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-3">
           <Link to="/terms" className="hover:text-foreground">
             Terms and Conditions

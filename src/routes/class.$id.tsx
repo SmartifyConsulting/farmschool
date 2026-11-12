@@ -38,8 +38,10 @@ import { createCheckoutSession } from "@/lib/checkout.functions";
 import { formatPrice, hasActiveEnrollment, isPaidCourse } from "@/lib/marketplace";
 import { CourseSubmissions } from "@/components/CourseSubmissions";
 import { Lock } from "lucide-react";
+import { readPortalSlug } from "@/lib/customer-portal";
 
 export const Route = createFileRoute("/class/$id")({
+  validateSearch: (input: Record<string, unknown>): { portal?: string } => readPortalSlug(input["portal"]) ? { portal: readPortalSlug(input["portal"])! } : {},
   head: () => ({
     meta: [
       { title: "Course — Plusticity" },
@@ -67,6 +69,7 @@ type L = {
 
 function ClassPage() {
   const { id } = Route.useParams();
+  const { portal } = Route.useSearch();
   const { user } = useAuth();
   const { data: course, isLoading } = useQuery({
     queryKey: ["class", id],
@@ -195,7 +198,7 @@ function ClassPage() {
         <Header />
         <Sheet>
           <CanvasHeading title="Course not found" />
-          <Link to="/search" className="mt-4 inline-block text-primary">
+          <Link to={portal ? "/portal/$slug" : "/search"} params={{ slug: portal ?? "" }} search={portal ? { view: "catalogue" } : {}} className="mt-4 inline-block text-primary">
             Browse the catalogue
           </Link>
         </Sheet>
@@ -266,7 +269,7 @@ function ClassPage() {
                   </Button>}
                   {!prerequisiteLocked && !user && (
                     <p className="text-xs text-muted-foreground">
-                      <Link to="/auth" className="font-semibold text-primary">
+                      <Link to="/auth" search={portal ? { portal } : {}} className="font-semibold text-primary">
                         Sign in
                       </Link>{" "}
                       first.

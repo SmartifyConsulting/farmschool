@@ -49,6 +49,7 @@ import { Route as GradebookCourseIdRouteImport } from './routes/gradebook.$cours
 import { Route as LearningActivitiesCourseIdRouteImport } from './routes/learning-activities.$courseId'
 import { Route as MessagesPartnerIdRouteImport } from './routes/messages.$partnerId'
 import { Route as OrganizationsIdRouteImport } from './routes/organizations.$id'
+import { Route as PortalSlugRouteImport } from './routes/portal.$slug'
 import { Route as ProgramsIdRouteImport } from './routes/programs.$id'
 import { Route as ScormIndexRouteImport } from './routes/scorm.index'
 import { Route as ScormIdRouteImport } from './routes/scorm.$id'
@@ -263,6 +264,11 @@ const OrganizationsIdRoute = OrganizationsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => OrganizationsRoute,
 } as any)
+const PortalSlugRoute = PortalSlugRouteImport.update({
+  id: '/portal/$slug',
+  path: '/portal/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProgramsIdRoute = ProgramsIdRouteImport.update({
   id: '/programs/$id',
   path: '/programs/$id',
@@ -364,6 +370,7 @@ export interface FileRoutesByFullPath {
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
   '/organizations/$id': typeof OrganizationsIdRouteWithChildren
+  '/portal/$slug': typeof PortalSlugRoute
   '/programs/$id': typeof ProgramsIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
@@ -418,6 +425,7 @@ export interface FileRoutesByTo {
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
   '/organizations/$id': typeof OrganizationsIdRouteWithChildren
+  '/portal/$slug': typeof PortalSlugRoute
   '/programs/$id': typeof ProgramsIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
@@ -473,6 +481,7 @@ export interface FileRoutesById {
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
   '/organizations/$id': typeof OrganizationsIdRouteWithChildren
+  '/portal/$slug': typeof PortalSlugRoute
   '/programs/$id': typeof ProgramsIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
@@ -529,6 +538,7 @@ export interface FileRouteTypes {
     | '/learning-activities/$courseId'
     | '/messages/$partnerId'
     | '/organizations/$id'
+    | '/portal/$slug'
     | '/programs/$id'
     | '/scorm/$id'
     | '/studio/$id'
@@ -583,6 +593,7 @@ export interface FileRouteTypes {
     | '/learning-activities/$courseId'
     | '/messages/$partnerId'
     | '/organizations/$id'
+    | '/portal/$slug'
     | '/programs/$id'
     | '/scorm/$id'
     | '/studio/$id'
@@ -637,6 +648,7 @@ export interface FileRouteTypes {
     | '/learning-activities/$courseId'
     | '/messages/$partnerId'
     | '/organizations/$id'
+    | '/portal/$slug'
     | '/programs/$id'
     | '/scorm/$id'
     | '/studio/$id'
@@ -690,6 +702,7 @@ export interface RootRouteChildren {
   CourseIdRoute: typeof CourseIdRoute
   GradebookCourseIdRoute: typeof GradebookCourseIdRoute
   LearningActivitiesCourseIdRoute: typeof LearningActivitiesCourseIdRoute
+  PortalSlugRoute: typeof PortalSlugRoute
   ProgramsIdRoute: typeof ProgramsIdRoute
   ScormIdRoute: typeof ScormIdRoute
   VerifyTokenRoute: typeof VerifyTokenRoute
@@ -984,6 +997,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrganizationsIdRouteImport
       parentRoute: typeof OrganizationsRoute
     }
+    '/portal/$slug': {
+      id: '/portal/$slug'
+      path: '/portal/$slug'
+      fullPath: '/portal/$slug'
+      preLoaderRoute: typeof PortalSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/programs/$id': {
       id: '/programs/$id'
       path: '/programs/$id'
@@ -1158,6 +1178,7 @@ const rootRouteChildren: RootRouteChildren = {
   CourseIdRoute: CourseIdRoute,
   GradebookCourseIdRoute: GradebookCourseIdRoute,
   LearningActivitiesCourseIdRoute: LearningActivitiesCourseIdRoute,
+  PortalSlugRoute: PortalSlugRoute,
   ProgramsIdRoute: ProgramsIdRoute,
   ScormIdRoute: ScormIdRoute,
   VerifyTokenRoute: VerifyTokenRoute,

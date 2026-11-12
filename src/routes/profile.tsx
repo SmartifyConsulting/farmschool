@@ -20,6 +20,7 @@ import { friendlyError } from "@/lib/friendly-error";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/profile")({
+  validateSearch: (input: Record<string, unknown>): { portal?: string } => typeof input["portal"] === "string" && /^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(input["portal"]) ? { portal: input["portal"] } : {},
   head: () => ({
     meta: [
       { title: "Profile — Plusticity" },

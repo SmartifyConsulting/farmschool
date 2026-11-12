@@ -1,14 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { z } from "zod";
 import { Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PasswordInput, inputCls } from "@/components/PasswordInput";
 import { ROLES, mapAuthError, passwordRules } from "@/lib/auth-errors";
 import logo from "@/assets/plusticity-logo-navy.png";
+import { useCustomerPortal } from "@/hooks/useCustomerPortal";
+import { readPortalSlug, portalPath } from "@/lib/customer-portal";
+import { accessibleBrandColor, type LearningBrand } from "@/lib/learning-brand";
+import { OrganizationLogo } from "@/components/LearningBrand";
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (s: Record<string, unknown>): { mode?: "signup" } => (s['mode'] === "signup" ? { mode: "signup" } : {}),
+  validateSearch: (s: Record<string, unknown>): { mode?: "signup"; portal?: string } => ({ ...(s['mode'] === "signup" ? { mode: "signup" as const } : {}), ...(readPortalSlug(s['portal']) ? { portal: readPortalSlug(s['portal'])! } : {}) }),
   head: () => ({ meta: [
     { title: "Sign in or sign up — Plusticity" },
     { name: "description", content: "Sign in or create a free Plusticity learner account." },
@@ -20,11 +24,13 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-export function AuthCard({ title, children }: { title: string; children: React.ReactNode }) {
+export function AuthCard({ title, children, brand }: { title: string; children: React.ReactNode; brand?: LearningBrand | null | undefined }) {
+  const tone = brand ? accessibleBrandColor(brand.color).css : null;
+  const style = tone ? { "--primary": tone, "--primary-foreground": "oklch(1 0 0)", "--ring": tone, "--accent": tone, "--accent-foreground": "oklch(1 0 0)" } as CSSProperties : undefined;
   return (
-    <div className="grid min-h-screen place-items-center bg-primary p-5">
+    <div style={style} className="grid min-h-screen place-items-center bg-primary p-5">
       <div className="w-full max-w-sm rounded-3xl bg-card p-6 shadow-xl sm:max-w-md sm:p-8 md:max-w-lg">
-        <Link to="/"><img src={logo} alt="Plusticity" className="mx-auto mb-4 h-[370px] w-auto object-contain" /></Link>
+        {brand?.portalSlug ? <Link to="/portal/$slug" params={{ slug: brand.portalSlug }} className="mb-5 flex justify-center"><OrganizationLogo key={brand.id + brand.logo} brand={brand} /></Link> : <Link to="/"><img src={logo} alt="Plusticity" className="mx-auto mb-4 h-[370px] w-auto object-contain" /></Link>}
         <h1 className="mb-5 text-center text-xl font-semibold">{title}</h1>
         {children}
       </div>
@@ -44,6 +50,8 @@ const Err = ({ id, msg }: { id: string; msg?: string | undefined }) => msg ? <p 
 
 function AuthPage() {
   const search = Route.useSearch();
+  const portal = useCustomerPortal(search.portal);
+  const brand = !portal.isError ? portal.data?.brand : undefined;
   const nav = useNavigate();
   const [mode, setMode] = useState<"in" | "up">(search.mode === "signup" ? "up" : "in");
   const [f, setF] = useState({ fullName: "", region: "", role: "", email: "", password: "", confirm: "" });
@@ -60,7 +68,7 @@ function AuthPage() {
       setBusy(true);
       const { error } = await supabase.auth.signInWithPassword({ email: f.email.trim(), password: f.password });
       setBusy(false);
-      return error ? setMsg(mapAuthError(error, "signin")) : nav({ to: "/" });
+      return error ? setMsg(mapAuthError(error, "signin")) : search.portal ? nav({ to: "/portal/$slug", params: { slug: search.portal } }) : nav({ to: "/" });
     }
     const errs: Errors = {};
     const parsed = signupSchema.safeParse(f);
@@ -71,17 +79,20 @@ function AuthPage() {
     if (Object.keys(errs).length) { document.getElementById(Object.keys(errs)[0]!)?.focus(); return; }
     setBusy(true);
     const d = parsed.data!;
-    const { data, error } = await supabase.auth.signUp({ email: d.email, password: f.password, options: { emailRedirectTo: window.location.origin, data: { full_name: d.fullName } } });
+    const { data, error } = await supabase.auth.signUp({ email: d.email, password: f.password, options: { emailRedirectTo: window.location.origin + (search.portal ? portalPath(search.portal) : ""), data: { full_name: d.fullName } } });
     if (error || !data.user) { setBusy(false); return setMsg(mapAuthError(error, "signup")); }
     const { error: pErr } = await supabase.from("profiles").upsert({ user_id: data.user.id, full_name: d.fullName, region: d.region, learner_role: d.role });
     setBusy(false);
     if (pErr) console.error(pErr);
     if (!data.session) return setMsg("Account created — please sign in.");
-    nav({ to: "/" });
+    if (search.portal) nav({ to: "/portal/$slug", params: { slug: search.portal } });
+    else nav({ to: "/" });
   };
 
+  if (search.portal && (portal.isPending || portal.isError || !portal.data)) return <AuthCard title={portal.isPending ? "Loading training portal…" : "Training portal unavailable"}><p>Contact your training manager if this address no longer works.</p></AuthCard>;
   return (
-    <AuthCard title={mode === "in" ? "Welcome back" : "Create your free account"}>
+    <AuthCard brand={brand} title={mode === "in" ? brand ? "Sign in to " + brand.name : "Welcome back" : "Create your learner account"}>
+      {brand && <p className="mb-4 text-sm">Use the account your training manager added to this portal. A new account will need portal membership from your training manager.</p>}
       <div className="mb-5 flex rounded-full bg-muted p-1 text-sm">
         {(["in", "up"] as const).map((m) => <button key={m} type="button" onClick={() => { setMode(m); setMsg(null); setErrors({}); }} className={`flex-1 rounded-full py-1.5 ${mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{m === "in" ? "Sign in" : "Sign up"}</button>)}
       </div>
@@ -101,7 +112,7 @@ function AuthPage() {
         <div>
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium" htmlFor="password">Password</label>
-            {mode === "in" && <Link to="/forgot-password" tabIndex={-1} className="text-xs text-primary">Forgot password?</Link>}
+            {mode === "in" && <Link to="/forgot-password" search={search.portal ? { portal: search.portal } : {}} tabIndex={-1} className="text-xs text-primary">Forgot password?</Link>}
           </div>
           <PasswordInput id="password" value={f.password} onChange={set("password")} autoComplete={mode === "in" ? "current-password" : "new-password"} />
           <Err id="e-pw" msg={errors.password} />
@@ -114,7 +125,7 @@ function AuthPage() {
         {msg && <p aria-live="polite" className="rounded-lg bg-muted p-2 text-sm">{msg}</p>}
         <button disabled={busy} className="w-full rounded-full bg-accent py-3 font-semibold text-accent-foreground disabled:opacity-60">{busy ? "Please wait…" : mode === "in" ? "Sign in" : "Create account"}</button>
       </form>
-      <Link to="/" className="mt-4 block text-center text-xs text-muted-foreground">Continue browsing without an account</Link>
+      {search.portal ? <Link to="/portal/$slug" params={{ slug: search.portal }} className="mt-4 block text-center text-xs text-muted-foreground">Back to training portal</Link> : <Link to="/" className="mt-4 block text-center text-xs text-muted-foreground">Continue browsing without an account</Link>}
     </AuthCard>
   );
 }
