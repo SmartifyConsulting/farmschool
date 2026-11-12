@@ -9,6 +9,7 @@ import {
   PenSquare,
   Mail,
   BarChart3,
+  Building2,
 } from "lucide-react";
 import { type ReactNode } from "react";
 import logo from "@/assets/plusticity-logo.png";
@@ -87,7 +88,7 @@ function DesktopSidebar() {
         <img src={logo} alt="Plusticity" className="h-[173px] w-auto max-w-full rounded-lg object-contain" />
       </Link>
       <nav aria-label="Main navigation" className="space-y-2">
-        {[...tabs, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const, { to: "/studio/reports", icon: BarChart3, label: "Reports" } as const].map((item) => {
+        {[...tabs, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const, { to: "/studio/reports", icon: BarChart3, label: "Reports" } as const, { to: "/organizations", icon: Building2, label: "Organizations" } as const].map((item) => {
           const active = path === item.to || (item.to !== "/" && path.startsWith(item.to + "/") && !(item.to === "/studio" && path.startsWith("/studio/reports")));
           return (
             <Link key={item.to} to={item.to} aria-current={active ? "page" : undefined}
@@ -152,6 +153,7 @@ function AvatarMenu({
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" side={mobile || horizontal ? "bottom" : "top"}>
+        <DropdownMenuItem asChild><Link to="/organizations"><Building2 className="mr-2 h-4 w-4" />Organizations</Link></DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link to="/profile">Profile</Link>
         </DropdownMenuItem>

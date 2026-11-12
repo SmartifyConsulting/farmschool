@@ -356,6 +356,12 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      organization_departments: {
+        Row: { id: string; organization_id: string; name: string; parent_id: string | null; version: number }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       learning_program_versions: {
         Row: { id: string; program_id: string; version: number; title: string; description: string; stages: Json; published_at: string }
         Insert: never
@@ -2068,6 +2074,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      my_organizations: { Args: Record<string, never>; Returns: { id: string; name: string; welcome: string; brand_color: string; logo_url: string | null; version: number; can_manage: boolean }[] }
+      organization_people: { Args: { _organization: string }; Returns: { user_id: string; full_name: string; email: string; role: string; department_id: string | null; manager_id: string | null; job_title: string; manager_name: string; is_owner: boolean; version: number }[] }
+      save_organization: { Args: { _organization: string; _name: string; _welcome: string; _color: string; _logo: string | null; _expected: number }; Returns: number }
+      save_organization_department: { Args: { _organization: string; _department: string; _name: string; _parent: string | null; _expected: number }; Returns: number }
+      set_organization_member: { Args: { _organization: string; _email: string; _role: string; _department: string | null; _manager: string | null; _job: string; _expected: number }; Returns: string }
+      remove_organization_member: { Args: { _organization: string; _user: string; _expected: number }; Returns: undefined }
       export_course_archive: { Args: { _course: string }; Returns: Json }
       restore_course_archive: { Args: { _request: string; _archive: Json }; Returns: string }
       cohort_program_versions: { Args: { _cohort: string }; Returns: { id: string; title: string; version: number; active: boolean; due_at: string | null }[] }

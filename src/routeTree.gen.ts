@@ -18,6 +18,7 @@ import { Route as DeveloperRouteImport } from './routes/developer'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as OrganizationsRouteImport } from './routes/organizations'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -47,6 +48,7 @@ import { Route as CourseIdRouteImport } from './routes/course.$id'
 import { Route as GradebookCourseIdRouteImport } from './routes/gradebook.$courseId'
 import { Route as LearningActivitiesCourseIdRouteImport } from './routes/learning-activities.$courseId'
 import { Route as MessagesPartnerIdRouteImport } from './routes/messages.$partnerId'
+import { Route as OrganizationsIdRouteImport } from './routes/organizations.$id'
 import { Route as ProgramsIdRouteImport } from './routes/programs.$id'
 import { Route as ScormIndexRouteImport } from './routes/scorm.index'
 import { Route as ScormIdRouteImport } from './routes/scorm.$id'
@@ -102,6 +104,11 @@ const MessagesRoute = MessagesRouteImport.update({
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrganizationsRoute = OrganizationsRouteImport.update({
+  id: '/organizations',
+  path: '/organizations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -250,6 +257,11 @@ const MessagesPartnerIdRoute = MessagesPartnerIdRouteImport.update({
   path: '/$partnerId',
   getParentRoute: () => MessagesRoute,
 } as any)
+const OrganizationsIdRoute = OrganizationsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => OrganizationsRoute,
+} as any)
 const ProgramsIdRoute = ProgramsIdRouteImport.update({
   id: '/programs/$id',
   path: '/programs/$id',
@@ -316,6 +328,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/messages': typeof MessagesRouteWithChildren
   '/notifications': typeof NotificationsRoute
+  '/organizations': typeof OrganizationsRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -344,6 +357,7 @@ export interface FileRoutesByFullPath {
   '/gradebook/$courseId': typeof GradebookCourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
+  '/organizations/$id': typeof OrganizationsIdRoute
   '/programs/$id': typeof ProgramsIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
@@ -367,6 +381,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/messages': typeof MessagesRouteWithChildren
   '/notifications': typeof NotificationsRoute
+  '/organizations': typeof OrganizationsRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -395,6 +410,7 @@ export interface FileRoutesByTo {
   '/gradebook/$courseId': typeof GradebookCourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
+  '/organizations/$id': typeof OrganizationsIdRoute
   '/programs/$id': typeof ProgramsIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
@@ -419,6 +435,7 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/messages': typeof MessagesRouteWithChildren
   '/notifications': typeof NotificationsRoute
+  '/organizations': typeof OrganizationsRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -447,6 +464,7 @@ export interface FileRoutesById {
   '/gradebook/$courseId': typeof GradebookCourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
+  '/organizations/$id': typeof OrganizationsIdRoute
   '/programs/$id': typeof ProgramsIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
@@ -472,6 +490,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/messages'
     | '/notifications'
+    | '/organizations'
     | '/privacy'
     | '/profile'
     | '/reset-password'
@@ -500,6 +519,7 @@ export interface FileRouteTypes {
     | '/gradebook/$courseId'
     | '/learning-activities/$courseId'
     | '/messages/$partnerId'
+    | '/organizations/$id'
     | '/programs/$id'
     | '/scorm/$id'
     | '/studio/$id'
@@ -523,6 +543,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/messages'
     | '/notifications'
+    | '/organizations'
     | '/privacy'
     | '/profile'
     | '/reset-password'
@@ -551,6 +572,7 @@ export interface FileRouteTypes {
     | '/gradebook/$courseId'
     | '/learning-activities/$courseId'
     | '/messages/$partnerId'
+    | '/organizations/$id'
     | '/programs/$id'
     | '/scorm/$id'
     | '/studio/$id'
@@ -574,6 +596,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/messages'
     | '/notifications'
+    | '/organizations'
     | '/privacy'
     | '/profile'
     | '/reset-password'
@@ -602,6 +625,7 @@ export interface FileRouteTypes {
     | '/gradebook/$courseId'
     | '/learning-activities/$courseId'
     | '/messages/$partnerId'
+    | '/organizations/$id'
     | '/programs/$id'
     | '/scorm/$id'
     | '/studio/$id'
@@ -626,6 +650,7 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   MessagesRoute: typeof MessagesRouteWithChildren
   NotificationsRoute: typeof NotificationsRoute
+  OrganizationsRoute: typeof OrganizationsRouteWithChildren
   PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -728,6 +753,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/organizations': {
+      id: '/organizations'
+      path: '/organizations'
+      fullPath: '/organizations'
+      preLoaderRoute: typeof OrganizationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -933,6 +965,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MessagesPartnerIdRouteImport
       parentRoute: typeof MessagesRoute
     }
+    '/organizations/$id': {
+      id: '/organizations/$id'
+      path: '/$id'
+      fullPath: '/organizations/$id'
+      preLoaderRoute: typeof OrganizationsIdRouteImport
+      parentRoute: typeof OrganizationsRoute
+    }
     '/programs/$id': {
       id: '/programs/$id'
       path: '/programs/$id'
@@ -1025,6 +1064,18 @@ const MessagesRouteWithChildren = MessagesRoute._addFileChildren(
   MessagesRouteChildren,
 )
 
+interface OrganizationsRouteChildren {
+  OrganizationsIdRoute: typeof OrganizationsIdRoute
+}
+
+const OrganizationsRouteChildren: OrganizationsRouteChildren = {
+  OrganizationsIdRoute: OrganizationsIdRoute,
+}
+
+const OrganizationsRouteWithChildren = OrganizationsRoute._addFileChildren(
+  OrganizationsRouteChildren,
+)
+
 interface StudioRouteChildren {
   StudioIdRoute: typeof StudioIdRoute
   StudioReportsRoute: typeof StudioReportsRoute
@@ -1048,6 +1099,7 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotPasswordRoute: ForgotPasswordRoute,
   MessagesRoute: MessagesRouteWithChildren,
   NotificationsRoute: NotificationsRoute,
+  OrganizationsRoute: OrganizationsRouteWithChildren,
   PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
   ResetPasswordRoute: ResetPasswordRoute,

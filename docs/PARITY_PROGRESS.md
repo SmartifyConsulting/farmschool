@@ -368,10 +368,16 @@ deferred at the user's request until sender details/configuration are supplied.
     Assessment-based recurring course certification is implemented. Broader
     Workplace recertification scheduling and operational verification remain.
     See docs/LEARNING_PROGRAMS.md for program scope and remaining limitations.
+    Organization workspaces now provide isolated member/department/reporting-line
+    data and branded workspace pages in migration 0064. Organization management
+    roles do not grant platform administration. Private tenant courses, bound
+    cohorts/programs and tenant-wide learning reports remain to be integrated;
+    workspace directory isolation alone is not full learning-resource isolation.
+    See docs/ORGANIZATION_WORKSPACES.md.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041 through 0051 and 0053 through 0063. Migration 0052 belongs to the intervening
+migrations 0041 through 0051 and 0053 through 0064. Migration 0052 belongs to the intervening
 Lovable API-management update and was not deployed by this certificate work.
 Test fixtures were rolled back; existing learner
 records were not edited.
