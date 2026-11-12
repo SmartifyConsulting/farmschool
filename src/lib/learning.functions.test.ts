@@ -23,7 +23,7 @@ vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: { from: mocks.adminFrom, rpc: mocks.adminRpc },
 }));
 
-import { claimCertificate, submitQuiz } from "./learning.functions";
+import { beginQuizAttempt, claimCertificate, submitQuiz } from "./learning.functions";
 
 function query(data: unknown, error: unknown = null) {
   const chain = {
@@ -42,6 +42,7 @@ const context = {
 };
 const invokeQuiz = submitQuiz as unknown as (input: unknown) => Promise<unknown>;
 const invokeCertificate = claimCertificate as unknown as (input: unknown) => Promise<unknown>;
+const invokeBegin = beginQuizAttempt as unknown as (input: unknown) => Promise<unknown>;
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -157,6 +158,113 @@ describe("practical certificate requirements", () => {
     setup([], null, "## Reading\nRead the field notes.");
     issue.mockResolvedValue({ data: null, error: null });
     await expect(claim()).rejects.toThrow("Could not confirm the certificate");
+  });
+});
+
+describe("random quiz attempt snapshots", () => {
+  const attemptId = "10000000-0000-4000-8000-000000000001";
+  const lease = "10000000-0000-4000-8000-000000000002";
+  const result = {
+    score: 50,
+    passed: true,
+    passMark: 50,
+    correct: [true, false],
+    feedback: [null, null],
+  };
+  const sampled = [
+    { kind: "boolean", q: "Original A" },
+    { kind: "boolean", q: "Original B" },
+  ];
+  function setup() {
+    mocks.rpc.mockResolvedValue({ data: true, error: null });
+    mocks.adminFrom.mockReturnValue(
+      query({
+        id: "lesson",
+        course_id: "course",
+        body: "pass:100\nsample:1",
+        quiz: [
+          { kind: "boolean", q: "Changed A" },
+          { kind: "boolean", q: "Changed B" },
+          { kind: "boolean", q: "Changed C" },
+        ],
+        studio_courses: { author_id: "trainer", published: true },
+        studio_quiz_answers: { course_id: "course", answers: [1, 1, 1] },
+      }),
+    );
+    mocks.adminRpc.mockImplementation(async (name: string) => ({
+      error: null,
+      data:
+        name === "reserve_quiz_exam"
+          ? { lease, questions: sampled, answers: [0, 1], passMark: 50 }
+          : name === "finish_quiz_exam"
+            ? result
+            : null,
+    }));
+  }
+  it("grades the saved selection and pass mark rather than changed source questions", async () => {
+    setup();
+    await expect(
+      invokeQuiz({ data: { lessonId: "lesson", attemptId, answers: [0, 0] }, context }),
+    ).resolves.toEqual(result);
+    expect(mocks.adminRpc).toHaveBeenCalledWith("finish_quiz_exam", {
+      _session: attemptId,
+      _user: "learner",
+      _lease: lease,
+      _correct: [true, false],
+      _feedback: [null, null],
+    });
+    expect(mocks.adminFrom).not.toHaveBeenCalledWith("quiz_attempts");
+  });
+  it("returns an already recorded result without recording another grade", async () => {
+    setup();
+    mocks.adminRpc.mockResolvedValue({ data: { result }, error: null });
+    await expect(
+      invokeQuiz({ data: { lessonId: "lesson", attemptId, answers: [1, 1] }, context }),
+    ).resolves.toEqual(result);
+    expect(mocks.adminRpc).toHaveBeenCalledTimes(1);
+  });
+  it("requires a server attempt for a random quiz", async () => {
+    setup();
+    await expect(
+      invokeQuiz({ data: { lessonId: "lesson", answers: [1, 1, 1] }, context }),
+    ).rejects.toThrow("Start a random quiz attempt");
+    expect(mocks.adminRpc).not.toHaveBeenCalled();
+  });
+  it("releases failed grading leases without falling back to unprotected writes", async () => {
+    setup();
+    mocks.adminRpc.mockImplementation(async (name: string) =>
+      name === "reserve_quiz_exam"
+        ? { error: null, data: { lease, questions: sampled, answers: [0, 1], passMark: 50 } }
+        : name === "finish_quiz_exam"
+          ? { error: { message: "Unavailable" }, data: null }
+          : { error: null, data: null },
+    );
+    await expect(
+      invokeQuiz({ data: { lessonId: "lesson", attemptId, answers: [0, 0] }, context }),
+    ).rejects.toThrow("Could not save this attempt");
+    expect(mocks.adminRpc).toHaveBeenCalledWith("release_quiz_exam", {
+      _session: attemptId,
+      _lease: lease,
+    });
+    expect(mocks.adminFrom).not.toHaveBeenCalledWith("quiz_attempts");
+  });
+  it("returns selected questions without any private answer fields", async () => {
+    setup();
+    mocks.adminRpc.mockResolvedValue({
+      data: {
+        attemptId,
+        questions: [{ kind: "boolean", q: "Selected", answer: 1 }],
+        expiresAt: "2026-11-12T16:00:00Z",
+        answers: [1],
+      },
+      error: null,
+    });
+    const started = await invokeBegin({ data: { lessonId: "lesson" }, context });
+    expect(started).toEqual({
+      attemptId,
+      questions: [{ kind: "boolean", q: "Selected" }],
+      expiresAt: "2026-11-12T16:00:00Z",
+    });
   });
 });
 

@@ -8,6 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useLearning";
 import { friendlyError } from "@/lib/friendly-error";
 import { submitQuiz } from "@/lib/learning.functions";
+import { beginQuizAttempt } from "@/lib/learning.functions";
+import { quizSampleSize } from "@/lib/quiz-pools";
+import { useConfirm } from "@/components/ConfirmDialog";
 import {
   parseQuizQuestions,
   responseIsComplete,
@@ -20,21 +23,70 @@ export function StudioQuiz({
   lessonId,
   quiz,
   passed,
+  body = "",
 }: {
   lessonId: string;
   quiz: unknown;
   passed: boolean;
+  body?: string;
 }) {
   const [answers, setAnswers] = useState<(QuizResponse | undefined)[]>([]);
   const [result, setResult] = useState<Awaited<ReturnType<typeof submitQuiz>> | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const submit = useServerFn(submitQuiz);
+  const begin = useServerFn(beginQuizAttempt);
+  const confirm = useConfirm();
+  const [exam, setExam] = useState<Awaited<ReturnType<typeof beginQuizAttempt>> | null>(null);
+  const [starting, setStarting] = useState(false);
   const qc = useQueryClient();
   const { user } = useAuth();
-  const questions = parseQuizQuestions(quiz);
+  const questions = exam?.questions ?? parseQuizQuestions(quiz);
+  const sampleSize = quizSampleSize(body);
+  const start = async () => {
+    if (starting || submitting) return;
+    if (!user) {
+      toast.error("Sign in to start the quiz.");
+      return;
+    }
+    if (
+      exam &&
+      !result &&
+      answers.some((answer) => answer !== undefined) &&
+      !(await confirm({
+        title: "Start a new random attempt?",
+        description:
+          "Your answers on this page will be discarded and a new question selection will be created.",
+        confirmLabel: "Start new attempt",
+      }))
+    )
+      return;
+    setStarting(true);
+    try {
+      const prepared = await begin({ data: { lessonId } });
+      setExam(prepared);
+      setAnswers([]);
+      setResult(null);
+    } catch (error) {
+      toast.error(friendlyError(error, "Could not start the quiz."));
+    } finally {
+      setStarting(false);
+    }
+  };
   if (!questions)
     return <p className="text-sm text-muted-foreground">This quiz could not be loaded.</p>;
   if (!questions.length) return <p className="text-sm text-muted-foreground">No questions yet.</p>;
+  if (sampleSize !== null && !exam)
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          This quiz draws {sampleSize} questions for each attempt. Complete the attempt within four
+          hours. Up to 50 new random attempts are available per day.
+        </p>
+        <Button type="button" disabled={starting} onClick={start}>
+          {starting ? "Preparing questions…" : "Start random quiz"}
+        </Button>
+      </div>
+    );
   const hasWrittenQuestions = questions.some((question) => question.kind === "written");
 
   const choose = (index: number, answer: QuizResponse) => {
@@ -58,7 +110,13 @@ export function StudioQuiz({
         }
         setSubmitting(true);
         try {
-          const response = await submit({ data: { lessonId, answers: answers as QuizResponse[] } });
+          const response = await submit({
+            data: {
+              lessonId,
+              ...(exam ? { attemptId: exam.attemptId } : {}),
+              answers: answers as QuizResponse[],
+            },
+          });
           setResult(response);
           await qc.invalidateQueries({ queryKey: ["progress"] });
         } catch (error) {
@@ -68,6 +126,20 @@ export function StudioQuiz({
         }
       }}
     >
+      {exam && (
+        <div className="space-y-2 text-sm">
+          <p>Attempt expires {new Date(exam.expiresAt).toLocaleString()}.</p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={starting || submitting}
+            onClick={start}
+          >
+            {starting ? "Preparing…" : "Start a new random attempt"}
+          </Button>
+        </div>
+      )}
       {passed && !result && (
         <p className="rounded-xl bg-secondary/30 px-3 py-2 text-sm">
           You already passed this quiz. You can try again.
@@ -86,7 +158,7 @@ export function StudioQuiz({
         return (
           <fieldset
             key={index}
-            disabled={submitting}
+            disabled={submitting || starting || (!!exam && !!result)}
             className="min-w-0 space-y-2 rounded-2xl border border-border p-3"
           >
             <legend className="px-1 text-sm font-semibold">
@@ -178,7 +250,7 @@ export function StudioQuiz({
             : result.score + "% — you need " + result.passMark + "% to pass. Try again."}
         </p>
       )}
-      <Button type="submit" disabled={submitting}>
+      <Button type="submit" disabled={submitting || starting || (!!exam && !!result)}>
         {submitting ? "Grading…" : "Submit answers"}
       </Button>
     </form>

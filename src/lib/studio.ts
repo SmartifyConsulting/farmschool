@@ -15,7 +15,7 @@ export const PASS_MARKS = [50, 60, 70, 75, 80, 90, 100] as const;
 export const DEFAULT_PASS_MARK = 70;
 /** Quiz lessons keep their pass mark in the lesson body as "pass:NN" (learner-visible, not secret). */
 export function parsePassMark(body: string | null | undefined): number {
-  const m = body?.match(/^pass:(\d{1,3})$/);
+  const m = body?.match(/^pass:(\d{1,3})(?:\nsample:[1-9]\d?)?$/);
   const n = m ? Number(m[1]) : NaN;
   return n >= 1 && n <= 100 ? n : DEFAULT_PASS_MARK;
 }

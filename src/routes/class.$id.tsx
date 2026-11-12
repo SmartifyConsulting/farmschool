@@ -331,6 +331,7 @@ function ClassPage() {
                       key={lesson.id}
                       lessonId={lesson.id}
                       quiz={lesson.quiz}
+                      body={lesson.body}
                       passed={done.has(lesson.id)}
                     />
                   ) : lesson.kind === "scorm" ? (

@@ -275,9 +275,30 @@ Migration 0057 is applied. Rollback-only role tests passed for reader/editor
 permissions, revocation, private-route bypass denial and atomic invalid imports.
 File tests round-trip all five types and reject unsupported XML/declarations.
 Validation: 206 tests passed, 17 environment-gated skips, TypeScript/build passed.
-Per-attempt random exam pools, paid licence pools and push delivery remain
-outstanding within priorities 3/4. Email activation is deferred at the user's
-request until sender details and server configuration are supplied.
+Random quiz pools now draw a server-selected subset from the saved quiz
+questions (up to 50 pool questions, with the existing five-written-question
+ceiling). The sample count is saved atomically with quiz questions/keys and
+survives course revision copying in the lesson body. Each attempt keeps private
+question/key/pass-mark snapshots, expires after four hours and is limited to
+50 new attempts per learner in a rolling 24-hour period. Learners cannot read
+private session rows or invoke server-only start/reserve/finalise functions.
+Grading leases prevent duplicate active graders; a failed reservation can be
+released safely. Finalisation rechecks access and records the grade, progress
+and replayable result in one transaction. Replays return the original result.
+Source quiz edits do not replace a started attempt's selected questions/keys.
+Pool prompts remain learner-readable under existing published-lesson access;
+this does not provide secret exam banks, proctoring or adaptive testing.
+Migration 0058 is applied. Rollback-only role tests passed for duplicate-index
+rejection, snapshot preservation after source edits, stale leases, replay safety,
+atomic progress, refunded access denial, expiry, private-key protection and the
+daily start quota. Code tests prove saved keys/pass marks are used and public
+start responses omit answers. Validation: 220 tests passed, 17 environment-gated
+skips; TypeScript and production build passed. Browser journeys and independent
+connection concurrency/load testing remain outstanding.
+Paid bulk licence pools and push delivery remain outside the implemented cohort
+controls. Existing per-learner paid access, seat limits and free-course
+auto-enrolment are enforced. Email activation is deferred at the user's request
+until sender details and server configuration are supplied.
 
 1. Run database integration tests against a migrated isolated database, then
    exercise cross-user access and complete learner/trainer journeys.
@@ -291,13 +312,16 @@ request until sender details and server configuration are supplied.
 5. Validate xAPI with an LRS; implement portable SCORM export and LTI delivery.
 6. Transfer actual lessons/assessments to Moodle or clearly expose shell-only
    publishing; verify user matching and completion synchronisation.
-7. Extend cohort administration with enrolment/licensing policies, scheduled email/push reminders,
-   manager reporting and browser-tested trainer/learner workflows.
+7. Activate and verify Resend delivery/hosting schedule when sender details are
+   supplied. Add push delivery, paid bulk licence pools and browser-tested
+   trainer/learner/manager workflows. Seat limits, free-course auto-enrolment,
+   scoped manager reports and the disabled email worker are implemented.
 8. Verify file transfers/deadline screens in the browser; add file content scanning,
-   storage quotas/cleanup, individual deadline extensions, shared question banks
-   and random exam pools,
-   weighted course categories, overrides, moderation
-   and whole-course grade export. The course gradebook, text/evidence-link
+   storage quotas/cleanup, secure exam-bank delivery and broader question-format
+   compatibility. Individual extensions, shared libraries, sampled quiz attempts,
+   weighted categories, reviewed overrides/moderation and full-course exports are
+   implemented. Verify Moodle XML against a real counterpart and test independent
+   concurrent grading/revision sessions. The course gradebook, evidence
    submissions and versioned criterion-level rubric scoring are implemented.
 9. Expand authoring/media conversion and review against Coursebox workflows,
    including scanned-document handling and export fidelity.
@@ -308,7 +332,7 @@ request until sender details and server configuration are supplied.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041 through 0051 and 0053 through 0057. Migration 0052 belongs to the intervening
+migrations 0041 through 0051 and 0053 through 0058. Migration 0052 belongs to the intervening
 Lovable API-management update and was not deployed by this certificate work.
 Test fixtures were rolled back; existing learner
 records were not edited.

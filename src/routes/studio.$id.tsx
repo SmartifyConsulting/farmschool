@@ -54,6 +54,7 @@ import { SlideEditor } from "@/components/SlideEditor";
 import { QuizQuestionEditor } from "@/components/QuizQuestionEditor";
 import { QuestionBank } from "@/components/QuestionBank";
 import { appendBankQuestion } from "@/lib/question-bank";
+import { quizSampleSize } from "@/lib/quiz-pools";
 import {
   buildQuiz,
   loadQuizDraft,
@@ -3394,6 +3395,7 @@ function LessonEditor({
     lesson.kind === "quiz" ? "loading" : "ready",
   );
   const [passMark, setPassMark] = useState(() => parsePassMark(lesson.body));
+  const [sampleSize, setSampleSize] = useState<number | null>(() => quizSampleSize(lesson.body));
   const confirm = useConfirm();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(true);
@@ -3405,6 +3407,7 @@ function LessonEditor({
       kind: lesson.kind,
       qs,
       passMark,
+      sampleSize,
       objectives,
     }),
   );
@@ -3461,12 +3464,20 @@ function LessonEditor({
           if (!silent && err instanceof Error) toast.error(err.message);
           return;
         }
-        ({ error } = await supabase.rpc("studio_save_quiz", {
+        if (
+          sampleSize !== null &&
+          (!Number.isInteger(sampleSize) || sampleSize < 1 || sampleSize > qs.length)
+        ) {
+          if (!silent) toast.error("Choose a random sample size within the question pool.");
+          return;
+        }
+        ({ error } = await supabase.rpc("studio_save_quiz_pool", {
           _lesson_id: lesson.id,
           _title: title,
           _pass_mark: passMark,
           _questions: quiz.questions,
           _answers: quiz.keys,
+          _sample_size: sampleSize,
         }));
       } else {
         ({ error } = await supabase
@@ -3489,7 +3500,16 @@ function LessonEditor({
         }
       }
       if (!silent) toast.success("Lesson saved");
-      baseline.current = JSON.stringify({ title, video, body, kind, qs, passMark, objectives });
+      baseline.current = JSON.stringify({
+        title,
+        video,
+        body,
+        kind,
+        qs,
+        passMark,
+        sampleSize,
+        objectives,
+      });
       setSaved(true);
       onChange();
     } finally {
@@ -3498,9 +3518,10 @@ function LessonEditor({
   };
   useEffect(() => {
     setSaved(
-      baseline.current === JSON.stringify({ title, video, body, kind, qs, passMark, objectives }),
+      baseline.current ===
+        JSON.stringify({ title, video, body, kind, qs, passMark, sampleSize, objectives }),
     );
-  }, [title, video, body, kind, qs, passMark, objectives]);
+  }, [title, video, body, kind, qs, passMark, sampleSize, objectives]);
   const del = async () => {
     if (
       readOnly ||
@@ -3643,9 +3664,13 @@ function LessonEditor({
             }
           />
         )}
-        {!readOnly && quizLoad === "ready" && kind !== "quiz" && kind !== "scorm" && kind !== "slide" && (
-          <PolishButton courseId={courseId} title={title} text={body} onText={setBody} />
-        )}
+        {!readOnly &&
+          quizLoad === "ready" &&
+          kind !== "quiz" &&
+          kind !== "scorm" &&
+          kind !== "slide" && (
+            <PolishButton courseId={courseId} title={title} text={body} onText={setBody} />
+          )}
         {quizLoad !== "ready" && (
           <p role="status" className="text-sm text-muted-foreground">
             {quizLoad === "loading"
@@ -3655,7 +3680,11 @@ function LessonEditor({
         )}
         {lesson.kind === "quiz" && quizLoad === "ready" && (
           <div className="space-y-3">
-            <QuestionBank questions={qs} disabled={readOnly || saving} onAdd={(row) => setQs(appendBankQuestion(qs, row.question, row.answer))} />
+            <QuestionBank
+              questions={qs}
+              disabled={readOnly || saving}
+              onAdd={(row) => setQs(appendBankQuestion(qs, row.question, row.answer))}
+            />
             {qs.map((question, qi) => (
               <QuizQuestionEditor
                 key={qi}
@@ -3677,6 +3706,39 @@ function LessonEditor({
               <Plus className="h-4 w-4" />
               Add question
             </Button>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={sampleSize !== null}
+                disabled={readOnly || saving || qs.length === 0}
+                onChange={(e) =>
+                  setSampleSize(e.target.checked ? Math.min(5, Math.max(1, qs.length)) : null)
+                }
+              />
+              Draw a random selection for each attempt
+            </label>
+            {sampleSize !== null && (
+              <label className="flex items-center gap-2 text-sm">
+                Questions per attempt
+                <Input
+                  className="max-w-24"
+                  aria-label="Random questions per attempt"
+                  type="number"
+                  min="1"
+                  max={qs.length}
+                  value={sampleSize}
+                  disabled={readOnly || saving}
+                  onChange={(e) => setSampleSize(Number(e.target.value))}
+                />
+              </label>
+            )}
+            {sampleSize !== null && (
+              <p className="text-xs text-muted-foreground">
+                The saved quiz questions form the pool (up to 50). Each learner gets a
+                server-selected set and has four hours to finish. Editing this library or quiz later
+                does not change an active attempt’s saved questions.
+              </p>
+            )}
             <label className="flex items-center gap-2 text-sm">
               Pass mark
               <select

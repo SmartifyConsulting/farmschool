@@ -6,6 +6,52 @@ import { parsePassMark } from "@/lib/studio";
 import { gradeQuiz, parseQuizQuestions, quizSubmission } from "@/lib/studio-quiz";
 import { parseLessonSlides, practicalTaskIndex } from "@/lib/lesson-slides";
 import { hasActiveEnrollment } from "@/lib/marketplace";
+import { chooseQuizIndices, quizSampleSize, quizResult } from "@/lib/quiz-pools";
+
+export const beginQuizAttempt = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({ lessonId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: lesson, error } = await supabaseAdmin
+      .from("studio_lessons")
+      .select(
+        "id,course_id,body,quiz,studio_quiz_answers!studio_quiz_answers_lesson_id_fkey(answers,course_id)",
+      )
+      .eq("id", data.lessonId)
+      .eq("kind", "quiz")
+      .maybeSingle();
+    if (error || !lesson || lesson.studio_quiz_answers?.course_id !== lesson.course_id)
+      throw new Error("This quiz is not ready.");
+    const access = await context.supabase.rpc("studio_course_visible", {
+      _course: lesson.course_id,
+    });
+    if (access.error || access.data !== true)
+      throw new Error("This course is not available to you.");
+    const questions = parseQuizQuestions(lesson.quiz);
+    const size = quizSampleSize(lesson.body);
+    if (!questions?.length || size === null || size > questions.length)
+      throw new Error("This random quiz is not configured correctly.");
+    const { data: started, error: startError } = await supabaseAdmin.rpc("start_quiz_exam", {
+      _user: context.userId,
+      _lesson: lesson.id,
+      _expected_body: lesson.body,
+      _expected_quiz: lesson.quiz,
+      _expected_answers: lesson.studio_quiz_answers.answers,
+      _selection: chooseQuizIndices(questions.length, size),
+    });
+    if (startError)
+      throw new Error(
+        "Could not start the quiz. Refresh and try again; new random attempts are limited to 50 per day.",
+      );
+    const result = z
+      .object({ attemptId: z.string().uuid(), questions: z.unknown(), expiresAt: z.string() })
+      .parse(started);
+    const selected = parseQuizQuestions(result.questions);
+    if (!selected || selected.length !== size)
+      throw new Error("Could not load the selected questions.");
+    return { attemptId: result.attemptId, questions: selected, expiresAt: result.expiresAt };
+  });
 
 /** Grades a studio quiz on the server so answer keys never reach learners. */
 export const submitQuiz = createServerFn({ method: "POST" })
@@ -14,48 +60,141 @@ export const submitQuiz = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // Read questions and their private keys in one query so a revision cannot mix versions.
-    const { data: lesson } = await supabaseAdmin.from("studio_lessons")
-      .select("id, course_id, body, quiz, studio_courses!inner(author_id, published), studio_quiz_answers!studio_quiz_answers_lesson_id_fkey(answers, course_id)")
-      .eq("id", data.lessonId).eq("kind", "quiz").maybeSingle();
-    if (!lesson?.studio_courses || (!lesson.studio_courses.published && lesson.studio_courses.author_id !== context.userId)) {
+    const { data: lesson } = await supabaseAdmin
+      .from("studio_lessons")
+      .select(
+        "id, course_id, body, quiz, studio_courses!inner(author_id, published), studio_quiz_answers!studio_quiz_answers_lesson_id_fkey(answers, course_id)",
+      )
+      .eq("id", data.lessonId)
+      .eq("kind", "quiz")
+      .maybeSingle();
+    if (
+      !lesson?.studio_courses ||
+      (!lesson.studio_courses.published && lesson.studio_courses.author_id !== context.userId)
+    ) {
       throw new Error("Quiz not found.");
     }
-    const { data: visible, error: accessError } = await context.supabase.rpc("studio_course_visible", { _course: lesson.course_id });
+    const { data: visible, error: accessError } = await context.supabase.rpc(
+      "studio_course_visible",
+      { _course: lesson.course_id },
+    );
     if (accessError || visible !== true) throw new Error("This course is not available to you.");
-    const questions = parseQuizQuestions(lesson.quiz);
+    let questions = parseQuizQuestions(lesson.quiz);
     const key = lesson.studio_quiz_answers;
-    if (!questions || !key || key.course_id !== lesson.course_id) throw new Error("This quiz is not ready to be graded.");
-    const grading = gradeQuiz(questions, key.answers, data.answers);
-    const written = grading.filter((item) => typeof item !== "boolean");
-    const feedback: (string | null)[] = questions.map(() => null);
-    const correct = grading.map((item) => item === true);
-    if (written.length) {
-      const apiKey = process.env["OPENAI_API_KEY"];
-      if (!apiKey) throw new Error("Written grading is unavailable right now. Your answers were not graded.");
-      const { data: used, error: quotaError } = await supabaseAdmin.rpc("written_quiz_reserve_request", { _user_id: context.userId });
-      if (quotaError || typeof used !== "number") throw new Error("Written grading is unavailable right now. Your answers were not graded.");
-      if (used === 0) throw new Error("You’ve reached the daily limit for quizzes with written responses. Try again tomorrow.");
-      try {
-        const { gradeWrittenQuiz } = await import("@/lib/ai/written-quiz.server");
-        const writtenGrades = await gradeWrittenQuiz(apiKey, written);
-        for (const [index, grade] of writtenGrades) {
-          correct[index] = grade.correct;
-          feedback[index] = grade.feedback;
+    if (!questions || !key || key.course_id !== lesson.course_id)
+      throw new Error("This quiz is not ready to be graded.");
+    let keys: unknown = key.answers;
+    let passMark = parsePassMark(lesson.body);
+    let lease: string | null = null;
+    if (data.attemptId) {
+      const reserved = await supabaseAdmin.rpc("reserve_quiz_exam", {
+        _session: data.attemptId,
+        _user: context.userId,
+        _lesson: lesson.id,
+      });
+      if (reserved.error)
+        throw new Error(
+          "This attempt is unavailable, expired or already being graded. Wait or start a new attempt.",
+        );
+      const saved = z.object({ result: quizResult }).safeParse(reserved.data);
+      if (saved.success) return saved.data.result;
+      const active = z
+        .object({
+          lease: z.string().uuid(),
+          questions: z.unknown(),
+          answers: z.unknown(),
+          passMark: z.number().int().min(1).max(100),
+        })
+        .parse(reserved.data);
+      questions = parseQuizQuestions(active.questions);
+      keys = active.answers;
+      passMark = active.passMark;
+      lease = active.lease;
+    } else if (quizSampleSize(lesson.body) !== null)
+      throw new Error("Start a random quiz attempt before submitting answers.");
+    try {
+      if (!questions?.length) throw new Error("The saved question selection could not be loaded.");
+      const grading = gradeQuiz(questions, keys, data.answers);
+      const written = grading.filter((item) => typeof item !== "boolean");
+      const feedback: (string | null)[] = questions.map(() => null);
+      const correct = grading.map((item) => item === true);
+      if (written.length) {
+        const apiKey = process.env["OPENAI_API_KEY"];
+        if (!apiKey)
+          throw new Error(
+            "Written grading is unavailable right now. Your answers were not graded.",
+          );
+        const { data: used, error: quotaError } = await supabaseAdmin.rpc(
+          "written_quiz_reserve_request",
+          { _user_id: context.userId },
+        );
+        if (quotaError || typeof used !== "number")
+          throw new Error(
+            "Written grading is unavailable right now. Your answers were not graded.",
+          );
+        if (used === 0)
+          throw new Error(
+            "You’ve reached the daily limit for quizzes with written responses. Try again tomorrow.",
+          );
+        try {
+          const { gradeWrittenQuiz } = await import("@/lib/ai/written-quiz.server");
+          const writtenGrades = await gradeWrittenQuiz(apiKey, written);
+          for (const [index, grade] of writtenGrades) {
+            correct[index] = grade.correct;
+            feedback[index] = grade.feedback;
+          }
+        } catch {
+          throw new Error(
+            "Written grading did not finish. Your answers were kept on this page so you can try again.",
+          );
         }
-      } catch {
-        throw new Error("Written grading did not finish. Your answers were kept on this page so you can try again.");
       }
+      const score = Math.round((correct.filter(Boolean).length / questions.length) * 100);
+      const passed = score >= passMark;
+      if (data.attemptId && lease) {
+        const finished = await supabaseAdmin.rpc("finish_quiz_exam", {
+          _session: data.attemptId,
+          _user: context.userId,
+          _lease: lease,
+          _correct: correct,
+          _feedback: feedback,
+        });
+        if (finished.error)
+          throw new Error("Could not save this attempt. Refresh before retrying.");
+        return quizResult.parse(finished.data);
+      }
+      const { error } = await supabaseAdmin
+        .from("quiz_attempts")
+        .insert({
+          user_id: context.userId,
+          course_id: lesson.course_id,
+          lesson_id: lesson.id,
+          score,
+          passed,
+        });
+      if (error) throw new Error("Could not save the quiz attempt.");
+      if (passed) {
+        const { error: progressError } = await context.supabase
+          .from("lesson_progress")
+          .upsert(
+            {
+              user_id: context.userId,
+              course_id: lesson.course_id,
+              lesson_id: lesson.id,
+              completed: true,
+              position_seconds: 0,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "user_id,course_id,lesson_id" },
+          );
+        if (progressError) throw new Error("Could not update lesson progress. Please retry.");
+      }
+      return { score, passed, passMark, correct, feedback };
+    } catch (error) {
+      if (data.attemptId && lease)
+        await supabaseAdmin.rpc("release_quiz_exam", { _session: data.attemptId, _lease: lease });
+      throw error;
     }
-    const score = Math.round((correct.filter(Boolean).length / questions.length) * 100);
-    const passMark = parsePassMark(lesson.body);
-    const passed = score >= passMark;
-    const { error } = await supabaseAdmin.from("quiz_attempts").insert({ user_id: context.userId, course_id: lesson.course_id, lesson_id: lesson.id, score, passed });
-    if (error) throw new Error("Could not save the quiz attempt.");
-    if (passed) {
-      const { error: progressError } = await context.supabase.from("lesson_progress").upsert({ user_id: context.userId, course_id: lesson.course_id, lesson_id: lesson.id, completed: true, position_seconds: 0, updated_at: new Date().toISOString() }, { onConflict: "user_id,course_id,lesson_id" });
-      if (progressError) throw new Error("Could not update lesson progress. Please retry.");
-    }
-    return { score, passed, passMark, correct, feedback };
   });
 
 /** Issues a certificate only when every lesson is complete (and studio quizzes were passed on the server). */

@@ -2026,6 +2026,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      studio_save_quiz_pool: { Args: { _lesson_id: string; _title: string; _pass_mark: number; _questions: Json; _answers: Json; _sample_size: number | null }; Returns: undefined }
+      start_quiz_exam: { Args: { _user: string; _lesson: string; _expected_body: string; _expected_quiz: Json; _expected_answers: Json; _selection: number[] }; Returns: Json }
+      reserve_quiz_exam: { Args: { _session: string; _user: string; _lesson: string }; Returns: Json }
+      release_quiz_exam: { Args: { _session: string; _lease: string }; Returns: undefined }
+      finish_quiz_exam: { Args: { _session: string; _user: string; _lease: string; _correct: Json; _feedback: Json }; Returns: Json }
       my_question_libraries: { Args: never; Returns: { id: string; name: string; can_edit: boolean; owner: boolean }[] }
       create_question_library: { Args: { _name: string }; Returns: string }
       grant_question_library_access: { Args: { _library: string; _email: string; _role: string }; Returns: undefined }
