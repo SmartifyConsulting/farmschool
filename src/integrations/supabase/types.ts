@@ -15,7 +15,7 @@ export type Database = {
   public: {
     Tables: {
       competency_submissions: {
-        Row: { id: string; competency_id: string; user_id: string; attempt: number; body: string; evidence_url: string | null; competency_title: string; instructions: string; criteria_snapshot: Json; pass_mark: number; rubric_version: number; submitted_at: string; reviewed_at: string | null; assessment_id: string | null }
+        Row: { id: string; competency_id: string; user_id: string; attempt: number; body: string; evidence_url: string | null; competency_title: string; instructions: string; criteria_snapshot: Json; pass_mark: number; rubric_version: number; submitted_at: string; reviewed_at: string | null; assessment_id: string | null; due_at: string | null; late: boolean; late_allowed: boolean; evidence_file_path: string | null; evidence_file_name: string | null; evidence_file_mime: string | null; evidence_file_bytes: number | null }
         Insert: { competency_id: string; user_id: string; attempt: number; body: string; competency_title: string; instructions: string; criteria_snapshot: Json; pass_mark: number; rubric_version: number }
         Update: { assessment_id?: string; reviewed_at?: string }
         Relationships: [
@@ -445,6 +445,7 @@ export type Database = {
       }
       course_competencies: {
         Row: {
+          late_submissions_allowed: boolean
           rubric: Json
           rubric_pass_mark: number
           rubric_version: number
@@ -459,6 +460,7 @@ export type Database = {
           code: string
           course_id: string
           rubric?: Json
+          late_submissions_allowed?: boolean
           rubric_pass_mark?: number
           rubric_version?: number
           created_at?: string
@@ -470,6 +472,7 @@ export type Database = {
           code?: string
           course_id?: string
           rubric?: Json
+          late_submissions_allowed?: boolean
           rubric_pass_mark?: number
           rubric_version?: number
           created_at?: string
@@ -1792,6 +1795,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      submit_competency_work_with_file: { Args: { _competency: string; _body: string; _evidence_url: string; _expected_version: number; _file_path: string }; Returns: string }
+      set_competency_late_policy: { Args: { _competency: string; _allow_late: boolean; _expected_allowed: boolean }; Returns: boolean }
+      my_course_submission_deadline: { Args: { _course: string }; Returns: string | null }
       course_gradebook: { Args: { _course: string; _offset?: number; _limit?: number }; Returns: Json }
       submit_competency_work: { Args: { _competency: string; _body: string; _evidence_url: string; _expected_version: number }; Returns: string }
       assess_competency_submission: { Args: { _submission: string; _marks: Json; _notes: string }; Returns: string }

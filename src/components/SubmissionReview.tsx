@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RubricBreakdown } from "@/components/RubricBreakdown";
+import { SubmissionFileDownload } from "@/components/SubmissionFileDownload";
 
 export function SubmissionReview({
   courseId,
@@ -40,7 +41,7 @@ export function SubmissionReview({
         supabase
           .from("competency_submissions")
           .select(
-            "id,user_id,attempt,body,evidence_url,competency_title,instructions,criteria_snapshot,pass_mark,rubric_version,submitted_at,assessment_id,learner_competency_evidence(score,achieved,notes,competency_rubric_assessments(criteria_snapshot,marks,total_points,max_points,pass_mark,rubric_version))",
+            "id,user_id,attempt,body,evidence_url,evidence_file_path,evidence_file_name,competency_title,instructions,criteria_snapshot,pass_mark,rubric_version,submitted_at,assessment_id,due_at,late,learner_competency_evidence(score,achieved,notes,competency_rubric_assessments(criteria_snapshot,marks,total_points,max_points,pass_mark,rubric_version))",
             { count: "exact" },
           )
           .in(
@@ -130,11 +131,30 @@ export function SubmissionReview({
         <div className="space-y-4 rounded-xl border p-4">
           <p className="font-semibold">
             {submission.competency_title} · rubric v{submission.rubric_version}
+            {submission.late ? " · Late submission" : ""}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Submitted{" "}
+            {new Date(submission.submitted_at).toLocaleString("en-ZA", {
+              timeZone: "Africa/Johannesburg",
+            })}{" "}
+            SAST
+            {submission.due_at
+              ? " · Original deadline " +
+                new Date(submission.due_at).toLocaleString("en-ZA", {
+                  timeZone: "Africa/Johannesburg",
+                }) +
+                " SAST"
+              : " · No deadline"}
           </p>
           <p className="whitespace-pre-wrap text-sm text-muted-foreground">
             Task: {submission.instructions}
           </p>
           <p className="whitespace-pre-wrap text-sm">{submission.body}</p>
+          <SubmissionFileDownload
+            path={submission.evidence_file_path}
+            name={submission.evidence_file_name}
+          />
           {submission.evidence_url && (
             <a
               href={submission.evidence_url}

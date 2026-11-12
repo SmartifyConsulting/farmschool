@@ -14,6 +14,7 @@ import { pageMeta } from "@/lib/page-meta";
 import { CompetencyRubric } from "@/components/CompetencyRubric";
 import { RubricBreakdown } from "@/components/RubricBreakdown";
 import { SubmissionReview } from "@/components/SubmissionReview";
+import { SubmissionPolicy } from "@/components/SubmissionPolicy";
 
 export const Route = createFileRoute("/competencies/$courseId")({
   component: Competencies,
@@ -137,6 +138,11 @@ function Competencies() {
           </p>
         ) : (
           <div className="mt-6 grid gap-8 pb-10 lg:grid-cols-2">
+            <SubmissionPolicy
+              key={courseId + ":policy"}
+              courseId={courseId}
+              competencies={workspace.data?.competencies ?? []}
+            />
             <SubmissionReview
               key={courseId}
               courseId={courseId}

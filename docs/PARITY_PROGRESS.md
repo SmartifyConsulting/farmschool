@@ -85,7 +85,31 @@ private work, blocked self-grading, pending-attempt limits, immutable reviewed
 work, historical-rubric grading, resubmissions and refunded-course access.
 Reproducible checks are in drizzle/tests/0047_submission_access.sql. This first
 submission workflow supports text and evidence links; file uploads, submission
-deadline enforcement and advanced gradebook policies remain separate work.
+deadline enforcement and advanced gradebook policies were tracked separately
+and the new file/deadline capabilities are described below.
+
+Submission deadlines now use each learner's earliest dated cohort assignment.
+Trainers can allow labelled late work or block new late attempts per competency.
+Server timestamps enforce the policy; each attempt saves its original deadline,
+late flag and policy. Later extensions do not rewrite earlier work. Learners
+without dated assignments have no deadline. Migration 0049 is applied and
+rollback-only tests passed for multiple cohorts, late blocking/acceptance,
+undated learners, retained snapshots and author-only/stale policy changes.
+Checks are in drizzle/tests/0049_deadline_policy.sql.
+
+Learners can attach one private evidence file per attempt, up to 5 MiB: PDF,
+DOCX, TXT, PNG, JPEG or WebP. Uploads use unique learner/competency paths and
+submitted files cannot be overwritten or removed by clients. Trainers can read
+linked files for their courses, but cannot read unsubmitted learner uploads.
+Downloads request short-lived signed attachment URLs. Metadata, MIME/extension
+and size are validated when linking files; failed submissions attempt cleanup
+only for unlinked files. Migration 0050 is applied. Rollback-only role tests
+passed for storage metadata visibility, ownership, invalid metadata, attachment
+linking/reuse and text-only compatibility. Checks are in
+drizzle/tests/0050_private_file_access.sql. These SQL tests did not transfer or
+download binary files; browser/Storage HTTP checks remain outstanding. File
+content/malware scanning, storage quotas and scheduled orphan cleanup are not
+implemented.
 
 Course authors now have a paginated course gradebook linked from Studio and
 the assessment workspace. It includes assigned learners who never started,
@@ -151,8 +175,9 @@ refreshed while using the app, not scheduled email or push delivery.
    publishing; verify user matching and completion synchronisation.
 7. Extend cohort administration with enrolment/licensing policies, scheduled email/push reminders,
    manager reporting and browser-tested trainer/learner workflows.
-8. Extend competency submissions with file uploads and deadline policies; add
-   reusable question banks, weighted course categories, overrides, moderation
+8. Verify file transfers/deadline screens in the browser; add file content scanning,
+   storage quotas/cleanup, individual deadline extensions, reusable question banks,
+   weighted course categories, overrides, moderation
    and whole-course grade export. The course gradebook, text/evidence-link
    submissions and versioned criterion-level rubric scoring are implemented.
 9. Expand authoring/media conversion and review against Coursebox workflows,
@@ -164,5 +189,5 @@ refreshed while using the app, not scheduled email or push delivery.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041 through 0048. Test fixtures were rolled back; existing learner
+migrations 0041 through 0050. Test fixtures were rolled back; existing learner
 records were not edited.
