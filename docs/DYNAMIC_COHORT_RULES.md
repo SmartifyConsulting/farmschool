@@ -33,5 +33,8 @@ Verification: migrations 0069–0070 were tested inside rolled-back transactions
 installed, and their SQL checks passed again. Synthetic fixtures cover manual
 ownership/exclusions, descendants, stale previews, capacity atomicity, retry,
 scheduled due execution and cross-tenant denial. Type checking, production build
-and 266 unit tests passed (17 environment-gated tests skipped). Initial timer
-execution and browser interaction have not yet been verified.
+and 266 unit tests passed (17 environment-gated tests skipped). The first actual
+timer check succeeded at 17:45 UTC on 12 November 2026 and wrote the worker
+heartbeat. This was an empty production batch; scheduled roster changes were
+tested only with synthetic, rolled-back fixtures. Browser interaction remains
+unverified.

@@ -14,6 +14,7 @@ import { friendlyError } from "@/lib/friendly-error";
 import { CohortLicenses } from "@/components/CohortLicenses";
 import { CohortBillingManagers } from "@/components/CohortBillingManagers";
 import { CohortAssignmentRules } from "@/components/CohortAssignmentRules";
+import { CohortScheduledReports } from "@/components/CohortScheduledReports";
 
 const summarySchema = z.object({
   members: z.number(),
@@ -502,6 +503,7 @@ export function OrganizationTraining({ organizationId }: { organizationId: strin
                 )}
               </section>
               <CohortAssignmentRules key={selected+":rules"} cohortId={selected} organizationId={organizationId} />
+              <CohortScheduledReports key={selected+":reports"} cohortId={selected} organizationId={organizationId} />
               <CohortBillingManagers key={selected+":billing"} cohortId={selected} organizationId={organizationId} />
               {current.can_bill && assignments.data && (
                 <CohortLicenses

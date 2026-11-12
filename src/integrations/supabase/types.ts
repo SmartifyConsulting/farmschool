@@ -368,6 +368,12 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      cohort_report_schedules: {
+        Row: { cohort_id: string; enabled: boolean; interval_minutes: number; version: number; changed_by: string; next_run: string; last_run: string | null; last_status: string | null }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       cohort_assignment_rules: {
         Row: { id: string; cohort_id: string; department_id: string | null; include_descendants: boolean; job_contains: string | null; role_filter: string; add_only: boolean; enabled: boolean; interval_minutes: number; version: number; changed_by: string; next_run: string; last_run: string | null; last_status: string | null; last_run_version: number | null; last_added: number; last_removed: number }
         Insert: never
@@ -2092,6 +2098,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      save_cohort_report_schedule: { Args: { _cohort: string; _enabled: boolean; _interval: number; _expected: number }; Returns: number }
+      generate_cohort_report_snapshot: { Args: { _cohort: string; _request: string }; Returns: string }
+      company_cohort_report_history: { Args: { _cohort: string }; Returns: { id: string; created_at: string; scheduled: boolean; schedule_version: number | null; rows: number }[] }
+      company_cohort_report_snapshot: { Args: { _report: string }; Returns: Json }
+      company_report_scheduler_status: { Args: { _organization: string }; Returns: Json }
+      run_due_company_cohort_reports: { Args: { _organization?: string | null; _limit?: number }; Returns: Json }
       save_cohort_assignment_rule: { Args: { _cohort: string; _department: string | null; _descendants: boolean; _job: string | null; _role: string; _add_only: boolean; _enabled: boolean; _interval: number; _expected: number }; Returns: number }
       preview_cohort_assignment_rule: { Args: { _cohort: string; _expected: number }; Returns: Json }
       run_cohort_assignment_rule: { Args: { _cohort: string; _expected: number; _hash: string; _request: string }; Returns: Json }

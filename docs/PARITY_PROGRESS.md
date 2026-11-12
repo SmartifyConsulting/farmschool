@@ -385,9 +385,9 @@ deferred at the user's request until sender details/configuration are supplied.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041 through 0051 and 0053 through 0070. Migration 0052 belongs to the intervening
+migrations 0041 through 0051 and 0053 through 0071. Migration 0052 belongs to the intervening
 Lovable API-management update and was not deployed by this certificate work.
 Test fixtures were rolled back; existing learner
 records were not edited.
 
-Dynamic cohort rules are implemented in migrations 0069–0070, including saved-rule previews, manual-member protection, exclusion controls, scoped history/CSV, atomic capacity checks and a bounded database scheduler. Rules default to paused. Scheduled reports remain to build. See docs/DYNAMIC_COHORT_RULES.md. Current checks: 266 passed, 17 environment-gated skipped; production build/type checks passed. Timer/browser verification remains.
+Dynamic cohort rules are implemented in migrations 0069–0070, including saved-rule previews, manual-member protection, exclusion controls, scoped history/CSV, atomic capacity checks and a bounded database scheduler. Rules default to paused. Scheduled company cohort progress snapshots and CSV downloads are implemented in migration 0071; email remains deferred. See docs/SCHEDULED_COHORT_REPORTS.md. See docs/DYNAMIC_COHORT_RULES.md. Current checks: 268 passed, 17 environment-gated skipped; production build/type checks passed. The cohort-rule timer succeeded at 17:45 UTC on 12 November 2026. Report timer and browser verification remain.
