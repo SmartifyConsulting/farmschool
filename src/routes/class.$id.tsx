@@ -425,9 +425,11 @@ function ClassPage() {
                   className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
                   onClick={async () => {
                     try {
-                      await claim({ data: { source: "studio", courseRef: id } });
+                      await claim({ data: { source: "studio", courseRef: id, ...(portal ? { portalSlug: portal } : {}) } });
                       toast.success("Certificate added to your profile!");
                       qc.invalidateQueries({ queryKey: ["certificates"] });
+                      qc.invalidateQueries({ queryKey: ["portal-certificates"] });
+                      qc.invalidateQueries({ queryKey: ["portal-courses"] });
                     } catch (e) {
                       toast.error(friendlyError(e, "Could not issue certificate."));
                     }
@@ -437,6 +439,7 @@ function ClassPage() {
                   Get my certificate
                 </Button>
               )}
+              {user && portal && <Button asChild variant="outline" className="w-full"><Link to="/portal/$slug" params={{ slug: portal }} search={{ view: "certificates" }}>My certificates</Link></Button>}
               {user && pct === 100 && (
                 <Button asChild variant="outline" className="w-full">
                   <Link to="/community/$courseId" params={{ courseId: id }}>

@@ -117,7 +117,7 @@ function DesktopSidebar() {
   );
 }
 function PortalNavigation({ slug, mobile = false }: { slug: string; mobile?: boolean }) {
-  return <>{([{ view: "learning", label: "My Learning", icon: BookOpen }, { view: "catalogue", label: "Catalogue", icon: Search }] as const).map(item => <Link key={item.view} to="/portal/$slug" params={{ slug }} search={{ view: item.view }} aria-label={item.label} className={mobile ? "grid h-10 w-10 place-items-center rounded-full text-navy-foreground" : "flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium text-white hover:bg-white/10"}><item.icon aria-hidden="true" className="h-5 w-5 shrink-0" />{!mobile && item.label}</Link>)}</>;
+  return <>{([{ view: "learning", label: "My Learning", icon: BookOpen }, { view: "catalogue", label: "Catalogue", icon: Search }, { view: "certificates", label: "Certificates", icon: BookOpen }] as const).map(item => <Link key={item.view} to="/portal/$slug" params={{ slug }} search={{ view: item.view }} aria-label={item.label} className={mobile ? "grid h-10 w-10 place-items-center rounded-full text-navy-foreground" : "flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium text-white hover:bg-white/10"}><item.icon aria-hidden="true" className="h-5 w-5 shrink-0" />{!mobile && item.label}</Link>)}</>;
 }
 
 function AvatarMenu({

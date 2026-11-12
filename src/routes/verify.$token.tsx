@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
-import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
+import { CanvasHeading } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { certificateStatus } from "@/lib/certificates";
 import { pageMeta } from "@/lib/page-meta";
+import { certificateBrandSchema } from "@/lib/certificate-brand";
+import { CertificateIssuer } from "@/components/CertificateDocument";
 
 const verification = z.object({
   title: z.string(),
@@ -16,12 +18,13 @@ const verification = z.object({
   expires_at: z.string().nullable(),
   course_version: z.number().nullable(),
   renewed_at: z.string().nullable(),
+  issuer: certificateBrandSchema.nullable(),
 });
 export const Route = createFileRoute("/verify/$token")({
   head: () => ({
-    ...pageMeta("Verify a certificate — Plusticity", "Check a shared Plusticity certificate."),
+    ...pageMeta("Verify a certificate", "Check a shared training certificate."),
     meta: [
-      ...pageMeta("Verify a certificate — Plusticity", "Check a shared Plusticity certificate.")
+      ...pageMeta("Verify a certificate", "Check a shared training certificate.")
         .meta,
       { name: "robots", content: "noindex, nofollow" },
     ],
@@ -43,9 +46,8 @@ function VerifyCertificate() {
   });
   const certificate = result.data;
   return (
-    <Phone>
-      <Header />
-      <Sheet>
+    <main className="min-h-screen bg-muted px-5 py-10">
+      <div className="mx-auto max-w-3xl rounded-2xl bg-card p-6 sm:p-10">
         <CanvasHeading title="Certificate verification" />
         {!valid || (result.isSuccess && !certificate) ? (
           <p>This verification link is unavailable or sharing has been disabled.</p>
@@ -56,9 +58,11 @@ function VerifyCertificate() {
         ) : (
           certificate && (
             <article className="space-y-4 rounded-xl border p-6">
+              {certificate.issuer && <CertificateIssuer key={token} brand={certificate.issuer} />}
               <p className="font-semibold">{certificateStatus(certificate)}</p>
               <h2 className="text-xl font-semibold">{certificate.title}</h2>
               <p>Awarded to {certificate.learner_name}</p>
+              {certificate.issuer && <><p>{certificate.issuer.signatory_name}{certificate.issuer.signatory_title ? " · " + certificate.issuer.signatory_title : ""}</p><p className="whitespace-pre-wrap text-sm">{certificate.issuer.footer}</p></>}
               <p>Originally issued {new Date(certificate.issued_at).toLocaleDateString()}</p>
               {certificate.course_version !== null && (
                 <p>Original course version {certificate.course_version}</p>
@@ -76,7 +80,7 @@ function VerifyCertificate() {
             </article>
           )
         )}
-      </Sheet>
-    </Phone>
+      </div>
+    </main>
   );
 }

@@ -11,10 +11,17 @@ import { pageMeta } from "@/lib/page-meta";
 import { supabase } from "@/integrations/supabase/client";
 import { formatPrice } from "@/lib/marketplace";
 import { CourseViewToggle, useCourseView } from "@/components/CourseViewToggle";
+import { PortalCertificates } from "@/components/PortalCertificates";
 
 export const Route = createFileRoute("/portal/$slug")({
-  validateSearch: (input: Record<string, unknown>): { view?: "catalogue" | "learning" } =>
-    input["view"] === "catalogue" || input["view"] === "learning" ? { view: input["view"] } : {},
+  validateSearch: (
+    input: Record<string, unknown>,
+  ): { view?: "catalogue" | "learning" | "certificates" } =>
+    input["view"] === "catalogue" ||
+    input["view"] === "learning" ||
+    input["view"] === "certificates"
+      ? { view: input["view"] }
+      : {},
   head: () => pageMeta("Training portal", "Sign in to your organization's training portal."),
   component: PortalPage,
 });
@@ -49,6 +56,8 @@ function PortalPage() {
                   </Link>
                 </Button>
               </div>
+            ) : view === "certificates" ? (
+              <PortalCertificates key={slug + ":" + user.id} slug={slug} />
             ) : (
               <PortalCourses key={slug + ":" + view + ":" + user.id} slug={slug} view={view} />
             )}

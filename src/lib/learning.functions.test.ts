@@ -137,6 +137,7 @@ describe("practical certificate requirements", () => {
       _user: "learner",
       _course: "course",
       _expected_version: 3,
+      _portal_slug: null,
       _expected_lessons: [
         { id: "lesson", kind: "slide", body, title: "Practice", video_url: null, quiz: null },
       ],
@@ -152,6 +153,14 @@ describe("practical certificate requirements", () => {
     setup([], null, "## Reading\nRead the field notes.");
     issue.mockResolvedValue({ data: null, error: { message: "Course changed" } });
     await expect(claim()).rejects.toThrow("Could not issue the certificate");
+    expect(mocks.adminFrom).not.toHaveBeenCalledWith("certificates");
+  });
+  it("binds customer issuer selection to the final server transaction", async () => {
+    setup([], null, "## Reading\nRead the field notes.");
+    await invokeCertificate({ data: { source: "studio", courseRef: "course", portalSlug: "acme-training" }, context });
+    expect(issue).toHaveBeenCalledWith("issue_studio_certificate", expect.objectContaining({ _user: "learner", _portal_slug: "acme-training" }));
+    issue.mockResolvedValue({ data: null, error: { message: "Portal membership required" } });
+    await expect(invokeCertificate({ data: { source: "studio", courseRef: "course", portalSlug: "acme-training" }, context })).rejects.toThrow("Could not issue the certificate");
     expect(mocks.adminFrom).not.toHaveBeenCalledWith("certificates");
   });
 

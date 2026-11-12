@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Award, BadgeCheck, BookOpen, FileText, Printer } from "lucide-react";
+import { Award, BadgeCheck, BookOpen, FileText } from "lucide-react";
 import { Phone, Header, SearchBox, Sheet, ProgressBar, CanvasHeading } from "@/components/AppShell";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,13 +9,12 @@ import { courses } from "@/lib/courses";
 import { useAuth, useProgress, useBookmarks, courseProgress } from "@/hooks/useLearning";
 import { pageMeta } from "@/lib/page-meta";
 import { credentialCode } from "@/lib/studio";
-import logo from "@/assets/plusticity-logo-navy.png";
 import { CourseViewToggle, useCourseView } from "@/components/CourseViewToggle";
 import { readAllPages } from "@/lib/database-pages";
 import { certificateStatus } from "@/lib/certificates";
 import { extendedDeadline } from "@/lib/deadline-extension";
 import { CohortEmailPreferences } from "@/components/CohortEmailPreferences";
-import { CertificateLifecycle } from "@/components/CertificateLifecycle";
+import { CertificateDocument } from "@/components/CertificateDocument";
 import { LearningPrograms } from "@/components/LearningPrograms";
 
 export const Route = createFileRoute("/courses")({
@@ -380,62 +379,7 @@ function MyCourses() {
       <Dialog open={!!openCert} onOpenChange={(o) => !o && setOpenCertId(null)}>
         <DialogContent className="max-w-2xl print:max-w-none print:border-0 print:shadow-none">
           <DialogTitle className="sr-only">Certificate</DialogTitle>
-          {openCert && (
-            <div
-              id="certificate"
-              className="rounded-2xl border-4 border-primary p-6 text-center sm:p-10"
-            >
-              <img src={logo} alt="Plusticity" className="mx-auto h-[176px] w-auto" />
-              <p className="mt-4 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                Certificate of Completion
-              </p>
-              <p className="mt-4 text-sm text-muted-foreground">This certifies that</p>
-              <p className="mt-1 font-display text-2xl font-bold sm:text-3xl">{name}</p>
-              <p className="mt-3 text-sm text-muted-foreground">
-                {openCert.revoked_at
-                  ? "This certificate has been revoked for"
-                  : "has a recorded course completion in"}
-              </p>
-              <p className="mt-1 text-lg font-semibold">{openCert.title}</p>
-              {openCert.course_version !== null && (
-                <p className="mt-2 text-xs">Course version {openCert.course_version}</p>
-              )}
-              {openCert.revoked_at && (
-                <p className="mt-3 whitespace-pre-wrap text-sm text-destructive">
-                  Revoked {new Date(openCert.revoked_at).toLocaleDateString()}:{" "}
-                  {openCert.revocation_reason}
-                </p>
-              )}
-              {openCert.source === "studio" && !openCert.validated_at && !openCert.revoked_at && (
-                <p className="mt-3 text-xs text-muted-foreground">
-                  Historical record issued before version-based validation.
-                </p>
-              )}
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
-                <span>
-                  Issued{" "}
-                  {new Date(openCert.issued_at).toLocaleDateString(undefined, {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
-                </span>
-                {openCert.expires_at && <span>Valid until {new Date(openCert.expires_at).toLocaleDateString()}</span>}
-                <span className="flex items-center gap-1 font-semibold text-primary">
-                  <BadgeCheck className="h-4 w-4" />
-                  {certificateStatus(openCert)} · {credentialCode(openCert.id)}
-                </span>
-              </div>
-            </div>
-          )}
-          {openCert && <CertificateLifecycle key={openCert.id} certificate={openCert} />}
-          <button
-            onClick={() => window.print()}
-            className="mx-auto flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground print:hidden"
-          >
-            <Printer className="h-4 w-4" />
-            Print or save as PDF
-          </button>
+          {openCert && <CertificateDocument key={openCert.id} certificate={openCert} learnerName={name} />}
         </DialogContent>
       </Dialog>
     </Phone>

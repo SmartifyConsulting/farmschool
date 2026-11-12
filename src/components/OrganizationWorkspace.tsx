@@ -14,6 +14,7 @@ import { friendlyError } from "@/lib/friendly-error";
 import { departmentPath } from "@/lib/organizations";
 import { OrganizationTraining } from "@/components/OrganizationTraining";
 import { OrganizationPortalSettings } from "@/components/OrganizationPortalSettings";
+import { OrganizationCertificateSettings } from "@/components/OrganizationCertificateSettings";
 
 export function OrganizationWorkspace({ organizationId }: { organizationId: string }) {
   const { user, ready } = useAuth();
@@ -240,6 +241,7 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
             </section>
             {org.can_manage && <OrganizationTraining key={organizationId} organizationId={organizationId} />}
             {org.can_manage && <OrganizationPortalSettings key={"portal:" + organizationId} organizationId={organizationId} />}
+            {org.can_manage && <OrganizationCertificateSettings key={"certificate:" + organizationId} organizationId={organizationId} />}
             {org.can_manage && (
               <section className="space-y-3 rounded-xl border p-4">
                 <h2 className="font-semibold">Workspace branding</h2>

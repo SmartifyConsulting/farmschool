@@ -66,7 +66,7 @@ export function CertificateLifecycle({
                 : "Enable public verification?",
               description: share?.enabled
                 ? "The current verification link will stop working."
-                : "Anyone with the link can see your profile name, course title, issue date and current certificate status. You can disable sharing at any time.",
+                : "Anyone with the link can see your profile name, course title, issue date, current status and any certificate issuer branding, signatory details and wording. You can disable sharing at any time.",
               confirmLabel: share?.enabled ? "Disable sharing" : "Enable sharing",
             }
           : {

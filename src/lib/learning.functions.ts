@@ -9,6 +9,7 @@ import { hasActiveEnrollment } from "@/lib/marketplace";
 import { chooseQuizIndices, quizSampleSize, privateQuizBankId, quizResult } from "@/lib/quiz-pools";
 import { examDraftAnswers, examStartResponse } from "@/lib/exam-controls";
 import { friendlyError } from "@/lib/friendly-error";
+import { portalSlugSchema } from "@/lib/customer-portal";
 
 export const beginQuizAttempt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -220,7 +221,7 @@ export const submitQuiz = createServerFn({ method: "POST" })
 /** Issues a certificate only when every lesson is complete (and studio quizzes were passed on the server). */
 export const claimCertificate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: unknown) => z.object({ source: z.enum(["studio", "catalogue"]), courseRef: z.string().min(1).max(80) }).parse(i))
+  .inputValidator((i: unknown) => z.object({ source: z.enum(["studio", "catalogue"]), courseRef: z.string().min(1).max(80), portalSlug: portalSlugSchema.optional() }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: prog, error: progressError } = await context.supabase.from("lesson_progress").select("lesson_id").eq("course_id", data.courseRef).eq("completed", true);
@@ -282,6 +283,7 @@ export const claimCertificate = createServerFn({ method: "POST" })
         _expected_version: c.version_number,
         _expected_lessons: lessons.map(({ id, kind, body, title, video_url, quiz }) => ({ id, kind, body, title, video_url, quiz })).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
         _photo_tasks: photoTasks,
+        _portal_slug: data.portalSlug ?? null,
       });
       if (issueError) throw new Error("Could not issue the certificate. The course or completion status may have changed. Refresh and try again, or contact your trainer.");
       const result = z.object({ id: z.string().uuid(), title: z.string() }).safeParse(issued);

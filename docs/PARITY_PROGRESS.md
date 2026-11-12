@@ -1,5 +1,19 @@
 # Plusticity capability parity work
 
+## Current direction: customer white-label Plusticity
+
+The customer clarified that Plusticity itself supplies training, assessments,
+scoring and learning records. Work now prioritizes customer branding and portals;
+no LTI connection to another LMS was added. Migration 0077 provides explicitly
+published branded portal addresses/sign-in and member-scoped Catalogue/My Learning.
+Migration 0078 adds customer certificate wording, immutable issuer snapshots,
+portal certificates and issuer-aware public verification. Both migrations are
+installed and their rollback-only access-control checks pass. Existing certificate
+integrity, renewal/revocation and organization-boundary regression checks pass.
+Unit suite: 308 passed, 17 environment-dependent skipped; type checking and the
+production build pass. Browser journeys and printing remain unverified. See
+CUSTOMER_PORTALS.md and CUSTOMER_CERTIFICATES.md for evidence and remaining scope.
+
 Target: the course creation and learning-management workflows documented by
 Coursebox and Moodle LMS, with Moodle Workplace enterprise features tracked
 separately. Full product parity is not yet established.

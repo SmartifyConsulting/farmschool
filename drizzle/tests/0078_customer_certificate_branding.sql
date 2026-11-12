@@ -1,0 +1,94 @@
+BEGIN;
+DO $fixture$
+DECLARE owner_ref uuid; learner_ref uuid:=gen_random_uuid(); historical_ref uuid:=gen_random_uuid(); outsider_ref uuid:=gen_random_uuid(); org_a uuid:=gen_random_uuid(); org_b uuid:=gen_random_uuid(); private_course uuid; shared_course uuid; other_course uuid; cohort_ref uuid; reading_ref uuid; manifest jsonb; result jsonb; cert_ref uuid; historical_cert uuid; denied boolean:=false;
+BEGIN
+  SELECT user_id INTO owner_ref FROM public.user_roles WHERE role='admin' LIMIT 1;
+  INSERT INTO auth.users(id,aud,role,email,created_at,updated_at) VALUES(learner_ref,'authenticated','authenticated','issuer-member-'||learner_ref||'@example.invalid',now(),now()),(historical_ref,'authenticated','authenticated','issuer-historical-'||historical_ref||'@example.invalid',now(),now()),(outsider_ref,'authenticated','authenticated','issuer-outsider-'||outsider_ref||'@example.invalid',now(),now());
+  INSERT INTO public.profiles(user_id,full_name,region,learner_role) VALUES(learner_ref,'Synthetic Award Learner','Test region','Farmer');
+  PERFORM set_config('request.jwt.claim.sub',owner_ref::text,true);
+  PERFORM public.save_organization(org_a,'Certificate company A','','#123456','https://example.invalid/a.png',0); PERFORM public.save_organization(org_b,'Certificate company B','','#654321',NULL,0);
+  PERFORM public.set_organization_member(org_a,'issuer-member-'||learner_ref||'@example.invalid','learner',NULL,NULL,'Learner',0);
+  PERFORM public.set_organization_member(org_b,'issuer-member-'||learner_ref||'@example.invalid','learner',NULL,NULL,'Learner',0);
+  PERFORM public.set_organization_member(org_a,'issuer-historical-'||historical_ref||'@example.invalid','learner',NULL,NULL,'Learner',0);
+  PERFORM public.save_organization_portal(org_a,'issuer-'||org_a,true,'Training',0);
+  PERFORM public.save_organization_portal(org_b,'issuer-'||org_b,true,'Training',0);
+  PERFORM public.save_organization_certificate_settings(org_a,'Certificate of Achievement','Trainer One','Training Lead','First wording',0);
+  INSERT INTO public.studio_courses(author_id,title,description) VALUES(owner_ref,'Customer award private','Synthetic organization course for certificate branding') RETURNING id INTO private_course;
+  INSERT INTO public.studio_courses(author_id,title,description) VALUES(owner_ref,'Customer award shared','Synthetic shared course for portal certificate branding') RETURNING id INTO shared_course;
+  INSERT INTO public.studio_courses(author_id,title,description) VALUES(owner_ref,'Customer award other','Synthetic other tenant course for certificate branding') RETURNING id INTO other_course;
+  INSERT INTO public.studio_lessons(course_id,title,kind,body,position) SELECT id,'Read','reading','Synthetic verified training',0 FROM public.studio_courses WHERE id IN(private_course,shared_course,other_course);
+  PERFORM public.set_course_organization(private_course,org_a,NULL); PERFORM public.set_course_organization(other_course,org_b,NULL);
+  PERFORM public.studio_approve_review(private_course); PERFORM public.studio_publish_version(private_course,'Issuer fixture');
+  PERFORM public.studio_approve_review(shared_course); PERFORM public.studio_publish_version(shared_course,'Issuer fixture');
+  PERFORM public.studio_approve_review(other_course); PERFORM public.studio_publish_version(other_course,'Issuer fixture');
+  INSERT INTO public.cohorts(name,owner_id) VALUES('Issuer fixture cohort',owner_ref) RETURNING id INTO cohort_ref;
+  INSERT INTO public.cohort_members(cohort_id,user_id) VALUES(cohort_ref,learner_ref);
+  PERFORM public.bind_organization_cohort(cohort_ref,org_a,NULL);
+  INSERT INTO public.cohort_course_assignments(cohort_id,course_id) VALUES(cohort_ref,shared_course);
+  SELECT jsonb_agg(jsonb_build_object('id',id,'kind',kind,'body',body,'title',title,'video_url',video_url,'quiz',quiz) ORDER BY id) INTO manifest FROM public.studio_lessons WHERE course_id=private_course;
+  BEGIN PERFORM public.issue_studio_certificate(learner_ref,private_course,1,manifest,'[]','issuer-'||org_a); EXCEPTION WHEN raise_exception THEN denied:=true; END;
+  IF NOT denied OR EXISTS(SELECT 1 FROM public.certificates WHERE user_id=learner_ref AND course_ref=private_course::text) THEN RAISE EXCEPTION 'Branding bypassed completion requirements'; END IF;
+  INSERT INTO public.certificates(user_id,source,course_ref,title) VALUES(historical_ref,'studio',private_course::text,'Historical private award') RETURNING id INTO historical_cert;
+  INSERT INTO public.lesson_progress(user_id,course_id,lesson_id,completed) SELECT learner_ref,course_id::text,id::text,true FROM public.studio_lessons WHERE course_id IN(private_course,shared_course,other_course);
+  result:=public.issue_studio_certificate(learner_ref,private_course,1,manifest,'[]'); cert_ref:=(result->>'id')::uuid;
+  IF NOT EXISTS(SELECT 1 FROM public.certificate_brand_snapshots WHERE certificate_id=cert_ref AND issuer_name='Certificate company A' AND heading='Certificate of Achievement' AND template_version=1) THEN RAISE EXCEPTION 'Private course award did not capture company issuer'; END IF;
+  PERFORM public.save_organization_certificate_settings(org_a,'New heading','Trainer Two','New title','New wording',1);
+  PERFORM public.save_organization(org_a,'Renamed company A','','#112233',NULL,1);
+  PERFORM public.issue_studio_certificate(learner_ref,private_course,1,manifest,'[]','issuer-'||org_a);
+  IF NOT EXISTS(SELECT 1 FROM public.certificate_brand_snapshots WHERE certificate_id=cert_ref AND issuer_name='Certificate company A' AND signatory_name='Trainer One' AND footer='First wording' AND template_version=1) THEN RAISE EXCEPTION 'Retry changed awarded issuer or wording'; END IF;
+  denied:=false; BEGIN UPDATE public.certificate_brand_snapshots SET issuer_name='Forged' WHERE certificate_id=cert_ref; EXCEPTION WHEN raise_exception THEN denied:=true; END;
+  IF NOT denied THEN RAISE EXCEPTION 'Award snapshot mutable'; END IF;
+  PERFORM public.issue_studio_certificate(historical_ref,private_course,1,manifest,'[]','issuer-'||org_a);
+  IF EXISTS(SELECT 1 FROM public.certificate_brand_snapshots WHERE certificate_id=historical_cert) THEN RAISE EXCEPTION 'Existing historical award was retroactively branded'; END IF;
+  SELECT jsonb_agg(jsonb_build_object('id',id,'kind',kind,'body',body,'title',title,'video_url',video_url,'quiz',quiz) ORDER BY id) INTO manifest FROM public.studio_lessons WHERE course_id=shared_course;
+  result:=public.issue_studio_certificate(learner_ref,shared_course,1,manifest,'[]','issuer-'||org_a);
+  IF NOT EXISTS(SELECT 1 FROM public.certificate_brand_snapshots WHERE certificate_id=(result->>'id')::uuid AND issuer_name='Renamed company A' AND template_version=2) THEN RAISE EXCEPTION 'Shared portal award missing current issuer'; END IF;
+  denied:=false; BEGIN PERFORM public.issue_studio_certificate(learner_ref,shared_course,1,manifest,'[]','issuer-'||org_b); EXCEPTION WHEN raise_exception THEN denied:=true; END;
+  IF NOT denied THEN RAISE EXCEPTION 'Unassigned shared course used other portal issuer'; END IF;
+  SELECT jsonb_agg(jsonb_build_object('id',id,'kind',kind,'body',body,'title',title,'video_url',video_url,'quiz',quiz) ORDER BY id) INTO manifest FROM public.studio_lessons WHERE course_id=other_course;
+  denied:=false; BEGIN PERFORM public.issue_studio_certificate(learner_ref,other_course,1,manifest,'[]','issuer-'||org_a); EXCEPTION WHEN raise_exception THEN denied:=true; END;
+  IF NOT denied THEN RAISE EXCEPTION 'Other tenant course used this portal issuer'; END IF;
+  PERFORM set_config('request.jwt.claim.sub',learner_ref::text,true);
+  PERFORM set_config('test.issuer_token',public.set_certificate_sharing(cert_ref,true)::text,true);
+  PERFORM set_config('test.issuer_owner',owner_ref::text,true); PERFORM set_config('test.issuer_learner',learner_ref::text,true); PERFORM set_config('test.issuer_outsider',outsider_ref::text,true); PERFORM set_config('test.issuer_org',org_a::text,true); PERFORM set_config('test.issuer_other_org',org_b::text,true); PERFORM set_config('test.issuer_certificate',cert_ref::text,true);
+END;
+$fixture$;
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub',current_setting('test.issuer_learner'),true);
+DO $learner$
+DECLARE report jsonb; denied boolean:=false;
+BEGIN
+  IF public.my_certificate_brand(current_setting('test.issuer_certificate')::uuid)->>'issuer_name'<>'Certificate company A' THEN RAISE EXCEPTION 'Owner cannot read awarded issuer'; END IF;
+  report:=public.portal_certificate_report('issuer-'||current_setting('test.issuer_org'));
+  IF report->>'total'<>'2' OR jsonb_array_length(report->'records')<>2 THEN RAISE EXCEPTION 'Portal omitted owned awards'; END IF;
+  report:=public.portal_certificate_report('issuer-'||current_setting('test.issuer_other_org'));
+  IF report->>'total'<>'0' THEN RAISE EXCEPTION 'Customer awards crossed tenant boundary'; END IF;
+  BEGIN PERFORM public.save_organization_certificate_settings(current_setting('test.issuer_org')::uuid,'Forged','','','',2); EXCEPTION WHEN raise_exception THEN denied:=true; END;
+  IF NOT denied OR EXISTS(SELECT 1 FROM public.organization_certificate_settings) THEN RAISE EXCEPTION 'Learner read or edited private certificate settings'; END IF;
+  IF has_function_privilege('authenticated','public.issue_studio_certificate(uuid,uuid,integer,jsonb,jsonb,text)','EXECUTE') OR has_function_privilege('authenticated','public.capture_certificate_brand(uuid,uuid)','EXECUTE') OR has_table_privilege('authenticated','public.certificate_brand_snapshots','INSERT') THEN RAISE EXCEPTION 'Learner can write issuer or issue certificates'; END IF;
+END;
+$learner$;
+SELECT set_config('request.jwt.claim.sub',current_setting('test.issuer_outsider'),true);
+DO $outsider$
+DECLARE denied boolean:=false;
+BEGIN
+  IF public.my_certificate_brand(current_setting('test.issuer_certificate')::uuid) IS NOT NULL THEN RAISE EXCEPTION 'Outsider read private award branding'; END IF;
+  BEGIN PERFORM public.portal_certificate_report('issuer-'||current_setting('test.issuer_org')); EXCEPTION WHEN raise_exception THEN denied:=true; END;
+  IF NOT denied THEN RAISE EXCEPTION 'Outsider read portal certificates'; END IF;
+END;
+$outsider$;
+RESET ROLE;
+SET LOCAL ROLE anon;
+SELECT set_config('request.jwt.claim.sub','',true);
+DO $public$
+DECLARE verified jsonb;
+BEGIN
+  verified:=public.verify_certificate(current_setting('test.issuer_token')::uuid);
+  IF verified->'issuer'->>'issuer_name'<>'Certificate company A' OR verified->>'learner_name'<>'Synthetic Award Learner' OR verified ? 'revocation_reason' OR verified ? 'user_id' OR verified->'issuer' ? 'organization_id' THEN RAISE EXCEPTION 'Public verification missing original issuer or exposing private fields'; END IF;
+END;
+$public$;
+RESET ROLE;
+SELECT set_config('request.jwt.claim.sub',current_setting('test.issuer_learner'),true);
+SELECT public.set_certificate_sharing(current_setting('test.issuer_certificate')::uuid,false);
+DO $disabled$ BEGIN IF public.verify_certificate(current_setting('test.issuer_token')::uuid) IS NOT NULL THEN RAISE EXCEPTION 'Disabled verification still exposed issuer'; END IF; END; $disabled$;
+ROLLBACK;

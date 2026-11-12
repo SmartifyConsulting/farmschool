@@ -374,6 +374,12 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      organization_certificate_settings: {
+        Row: { organization_id: string; heading: string; signatory_name: string; signatory_title: string; footer: string; version: number }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       studio_quiz_policies: {
         Row: { lesson_id: string; course_id: string; max_attempts: number | null; duration_minutes: number; retry_minutes: number; version: number }
         Insert: never
@@ -2223,7 +2229,10 @@ export type Database = {
       propose_course_grade: { Args: { _course: string; _learner: string; _score: number; _reason: string; _expected_version: number; _previous_decision: string | null }; Returns: string }
       review_course_grade: { Args: { _decision: string; _approve: boolean; _note: string }; Returns: undefined }
       course_gradebook_export: { Args: { _course: string }; Returns: Json }
-      issue_studio_certificate: { Args: { _user: string; _course: string; _expected_version: number; _expected_lessons: Json; _photo_tasks: Json }; Returns: Json }
+      issue_studio_certificate: { Args: { _user: string; _course: string; _expected_version: number; _expected_lessons: Json; _photo_tasks: Json; _portal_slug?: string | null }; Returns: Json }
+      save_organization_certificate_settings: { Args: { _organization: string; _heading: string; _signatory_name: string; _signatory_title: string; _footer: string; _expected: number }; Returns: number }
+      my_certificate_brand: { Args: { _certificate: string }; Returns: Json }
+      portal_certificate_report: { Args: { _slug: string; _offset?: number; _limit?: number }; Returns: Json }
       revoke_studio_certificate: { Args: { _certificate: string; _reason: string }; Returns: undefined }
       course_certificates: { Args: { _course: string; _offset?: number; _limit?: number }; Returns: Json }
       add_course_competency: {
