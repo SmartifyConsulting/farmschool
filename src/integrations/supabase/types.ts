@@ -350,6 +350,30 @@ export type Database = {
         }
         Relationships: []
       }
+      learning_programs: {
+        Row: { id: string; owner_id: string; title: string; description: string; stages: Json; draft_version: number; created_at: string }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      learning_program_versions: {
+        Row: { id: string; program_id: string; version: number; title: string; description: string; stages: Json; published_at: string }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      cohort_program_assignments: {
+        Row: { id: string; cohort_id: string; version_id: string; due_at: string | null; active: boolean; version: number }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      program_awards: {
+        Row: { id: string; version_id: string; user_id: string; title: string; issued_at: string; expires_at: string | null; evidence: Json; evidence_digest: string }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       cohort_course_assignments: {
         Row: {
           assigned_at: string
@@ -2044,6 +2068,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cohort_program_versions: { Args: { _cohort: string }; Returns: { id: string; title: string; version: number; active: boolean; due_at: string | null }[] }
+      save_learning_program: { Args: { _program: string; _title: string; _description: string; _stages: Json; _expected: number }; Returns: number }
+      publish_learning_program: { Args: { _program: string; _expected: number }; Returns: string }
+      assign_cohort_program: { Args: { _cohort: string; _version: string; _due: string | null; _active: boolean; _expected: number }; Returns: undefined }
+      my_learning_programs: { Args: Record<string, never>; Returns: { id: string; title: string; version: number; due_at: string | null }[] }
+      my_program_progress: { Args: { _version: string }; Returns: Json }
+      claim_program_award: { Args: { _version: string }; Returns: string }
+      cohort_program_progress: { Args: { _cohort: string; _version: string }; Returns: { user_id: string; full_name: string; complete: boolean; completed_stages: number; total_stages: number }[] }
       server_certificate_records: { Args: Record<string, never>; Returns: { id: string; user_id: string; source: string; course_ref: string; title: string; issued_at: string; revoked_at: string | null; expires_at: string | null; current_valid: boolean }[] }
       my_certificate_lifecycle: { Args: { _certificate: string }; Returns: Json }
       course_certificate_policy: { Args: { _course: string }; Returns: Json }

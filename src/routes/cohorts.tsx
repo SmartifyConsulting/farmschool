@@ -10,6 +10,7 @@ import { readAllPages } from "@/lib/database-pages";
 import { cohortReport, cohortReportCsv } from "@/lib/cohort-report";
 import { friendlyError } from "@/lib/friendly-error";
 import { pageMeta } from "@/lib/page-meta";
+import { CohortProgramReports } from "@/components/ProgramRoster";
 
 export const Route = createFileRoute("/cohorts")({
   component: CohortReports,
@@ -102,6 +103,7 @@ function CohortReports() {
                 </option>
               ))}
             </select>
+            {selected && <CohortProgramReports key={selected} cohort={selected} />}
             {selected &&
               (report.isPending ? (
                 <p>Loading progress…</p>

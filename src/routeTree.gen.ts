@@ -33,6 +33,7 @@ import { Route as AdminComplianceRouteImport } from './routes/admin.compliance'
 import { Route as AdminCreatorsRouteImport } from './routes/admin.creators'
 import { Route as AdminExternalContentRouteImport } from './routes/admin.external-content'
 import { Route as AdminGradeModerationRouteImport } from './routes/admin.grade-moderation'
+import { Route as AdminProgramsRouteImport } from './routes/admin.programs'
 import { Route as AdminTokenLedgerRouteImport } from './routes/admin.token-ledger'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as ApiCourseFactoryRouteImport } from './routes/api/course-factory'
@@ -46,6 +47,7 @@ import { Route as CourseIdRouteImport } from './routes/course.$id'
 import { Route as GradebookCourseIdRouteImport } from './routes/gradebook.$courseId'
 import { Route as LearningActivitiesCourseIdRouteImport } from './routes/learning-activities.$courseId'
 import { Route as MessagesPartnerIdRouteImport } from './routes/messages.$partnerId'
+import { Route as ProgramsIdRouteImport } from './routes/programs.$id'
 import { Route as ScormIndexRouteImport } from './routes/scorm.index'
 import { Route as ScormIdRouteImport } from './routes/scorm.$id'
 import { Route as StudioIdRouteImport } from './routes/studio.$id'
@@ -177,6 +179,11 @@ const AdminGradeModerationRoute = AdminGradeModerationRouteImport.update({
   path: '/admin/grade-moderation',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminProgramsRoute = AdminProgramsRouteImport.update({
+  id: '/admin/programs',
+  path: '/admin/programs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminTokenLedgerRoute = AdminTokenLedgerRouteImport.update({
   id: '/admin/token-ledger',
   path: '/admin/token-ledger',
@@ -242,6 +249,11 @@ const MessagesPartnerIdRoute = MessagesPartnerIdRouteImport.update({
   id: '/$partnerId',
   path: '/$partnerId',
   getParentRoute: () => MessagesRoute,
+} as any)
+const ProgramsIdRoute = ProgramsIdRouteImport.update({
+  id: '/programs/$id',
+  path: '/programs/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ScormIndexRoute = ScormIndexRouteImport.update({
   id: '/scorm/',
@@ -318,6 +330,7 @@ export interface FileRoutesByFullPath {
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/grade-moderation': typeof AdminGradeModerationRoute
+  '/admin/programs': typeof AdminProgramsRoute
   '/admin/token-ledger': typeof AdminTokenLedgerRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
@@ -331,6 +344,7 @@ export interface FileRoutesByFullPath {
   '/gradebook/$courseId': typeof GradebookCourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
+  '/programs/$id': typeof ProgramsIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
   '/studio/reports': typeof StudioReportsRoute
@@ -367,6 +381,7 @@ export interface FileRoutesByTo {
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/grade-moderation': typeof AdminGradeModerationRoute
+  '/admin/programs': typeof AdminProgramsRoute
   '/admin/token-ledger': typeof AdminTokenLedgerRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
@@ -380,6 +395,7 @@ export interface FileRoutesByTo {
   '/gradebook/$courseId': typeof GradebookCourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
+  '/programs/$id': typeof ProgramsIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
   '/studio/reports': typeof StudioReportsRoute
@@ -417,6 +433,7 @@ export interface FileRoutesById {
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/grade-moderation': typeof AdminGradeModerationRoute
+  '/admin/programs': typeof AdminProgramsRoute
   '/admin/token-ledger': typeof AdminTokenLedgerRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
@@ -430,6 +447,7 @@ export interface FileRoutesById {
   '/gradebook/$courseId': typeof GradebookCourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
+  '/programs/$id': typeof ProgramsIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
   '/studio/reports': typeof StudioReportsRoute
@@ -468,6 +486,7 @@ export interface FileRouteTypes {
     | '/admin/creators'
     | '/admin/external-content'
     | '/admin/grade-moderation'
+    | '/admin/programs'
     | '/admin/token-ledger'
     | '/admin/users'
     | '/api/course-factory'
@@ -481,6 +500,7 @@ export interface FileRouteTypes {
     | '/gradebook/$courseId'
     | '/learning-activities/$courseId'
     | '/messages/$partnerId'
+    | '/programs/$id'
     | '/scorm/$id'
     | '/studio/$id'
     | '/studio/reports'
@@ -517,6 +537,7 @@ export interface FileRouteTypes {
     | '/admin/creators'
     | '/admin/external-content'
     | '/admin/grade-moderation'
+    | '/admin/programs'
     | '/admin/token-ledger'
     | '/admin/users'
     | '/api/course-factory'
@@ -530,6 +551,7 @@ export interface FileRouteTypes {
     | '/gradebook/$courseId'
     | '/learning-activities/$courseId'
     | '/messages/$partnerId'
+    | '/programs/$id'
     | '/scorm/$id'
     | '/studio/$id'
     | '/studio/reports'
@@ -566,6 +588,7 @@ export interface FileRouteTypes {
     | '/admin/creators'
     | '/admin/external-content'
     | '/admin/grade-moderation'
+    | '/admin/programs'
     | '/admin/token-ledger'
     | '/admin/users'
     | '/api/course-factory'
@@ -579,6 +602,7 @@ export interface FileRouteTypes {
     | '/gradebook/$courseId'
     | '/learning-activities/$courseId'
     | '/messages/$partnerId'
+    | '/programs/$id'
     | '/scorm/$id'
     | '/studio/$id'
     | '/studio/reports'
@@ -616,6 +640,7 @@ export interface RootRouteChildren {
   AdminCreatorsRoute: typeof AdminCreatorsRoute
   AdminExternalContentRoute: typeof AdminExternalContentRoute
   AdminGradeModerationRoute: typeof AdminGradeModerationRoute
+  AdminProgramsRoute: typeof AdminProgramsRoute
   AdminTokenLedgerRoute: typeof AdminTokenLedgerRoute
   AdminUsersRoute: typeof AdminUsersRoute
   ApiCourseFactoryRoute: typeof ApiCourseFactoryRoute
@@ -628,6 +653,7 @@ export interface RootRouteChildren {
   CourseIdRoute: typeof CourseIdRoute
   GradebookCourseIdRoute: typeof GradebookCourseIdRoute
   LearningActivitiesCourseIdRoute: typeof LearningActivitiesCourseIdRoute
+  ProgramsIdRoute: typeof ProgramsIdRoute
   ScormIdRoute: typeof ScormIdRoute
   VerifyTokenRoute: typeof VerifyTokenRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -809,6 +835,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminGradeModerationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/programs': {
+      id: '/admin/programs'
+      path: '/admin/programs'
+      fullPath: '/admin/programs'
+      preLoaderRoute: typeof AdminProgramsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/token-ledger': {
       id: '/admin/token-ledger'
       path: '/admin/token-ledger'
@@ -899,6 +932,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/messages/$partnerId'
       preLoaderRoute: typeof MessagesPartnerIdRouteImport
       parentRoute: typeof MessagesRoute
+    }
+    '/programs/$id': {
+      id: '/programs/$id'
+      path: '/programs/$id'
+      fullPath: '/programs/$id'
+      preLoaderRoute: typeof ProgramsIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/scorm/': {
       id: '/scorm/'
@@ -1022,6 +1062,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminCreatorsRoute: AdminCreatorsRoute,
   AdminExternalContentRoute: AdminExternalContentRoute,
   AdminGradeModerationRoute: AdminGradeModerationRoute,
+  AdminProgramsRoute: AdminProgramsRoute,
   AdminTokenLedgerRoute: AdminTokenLedgerRoute,
   AdminUsersRoute: AdminUsersRoute,
   ApiCourseFactoryRoute: ApiCourseFactoryRoute,
@@ -1034,6 +1075,7 @@ const rootRouteChildren: RootRouteChildren = {
   CourseIdRoute: CourseIdRoute,
   GradebookCourseIdRoute: GradebookCourseIdRoute,
   LearningActivitiesCourseIdRoute: LearningActivitiesCourseIdRoute,
+  ProgramsIdRoute: ProgramsIdRoute,
   ScormIdRoute: ScormIdRoute,
   VerifyTokenRoute: VerifyTokenRoute,
   AdminIndexRoute: AdminIndexRoute,

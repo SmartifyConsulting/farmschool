@@ -16,6 +16,7 @@ import { certificateStatus } from "@/lib/certificates";
 import { extendedDeadline } from "@/lib/deadline-extension";
 import { CohortEmailPreferences } from "@/components/CohortEmailPreferences";
 import { CertificateLifecycle } from "@/components/CertificateLifecycle";
+import { LearningPrograms } from "@/components/LearningPrograms";
 
 export const Route = createFileRoute("/courses")({
   head: () =>
@@ -214,6 +215,7 @@ function MyCourses() {
       <Sheet>
         <CanvasHeading title="My learning" />
         <CohortEmailPreferences />
+        <LearningPrograms />
         <Link to="/cohorts" className="mt-2 inline-block text-sm font-semibold text-primary">
           Cohort reports for managers
         </Link>

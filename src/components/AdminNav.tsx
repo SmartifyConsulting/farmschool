@@ -3,6 +3,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 const SECTIONS = [
   { to: "/admin/users", label: "Users" },
   { to: "/admin/cohorts", label: "Cohorts" },
+  { to: "/admin/programs", label: "Programs" },
   { to: "/admin/grade-moderation", label: "Grade Moderation" },
   { to: "/admin/creators", label: "Creator Approvals" },
   { to: "/admin/external-content", label: "Library" },

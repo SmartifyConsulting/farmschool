@@ -356,11 +356,16 @@ deferred at the user's request until sender details/configuration are supplied.
 10. Verify accessible, multilingual and mobile/offline delivery, backup/restore,
     operational monitoring and realistic load handling.
 11. Workplace scope: tenant isolation and branding, organisation hierarchies,
-    programs, recurring certification, dynamic rules and scheduled reports.
+    dynamic rules and scheduled reports. Versioned multi-course programs, cohort
+    assignments, staged/elective requirements, current-certificate completion
+    records and scoped program reports are implemented in migration 0062.
+    Assessment-based recurring course certification is implemented. Broader
+    Workplace recertification scheduling and operational verification remain.
+    See docs/LEARNING_PROGRAMS.md for program scope and remaining limitations.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041 through 0051 and 0053 through 0061. Migration 0052 belongs to the intervening
+migrations 0041 through 0051 and 0053 through 0062. Migration 0052 belongs to the intervening
 Lovable API-management update and was not deployed by this certificate work.
 Test fixtures were rolled back; existing learner
 records were not edited.
