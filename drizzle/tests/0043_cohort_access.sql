@@ -43,4 +43,3 @@ $owner$;
 RESET ROLE;
 
 ROLLBACK;
-
