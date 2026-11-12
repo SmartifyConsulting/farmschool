@@ -14,6 +14,7 @@ import { CourseViewToggle, useCourseView } from "@/components/CourseViewToggle";
 import { readAllPages } from "@/lib/database-pages";
 import { certificateStatus } from "@/lib/certificates";
 import { extendedDeadline } from "@/lib/deadline-extension";
+import { CohortEmailPreferences } from "@/components/CohortEmailPreferences";
 
 export const Route = createFileRoute("/courses")({
   head: () =>
@@ -216,6 +217,7 @@ function MyCourses() {
       <Header />
       <Sheet>
         <CanvasHeading title="My learning" />
+        <CohortEmailPreferences />
         <Link to="/cohorts" className="mt-2 inline-block text-sm font-semibold text-primary">
           Cohort reports for managers
         </Link>

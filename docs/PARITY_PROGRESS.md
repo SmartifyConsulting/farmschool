@@ -245,7 +245,19 @@ override retirement, 202-learner export, seat limits, free auto-enrolment,
 purchase preservation, manager appointment/revocation and extension enforcement.
 Validation: 184 tests passed, 17 environment-gated tests skipped; TypeScript and
 production build passed. Signed-in browser journeys remain unverified.
-Resend reminders are the next implementation stage; delivery is not enabled.
+Resend reminders now have a private outbox, scoped cohort status summaries,
+learner opt-out, service-only enqueue/claim/acknowledgement functions and an
+authenticated cron endpoint. Messages use stable provider idempotency keys,
+bounded retries and immutable retry payloads. Eligibility is checked at claim
+and immediately before provider delivery. Removed/changed assignments,
+extensions, changed email addresses, opt-outs and certificates cancel obsolete
+pending work. Delivery stays disabled, as requested, until the sender/API key
+and hosting schedule are configured. Setup is in docs/COHORT_EMAIL_SETUP.md.
+Migration 0056 is applied. Rollback-only role tests passed for deduplication,
+leases, retry payloads, stale acknowledgements, opt-out and recipient changes.
+Mocked provider/worker tests passed; no real emails were sent. The full suite
+now has 194 passing tests and 17 environment-gated skips. Real-provider delivery,
+the hosting scheduler and bounce/delivery-event handling remain unverified.
 Shared banks, per-attempt random exam pools, portable question import/export,
 paid licence pools and push delivery remain outstanding within priorities 3/4.
 
@@ -278,7 +290,7 @@ paid licence pools and push delivery remain outstanding within priorities 3/4.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041 through 0051 and 0053 through 0055. Migration 0052 belongs to the intervening
+migrations 0041 through 0051 and 0053 through 0056. Migration 0052 belongs to the intervening
 Lovable API-management update and was not deployed by this certificate work.
 Test fixtures were rolled back; existing learner
 records were not edited.

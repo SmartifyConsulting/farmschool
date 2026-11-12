@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { friendlyError } from "@/lib/friendly-error";
+import { z } from "zod";
 
 export function CohortPolicies({
   cohortId,
@@ -42,6 +43,22 @@ export function CohortPolicies({
         .order("user_id");
       if (error) throw error;
       return data;
+    },
+  });
+  const delivery = useQuery({
+    queryKey: ["cohort-reminder-summary", cohortId],
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("cohort_reminder_summary", { _cohort: cohortId });
+      if (error) throw error;
+      return z
+        .object({
+          pending: z.number(),
+          sent: z.number(),
+          failed: z.number(),
+          cancelled: z.number(),
+        })
+        .parse(data);
     },
   });
   useEffect(() => {
@@ -145,6 +162,12 @@ export function CohortPolicies({
             <Button onClick={save}>Save cohort policies</Button>
           </fieldset>
         )
+      )}
+      {delivery.data && (
+        <p className="text-xs text-muted-foreground">
+          Email reminders: {delivery.data.pending} waiting · {delivery.data.sent} accepted by email
+          service · {delivery.data.failed} need attention · {delivery.data.cancelled} cancelled
+        </p>
       )}
       <h3 className="text-sm font-medium">Reporting managers</h3>
       <p className="text-xs text-muted-foreground">

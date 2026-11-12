@@ -50,6 +50,7 @@ import { Route as ScormIndexRouteImport } from './routes/scorm.index'
 import { Route as ScormIdRouteImport } from './routes/scorm.$id'
 import { Route as StudioIdRouteImport } from './routes/studio.$id'
 import { Route as StudioReportsRouteImport } from './routes/studio.reports'
+import { Route as ApiCronCohortRemindersRouteImport } from './routes/api/cron/cohort-reminders'
 import { Route as ApiScormFileSplatRouteImport } from './routes/api/scorm-file.$'
 import { Route as LessonCourseIdLessonIdRouteImport } from './routes/lesson.$courseId.$lessonId'
 import { Route as ApiPublicV1CoursesRouteImport } from './routes/api/public/v1/courses'
@@ -261,6 +262,11 @@ const StudioReportsRoute = StudioReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => StudioRoute,
 } as any)
+const ApiCronCohortRemindersRoute = ApiCronCohortRemindersRouteImport.update({
+  id: '/api/cron/cohort-reminders',
+  path: '/api/cron/cohort-reminders',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiScormFileSplatRoute = ApiScormFileSplatRouteImport.update({
   id: '/api/scorm-file/$',
   path: '/api/scorm-file/$',
@@ -324,6 +330,7 @@ export interface FileRoutesByFullPath {
   '/studio/reports': typeof StudioReportsRoute
   '/admin/': typeof AdminIndexRoute
   '/scorm/': typeof ScormIndexRoute
+  '/api/cron/cohort-reminders': typeof ApiCronCohortRemindersRoute
   '/api/scorm-file/$': typeof ApiScormFileSplatRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
@@ -371,6 +378,7 @@ export interface FileRoutesByTo {
   '/studio/reports': typeof StudioReportsRoute
   '/admin': typeof AdminIndexRoute
   '/scorm': typeof ScormIndexRoute
+  '/api/cron/cohort-reminders': typeof ApiCronCohortRemindersRoute
   '/api/scorm-file/$': typeof ApiScormFileSplatRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
@@ -419,6 +427,7 @@ export interface FileRoutesById {
   '/studio/reports': typeof StudioReportsRoute
   '/admin/': typeof AdminIndexRoute
   '/scorm/': typeof ScormIndexRoute
+  '/api/cron/cohort-reminders': typeof ApiCronCohortRemindersRoute
   '/api/scorm-file/$': typeof ApiScormFileSplatRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
@@ -468,6 +477,7 @@ export interface FileRouteTypes {
     | '/studio/reports'
     | '/admin/'
     | '/scorm/'
+    | '/api/cron/cohort-reminders'
     | '/api/scorm-file/$'
     | '/lesson/$courseId/$lessonId'
     | '/api/public/v1/courses'
@@ -515,6 +525,7 @@ export interface FileRouteTypes {
     | '/studio/reports'
     | '/admin'
     | '/scorm'
+    | '/api/cron/cohort-reminders'
     | '/api/scorm-file/$'
     | '/lesson/$courseId/$lessonId'
     | '/api/public/v1/courses'
@@ -562,6 +573,7 @@ export interface FileRouteTypes {
     | '/studio/reports'
     | '/admin/'
     | '/scorm/'
+    | '/api/cron/cohort-reminders'
     | '/api/scorm-file/$'
     | '/lesson/$courseId/$lessonId'
     | '/api/public/v1/courses'
@@ -607,6 +619,7 @@ export interface RootRouteChildren {
   ScormIdRoute: typeof ScormIdRoute
   AdminIndexRoute: typeof AdminIndexRoute
   ScormIndexRoute: typeof ScormIndexRoute
+  ApiCronCohortRemindersRoute: typeof ApiCronCohortRemindersRoute
   ApiScormFileSplatRoute: typeof ApiScormFileSplatRoute
   LessonCourseIdLessonIdRoute: typeof LessonCourseIdLessonIdRoute
   ApiPublicV1CoursesRoute: typeof ApiPublicV1CoursesRoute
@@ -902,6 +915,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudioReportsRouteImport
       parentRoute: typeof StudioRoute
     }
+    '/api/cron/cohort-reminders': {
+      id: '/api/cron/cohort-reminders'
+      path: '/api/cron/cohort-reminders'
+      fullPath: '/api/cron/cohort-reminders'
+      preLoaderRoute: typeof ApiCronCohortRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/scorm-file/$': {
       id: '/api/scorm-file/$'
       path: '/api/scorm-file/$'
@@ -997,6 +1017,7 @@ const rootRouteChildren: RootRouteChildren = {
   ScormIdRoute: ScormIdRoute,
   AdminIndexRoute: AdminIndexRoute,
   ScormIndexRoute: ScormIndexRoute,
+  ApiCronCohortRemindersRoute: ApiCronCohortRemindersRoute,
   ApiScormFileSplatRoute: ApiScormFileSplatRoute,
   LessonCourseIdLessonIdRoute: LessonCourseIdLessonIdRoute,
   ApiPublicV1CoursesRoute: ApiPublicV1CoursesRoute,

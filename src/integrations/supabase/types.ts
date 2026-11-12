@@ -14,6 +14,12 @@ export type Database = {
   }
   public: {
     Tables: {
+      cohort_email_preferences: {
+        Row: { user_id: string; enabled: boolean }
+        Insert: { user_id?: string; enabled: boolean }
+        Update: { enabled?: boolean }
+        Relationships: []
+      }
       course_deadline_extensions: {
         Row: { course_id: string; user_id: string; due_at: string | null; reason: string; changed_by: string; changed_at: string; version: number }
         Insert: never
@@ -2007,6 +2013,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      enqueue_cohort_reminders: { Args: { _cohort?: string | null }; Returns: number }
+      claim_cohort_reminders: { Args: { _limit?: number; _cohort?: string | null }; Returns: Json }
+      authorize_cohort_reminder: { Args: { _id: string; _lease: string }; Returns: boolean }
+      finish_cohort_reminder: { Args: { _id: string; _lease: string; _provider_id: string | null; _error: string | null }; Returns: undefined }
+      cohort_reminder_summary: { Args: { _cohort: string }; Returns: Json }
       save_cohort_policy: { Args: { _cohort: string; _seats: number | null; _auto_free: boolean; _reminders: boolean; _expected_version: number }; Returns: number }
       my_reporting_cohorts: { Args: never; Returns: { id: string; name: string }[] }
       set_learner_deadline: { Args: { _course: string; _learner: string; _due_at: string | null; _reason: string; _expected_version: number }; Returns: number }
