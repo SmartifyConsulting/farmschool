@@ -31,6 +31,7 @@ import { Route as AdminCohortsRouteImport } from './routes/admin.cohorts'
 import { Route as AdminComplianceRouteImport } from './routes/admin.compliance'
 import { Route as AdminCreatorsRouteImport } from './routes/admin.creators'
 import { Route as AdminExternalContentRouteImport } from './routes/admin.external-content'
+import { Route as AdminTokenLedgerRouteImport } from './routes/admin.token-ledger'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as ApiCourseFactoryRouteImport } from './routes/api/course-factory'
 import { Route as ApiCourseWizardRouteImport } from './routes/api/course-wizard'
@@ -46,6 +47,7 @@ import { Route as MessagesPartnerIdRouteImport } from './routes/messages.$partne
 import { Route as ScormIndexRouteImport } from './routes/scorm.index'
 import { Route as ScormIdRouteImport } from './routes/scorm.$id'
 import { Route as StudioIdRouteImport } from './routes/studio.$id'
+import { Route as StudioReportsRouteImport } from './routes/studio.reports'
 import { Route as ApiScormFileSplatRouteImport } from './routes/api/scorm-file.$'
 import { Route as LessonCourseIdLessonIdRouteImport } from './routes/lesson.$courseId.$lessonId'
 import { Route as ApiPublicV1CoursesRouteImport } from './routes/api/public/v1/courses'
@@ -161,6 +163,11 @@ const AdminExternalContentRoute = AdminExternalContentRouteImport.update({
   path: '/admin/external-content',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminTokenLedgerRoute = AdminTokenLedgerRouteImport.update({
+  id: '/admin/token-ledger',
+  path: '/admin/token-ledger',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/admin/users',
   path: '/admin/users',
@@ -237,6 +244,11 @@ const StudioIdRoute = StudioIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => StudioRoute,
 } as any)
+const StudioReportsRoute = StudioReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => StudioRoute,
+} as any)
 const ApiScormFileSplatRoute = ApiScormFileSplatRouteImport.update({
   id: '/api/scorm-file/$',
   path: '/api/scorm-file/$',
@@ -280,6 +292,7 @@ export interface FileRoutesByFullPath {
   '/admin/compliance': typeof AdminComplianceRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
+  '/admin/token-ledger': typeof AdminTokenLedgerRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
@@ -294,6 +307,7 @@ export interface FileRoutesByFullPath {
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
+  '/studio/reports': typeof StudioReportsRoute
   '/admin/': typeof AdminIndexRoute
   '/scorm/': typeof ScormIndexRoute
   '/api/scorm-file/$': typeof ApiScormFileSplatRoute
@@ -323,6 +337,7 @@ export interface FileRoutesByTo {
   '/admin/compliance': typeof AdminComplianceRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
+  '/admin/token-ledger': typeof AdminTokenLedgerRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
@@ -337,6 +352,7 @@ export interface FileRoutesByTo {
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
+  '/studio/reports': typeof StudioReportsRoute
   '/admin': typeof AdminIndexRoute
   '/scorm': typeof ScormIndexRoute
   '/api/scorm-file/$': typeof ApiScormFileSplatRoute
@@ -367,6 +383,7 @@ export interface FileRoutesById {
   '/admin/compliance': typeof AdminComplianceRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
+  '/admin/token-ledger': typeof AdminTokenLedgerRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
@@ -381,6 +398,7 @@ export interface FileRoutesById {
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
+  '/studio/reports': typeof StudioReportsRoute
   '/admin/': typeof AdminIndexRoute
   '/scorm/': typeof ScormIndexRoute
   '/api/scorm-file/$': typeof ApiScormFileSplatRoute
@@ -412,6 +430,7 @@ export interface FileRouteTypes {
     | '/admin/compliance'
     | '/admin/creators'
     | '/admin/external-content'
+    | '/admin/token-ledger'
     | '/admin/users'
     | '/api/course-factory'
     | '/api/course-wizard'
@@ -426,6 +445,7 @@ export interface FileRouteTypes {
     | '/messages/$partnerId'
     | '/scorm/$id'
     | '/studio/$id'
+    | '/studio/reports'
     | '/admin/'
     | '/scorm/'
     | '/api/scorm-file/$'
@@ -455,6 +475,7 @@ export interface FileRouteTypes {
     | '/admin/compliance'
     | '/admin/creators'
     | '/admin/external-content'
+    | '/admin/token-ledger'
     | '/admin/users'
     | '/api/course-factory'
     | '/api/course-wizard'
@@ -469,6 +490,7 @@ export interface FileRouteTypes {
     | '/messages/$partnerId'
     | '/scorm/$id'
     | '/studio/$id'
+    | '/studio/reports'
     | '/admin'
     | '/scorm'
     | '/api/scorm-file/$'
@@ -498,6 +520,7 @@ export interface FileRouteTypes {
     | '/admin/compliance'
     | '/admin/creators'
     | '/admin/external-content'
+    | '/admin/token-ledger'
     | '/admin/users'
     | '/api/course-factory'
     | '/api/course-wizard'
@@ -512,6 +535,7 @@ export interface FileRouteTypes {
     | '/messages/$partnerId'
     | '/scorm/$id'
     | '/studio/$id'
+    | '/studio/reports'
     | '/admin/'
     | '/scorm/'
     | '/api/scorm-file/$'
@@ -542,6 +566,7 @@ export interface RootRouteChildren {
   AdminComplianceRoute: typeof AdminComplianceRoute
   AdminCreatorsRoute: typeof AdminCreatorsRoute
   AdminExternalContentRoute: typeof AdminExternalContentRoute
+  AdminTokenLedgerRoute: typeof AdminTokenLedgerRoute
   AdminUsersRoute: typeof AdminUsersRoute
   ApiCourseFactoryRoute: typeof ApiCourseFactoryRoute
   ApiCourseWizardRoute: typeof ApiCourseWizardRoute
@@ -718,6 +743,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminExternalContentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/token-ledger': {
+      id: '/admin/token-ledger'
+      path: '/admin/token-ledger'
+      fullPath: '/admin/token-ledger'
+      preLoaderRoute: typeof AdminTokenLedgerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/admin/users'
@@ -823,6 +855,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudioIdRouteImport
       parentRoute: typeof StudioRoute
     }
+    '/studio/reports': {
+      id: '/studio/reports'
+      path: '/reports'
+      fullPath: '/studio/reports'
+      preLoaderRoute: typeof StudioReportsRouteImport
+      parentRoute: typeof StudioRoute
+    }
     '/api/scorm-file/$': {
       id: '/api/scorm-file/$'
       path: '/api/scorm-file/$'
@@ -868,10 +907,12 @@ const MessagesRouteWithChildren = MessagesRoute._addFileChildren(
 
 interface StudioRouteChildren {
   StudioIdRoute: typeof StudioIdRoute
+  StudioReportsRoute: typeof StudioReportsRoute
 }
 
 const StudioRouteChildren: StudioRouteChildren = {
   StudioIdRoute: StudioIdRoute,
+  StudioReportsRoute: StudioReportsRoute,
 }
 
 const StudioRouteWithChildren =
@@ -899,6 +940,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminComplianceRoute: AdminComplianceRoute,
   AdminCreatorsRoute: AdminCreatorsRoute,
   AdminExternalContentRoute: AdminExternalContentRoute,
+  AdminTokenLedgerRoute: AdminTokenLedgerRoute,
   AdminUsersRoute: AdminUsersRoute,
   ApiCourseFactoryRoute: ApiCourseFactoryRoute,
   ApiCourseWizardRoute: ApiCourseWizardRoute,

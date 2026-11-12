@@ -78,7 +78,7 @@ export function QuestionBank({
       if (!category.trim() || category.trim().length > 80)
         throw new Error("Enter a category of up to 80 characters.");
       const { error } = await supabase.rpc("save_bank_question", {
-        _id: editing?.id ?? null,
+        _id: (editing?.id ?? null) as string,
         _category: category.trim(),
         _question: question,
         _answer: answer,

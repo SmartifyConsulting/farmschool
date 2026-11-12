@@ -10,7 +10,7 @@ export function LanguageSwitcher() {
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} aria-label={`Language: ${language.name}`}
-        className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary-foreground/15 text-primary-foreground hover:bg-primary-foreground/25">
+        className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-muted text-foreground hover:bg-muted/75">
         <Globe className="h-5 w-5" />
       </button>
       <Dialog open={open} onOpenChange={setOpen}>

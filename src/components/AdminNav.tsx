@@ -3,11 +3,10 @@ import { Link, useRouterState } from "@tanstack/react-router";
 const SECTIONS = [
   { to: "/admin/users", label: "Users" },
   { to: "/admin/cohorts", label: "Cohorts" },
-  { to: "/admin/analytics", label: "Analytics" },
-  { to: "/admin/compliance", label: "Compliance" },
   { to: "/admin/creators", label: "Creator Approvals" },
   { to: "/admin/external-content", label: "Library" },
   { to: "/admin/api-connections", label: "API Connections" },
+  { to: "/admin/token-ledger", label: "Token Ledger" },
 ] as const;
 
 /** Persistent section nav shown on every admin screen, so switching sections never needs a trip back through the index. */

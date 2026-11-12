@@ -8,6 +8,7 @@ import {
   Bookmark,
   PenSquare,
   Mail,
+  BarChart3,
 } from "lucide-react";
 import { type ReactNode } from "react";
 import logo from "@/assets/plusticity-logo.png";
@@ -86,8 +87,8 @@ function DesktopSidebar() {
         <img src={logo} alt="Plusticity" className="h-[173px] w-auto max-w-full rounded-lg object-contain" />
       </Link>
       <nav aria-label="Main navigation" className="space-y-2">
-        {[...tabs, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const].map((item) => {
-          const active = path === item.to || (item.to !== "/" && path.startsWith(item.to + "/"));
+        {[...tabs, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const, { to: "/studio/reports", icon: BarChart3, label: "Reports" } as const].map((item) => {
+          const active = path === item.to || (item.to !== "/" && path.startsWith(item.to + "/") && !(item.to === "/studio" && path.startsWith("/studio/reports")));
           return (
             <Link key={item.to} to={item.to} aria-current={active ? "page" : undefined}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium transition-colors ${active ? "bg-white/15 font-semibold text-white" : "text-white/85 hover:bg-white/10 hover:text-white"}`}>
@@ -98,11 +99,7 @@ function DesktopSidebar() {
         })}
       </nav>
       <div className="mt-auto space-y-4 pt-8">
-        <div className="flex items-center justify-between gap-2">
-          <NotificationBell className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-white/15 hover:bg-white/25" />
-          <LanguageSwitcher />
-          <AvatarMenu horizontal />
-        </div>
+        <AvatarMenu />
         <AccountLinks />
       </div>
     </aside>
@@ -142,16 +139,19 @@ function AvatarMenu({
           <button
             type="button"
             aria-label="Account menu"
-            className="flex items-center justify-start gap-2 rounded-md p-2 text-sm font-medium hover:bg-muted"
+            className="flex w-full items-center justify-start gap-3 rounded-xl bg-white/10 p-2.5 text-left text-sm font-semibold text-white hover:bg-white/20"
           >
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
               {initials}
             </span>
-            <span className="min-w-0 truncate">{name}</span>
+            <span className="min-w-0">
+              <span className="block truncate">{name}</span>
+              <span className="block truncate text-[11px] font-normal text-white/75">{user.email}</span>
+            </span>
           </button>
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" side="bottom">
+      <DropdownMenuContent align="end" side={mobile || horizontal ? "bottom" : "top"}>
         <DropdownMenuItem asChild>
           <Link to="/profile">Profile</Link>
         </DropdownMenuItem>
@@ -223,6 +223,19 @@ function HeaderAction() {
   return <AvatarMenu mobile horizontal />;
 }
 
+function DesktopTopAccount() {
+  const { user, ready } = useAuth();
+  if (!ready) return null;
+  if (!user)
+    return (
+      <div className="flex gap-2">
+        <Link to="/auth" className="rounded-xl bg-muted px-3 py-2 text-sm font-semibold text-foreground">Sign in</Link>
+        <Link to="/auth" search={{ mode: "signup" }} className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">Sign up</Link>
+      </div>
+    );
+  return <AvatarMenu horizontal />;
+}
+
 export function Header({ children, wide = false }: { children?: ReactNode; wide?: boolean }) {
   return (
     <header className="relative bg-card px-5 pb-4 pt-5 text-foreground md:contents">
@@ -236,6 +249,11 @@ export function Header({ children, wide = false }: { children?: ReactNode; wide?
             <LanguageSwitcher />
             <HeaderAction />
           </div>
+        </div>
+        <div className="hidden items-center justify-end gap-2 px-10 pt-5 md:flex">
+          <NotificationBell className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-muted text-foreground hover:bg-muted/75" />
+          <LanguageSwitcher />
+          <DesktopTopAccount />
         </div>
         {children}
       </div>
