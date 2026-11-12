@@ -14,6 +14,12 @@ export type Database = {
   }
   public: {
     Tables: {
+      notification_reads: {
+        Row: { user_id: string; notification_key: string; read_at: string }
+        Insert: { user_id?: string; notification_key: string; read_at?: string }
+        Update: { user_id?: string; notification_key?: string; read_at?: string }
+        Relationships: []
+      }
       activity_rubric_criteria: {
         Row: {
           activity_id: string

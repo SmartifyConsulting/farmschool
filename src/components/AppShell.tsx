@@ -3,7 +3,6 @@ import {
   Home,
   BookOpen,
   Search,
-  Bell,
   User,
   LayoutGrid,
   Bookmark,
@@ -19,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { NotificationBell } from "@/components/NotificationBell";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -99,9 +99,7 @@ function DesktopSidebar() {
       </nav>
       <div className="mt-auto space-y-4 pt-8">
         <div className="flex items-center justify-between gap-2">
-          <Link to="/notifications" aria-label="Notifications" className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-white/15 hover:bg-white/25">
-            <Bell aria-hidden="true" className="h-4 w-4" />
-          </Link>
+          <NotificationBell className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-white/15 hover:bg-white/25" />
           <LanguageSwitcher />
           <AvatarMenu horizontal />
         </div>
@@ -234,13 +232,7 @@ export function Header({ children, wide = false }: { children?: ReactNode; wide?
             <img src={mobileLogo} alt="Plusticity" className="h-[55.89px] w-auto object-contain" />
           </Link>
           <div className="flex shrink-0 items-center gap-2">
-            <Link
-              to="/notifications"
-              aria-label="Notifications"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-foreground hover:bg-muted/75"
-            >
-              <Bell className="h-5 w-5" />
-            </Link>
+            <NotificationBell className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-foreground hover:bg-muted/75" />
             <LanguageSwitcher />
             <HeaderAction />
           </div>

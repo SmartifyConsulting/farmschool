@@ -73,6 +73,16 @@ Database migrations saved in Git are not evidence of deployed database state.
 
 ## Remaining work
 
+The notifications page now uses real cohort assignments instead of sample
+activity. In-app reminders show new assignments, deadlines within seven days
+and overdue work. Read status is saved per learner; changed deadlines and
+new overdue reminders become unread. Certified courses and removed assignments
+are excluded. Desktop/mobile bells display unread reminder counts.
+Migration 0044 is applied. Rollback-only authenticated-role checks confirmed
+learners can read/write only their own read receipts. Reproducible checks are
+in drizzle/tests/0044_notification_access.sql. These are in-app reminders,
+refreshed while using the app, not scheduled email or push delivery.
+
 1. Run database integration tests against a migrated isolated database, then
    exercise cross-user access and complete learner/trainer journeys.
 2. Make certificate validation and issuance transactional with course revision
@@ -84,7 +94,7 @@ Database migrations saved in Git are not evidence of deployed database state.
 5. Validate xAPI with an LRS; implement portable SCORM export and LTI delivery.
 6. Transfer actual lessons/assessments to Moodle or clearly expose shell-only
    publishing; verify user matching and completion synchronisation.
-7. Extend cohort administration with enrolment/licensing policies, notifications,
+7. Extend cohort administration with enrolment/licensing policies, scheduled email/push reminders,
    manager reporting and browser-tested trainer/learner workflows.
 8. Build competency/rubric authoring, assessment, mastery evidence, reusable
    question banks, gradebook and assignment workflows.
@@ -97,5 +107,5 @@ Database migrations saved in Git are not evidence of deployed database state.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041, 0042 and 0043. Test fixtures were rolled back; existing learner
+migrations 0041 through 0044. Test fixtures were rolled back; existing learner
 records were not edited.

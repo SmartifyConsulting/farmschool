@@ -102,6 +102,7 @@ function CohortsPage() {
         queryClient.invalidateQueries({ queryKey: ["cohort-detail"] }),
         queryClient.invalidateQueries({ queryKey: ["compliance-report"] }),
         queryClient.invalidateQueries({ queryKey: ["my-course-assignments"] }),
+        queryClient.invalidateQueries({ queryKey: ["assignment-notifications"] }),
       ]);
       toast.success("Cohort updated.");
     } catch (error) {

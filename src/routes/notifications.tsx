@@ -1,94 +1,137 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
+import { toast } from "sonner";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
+import { Button } from "@/components/ui/button";
+import { useAssignmentNotifications } from "@/hooks/useAssignmentNotifications";
+import { useAuth } from "@/hooks/useLearning";
+import { supabase } from "@/integrations/supabase/client";
+import { friendlyError } from "@/lib/friendly-error";
+import { pageMeta } from "@/lib/page-meta";
 
 export const Route = createFileRoute("/notifications")({
-  head: () => ({
-    meta: [
-      { title: "Notifications — Plusticity" },
-      {
-        name: "description",
-        content: "Course updates and messages from your Plusticity instructors.",
-      },
-      { property: "og:title", content: "Notifications — Plusticity" },
-      { property: "og:description", content: "Stay up to date with your courses." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
+  head: () =>
+    pageMeta("Notifications — Plusticity", "Your course assignments and deadline reminders."),
   component: Notifications,
 });
 
-const notes = [
-  {
-    tag: "Course Update",
-    text: "Amara Okoye added a new lesson to Aquaponics Systems.",
-    time: "09:50 PM",
-    initials: "AO",
-  },
-  { tag: "Profile Update", text: "Daniel Mensah followed you.", time: "07:03 PM", initials: "DM" },
-  {
-    tag: "Assignment",
-    text: "Your water test log was graded: 92%.",
-    time: "03:20 PM",
-    initials: "",
-  },
-  {
-    tag: "Content Update",
-    text: "Market Readiness has 3 new pricing templates.",
-    time: "12:03 AM",
-    initials: "SK",
-  },
-  {
-    tag: "Reminder",
-    text: "Complete your profile to earn your first certificate.",
-    time: "07:14 AM",
-    initials: "",
-  },
-];
-const messages = [
-  {
-    tag: "Grace Wanjiru",
-    text: "Great question about weekly rotas — see Module 2!",
-    time: "Yesterday",
-    initials: "GW",
-  },
-];
-
 function Notifications() {
-  const [tab, setTab] = useState("Notifications");
-  const list = tab === "Messages" ? messages : notes;
+  const { user, ready } = useAuth();
+  const { data: notes = [], isLoading, error } = useAssignmentNotifications();
+  const queryClient = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const unread = notes.filter((note) => !note.read);
+  const markRead = async (keys: string[]) => {
+    if (!user || busy || !keys.length) return;
+    setBusy(true);
+    try {
+      const { error } = await supabase.from("notification_reads").upsert(
+        keys.map((notification_key) => ({
+          user_id: user.id,
+          notification_key,
+          read_at: new Date().toISOString(),
+        })),
+        { onConflict: "user_id,notification_key" },
+      );
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ["assignment-notifications", user.id] });
+    } catch (error) {
+      toast.error(friendlyError(error, "Could not save notification status."));
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <Phone>
       <Header />
       <Sheet>
         <CanvasHeading title="Notifications" />
-        <div className="mt-4 flex rounded-full bg-muted p-1 text-sm">
-          {["Messages", "Notifications"].map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`flex-1 rounded-full py-1.5 ${tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-            >
-              {t}
-            </button>
-          ))}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <Link to="/messages" className="text-sm font-semibold text-primary">
+            Open messages
+          </Link>
+          <Button
+            variant="outline"
+            disabled={busy || !unread.length}
+            onClick={() => void markRead(unread.map((note) => note.key))}
+          >
+            Mark all as read
+          </Button>
         </div>
-        <ul className="divide-y divide-border">
-          {list.map((n, i) => (
-            <li key={i} className="flex gap-3 py-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-                {n.initials || <Bell className="h-4 w-4" />}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold text-accent">● {n.tag}</p>
-                <p className="text-sm">{n.text}</p>
-              </div>
-              <span className="shrink-0 text-[10px] text-muted-foreground">{n.time}</span>
-            </li>
-          ))}
-        </ul>
+        <p className="mt-4 text-xs text-muted-foreground">
+          Assignment and deadline reminders update while you use Plusticity. Completed, certified
+          courses are removed from this list.
+        </p>
+        {!ready || (user && isLoading) ? (
+          <p className="py-8">Loading notifications…</p>
+        ) : !user ? (
+          <p className="py-8">
+            <Link to="/auth" className="font-semibold text-primary">
+              Sign in
+            </Link>{" "}
+            to see your notifications.
+          </p>
+        ) : error ? (
+          <p role="alert" className="py-8 text-sm text-destructive">
+            Could not load notifications. Please try again.
+          </p>
+        ) : !notes.length ? (
+          <p className="py-8 text-sm text-muted-foreground">
+            You have no outstanding assignment reminders.
+          </p>
+        ) : (
+          <ul className="mt-4 divide-y divide-border">
+            {notes.map((note) => (
+              <li
+                key={note.key}
+                className={`flex flex-wrap items-start gap-3 py-4 ${note.read ? "opacity-70" : ""}`}
+              >
+                <Bell aria-hidden="true" className="mt-1 h-5 w-5 shrink-0 text-primary" />
+                <div className="min-w-0 flex-1">
+                  <p
+                    className={`text-xs font-semibold ${note.kind === "overdue" ? "text-destructive" : "text-primary"}`}
+                  >
+                    {note.kind === "overdue"
+                      ? "Overdue"
+                      : note.kind === "due-soon"
+                        ? "Due within seven days"
+                        : "Course assigned"}
+                    {!note.read ? " · Unread" : ""}
+                  </p>
+                  <Link
+                    to="/class/$id"
+                    params={{ id: note.courseId }}
+                    className="break-words text-sm font-semibold hover:text-primary"
+                  >
+                    {note.courseTitle}
+                  </Link>
+                  <p className="text-xs text-muted-foreground">
+                    {note.cohortName}
+                    {note.dueAt
+                      ? " · Due " +
+                        new Date(note.dueAt).toLocaleString("en-ZA", {
+                          timeZone: "Africa/Johannesburg",
+                        }) +
+                        " SAST"
+                      : " · No deadline"}
+                  </p>
+                </div>
+                {!note.read && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => void markRead([note.key])}
+                  >
+                    Mark as read
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </Sheet>
     </Phone>
   );
