@@ -194,10 +194,10 @@ export function Header({ children, wide = false }: { children?: ReactNode; wide?
   const path = useRouterState({ select: (s) => s.location.pathname });
   return (
     <header className="relative bg-[#2765BC] px-5 pb-6 pt-5 text-white md:px-10 md:py-0">
-      <div className="mx-auto max-w-[1600px]">
-        <div className="hidden h-[104px] items-center justify-between gap-4 md:flex">
+      <div className="mx-auto max-w-[1760px]">
+        <div className="hidden h-[115px] items-center justify-between gap-4 md:flex">
           <Link to="/" aria-label="Home" className="shrink-0">
-            <img src={logo} alt="Plusticity" className="h-[144px] w-auto object-contain" />
+            <img src={logo} alt="Plusticity" className="relative z-20 h-[144px] w-auto translate-y-[58px] object-contain" />
           </Link>
           <nav className="flex flex-1 items-center justify-center gap-1">
             {[...tabs, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const].map(
@@ -305,7 +305,7 @@ function Footer() {
 
 export function Sheet({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   return (
-    <div className="bg-card px-5 pt-5 md:px-10 md:pt-8">
+    <div className="bg-card px-5 pt-8 md:px-10 md:pt-24">
       <div className={wide ? "mx-auto w-full max-w-none" : "mx-auto max-w-6xl"}>{children}</div>
     </div>
   );
