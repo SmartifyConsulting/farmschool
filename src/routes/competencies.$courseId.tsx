@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { readAllPages } from "@/lib/database-pages";
 import { friendlyError } from "@/lib/friendly-error";
 import { pageMeta } from "@/lib/page-meta";
+import { CompetencyRubric } from "@/components/CompetencyRubric";
+import { RubricBreakdown } from "@/components/RubricBreakdown";
 
 export const Route = createFileRoute("/competencies/$courseId")({
   component: Competencies,
@@ -66,9 +68,12 @@ function Competencies() {
         ? await readAllPages(
             supabase
               .from("learner_competency_evidence")
-              .select("id,user_id,competency_id,achieved,score,notes,assessed_at", {
-                count: "exact",
-              })
+              .select(
+                "id,user_id,competency_id,achieved,score,notes,assessed_at,competency_rubric_assessments(criteria_snapshot,marks,total_points,max_points,pass_mark,rubric_version)",
+                {
+                  count: "exact",
+                },
+              )
               .in(
                 "competency_id",
                 competencies.data.map((item) => item.id),
@@ -124,6 +129,12 @@ function Competencies() {
           </p>
         ) : (
           <div className="mt-6 grid gap-8 pb-10 lg:grid-cols-2">
+            <CompetencyRubric
+              key={courseId}
+              courseId={courseId}
+              competencies={workspace.data?.competencies ?? []}
+              learners={workspace.data?.learners ?? []}
+            />
             {workspace.error && (
               <p role="alert" className="col-span-full text-destructive">
                 Could not load assessment records.
@@ -280,6 +291,7 @@ function Competencies() {
                     {item.achieved ? "Demonstrated" : "Not yet demonstrated"} · {item.score}%
                   </p>
                   <p className="whitespace-pre-wrap text-sm text-muted-foreground">{item.notes}</p>
+                  <RubricBreakdown snapshot={item.competency_rubric_assessments} />
                 </article>
               ))}
             </section>

@@ -80,12 +80,26 @@ to history rather than overwritten. Revision cards link to the original course's
 assessment workspace so deleting a revision cannot remove assessment records.
 Learners can open My Learning > My skills
 to view the latest outcome per competency and its assessment history.
-This is manual trainer assessment; it does not yet implement criterion-level
-rubric scoring or automatically affect certificate eligibility.
+Manual trainer outcomes remain available and do not automatically affect
+certificate eligibility.
 Migration 0045 is applied. Rollback-only authenticated-role checks verified
 author-only assessment, learner-private results, immutable assessment history,
 score validation and exclusion of refunded paid-course learners. Checks are
 saved in drizzle/tests/0045_competency_access.sql.
+
+Course competencies now support versioned rubrics with 1–30 criteria, weighted
+by maximum points, and configurable pass marks. The server validates all marks
+and calculates a percentage rounded to two decimals before applying the pass
+threshold. Missing, extra, negative and over-maximum marks are rejected.
+Each rubric assessment saves the original criteria, points, marks, threshold
+and version. Learners and trainers can inspect these snapshots in assessment
+history even after the rubric changes. Expected-version checks reject stale
+saves and grading requests from another browser session.
+Migration 0046 is applied. Rollback-only authenticated-role tests passed for
+weighted scoring, rounding boundaries, snapshot preservation, stale versions,
+private learner reads and blocked self-grading. Reproducible checks are in
+drizzle/tests/0046_rubric_scoring.sql. These assessments still record trainer
+observations; learner assignment submission and gradebook workflows remain.
 
 The notifications page now uses real cohort assignments instead of sample
 activity. In-app reminders show new assignments, deadlines within seven days
@@ -110,8 +124,8 @@ refreshed while using the app, not scheduled email or push delivery.
    publishing; verify user matching and completion synchronisation.
 7. Extend cohort administration with enrolment/licensing policies, scheduled email/push reminders,
    manager reporting and browser-tested trainer/learner workflows.
-8. Extend trainer competency assessment with criterion-level rubric authoring
-   and scoring, learner submissions, reusable question banks and a full gradebook.
+8. Add learner assignment submissions, reusable question banks and a full
+   gradebook; versioned criterion-level rubric authoring/scoring is implemented.
 9. Expand authoring/media conversion and review against Coursebox workflows,
    including scanned-document handling and export fidelity.
 10. Verify accessible, multilingual and mobile/offline delivery, backup/restore,
@@ -121,5 +135,5 @@ refreshed while using the app, not scheduled email or push delivery.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041 through 0045. Test fixtures were rolled back; existing learner
+migrations 0041 through 0046. Test fixtures were rolled back; existing learner
 records were not edited.

@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { readAllPages } from "@/lib/database-pages";
 import { latestCompetencyEvidence } from "@/lib/competency-evidence";
 import { pageMeta } from "@/lib/page-meta";
+import { RubricBreakdown } from "@/components/RubricBreakdown";
 
 export const Route = createFileRoute("/skills")({
   component: Skills,
@@ -27,7 +28,7 @@ function Skills() {
         supabase
           .from("learner_competency_evidence")
           .select(
-            "id,competency_id,achieved,score,notes,assessed_at,created_at,course_competencies(code,title)",
+            "id,competency_id,achieved,score,notes,assessed_at,created_at,course_competencies(code,title),competency_rubric_assessments(criteria_snapshot,marks,total_points,max_points,pass_mark,rubric_version)",
             { count: "exact" },
           )
           .eq("user_id", user!.id)
@@ -80,6 +81,7 @@ function Skills() {
                 <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
                   {item.notes}
                 </p>
+                <RubricBreakdown snapshot={item.competency_rubric_assessments} />
                 <p className="mt-2 text-xs text-muted-foreground">
                   Assessed{" "}
                   {new Date(item.assessed_at ?? item.created_at).toLocaleString("en-ZA", {
@@ -92,14 +94,17 @@ function Skills() {
                   {data
                     .filter((row) => row.competency_id === item.competency_id)
                     .map((row) => (
-                      <p key={row.id} className="mt-2 whitespace-pre-wrap border-t pt-2">
-                        {new Date(row.assessed_at ?? row.created_at).toLocaleDateString("en-ZA", {
-                          timeZone: "Africa/Johannesburg",
-                        })}{" "}
-                        · {row.achieved ? "Demonstrated" : "Not yet demonstrated"} ·{" "}
-                        {row.score ?? "—"}%<br />
-                        {row.notes}
-                      </p>
+                      <div key={row.id} className="mt-2 whitespace-pre-wrap border-t pt-2">
+                        <p>
+                          {new Date(row.assessed_at ?? row.created_at).toLocaleDateString("en-ZA", {
+                            timeZone: "Africa/Johannesburg",
+                          })}{" "}
+                          · {row.achieved ? "Demonstrated" : "Not yet demonstrated"} ·{" "}
+                          {row.score ?? "—"}%<br />
+                          {row.notes}
+                        </p>
+                        <RubricBreakdown snapshot={row.competency_rubric_assessments} />
+                      </div>
                     ))}
                 </details>
               </article>
