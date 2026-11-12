@@ -73,6 +73,33 @@ Database migrations saved in Git are not evidence of deployed database state.
 
 ## Remaining work
 
+Learners can now submit written competency work and optional HTTPS evidence
+links from a course page. Each attempt preserves the task instructions, rubric
+criteria, pass mark and version shown at submission. One pending attempt is
+allowed per learner/competency; resubmission creates a new attempt after review.
+Course authors review submitted work in the competency assessment workspace.
+Scores are calculated against the submission's saved rubric, not a later edit.
+Feedback and criterion breakdowns are visible to the submitting learner.
+Migration 0047 is applied. Rollback-only authenticated-role tests passed for
+private work, blocked self-grading, pending-attempt limits, immutable reviewed
+work, historical-rubric grading, resubmissions and refunded-course access.
+Reproducible checks are in drizzle/tests/0047_submission_access.sql. This first
+submission workflow supports text and evidence links; file uploads, submission
+deadline enforcement and advanced gradebook policies remain separate work.
+
+Course authors now have a paginated course gradebook linked from Studio and
+the assessment workspace. It includes assigned learners who never started,
+historical enrolments, valid lesson progress, latest quiz attempts, latest
+competency outcomes, pending submissions and certificate status. Missing
+grades remain empty and zero scores remain zero. Quiz/competency means are
+reported separately and do not alter certificate rules. The current page can
+be exported as CSV with formula-safe text cells. Migration 0048 is applied.
+Rollback-only role tests passed for completeness, latest scores, empty grades,
+pagination and blocked learner/unrelated-author access. Checks are saved in
+drizzle/tests/0048_gradebook_access.sql. This is a read-only results matrix;
+weighted course categories, grade overrides, moderation and whole-course export
+are not yet implemented.
+
 Trainer competency assessment is available from each Studio course card.
 Course authors can define competencies, select eligible learners and record
 observed outcomes with scores and supporting feedback. Assessments are appended
@@ -124,8 +151,10 @@ refreshed while using the app, not scheduled email or push delivery.
    publishing; verify user matching and completion synchronisation.
 7. Extend cohort administration with enrolment/licensing policies, scheduled email/push reminders,
    manager reporting and browser-tested trainer/learner workflows.
-8. Add learner assignment submissions, reusable question banks and a full
-   gradebook; versioned criterion-level rubric authoring/scoring is implemented.
+8. Extend competency submissions with file uploads and deadline policies; add
+   reusable question banks, weighted course categories, overrides, moderation
+   and whole-course grade export. The course gradebook, text/evidence-link
+   submissions and versioned criterion-level rubric scoring are implemented.
 9. Expand authoring/media conversion and review against Coursebox workflows,
    including scanned-document handling and export fidelity.
 10. Verify accessible, multilingual and mobile/offline delivery, backup/restore,
@@ -135,5 +164,5 @@ refreshed while using the app, not scheduled email or push delivery.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041 through 0046. Test fixtures were rolled back; existing learner
+migrations 0041 through 0048. Test fixtures were rolled back; existing learner
 records were not edited.

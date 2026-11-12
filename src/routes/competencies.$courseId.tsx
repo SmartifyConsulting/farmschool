@@ -13,6 +13,7 @@ import { friendlyError } from "@/lib/friendly-error";
 import { pageMeta } from "@/lib/page-meta";
 import { CompetencyRubric } from "@/components/CompetencyRubric";
 import { RubricBreakdown } from "@/components/RubricBreakdown";
+import { SubmissionReview } from "@/components/SubmissionReview";
 
 export const Route = createFileRoute("/competencies/$courseId")({
   component: Competencies,
@@ -119,6 +120,13 @@ function Competencies() {
         >
           Back to course
         </Link>
+        <Link
+          to="/gradebook/$courseId"
+          params={{ courseId }}
+          className="ml-4 mt-3 inline-block text-sm font-semibold text-primary"
+        >
+          Open gradebook
+        </Link>
         {!user ? (
           <p className="py-8">Sign in to assess learners.</p>
         ) : course.isLoading ? (
@@ -129,6 +137,12 @@ function Competencies() {
           </p>
         ) : (
           <div className="mt-6 grid gap-8 pb-10 lg:grid-cols-2">
+            <SubmissionReview
+              key={courseId}
+              courseId={courseId}
+              competencies={workspace.data?.competencies ?? []}
+              learners={workspace.data?.learners ?? []}
+            />
             <CompetencyRubric
               key={courseId}
               courseId={courseId}

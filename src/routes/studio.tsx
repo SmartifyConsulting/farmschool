@@ -449,6 +449,7 @@ function Studio() {
                         lessons
                       </p>
                       <Link to="/competencies/$courseId" params={{ courseId: c.revision_of ?? c.id }} className="mt-3 inline-block text-xs font-semibold text-primary">Competencies & assessment</Link>
+                      <Link to="/gradebook/$courseId" params={{ courseId: c.revision_of ?? c.id }} className="ml-4 mt-3 inline-block text-xs font-semibold text-primary">Gradebook</Link>
                       <div className="mt-2 flex gap-2 text-[11px]">
                         <span
                           className={`rounded-full px-2 py-0.5 ${c.published ? "bg-secondary text-secondary-foreground" : "bg-muted text-muted-foreground"}`}

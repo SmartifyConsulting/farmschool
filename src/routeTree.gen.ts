@@ -40,6 +40,7 @@ import { Route as ClassIdRouteImport } from './routes/class.$id'
 import { Route as CommunityCourseIdRouteImport } from './routes/community.$courseId'
 import { Route as CompetenciesCourseIdRouteImport } from './routes/competencies.$courseId'
 import { Route as CourseIdRouteImport } from './routes/course.$id'
+import { Route as GradebookCourseIdRouteImport } from './routes/gradebook.$courseId'
 import { Route as LearningActivitiesCourseIdRouteImport } from './routes/learning-activities.$courseId'
 import { Route as MessagesPartnerIdRouteImport } from './routes/messages.$partnerId'
 import { Route as ScormIndexRouteImport } from './routes/scorm.index'
@@ -205,6 +206,11 @@ const CourseIdRoute = CourseIdRouteImport.update({
   path: '/course/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GradebookCourseIdRoute = GradebookCourseIdRouteImport.update({
+  id: '/gradebook/$courseId',
+  path: '/gradebook/$courseId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LearningActivitiesCourseIdRoute =
   LearningActivitiesCourseIdRouteImport.update({
     id: '/learning-activities/$courseId',
@@ -283,6 +289,7 @@ export interface FileRoutesByFullPath {
   '/community/$courseId': typeof CommunityCourseIdRoute
   '/competencies/$courseId': typeof CompetenciesCourseIdRoute
   '/course/$id': typeof CourseIdRoute
+  '/gradebook/$courseId': typeof GradebookCourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
   '/scorm/$id': typeof ScormIdRoute
@@ -325,6 +332,7 @@ export interface FileRoutesByTo {
   '/community/$courseId': typeof CommunityCourseIdRoute
   '/competencies/$courseId': typeof CompetenciesCourseIdRoute
   '/course/$id': typeof CourseIdRoute
+  '/gradebook/$courseId': typeof GradebookCourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
   '/scorm/$id': typeof ScormIdRoute
@@ -368,6 +376,7 @@ export interface FileRoutesById {
   '/community/$courseId': typeof CommunityCourseIdRoute
   '/competencies/$courseId': typeof CompetenciesCourseIdRoute
   '/course/$id': typeof CourseIdRoute
+  '/gradebook/$courseId': typeof GradebookCourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
   '/scorm/$id': typeof ScormIdRoute
@@ -412,6 +421,7 @@ export interface FileRouteTypes {
     | '/community/$courseId'
     | '/competencies/$courseId'
     | '/course/$id'
+    | '/gradebook/$courseId'
     | '/learning-activities/$courseId'
     | '/messages/$partnerId'
     | '/scorm/$id'
@@ -454,6 +464,7 @@ export interface FileRouteTypes {
     | '/community/$courseId'
     | '/competencies/$courseId'
     | '/course/$id'
+    | '/gradebook/$courseId'
     | '/learning-activities/$courseId'
     | '/messages/$partnerId'
     | '/scorm/$id'
@@ -496,6 +507,7 @@ export interface FileRouteTypes {
     | '/community/$courseId'
     | '/competencies/$courseId'
     | '/course/$id'
+    | '/gradebook/$courseId'
     | '/learning-activities/$courseId'
     | '/messages/$partnerId'
     | '/scorm/$id'
@@ -539,6 +551,7 @@ export interface RootRouteChildren {
   CommunityCourseIdRoute: typeof CommunityCourseIdRoute
   CompetenciesCourseIdRoute: typeof CompetenciesCourseIdRoute
   CourseIdRoute: typeof CourseIdRoute
+  GradebookCourseIdRoute: typeof GradebookCourseIdRoute
   LearningActivitiesCourseIdRoute: typeof LearningActivitiesCourseIdRoute
   ScormIdRoute: typeof ScormIdRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -768,6 +781,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CourseIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/gradebook/$courseId': {
+      id: '/gradebook/$courseId'
+      path: '/gradebook/$courseId'
+      fullPath: '/gradebook/$courseId'
+      preLoaderRoute: typeof GradebookCourseIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/learning-activities/$courseId': {
       id: '/learning-activities/$courseId'
       path: '/learning-activities/$courseId'
@@ -888,6 +908,7 @@ const rootRouteChildren: RootRouteChildren = {
   CommunityCourseIdRoute: CommunityCourseIdRoute,
   CompetenciesCourseIdRoute: CompetenciesCourseIdRoute,
   CourseIdRoute: CourseIdRoute,
+  GradebookCourseIdRoute: GradebookCourseIdRoute,
   LearningActivitiesCourseIdRoute: LearningActivitiesCourseIdRoute,
   ScormIdRoute: ScormIdRoute,
   AdminIndexRoute: AdminIndexRoute,

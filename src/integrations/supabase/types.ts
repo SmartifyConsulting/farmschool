@@ -14,6 +14,15 @@ export type Database = {
   }
   public: {
     Tables: {
+      competency_submissions: {
+        Row: { id: string; competency_id: string; user_id: string; attempt: number; body: string; evidence_url: string | null; competency_title: string; instructions: string; criteria_snapshot: Json; pass_mark: number; rubric_version: number; submitted_at: string; reviewed_at: string | null; assessment_id: string | null }
+        Insert: { competency_id: string; user_id: string; attempt: number; body: string; competency_title: string; instructions: string; criteria_snapshot: Json; pass_mark: number; rubric_version: number }
+        Update: { assessment_id?: string; reviewed_at?: string }
+        Relationships: [
+          { foreignKeyName: "competency_submissions_competency_id_fkey"; columns: ["competency_id"]; isOneToOne: false; referencedRelation: "course_competencies"; referencedColumns: ["id"] },
+          { foreignKeyName: "competency_submissions_assessment_id_fkey"; columns: ["assessment_id"]; isOneToOne: true; referencedRelation: "learner_competency_evidence"; referencedColumns: ["id"] }
+        ]
+      }
       competency_rubric_assessments: {
         Row: { evidence_id: string; criteria_snapshot: Json; marks: Json; total_points: number; max_points: number; pass_mark: number; rubric_version: number }
         Insert: { evidence_id: string; criteria_snapshot: Json; marks: Json; total_points: number; max_points: number; pass_mark: number; rubric_version: number }
@@ -1783,6 +1792,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      course_gradebook: { Args: { _course: string; _offset?: number; _limit?: number }; Returns: Json }
+      submit_competency_work: { Args: { _competency: string; _body: string; _evidence_url: string; _expected_version: number }; Returns: string }
+      assess_competency_submission: { Args: { _submission: string; _marks: Json; _notes: string }; Returns: string }
       save_competency_rubric: { Args: { _competency: string; _criteria: Json; _pass_mark: number; _expected_version: number }; Returns: number }
       assess_competency_rubric: { Args: { _competency: string; _learner: string; _marks: Json; _notes: string; _expected_version: number }; Returns: string }
       add_course_competency: { Args: { _course: string; _code: string; _title: string; _description?: string }; Returns: string }

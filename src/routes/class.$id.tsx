@@ -36,6 +36,7 @@ import {
 import { courseThemeStyle } from "@/lib/course-theme";
 import { createCheckoutSession } from "@/lib/checkout.functions";
 import { formatPrice, hasActiveEnrollment, isPaidCourse } from "@/lib/marketplace";
+import { CourseSubmissions } from "@/components/CourseSubmissions";
 import { Lock } from "lucide-react";
 
 export const Route = createFileRoute("/class/$id")({
@@ -374,6 +375,7 @@ function ClassPage() {
                   ))}
                 </section>
               )}
+              {course.published && !locked && user && !isAuthor && <CourseSubmissions key={id} courseId={id} />}
               {course.description && (
                 <div className="rounded-2xl bg-muted/50 p-4 text-sm">
                   <h3 className="mb-1 font-semibold">About this course</h3>
