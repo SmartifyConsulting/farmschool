@@ -16,8 +16,10 @@ export function CoverImageInput({ value, onChange }: { value: string; onChange: 
   const upload = async (file: File) => {
     if (!file.type.startsWith("image/")) { toast.error("Please drop an image file."); return; }
     if (file.size > MAX_BYTES) { toast.error("Image must be smaller than 5MB."); return; }
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) { toast.error("Please sign in to upload an image."); return; }
     setUploading(true);
-    const path = `${crypto.randomUUID()}-${file.name}`.replace(/\s+/g, "-");
+    const path = `${auth.user.id}/${crypto.randomUUID()}-${file.name}`.replace(/\s+/g, "-");
     const { error } = await supabase.storage.from(COVER_BUCKET).upload(path, file, { contentType: file.type });
     setUploading(false);
     if (error) { toast.error("Could not upload the image."); return; }
