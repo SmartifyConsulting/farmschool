@@ -2233,6 +2233,9 @@ export type Database = {
       save_organization_certificate_settings: { Args: { _organization: string; _heading: string; _signatory_name: string; _signatory_title: string; _footer: string; _expected: number }; Returns: number }
       my_certificate_brand: { Args: { _certificate: string }; Returns: Json }
       portal_certificate_report: { Args: { _slug: string; _offset?: number; _limit?: number }; Returns: Json }
+      portal_learning_programs: { Args: { _slug: string; _offset?: number; _limit?: number }; Returns: Json }
+      portal_program_progress: { Args: { _slug: string; _version: string }; Returns: Json }
+      claim_portal_program_award: { Args: { _slug: string; _version: string }; Returns: string }
       revoke_studio_certificate: { Args: { _certificate: string; _reason: string }; Returns: undefined }
       course_certificates: { Args: { _course: string; _offset?: number; _limit?: number }; Returns: Json }
       add_course_competency: {

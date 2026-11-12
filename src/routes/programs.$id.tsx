@@ -9,23 +9,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { programProgress } from "@/lib/programs";
 import { friendlyError } from "@/lib/friendly-error";
 import { pageMeta } from "@/lib/page-meta";
+import { portalSearch } from "@/lib/customer-portal";
 
 export const Route = createFileRoute("/programs/$id")({
+  validateSearch: portalSearch,
   component: ProgramPage,
   head: () =>
     pageMeta("Learning program — Plusticity", "Your program stages and completion record."),
 });
 function ProgramPage() {
   const { id } = Route.useParams();
+  const { portal } = Route.useSearch();
   const { user, ready } = useAuth();
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const result = useQuery({
-    queryKey: ["my-program", id, user?.id],
+    queryKey: ["my-program", id, user?.id, portal],
     enabled: !!user,
     refetchInterval: 30000,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("my_program_progress", { _version: id });
+      const { data, error } = portal ? await supabase.rpc("portal_program_progress", { _slug: portal, _version: id }) : await supabase.rpc("my_program_progress", { _version: id });
       if (error) throw error;
       return data === null ? null : programProgress.parse(data);
     },
@@ -34,7 +37,7 @@ function ProgramPage() {
     if (busy) return;
     setBusy(true);
     try {
-      const { error } = await supabase.rpc("claim_program_award", { _version: id });
+      const { error } = portal ? await supabase.rpc("claim_portal_program_award", { _slug: portal, _version: id }) : await supabase.rpc("claim_program_award", { _version: id });
       if (error) throw error;
       await qc.invalidateQueries({ queryKey: ["my-program", id] });
       toast.success("Program completion recorded.");
@@ -57,7 +60,7 @@ function ProgramPage() {
         {!ready ? (
           <p>Checking sign-in…</p>
         ) : !user ? (
-          <Link to="/auth">Sign in to view this program</Link>
+          <Link to="/auth" search={portal ? { portal } : {}}>Sign in to view this program</Link>
         ) : result.isPending ? (
           <p>Loading program…</p>
         ) : result.isError ? (
@@ -92,6 +95,7 @@ function ProgramPage() {
                         className="text-primary underline"
                         to="/class/$id"
                         params={{ id: course.id }}
+                        search={portal ? { portal } : {}}
                       >
                         Open course
                       </Link>
@@ -102,7 +106,7 @@ function ProgramPage() {
                 ))}
               </section>
             ))}
-            <Button type="button" disabled={busy || !result.data.complete} onClick={claim}>
+            <Button type="button" disabled={busy || result.isError || !result.data.complete} onClick={claim}>
               Record program completion
             </Button>
             <h2 className="font-semibold">Program completion history</h2>

@@ -57,8 +57,24 @@ export function useIsAdmin() {
 export function Phone({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const search = useRouterState({ select: (s) => s.location.searchStr });
-  const brand = useLearningBrandForPath(path, readPortalSlug(new URLSearchParams(search).get("portal")));
+  const branding = useLearningBrandForPath(path, readPortalSlug(new URLSearchParams(search).get("portal")));
+  const { brand } = branding;
   const theme = brand ? { "--primary": accessibleBrandColor(brand.color).css, "--primary-foreground": "oklch(1 0 0)", "--ring": accessibleBrandColor(brand.color).css } as CSSProperties : undefined;
+  if (branding.portal && !brand) return (
+    <main className="grid min-h-screen place-items-center bg-muted p-5">
+      <section className="w-full max-w-lg space-y-4 rounded-2xl bg-card p-6" aria-busy={branding.isPending}>
+        {branding.isPending ? <p role="status">Loading training portal…</p> : branding.requiresSignIn ? <>
+          <h1 className="text-xl font-semibold">Sign in to continue</h1>
+          <Button asChild><Link to="/auth" search={{ portal: branding.portal }}>Sign in to your training portal</Link></Button>
+        </> : <>
+          <h1 className="text-xl font-semibold">Training portal unavailable</h1>
+          <p>This portal or course may be unavailable to your account. Contact your training manager to check your access.</p>
+          <Button variant="outline" onClick={() => branding.retry()}>Retry</Button>
+          <Button asChild variant="outline"><Link to="/portal/$slug" params={{ slug: branding.portal }}>Open portal home</Link></Button>
+        </>}
+      </section>
+    </main>
+  );
   return (
     <LearningBrandContext.Provider value={brand}>
     <div style={theme} className="min-h-screen bg-muted md:pl-[240px]">
@@ -117,7 +133,7 @@ function DesktopSidebar() {
   );
 }
 function PortalNavigation({ slug, mobile = false }: { slug: string; mobile?: boolean }) {
-  return <>{([{ view: "learning", label: "My Learning", icon: BookOpen }, { view: "catalogue", label: "Catalogue", icon: Search }, { view: "certificates", label: "Certificates", icon: BookOpen }] as const).map(item => <Link key={item.view} to="/portal/$slug" params={{ slug }} search={{ view: item.view }} aria-label={item.label} className={mobile ? "grid h-10 w-10 place-items-center rounded-full text-navy-foreground" : "flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium text-white hover:bg-white/10"}><item.icon aria-hidden="true" className="h-5 w-5 shrink-0" />{!mobile && item.label}</Link>)}</>;
+  return <>{([{ view: "learning", label: "My Learning", icon: BookOpen }, { view: "catalogue", label: "Catalogue", icon: Search }, { view: "certificates", label: "Certificates", icon: BookOpen }, { view: "programs", label: "Programs", icon: LayoutGrid }] as const).map(item => <Link key={item.view} to="/portal/$slug" params={{ slug }} search={{ view: item.view }} aria-label={item.label} className={mobile ? "grid h-10 w-10 place-items-center rounded-full text-navy-foreground" : "flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium text-white hover:bg-white/10"}><item.icon aria-hidden="true" className="h-5 w-5 shrink-0" />{!mobile && item.label}</Link>)}</>;
 }
 
 function AvatarMenu({

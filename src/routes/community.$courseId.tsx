@@ -10,8 +10,10 @@ import { useAuth } from "@/hooks/useLearning";
 import { friendlyError } from "@/lib/friendly-error";
 import { pageMeta } from "@/lib/page-meta";
 import { toast } from "sonner";
+import { portalSearch } from "@/lib/customer-portal";
 
 export const Route = createFileRoute("/community/$courseId")({
+  validateSearch: portalSearch,
   head: () =>
     pageMeta(
       "Course community — Plusticity",
@@ -25,6 +27,7 @@ type Member = { user_id: string; full_name: string | null; joined_at: string };
 
 function CommunityPage() {
   const { courseId } = Route.useParams();
+  const { portal } = Route.useSearch();
   const { user, ready } = useAuth();
   const qc = useQueryClient();
   const [draft, setDraft] = useState("");
@@ -103,7 +106,7 @@ function CommunityPage() {
         <Sheet>
           <CanvasHeading title="Course community" />
           <p className="py-10 text-center text-sm text-muted-foreground">
-            <Link to="/auth" className="font-semibold text-primary">
+            <Link to="/auth" search={portal ? { portal } : {}} className="font-semibold text-primary">
               Sign in
             </Link>{" "}
             to join this course's community.
@@ -117,6 +120,7 @@ function CommunityPage() {
       <Header />
       <Sheet>
         <CanvasHeading eyebrow={course?.title ?? "Community"} title="Course community" />
+        {portal && <p className="mb-3 text-sm text-muted-foreground">This community is shared by eligible learners of this course. For shared courses, learners may come from other organizations. Personal messages belong to your learner account.</p>}
         {joining ? (
           <p className="py-10 text-center text-sm text-muted-foreground">Checking access…</p>
         ) : joinError ? (
@@ -181,7 +185,7 @@ function CommunityPage() {
                     </span>
                     {m.user_id !== user?.id && (
                       <Button asChild size="sm" variant="ghost">
-                        <Link to="/messages/$partnerId" params={{ partnerId: m.user_id }}>
+                        <Link to="/messages/$partnerId" params={{ partnerId: m.user_id }} search={portal ? { portal } : {}}>
                           Message
                         </Link>
                       </Button>

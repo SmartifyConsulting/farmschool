@@ -25,6 +25,7 @@ type DM = {
 
 function ThreadPage() {
   const { partnerId } = Route.useParams();
+  const { portal } = Route.useSearch();
   const { user } = useAuth();
   const qc = useQueryClient();
   const [draft, setDraft] = useState("");
@@ -89,6 +90,7 @@ function ThreadPage() {
         <div className="mb-3 flex items-center gap-2">
           <Link
             to="/messages"
+            search={portal ? { portal } : {}}
             aria-label="Back to messages"
             className="grid h-8 w-8 place-items-center rounded-md hover:bg-muted"
           >
@@ -96,6 +98,7 @@ function ThreadPage() {
           </Link>
           <CanvasHeading title={partner?.full_name || "Conversation"} />
         </div>
+        {portal && <p className="mb-3 text-sm text-muted-foreground">Personal conversation in your learner account. This thread may include messages exchanged outside this portal.</p>}
         <div className="flex min-h-[420px] flex-col rounded-xl border border-border">
           <div className="flex-1 space-y-3 overflow-y-auto p-4">
             {thread.length === 0 && (

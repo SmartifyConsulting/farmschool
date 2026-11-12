@@ -14,7 +14,7 @@ import { publicPortalSchema, readPortalSlug } from "@/lib/customer-portal";
 export const LearningBrandContext = createContext<LearningBrand | null>(null);
 export const useLearningBrand = () => useContext(LearningBrandContext);
 export function useLearningBrandForPath(path: string, portalSearch?: string) {
-  const { user } = useAuth();
+  const { user, ready } = useAuth();
   const scope = brandContext(path);
   const routeSlug = readPortalSlug(path.match(/^\/portal\/([^/]+)\/?$/)?.[1]);
   const publicSlug = routeSlug ?? (["/auth", "/forgot-password", "/reset-password"].includes(path) ? portalSearch : undefined);
@@ -43,9 +43,14 @@ export function useLearningBrandForPath(path: string, portalSearch?: string) {
       return data === null ? null : learningBrandSchema.parse(data);
     },
   });
-  return enabled && !query.isError
-    ? (query.data ?? null)
-    : null;
+  const portal = publicSlug ?? (!scope.organization ? portalSearch : undefined);
+  return {
+    brand: enabled && !query.isError ? (query.data ?? null) : null,
+    portal,
+    isPending: (enabled && query.isPending) || (!!portal && !ready),
+    requiresSignIn: !!portal && !publicSlug && ready && !user,
+    retry: () => query.refetch(),
+  };
 }
 export function BrandHome({ brand, children, className = "" }: { brand: LearningBrand; children: ReactNode; className?: string }) {
   return brand.portalSlug ? <Link to="/portal/$slug" params={{ slug: brand.portalSlug }} className={className} aria-label={brand.name + " training portal"}>{children}</Link> : <Link to="/organizations/$id" params={{ id: brand.id }} className={className} aria-label={brand.name + " workspace"}>{children}</Link>;

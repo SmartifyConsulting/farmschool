@@ -2,12 +2,17 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { hasActiveEnrollment, isPaidCourse } from "@/lib/marketplace";
+import { portalSlugSchema, learningPortalReturn } from "@/lib/portal-checkout";
 
 /** Starts a Stripe Checkout session for a paid course. Free courses enrol directly, no Stripe call needed. */
 export const createCheckoutSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: unknown) => z.object({ courseId: z.string().uuid() }).parse(i))
+  .inputValidator((i: unknown) => z.object({ courseId: z.string().uuid(), portalSlug: portalSlugSchema.optional() }).parse(i))
   .handler(async ({ data, context }) => {
+    if (data.portalSlug) {
+      const { data: brand, error } = await context.supabase.rpc("portal_learning_brand", { _slug: data.portalSlug, _course: data.courseId });
+      if (error || !brand) return { error: "This course is not available through your training portal." } as const;
+    }
     const { data: course } = await context.supabase
       .from("studio_courses")
       .select("id, title, price_cents, currency, published, prerequisite_course_id")
@@ -49,6 +54,11 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
     const secretKey = process.env["STRIPE_SECRET_KEY"];
     const siteUrl = process.env["SITE_URL"];
     if (!secretKey || !siteUrl) return { error: "Paid enrolment is not configured yet." } as const;
+    let destination: URL;
+    try { destination = learningPortalReturn(siteUrl, course.id, data.portalSlug); }
+    catch { return { error: "The application checkout address needs to be configured." } as const; }
+    const success = new URL(destination);
+    success.searchParams.set("enrolled", "1");
     const body = new URLSearchParams({
       mode: "payment",
       "line_items[0][quantity]": "1",
@@ -60,8 +70,8 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       "metadata[user_id]": context.userId,
       "metadata[price_cents]": String(course.price_cents),
       "metadata[currency]": course.currency,
-      success_url: siteUrl + "/class/" + course.id + "?enrolled=1",
-      cancel_url: siteUrl + "/class/" + course.id,
+      success_url: success.href,
+      cancel_url: destination.href,
     });
     const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",

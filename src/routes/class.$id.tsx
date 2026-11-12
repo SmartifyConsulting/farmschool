@@ -246,7 +246,7 @@ function ClassPage() {
                       }
                       setBuying(true);
                       try {
-                        const result = await checkout({ data: { courseId: id } });
+                        const result = await checkout({ data: { courseId: id, ...(portal ? { portalSlug: portal } : {}) } });
                         if ("error" in result) {
                           toast.error(result.error);
                         } else if (result.kind === "checkout") {
@@ -442,7 +442,7 @@ function ClassPage() {
               {user && portal && <Button asChild variant="outline" className="w-full"><Link to="/portal/$slug" params={{ slug: portal }} search={{ view: "certificates" }}>My certificates</Link></Button>}
               {user && pct === 100 && (
                 <Button asChild variant="outline" className="w-full">
-                  <Link to="/community/$courseId" params={{ courseId: id }}>
+                  <Link to="/community/$courseId" params={{ courseId: id }} search={portal ? { portal } : {}}>
                     <Users className="h-4 w-4" />
                     Join the community
                   </Link>

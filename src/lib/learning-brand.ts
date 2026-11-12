@@ -11,7 +11,7 @@ export type LearningBrand = z.infer<typeof learningBrandSchema>;
 export function brandContext(path: string): { course: string | null; organization: string | null } {
   const workspace = path.match(new RegExp(`^/organizations/(${uuid})(?:/|$)`, "i"));
   if (workspace) return { course: null, organization: workspace[1]! };
-  const course = path.match(new RegExp(`^/(?:class|studio|gradebook)/(${uuid})/?$`, "i"));
+  const course = path.match(new RegExp(`^/(?:class|studio|gradebook|community)/(${uuid})/?$`, "i"));
   return { course: course?.[1] ?? null, organization: null };
 }
 export function safeBrandLogo(value: string | null) {

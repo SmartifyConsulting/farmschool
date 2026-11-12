@@ -7,9 +7,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useLearning";
 import { isFinished, scormLessonRef } from "@/lib/scorm";
 import { ScormFrame, type ScormResult } from "@/components/ScormFrame";
+import { useLearningBrand } from "@/components/LearningBrand";
 
 /** A SCORM package embedded inside a Studio course lesson. */
 export function ScormLesson({ body, onFinished }: { body: string; onFinished: () => void }) {
+  const brand = useLearningBrand();
   const pkgId = scormLessonRef(body);
   const { user } = useAuth();
   const [result, setResult] = useState<ScormResult | null>(null);
@@ -17,7 +19,7 @@ export function ScormLesson({ body, onFinished }: { body: string; onFinished: ()
   const { data: pkg, isLoading } = useQuery({ queryKey: ["scorm-package", pkgId], enabled: !!pkgId, queryFn: async () =>
     (await supabase.from("scorm_packages").select("id, title, scorm_version, entry_url").eq("id", pkgId!).maybeSingle()).data });
   if (!pkgId) return <p className="text-sm text-muted-foreground">The trainer hasn't attached the e-learning yet.</p>;
-  if (!user) return <p className="text-sm text-muted-foreground"><Link to="/auth" className="font-semibold text-primary">Sign in</Link> to take this e-learning and save your score.</p>;
+  if (!user) return <p className="text-sm text-muted-foreground"><Link to="/auth" search={brand?.portalSlug ? { portal: brand.portalSlug } : {}} className="font-semibold text-primary">Sign in</Link> to take this e-learning and save your score.</p>;
   if (!isLoading && !pkg) return <p className="text-sm text-muted-foreground">This e-learning is no longer available.</p>;
   const onResult = (r: ScormResult) => { setResult(r); if (isFinished(r.lesson_status)) onFinished(); };
   return (

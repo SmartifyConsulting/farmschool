@@ -14,6 +14,15 @@ Unit suite: 308 passed, 17 environment-dependent skipped; type checking and the
 production build pass. Browser journeys and printing remain unverified. See
 CUSTOMER_PORTALS.md and CUSTOMER_CERTIFICATES.md for evidence and remaining scope.
 
+Migration 0079 extends the portal with customer-scoped Programs and verified
+program completion. Course/community/message/profile navigation and single-course
+checkout returns retain portal context. Shared course communities and personal
+messages keep their existing scope, which the portal UI explains. The migration
+is installed; rollback-only program checks and 0067/0077/0078 regression checks
+passed. The latest unit suite has 314 passing tests and 17 environment-dependent
+skips; production build and type checking pass. See
+PORTAL_NAVIGATION_AND_PROGRAMS.md for limits and remaining external verification.
+
 Target: the course creation and learning-management workflows documented by
 Coursebox and Moodle LMS, with Moodle Workplace enterprise features tracked
 separately. Full product parity is not yet established.

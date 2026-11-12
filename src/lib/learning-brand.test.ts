@@ -3,7 +3,7 @@ import { accessibleBrandColor, brandContext, safeBrandLogo } from "./learning-br
 const id = "10000000-0000-4000-8000-000000000001";
 it("resolves only supported workspace and course routes", () => {
   expect(brandContext(`/organizations/${id}/programs`)).toEqual({ course: null, organization: id });
-  for (const prefix of ["class", "studio", "gradebook"])
+  for (const prefix of ["class", "studio", "gradebook", "community"])
     expect(brandContext(`/${prefix}/${id}`)).toEqual({ course: id, organization: null });
   for (const path of [
     "/studio/reports",

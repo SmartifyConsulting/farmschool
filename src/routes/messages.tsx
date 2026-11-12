@@ -5,8 +5,10 @@ import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useLearning";
 import { pageMeta } from "@/lib/page-meta";
+import { portalSearch } from "@/lib/customer-portal";
 
 export const Route = createFileRoute("/messages")({
+  validateSearch: portalSearch,
   head: () => pageMeta("Messages — Plusticity", "Message people from your course communities."),
   component: MessagesLayout,
 });
@@ -25,6 +27,7 @@ function MessagesLayout() {
 }
 
 function Inbox() {
+  const { portal } = Route.useSearch();
   const { user, ready } = useAuth();
   const { data: threads = [] } = useQuery({
     queryKey: ["dm-threads", user?.id],
@@ -46,7 +49,7 @@ function Inbox() {
         <Sheet>
           <CanvasHeading title="Messages" />
           <p className="py-10 text-center text-sm text-muted-foreground">
-            <Link to="/auth" className="font-semibold text-primary">
+            <Link to="/auth" search={portal ? { portal } : {}} className="font-semibold text-primary">
               Sign in
             </Link>{" "}
             to see your messages.
@@ -60,12 +63,14 @@ function Inbox() {
       <Header />
       <Sheet>
         <CanvasHeading title="Messages" />
+        {portal && <p className="text-sm text-muted-foreground">Personal messages across your learner account. Conversations are not restricted to this organization's portal.</p>}
         <ul className="mt-4 space-y-2">
           {threads.map((t) => (
             <li key={t.partner_id}>
               <Link
                 to="/messages/$partnerId"
                 params={{ partnerId: t.partner_id }}
+                search={portal ? { portal } : {}}
                 className="flex items-center gap-3 rounded-xl border border-border p-3 hover:bg-muted/50"
               >
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-muted">

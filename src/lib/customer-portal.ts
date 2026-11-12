@@ -39,3 +39,7 @@ export function readPortalSlug(value: unknown): string | undefined {
 export function portalPath(slug: string) {
   return "/portal/" + portalSlugSchema.parse(slug);
 }
+export function portalSearch(input: Record<string, unknown>): { portal?: string } {
+  const portal = readPortalSlug(input["portal"]);
+  return portal ? { portal } : {};
+}

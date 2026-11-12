@@ -18,9 +18,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useLearning";
 import { friendlyError } from "@/lib/friendly-error";
 import { toast } from "sonner";
+import { portalSearch } from "@/lib/customer-portal";
 
 export const Route = createFileRoute("/profile")({
-  validateSearch: (input: Record<string, unknown>): { portal?: string } => typeof input["portal"] === "string" && /^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(input["portal"]) ? { portal: input["portal"] } : {},
+  validateSearch: portalSearch,
   head: () => ({
     meta: [
       { title: "Profile — Plusticity" },
@@ -40,6 +41,7 @@ type Tab = (typeof TABS)[number];
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
 function Profile() {
+  const { portal } = Route.useSearch();
   const [tab, setTab] = useState<Tab>("About Me");
   const { user, ready } = useAuth();
   const isAdmin = useIsAdmin();
@@ -148,7 +150,7 @@ function Profile() {
         <Sheet>
           <CanvasHeading title="Profile" />
           <p className="py-10 text-center text-sm text-muted-foreground">
-            <Link to="/auth" className="font-semibold text-primary">
+            <Link to="/auth" search={portal ? { portal } : {}} className="font-semibold text-primary">
               Sign in
             </Link>{" "}
             to see your profile.
@@ -265,14 +267,14 @@ function Profile() {
               <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="min-w-0 flex-1 truncate">{user?.email}</span>
             </div>
-            <Link
+            {!portal && <Link
               to="/developer"
               className="flex items-center gap-2 rounded-xl border border-border p-3 text-sm hover:bg-muted"
             >
               <KeyRound className="h-4 w-4 shrink-0 text-muted-foreground" />
               API keys
-            </Link>
-            {isAdmin && (
+            </Link>}
+            {isAdmin && !portal && (
               <Link
                 to="/admin"
                 className="flex items-center gap-2 rounded-xl border border-border p-3 text-sm hover:bg-muted"
@@ -284,7 +286,8 @@ function Profile() {
             <button
               onClick={async () => {
                 await supabase.auth.signOut();
-                nav({ to: "/" });
+                if (portal) nav({ to: "/portal/$slug", params: { slug: portal } });
+                else nav({ to: "/" });
               }}
               className="flex w-full items-center gap-2 rounded-xl border border-border p-3 text-left text-sm text-destructive hover:bg-destructive/5"
             >
@@ -304,7 +307,7 @@ function Profile() {
               <p className="mt-1 text-xs text-muted-foreground">
                 There's no subscription — paid courses are billed once, per course, via Stripe
                 Checkout when you enrol. Your purchased courses appear in{" "}
-                <Link to="/courses" className="font-semibold text-primary">
+                <Link to={portal ? "/portal/$slug" : "/courses"} params={{ slug: portal ?? "" }} search={portal ? { view: "learning" } : {}} className="font-semibold text-primary">
                   My Learning
                 </Link>
                 .
