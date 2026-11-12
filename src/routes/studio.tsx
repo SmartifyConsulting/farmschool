@@ -22,6 +22,7 @@ import { CourseWizard } from "@/components/CourseWizard";
 import { PolishButton } from "@/components/PolishButton";
 import { CoverImageInput } from "@/components/CoverImageInput";
 import { StudioCourseActions } from "@/components/StudioCourseActions";
+import { CourseViewToggle, useCourseView } from "@/components/CourseViewToggle";
 
 export const Route = createFileRoute("/studio")({
   head: () => ({
@@ -310,6 +311,7 @@ function NewCourseDialog({
 }
 
 function Studio() {
+  const [view, setView] = useCourseView("studio", "cards");
   const { user, ready } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -398,8 +400,9 @@ function Studio() {
                 <option value="published">Published</option>
                 <option value="revision">Revisions</option>
               </select>
+              <CourseViewToggle view={view} onChange={setView} />
             </div>
-            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className={view === "cards" ? "mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3" : "mt-5 grid gap-3"}>
               {(data ?? [])
                 .filter(
                   (c) =>
@@ -412,20 +415,20 @@ function Studio() {
                 .map((c) => (
                   <article
                     key={c.id}
-                    className="min-w-0 overflow-hidden rounded-lg border border-border hover:bg-muted/50"
+                    className={`min-w-0 overflow-hidden rounded-lg border border-border hover:bg-muted/50 ${view === "list" ? "flex items-center" : ""}`}
                   >
                     {c.cover_url ? (
                       <img
                         src={c.cover_url}
                         alt=""
-                        className="h-32 w-full object-cover"
+                        className={view === "cards" ? "h-32 w-full object-cover" : "h-24 w-24 shrink-0 object-cover sm:w-36"}
                       />
                     ) : (
-                      <div className="grid h-32 w-full place-items-center bg-muted text-xs text-muted-foreground">
+                      <div className={`grid place-items-center bg-muted text-xs text-muted-foreground ${view === "cards" ? "h-32 w-full" : "h-24 w-24 shrink-0 sm:w-36"}`}>
                         No cover image
                       </div>
                     )}
-                    <div className="p-5">
+                    <div className="min-w-0 flex-1 p-5">
                       <div className="flex items-start justify-between gap-2">
                         <Link
                           to="/studio/$id"

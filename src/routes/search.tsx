@@ -8,6 +8,7 @@ import { courses } from "@/lib/courses";
 import { courseIndustry } from "@/lib/industries";
 import { pageMeta } from "@/lib/page-meta";
 import { formatPrice } from "@/lib/marketplace";
+import { CourseViewToggle, useCourseView } from "@/components/CourseViewToggle";
 
 export const Route = createFileRoute("/search")({
   head: () =>
@@ -31,6 +32,7 @@ type Listing = {
 };
 
 function SearchPage() {
+  const [view, setView] = useCourseView("catalogue", "cards");
   const [query, setQuery] = useState("");
   const [industry, setIndustry] = useState("All");
   const [category, setCategory] = useState("All");
@@ -168,9 +170,10 @@ function SearchPage() {
               ))}
             </div>
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-semibold">Explore courses</h2>
             <span className="text-xs text-muted-foreground">{visible.length} courses</span>
+            <CourseViewToggle view={view} onChange={setView} />
           </div>
           {isLoading && <p className="text-sm text-muted-foreground">Loading published courses…</p>}
           {error && (
@@ -178,22 +181,22 @@ function SearchPage() {
               Could not load creator courses. Please try again.
             </p>
           )}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className={view === "cards" ? "grid gap-3 sm:grid-cols-2 lg:grid-cols-3" : "grid gap-3"}>
             {visible.map((c) => (
               <Link
                 key={`${c.source}-${c.id}`}
                 to={c.source === "studio" ? "/class/$id" : "/course/$id"}
                 params={{ id: c.id }}
-                className="overflow-hidden rounded-2xl border border-border bg-card transition hover:border-primary/50"
+                className={`overflow-hidden rounded-2xl border border-border bg-card transition hover:border-primary/50 ${view === "list" ? "flex items-center" : ""}`}
               >
                 {c.cover ? (
-                  <img src={c.cover} alt="" loading="lazy" className="h-36 w-full object-cover" />
+                  <img src={c.cover} alt="" loading="lazy" className={view === "cards" ? "h-36 w-full object-cover" : "h-28 w-24 shrink-0 object-cover sm:w-40"} />
                 ) : (
-                  <div className="grid h-36 place-items-center bg-muted">
+                  <div className={`grid place-items-center bg-muted ${view === "cards" ? "h-36" : "h-28 w-24 shrink-0 sm:w-40"}`}>
                     <BookOpen className="h-9 w-9 text-primary" />
                   </div>
                 )}
-                <div className="space-y-2 p-4">
+                <div className="min-w-0 flex-1 space-y-2 p-4">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs text-muted-foreground">
                       {c.industry} · {c.category}

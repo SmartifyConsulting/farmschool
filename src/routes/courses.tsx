@@ -10,6 +10,7 @@ import { useAuth, useProgress, useBookmarks, courseProgress } from "@/hooks/useL
 import { pageMeta } from "@/lib/page-meta";
 import { credentialCode } from "@/lib/studio";
 import logo from "@/assets/plusticity-logo-navy.png";
+import { CourseViewToggle, useCourseView } from "@/components/CourseViewToggle";
 
 export const Route = createFileRoute("/courses")({
   head: () =>
@@ -34,6 +35,7 @@ type LearningItem = {
 };
 
 function MyCourses() {
+  const [view, setView] = useCourseView("my-learning", "list");
   const [tab, setTab] = useState("In progress");
   const [openCert, setOpenCert] = useState<{ id: string; title: string; issued_at: string } | null>(
     null,
@@ -140,6 +142,9 @@ function MyCourses() {
       <Header />
       <Sheet>
         <CanvasHeading title="My learning" />
+        <div className="mt-3 flex justify-end">
+          <CourseViewToggle view={view} onChange={setView} />
+        </div>
         <div className="mt-4">
           <SearchBox />
         </div>
@@ -168,7 +173,7 @@ function MyCourses() {
             to see your courses.
           </p>
         ) : tab === "Certifications" ? (
-          <ul className="mt-4 grid gap-3 md:grid-cols-2">
+          <ul className={view === "cards" ? "mt-4 grid gap-3 md:grid-cols-2" : "mt-4 grid gap-3"}>
             {certs.map((c) => (
               <li key={c.id}>
                 <button
@@ -195,7 +200,7 @@ function MyCourses() {
             )}
           </ul>
         ) : (
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className={view === "cards" ? "mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3" : "mt-4 grid gap-3"}>
             {(progressLoading || studioLoading) && (
               <p className="col-span-full text-sm text-muted-foreground">Loading your courses…</p>
             )}
@@ -209,16 +214,16 @@ function MyCourses() {
                 key={`${c.source}-${c.id}`}
                 to={c.source === "studio" ? "/class/$id" : "/course/$id"}
                 params={{ id: c.id }}
-                className="flex gap-3 rounded-2xl border border-border p-3 hover:border-primary/50"
+                className={`flex gap-3 rounded-2xl border border-border p-3 hover:border-primary/50 ${view === "cards" ? "flex-col" : ""}`}
               >
                 {c.cover ? (
                   <img
                     src={c.cover}
                     alt=""
-                    className="h-20 w-20 shrink-0 rounded-xl object-cover"
+                    className={view === "cards" ? "h-36 w-full rounded-xl object-cover" : "h-20 w-20 shrink-0 rounded-xl object-cover"}
                   />
                 ) : (
-                  <div className="grid h-20 w-20 shrink-0 place-items-center rounded-xl bg-muted">
+                  <div className={`grid shrink-0 place-items-center rounded-xl bg-muted ${view === "cards" ? "h-36 w-full" : "h-20 w-20"}`}>
                     <BookOpen className="h-6 w-6 text-primary" />
                   </div>
                 )}
