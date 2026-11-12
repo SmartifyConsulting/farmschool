@@ -23,12 +23,12 @@ their own owner directory record. Removing a manager clears subordinate
 reporting references and ends workspace access without deleting learning or
 purchase records.
 
-This milestone isolates organization directory/branding data. It does not yet
-make existing published courses private to a tenant, bind cohorts/programs to
-organizations, replace author ownership, or add tenant-wide learning reports.
-Those learning-resource boundaries require separate enforcement across database,
-server, storage and export paths. Custom domains and a fully branded shared shell
-are not implemented.
+This milestone isolates organization directory/branding data. Migration 0065
+adds opt-in private organization courses, bound cohort/program assignments and
+enforcement across database, server, SCORM and export paths. See
+docs/ORGANIZATION_LEARNING_BOUNDARIES.md. Author ownership is preserved. Dedicated
+tenant-manager cohort controls and tenant-wide learning dashboards, custom
+domains and a fully branded shared shell remain to be implemented.
 
 Migration 0064 is applied. Rollback-only role checks passed for tenant reads,
 learner self-only directory access, manager scoping, no self-promotion, protected

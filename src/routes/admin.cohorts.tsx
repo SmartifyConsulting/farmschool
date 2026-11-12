@@ -14,6 +14,7 @@ import { pageMeta } from "@/lib/page-meta";
 import { readAllPages } from "@/lib/database-pages";
 import { CohortPolicies } from "@/components/CohortPolicies";
 import { CohortLicenses } from "@/components/CohortLicenses";
+import { CohortOrganizationBinding } from "@/components/LearningOrganizationControls";
 
 export const Route = createFileRoute("/admin/cohorts")({
   component: CohortsPage,
@@ -176,6 +177,7 @@ function CohortsPage() {
                 {detail.isLoading && <p>Loading cohort…</p>}
                 {detail.error && <p role="alert">Could not load this cohort.</p>}
                 <CohortPolicies key={selected} cohortId={selected} people={options.data?.profiles ?? []} />
+                <CohortOrganizationBinding key={selected+":organization"} cohortId={selected} />
                 <CohortLicenses key={selected+":licenses"} cohortId={selected} courses={(detail.data?.assignments??[]).flatMap((item)=>item.studio_courses?.published&&item.studio_courses.price_cents>0?[{id:item.course_id,...item.studio_courses}]:[])} />
                 <section className="space-y-3">
                   <h2 className="font-semibold">Learners ({detail.data?.members.length ?? 0})</h2>

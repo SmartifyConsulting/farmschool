@@ -8,6 +8,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { friendlyError } from "@/lib/friendly-error";
 import { toast } from "sonner";
 import { downloadCourseArchive } from "@/components/CourseArchiveTools";
+import { CourseOrganizationButton } from "@/components/LearningOrganizationControls";
 
 type Course = { id: string; title: string; published: boolean };
 export function StudioCourseActions({ course, onChanged, revisionOnly = false }: { course: Course; onChanged: () => void; revisionOnly?: boolean }) {
@@ -56,12 +57,12 @@ export function StudioCourseActions({ course, onChanged, revisionOnly = false }:
     finally { setBusy(false); }
   };
   if (revisionOnly) return <Button size="sm" disabled={busy} onClick={() => copy(true)}><PenSquare className="h-4 w-4" />{busy ? "Preparing…" : "Create draft revision"}</Button>;
-  return <DropdownMenu><DropdownMenuTrigger asChild><Button size="icon" variant="outline" disabled={busy} aria-label={`Actions for ${course.title}`}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">
+  return <><CourseOrganizationButton course={course} /><DropdownMenu><DropdownMenuTrigger asChild><Button size="icon" variant="outline" disabled={busy} aria-label={`Actions for ${course.title}`}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">
     <DropdownMenuItem asChild><Link to="/studio/$id" params={{ id: course.id }}><PenSquare className="h-4 w-4" />Open course</Link></DropdownMenuItem>
     {course.published && <DropdownMenuItem onClick={() => copy(true)}><PenSquare className="h-4 w-4" />Create draft revision</DropdownMenuItem>}
     <DropdownMenuItem onClick={() => copy(false)}><Copy className="h-4 w-4" />Duplicate as draft</DropdownMenuItem>
     <DropdownMenuItem onClick={exportArchive}>Export content archive</DropdownMenuItem>
     <DropdownMenuItem onClick={exportScorm}>Export SCORM 1.2 package</DropdownMenuItem>
     <DropdownMenuItem disabled={course.published} className="text-destructive" onClick={remove}><Trash2 className="h-4 w-4" />Delete draft</DropdownMenuItem>
-  </DropdownMenuContent></DropdownMenu>;
+  </DropdownMenuContent></DropdownMenu></>;
 }

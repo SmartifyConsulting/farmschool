@@ -8,6 +8,7 @@ export const courseArchiveSchema = z.object({
   version: z.literal(1),
   exported_at: z.string(),
   snapshot: z.object({
+    organization_id: z.string().uuid().nullable().optional(),
     course: z
       .object({
         id: z.string().uuid(),
@@ -92,6 +93,10 @@ export function archiveRestoreNotes(archive: CourseArchive) {
     "Creates a new unpublished course owned by you. Learners, purchases, certificates, grading schemes, competencies, approvals and version history are not imported.",
     "Review and reconfigure prices, prerequisites, certificate policies and linked media before publishing. Uploaded media files are not embedded in this content archive.",
   ];
+  if (archive.snapshot.organization_id)
+    notes.push(
+      "This is a private organization course. Restore requires membership in that organization and preserves its private scope.",
+    );
   if (archive.snapshot.videos.length)
     notes.push(
       "Supplementary library links are retained in the archive for reference and must be reconnected manually.",

@@ -15,6 +15,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { LanguageProvider } from "@/hooks/useLanguage";
+import { AuthDataBoundary } from "@/components/AuthDataBoundary";
 
 function NotFoundComponent() {
   return (
@@ -120,6 +121,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <AuthDataBoundary>
       <LanguageProvider>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <ConfirmProvider>
@@ -127,6 +129,7 @@ function RootComponent() {
         </ConfirmProvider>
         <Toaster position="top-center" richColors closeButton duration={5000} />
       </LanguageProvider>
+      </AuthDataBoundary>
     </QueryClientProvider>
   );
 }

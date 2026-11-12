@@ -27,6 +27,12 @@ const fixture = () => ({
   },
 });
 describe("native content archives", () => {
+  it("retains organization privacy metadata for restore enforcement", () => {
+    const source = fixture();
+    const archive = validateCourseArchive({ ...source, snapshot: { ...source.snapshot, organization_id: course } });
+    expect(archive.snapshot.organization_id).toBe(course);
+    expect(archiveRestoreNotes(archive).join(" ")).toContain("preserves its private scope");
+  });
   it("normalises legacy questions while preserving their private keys", () => {
     const archive = validateCourseArchive(fixture());
     expect(archive.snapshot.lessons[0]!.quiz).toEqual([
