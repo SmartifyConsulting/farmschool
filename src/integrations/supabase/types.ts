@@ -14,27 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      competency_submissions: {
-        Row: { id: string; competency_id: string; user_id: string; attempt: number; body: string; evidence_url: string | null; competency_title: string; instructions: string; criteria_snapshot: Json; pass_mark: number; rubric_version: number; submitted_at: string; reviewed_at: string | null; assessment_id: string | null; due_at: string | null; late: boolean; late_allowed: boolean; evidence_file_path: string | null; evidence_file_name: string | null; evidence_file_mime: string | null; evidence_file_bytes: number | null }
-        Insert: { competency_id: string; user_id: string; attempt: number; body: string; competency_title: string; instructions: string; criteria_snapshot: Json; pass_mark: number; rubric_version: number }
-        Update: { assessment_id?: string; reviewed_at?: string }
-        Relationships: [
-          { foreignKeyName: "competency_submissions_competency_id_fkey"; columns: ["competency_id"]; isOneToOne: false; referencedRelation: "course_competencies"; referencedColumns: ["id"] },
-          { foreignKeyName: "competency_submissions_assessment_id_fkey"; columns: ["assessment_id"]; isOneToOne: true; referencedRelation: "learner_competency_evidence"; referencedColumns: ["id"] }
-        ]
-      }
-      competency_rubric_assessments: {
-        Row: { evidence_id: string; criteria_snapshot: Json; marks: Json; total_points: number; max_points: number; pass_mark: number; rubric_version: number }
-        Insert: { evidence_id: string; criteria_snapshot: Json; marks: Json; total_points: number; max_points: number; pass_mark: number; rubric_version: number }
-        Update: { criteria_snapshot?: Json; marks?: Json }
-        Relationships: [{ foreignKeyName: "competency_rubric_assessments_evidence_id_fkey"; columns: ["evidence_id"]; isOneToOne: true; referencedRelation: "learner_competency_evidence"; referencedColumns: ["id"] }]
-      }
-      notification_reads: {
-        Row: { user_id: string; notification_key: string; read_at: string }
-        Insert: { user_id?: string; notification_key: string; read_at?: string }
-        Update: { user_id?: string; notification_key?: string; read_at?: string }
-        Relationships: []
-      }
       activity_rubric_criteria: {
         Row: {
           activity_id: string
@@ -443,41 +422,166 @@ export type Database = {
           },
         ]
       }
+      competency_rubric_assessments: {
+        Row: {
+          criteria_snapshot: Json
+          evidence_id: string
+          marks: Json
+          max_points: number
+          pass_mark: number
+          rubric_version: number
+          total_points: number
+        }
+        Insert: {
+          criteria_snapshot: Json
+          evidence_id: string
+          marks: Json
+          max_points: number
+          pass_mark: number
+          rubric_version: number
+          total_points: number
+        }
+        Update: {
+          criteria_snapshot?: Json
+          evidence_id?: string
+          marks?: Json
+          max_points?: number
+          pass_mark?: number
+          rubric_version?: number
+          total_points?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competency_rubric_assessments_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: true
+            referencedRelation: "learner_competency_evidence"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competency_submissions: {
+        Row: {
+          assessment_id: string | null
+          attempt: number
+          body: string
+          competency_id: string
+          competency_title: string
+          criteria_snapshot: Json
+          due_at: string | null
+          evidence_file_bytes: number | null
+          evidence_file_mime: string | null
+          evidence_file_name: string | null
+          evidence_file_path: string | null
+          evidence_url: string | null
+          id: string
+          instructions: string
+          late: boolean
+          late_allowed: boolean
+          pass_mark: number
+          reviewed_at: string | null
+          rubric_version: number
+          submitted_at: string
+          user_id: string
+        }
+        Insert: {
+          assessment_id?: string | null
+          attempt: number
+          body: string
+          competency_id: string
+          competency_title: string
+          criteria_snapshot: Json
+          due_at?: string | null
+          evidence_file_bytes?: number | null
+          evidence_file_mime?: string | null
+          evidence_file_name?: string | null
+          evidence_file_path?: string | null
+          evidence_url?: string | null
+          id?: string
+          instructions: string
+          late?: boolean
+          late_allowed?: boolean
+          pass_mark: number
+          reviewed_at?: string | null
+          rubric_version: number
+          submitted_at?: string
+          user_id: string
+        }
+        Update: {
+          assessment_id?: string | null
+          attempt?: number
+          body?: string
+          competency_id?: string
+          competency_title?: string
+          criteria_snapshot?: Json
+          due_at?: string | null
+          evidence_file_bytes?: number | null
+          evidence_file_mime?: string | null
+          evidence_file_name?: string | null
+          evidence_file_path?: string | null
+          evidence_url?: string | null
+          id?: string
+          instructions?: string
+          late?: boolean
+          late_allowed?: boolean
+          pass_mark?: number
+          reviewed_at?: string | null
+          rubric_version?: number
+          submitted_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competency_submissions_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: true
+            referencedRelation: "learner_competency_evidence"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competency_submissions_competency_id_fkey"
+            columns: ["competency_id"]
+            isOneToOne: false
+            referencedRelation: "course_competencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_competencies: {
         Row: {
-          late_submissions_allowed: boolean
-          rubric: Json
-          rubric_pass_mark: number
-          rubric_version: number
           code: string
           course_id: string
           created_at: string
           description: string
           id: string
+          late_submissions_allowed: boolean
+          rubric: Json
+          rubric_pass_mark: number
+          rubric_version: number
           title: string
         }
         Insert: {
           code: string
           course_id: string
-          rubric?: Json
-          late_submissions_allowed?: boolean
-          rubric_pass_mark?: number
-          rubric_version?: number
           created_at?: string
           description?: string
           id?: string
+          late_submissions_allowed?: boolean
+          rubric?: Json
+          rubric_pass_mark?: number
+          rubric_version?: number
           title: string
         }
         Update: {
           code?: string
           course_id?: string
-          rubric?: Json
-          late_submissions_allowed?: boolean
-          rubric_pass_mark?: number
-          rubric_version?: number
           created_at?: string
           description?: string
           id?: string
+          late_submissions_allowed?: boolean
+          rubric?: Json
+          rubric_pass_mark?: number
+          rubric_version?: number
           title?: string
         }
         Relationships: [
@@ -1104,32 +1208,59 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_reads: {
+        Row: {
+          notification_key: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          notification_key: string
+          read_at?: string
+          user_id?: string
+        }
+        Update: {
+          notification_key?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       payment_events: {
         Row: {
+          action: string | null
           error: string | null
+          event_created: number | null
           event_type: string
           id: string
           processed_at: string | null
           provider: string
           received_at: string
+          session_id: string | null
           status: string
         }
         Insert: {
+          action?: string | null
           error?: string | null
+          event_created?: number | null
           event_type: string
           id: string
           processed_at?: string | null
           provider: string
           received_at?: string
+          session_id?: string | null
           status?: string
         }
         Update: {
+          action?: string | null
           error?: string | null
+          event_created?: number | null
           event_type?: string
           id?: string
           processed_at?: string | null
           provider?: string
           received_at?: string
+          session_id?: string | null
           status?: string
         }
         Relationships: []
@@ -1795,19 +1926,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      submit_competency_work_with_file: { Args: { _competency: string; _body: string; _evidence_url: string; _expected_version: number; _file_path: string }; Returns: string }
-      set_competency_late_policy: { Args: { _competency: string; _allow_late: boolean; _expected_allowed: boolean }; Returns: boolean }
-      my_course_submission_deadline: { Args: { _course: string }; Returns: string | null }
-      course_gradebook: { Args: { _course: string; _offset?: number; _limit?: number }; Returns: Json }
-      submit_competency_work: { Args: { _competency: string; _body: string; _evidence_url: string; _expected_version: number }; Returns: string }
-      assess_competency_submission: { Args: { _submission: string; _marks: Json; _notes: string }; Returns: string }
-      save_competency_rubric: { Args: { _competency: string; _criteria: Json; _pass_mark: number; _expected_version: number }; Returns: number }
-      assess_competency_rubric: { Args: { _competency: string; _learner: string; _marks: Json; _notes: string; _expected_version: number }; Returns: string }
-      add_course_competency: { Args: { _course: string; _code: string; _title: string; _description?: string }; Returns: string }
-      course_assessment_learners: { Args: { _course: string }; Returns: { user_id: string; full_name: string }[] }
-      record_competency_assessment: { Args: { _competency: string; _learner: string; _achieved: boolean; _score: number; _notes: string }; Returns: string }
-      cohort_visible: { Args: { _cohort: string }; Returns: boolean }
-      apply_learning_payment_event: { Args: { _event: Json }; Returns: string }
+      add_course_competency: {
+        Args: {
+          _code: string
+          _course: string
+          _description?: string
+          _title: string
+        }
+        Returns: string
+      }
       admin_platform_analytics: { Args: never; Returns: Json }
       admin_revoke_api_key: {
         Args: { _id: string }
@@ -1869,6 +1996,22 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      apply_learning_payment_event: { Args: { _event: Json }; Returns: string }
+      assess_competency_rubric: {
+        Args: {
+          _competency: string
+          _expected_version: number
+          _learner: string
+          _marks: Json
+          _notes: string
+        }
+        Returns: string
+      }
+      assess_competency_submission: {
+        Args: { _marks: Json; _notes: string; _submission: string }
+        Returns: string
+      }
+      cohort_visible: { Args: { _cohort: string }; Returns: boolean }
       community_join: {
         Args: { _course_id: string }
         Returns: {
@@ -1891,7 +2034,18 @@ export type Database = {
           user_id: string
         }[]
       }
+      course_assessment_learners: {
+        Args: { _course: string }
+        Returns: {
+          full_name: string
+          user_id: string
+        }[]
+      }
       course_factory_reserve_ai_request: { Args: never; Returns: number }
+      course_gradebook: {
+        Args: { _course: string; _limit?: number; _offset?: number }
+        Returns: Json
+      }
       creator_review_application: {
         Args: { _approve: boolean; _notes?: string; _user_id: string }
         Returns: undefined
@@ -1974,6 +2128,10 @@ export type Database = {
           usage_day: string
         }[]
       }
+      my_course_submission_deadline: {
+        Args: { _course: string }
+        Returns: string
+      }
       record_audit_event: {
         Args: {
           _action: string
@@ -1983,9 +2141,28 @@ export type Database = {
         }
         Returns: string
       }
+      record_competency_assessment: {
+        Args: {
+          _achieved: boolean
+          _competency: string
+          _learner: string
+          _notes: string
+          _score: number
+        }
+        Returns: string
+      }
       reserve_api_key_request: {
         Args: { _key_id: string; _scope: string }
         Returns: boolean
+      }
+      save_competency_rubric: {
+        Args: {
+          _competency: string
+          _criteria: Json
+          _expected_version: number
+          _pass_mark: number
+        }
+        Returns: number
       }
       scorm_package_visible: { Args: { _package: string }; Returns: boolean }
       send_direct_message: {
@@ -2004,6 +2181,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      set_competency_late_policy: {
+        Args: {
+          _allow_late: boolean
+          _competency: string
+          _expected_allowed: boolean
+        }
+        Returns: boolean
       }
       shares_community: { Args: { _a: string; _b: string }; Returns: boolean }
       studio_approve_review: {
@@ -2053,6 +2238,31 @@ export type Database = {
         Returns: undefined
       }
       studio_snapshot: { Args: { _id: string }; Returns: Json }
+      submission_file_unlinked: { Args: { _path: string }; Returns: boolean }
+      submission_file_upload_allowed: {
+        Args: { _path: string }
+        Returns: boolean
+      }
+      submission_file_visible: { Args: { _path: string }; Returns: boolean }
+      submit_competency_work: {
+        Args: {
+          _body: string
+          _competency: string
+          _evidence_url: string
+          _expected_version: number
+        }
+        Returns: string
+      }
+      submit_competency_work_with_file: {
+        Args: {
+          _body: string
+          _competency: string
+          _evidence_url: string
+          _expected_version: number
+          _file_path: string
+        }
+        Returns: string
+      }
       valid_lesson_progress_target: {
         Args: { _course: string; _lesson: string }
         Returns: boolean
