@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useLearning";
 import { supabase } from "@/integrations/supabase/client";
 import { gradebookCsv, gradebookReport, gradebookSummary } from "@/lib/gradebook";
 import { pageMeta } from "@/lib/page-meta";
+import { CourseCertificates } from "@/components/CourseCertificates";
 
 export const Route = createFileRoute("/gradebook/$courseId")({
   component: GradebookPage,
@@ -217,6 +218,7 @@ function GradebookPage() {
             </div>
           )
         )}
+        {report.data && <CourseCertificates key={courseId} courseId={courseId} />}
       </Sheet>
     </Phone>
   );

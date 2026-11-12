@@ -253,6 +253,12 @@ export type Database = {
       }
       certificates: {
         Row: {
+          course_version: number | null
+          curriculum_digest: string | null
+          validated_at: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          revocation_reason: string | null
           course_ref: string
           id: string
           issued_at: string
@@ -1959,6 +1965,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      issue_studio_certificate: { Args: { _user: string; _course: string; _expected_version: number; _expected_lessons: Json; _photo_tasks: Json }; Returns: Json }
+      revoke_studio_certificate: { Args: { _certificate: string; _reason: string }; Returns: undefined }
+      course_certificates: { Args: { _course: string; _offset?: number; _limit?: number }; Returns: Json }
       add_course_competency: {
         Args: {
           _code: string

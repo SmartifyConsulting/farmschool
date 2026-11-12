@@ -64,7 +64,8 @@ export const claimCertificate = createServerFn({ method: "POST" })
   .inputValidator((i: unknown) => z.object({ source: z.enum(["studio", "catalogue"]), courseRef: z.string().min(1).max(80) }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: prog } = await context.supabase.from("lesson_progress").select("lesson_id").eq("course_id", data.courseRef).eq("completed", true);
+    const { data: prog, error: progressError } = await context.supabase.from("lesson_progress").select("lesson_id").eq("course_id", data.courseRef).eq("completed", true);
+    if (progressError) throw new Error("Could not verify lesson completion. Please try again.");
     const done = new Set((prog ?? []).map((p: { lesson_id: string }) => p.lesson_id));
     let title = "";
     if (data.source === "catalogue") {
@@ -73,7 +74,7 @@ export const claimCertificate = createServerFn({ method: "POST" })
       if (!allLessons(c).every((l) => done.has(l.id))) throw new Error("Finish every lesson first.");
       title = c.title;
     } else {
-      const { data: c } = await context.supabase.from("studio_courses").select("id, title, published, price_cents, author_id").eq("id", data.courseRef).maybeSingle();
+      const { data: c } = await context.supabase.from("studio_courses").select("id, title, published, price_cents, author_id, version_number").eq("id", data.courseRef).maybeSingle();
       if (!c) throw new Error("Course not found.");
       if (!c.published && c.author_id !== context.userId) throw new Error("Course is not available.");
       const { data: visible, error: accessError } = await context.supabase.rpc("studio_course_visible", { _course: c.id });
@@ -87,7 +88,7 @@ export const claimCertificate = createServerFn({ method: "POST" })
           .maybeSingle();
         if (!hasActiveEnrollment(enrollment)) throw new Error("Enroll in this course before claiming its certificate.");
       }
-      const { data: lessons } = await supabaseAdmin.from("studio_lessons").select("id, kind, body").eq("course_id", c.id);
+      const { data: lessons } = await supabaseAdmin.from("studio_lessons").select("id, kind, body, title, video_url, quiz").eq("course_id", c.id);
       const { data: passes } = await supabaseAdmin.from("quiz_attempts").select("lesson_id").eq("user_id", context.userId).eq("course_id", c.id).eq("passed", true);
       const passed = new Set((passes ?? []).map((p) => p.lesson_id));
       const { scormLessonRef } = await import("@/lib/scorm");
@@ -113,7 +114,17 @@ export const claimCertificate = createServerFn({ method: "POST" })
           row.lesson_id === task.lessonId && row.block_index === task.blockIndex && row.reviewed_by === c.author_id,
         ))) throw new Error("Your trainer must approve every practical photo task before you can claim a certificate.");
       }
-      title = c.title;
+      const { data: issued, error: issueError } = await supabaseAdmin.rpc("issue_studio_certificate", {
+        _user: context.userId,
+        _course: c.id,
+        _expected_version: c.version_number,
+        _expected_lessons: lessons.map(({ id, kind, body, title, video_url, quiz }) => ({ id, kind, body, title, video_url, quiz })).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+        _photo_tasks: photoTasks,
+      });
+      if (issueError) throw new Error("Could not issue the certificate. The course or completion status may have changed. Refresh and try again, or contact your trainer.");
+      const result = z.object({ id: z.string().uuid(), title: z.string() }).safeParse(issued);
+      if (!result.success) throw new Error("Could not confirm the certificate. Please try again.");
+      return { ok: true, title: result.data.title };
     }
     const { error } = await supabaseAdmin.from("certificates").upsert({ user_id: context.userId, source: data.source, course_ref: data.courseRef, title }, { onConflict: "user_id,source,course_ref", ignoreDuplicates: true });
     if (error) throw new Error("Could not issue the certificate.");

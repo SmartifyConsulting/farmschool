@@ -178,10 +178,44 @@ The question-bank interface still needs a signed-in browser journey. Shared
 department banks, random exam pools, question usage history and Moodle question
 format import/export are not implemented by this private copy-based library.
 
+Studio certificate issuance now finishes in a service-only database transaction.
+It locks the course, checks publication/access and the expected course version,
+compares the full checked lesson manifest (including quiz/video content), and
+rechecks progress, quiz passes, SCORM completion and author-approved photo tasks
+before issuing. Photo task identities come from the existing server-side slide
+parser; clients cannot call the issuance RPC or supply a trusted task manifest.
+Curriculum writes now lock the parent course as well. New certificates retain
+the issued title, version, validation time and curriculum digest. Claims are
+idempotent; existing historical records are preserved without retroactive
+validation, and revoked certificates cannot be replaced by claiming again.
+
+Course authors can list and irreversibly revoke certificates with a recorded
+reason from the course gradebook. Learners see completion-verified, historical
+or revoked status, the issued version and any revocation reason. The open
+certificate follows refreshed query data; the list refreshes every 30 seconds
+while active and reads all pages. Revoked records stop satisfying prerequisites
+and gradebook/compliance certification, and assignment reminders resume. They
+remain in compliance candidate lists so a revoked-only learner does not vanish
+from reporting. Current xAPI export omits revoked certificate completion facts;
+voiding facts previously delivered to an external LRS remains unimplemented.
+
+Migration 0053 is applied. Rollback-only role tests cover reading/quiz/SCORM/photo
+requirements, mismatched version/manifest, paid access, untrusted approvers,
+idempotency, private reads, service-only issuance, owner-only revocation,
+prerequisite/gradebook effects, legacy preservation and retained issued metadata.
+Checks are in drizzle/tests/0053_certificate_integrity.sql. Validation: 178 tests
+passed, 17 environment-gated tests skipped, TypeScript and production build
+passed. Lovable changes through e860284 are preserved. Signed-in browser QA and
+independent-connection concurrency/load testing remain outstanding. Expiry,
+renewal, public credential verification and certificate design templates are
+not implemented by this change. Existing retained-lesson progress/quiz-credit
+rules remain; this does not reset learning when a course revision is published.
+
 1. Run database integration tests against a migrated isolated database, then
    exercise cross-user access and complete learner/trainer journeys.
-2. Make certificate validation and issuance transactional with course revision
-   and trainer approval; add historical-certificate validity/revocation rules.
+2. Browser-test certificate claiming and revocation; add public credential
+   verification, expiry/renewal policy and auditable recertification. Stress-test
+   issuance/revision/revocation with concurrent independent connections.
 3. Verify reporting at production scale and under concurrent changes.
 4. Verify real Stripe test-mode deliveries, webhook subscriptions, retries and
    refund/dispute purchase recovery; the payment migration is applied and its
@@ -206,5 +240,7 @@ format import/export are not implemented by this private copy-based library.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041 through 0051. Test fixtures were rolled back; existing learner
+migrations 0041 through 0051 and 0053. Migration 0052 belongs to the intervening
+Lovable API-management update and was not deployed by this certificate work.
+Test fixtures were rolled back; existing learner
 records were not edited.

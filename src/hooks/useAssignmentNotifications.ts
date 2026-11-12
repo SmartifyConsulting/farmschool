@@ -41,6 +41,7 @@ export function useAssignmentNotifications() {
             .select("course_ref", { count: "exact" })
             .eq("user_id", user!.id)
             .eq("source", "studio")
+            .is("revoked_at", null)
             .order("id"),
         ),
         readAllPages(

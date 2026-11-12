@@ -12,6 +12,7 @@ import { credentialCode } from "@/lib/studio";
 import logo from "@/assets/plusticity-logo-navy.png";
 import { CourseViewToggle, useCourseView } from "@/components/CourseViewToggle";
 import { readAllPages } from "@/lib/database-pages";
+import { certificateStatus } from "@/lib/certificates";
 
 export const Route = createFileRoute("/courses")({
   head: () =>
@@ -40,9 +41,7 @@ type LearningItem = {
 function MyCourses() {
   const [view, setView] = useCourseView("my-learning", "list");
   const [tab, setTab] = useState("In progress");
-  const [openCert, setOpenCert] = useState<{ id: string; title: string; issued_at: string } | null>(
-    null,
-  );
+  const [openCertId, setOpenCertId] = useState<string | null>(null);
   const { user } = useAuth();
   const { data: progress = [], isLoading: progressLoading } = useProgress();
   const { ids } = useBookmarks();
@@ -51,18 +50,27 @@ function MyCourses() {
     enabled: !!user,
     queryFn: async () => (await supabase.from("profiles").select("full_name").maybeSingle()).data,
   });
-  const { data: certs = [] } = useQuery({
+  const { data: certs = [], error: certificateError } = useQuery({
     queryKey: ["certificates", user?.id],
     enabled: !!user,
-    queryFn: async () =>
-      (
-        await supabase
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const { data } = await readAllPages(
+        supabase
           .from("certificates")
-          .select("id, title, source, issued_at")
+          .select(
+            "id,title,source,issued_at,course_version,validated_at,revoked_at,revocation_reason",
+            { count: "exact" },
+          )
+          .eq("user_id", user!.id)
           .order("issued_at", { ascending: false })
-      ).data ?? [],
+          .order("id"),
+      );
+      return data;
+    },
   });
   const name = prof?.full_name ?? user?.email?.split("@")[0] ?? "Guest";
+  const openCert = certs.find((certificate) => certificate.id === openCertId) ?? null;
   const {
     data: assignments = [],
     isLoading: assignmentsLoading,
@@ -194,7 +202,9 @@ function MyCourses() {
       <Header />
       <Sheet>
         <CanvasHeading title="My learning" />
-        <Link to="/skills" className="mt-3 inline-block text-sm font-semibold text-primary">My skills & trainer feedback</Link>
+        <Link to="/skills" className="mt-3 inline-block text-sm font-semibold text-primary">
+          My skills & trainer feedback
+        </Link>
         <div className="mt-3 flex justify-end">
           <CourseViewToggle view={view} onChange={setView} />
         </div>
@@ -227,10 +237,13 @@ function MyCourses() {
           </p>
         ) : tab === "Certifications" ? (
           <ul className={view === "cards" ? "mt-4 grid gap-3 md:grid-cols-2" : "mt-4 grid gap-3"}>
+            {certificateError && (
+              <p role="alert">Could not load your certificates. Refresh to try again.</p>
+            )}
             {certs.map((c) => (
               <li key={c.id}>
                 <button
-                  onClick={() => setOpenCert(c)}
+                  onClick={() => setOpenCertId(c.id)}
                   className="flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left hover:bg-muted"
                 >
                   <Award className="h-6 w-6 shrink-0 text-accent" />
@@ -238,7 +251,7 @@ function MyCourses() {
                     <span className="block text-sm font-medium">{c.title}</span>
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       <BadgeCheck className="h-3.5 w-3.5 text-primary" />
-                      Plusticity Certified · {new Date(c.issued_at).toLocaleDateString()} ·{" "}
+                      {certificateStatus(c)} · {new Date(c.issued_at).toLocaleDateString()} ·{" "}
                       {credentialCode(c.id)}
                     </span>
                   </span>
@@ -347,7 +360,7 @@ function MyCourses() {
           </div>
         )}
       </Sheet>
-      <Dialog open={!!openCert} onOpenChange={(o) => !o && setOpenCert(null)}>
+      <Dialog open={!!openCert} onOpenChange={(o) => !o && setOpenCertId(null)}>
         <DialogContent className="max-w-2xl print:max-w-none print:border-0 print:shadow-none">
           <DialogTitle className="sr-only">Certificate</DialogTitle>
           {openCert && (
@@ -362,9 +375,25 @@ function MyCourses() {
               <p className="mt-4 text-sm text-muted-foreground">This certifies that</p>
               <p className="mt-1 font-display text-2xl font-bold sm:text-3xl">{name}</p>
               <p className="mt-3 text-sm text-muted-foreground">
-                has completed every lesson and passed every assessment in
+                {openCert.revoked_at
+                  ? "This certificate has been revoked for"
+                  : "has a recorded course completion in"}
               </p>
               <p className="mt-1 text-lg font-semibold">{openCert.title}</p>
+              {openCert.course_version !== null && (
+                <p className="mt-2 text-xs">Course version {openCert.course_version}</p>
+              )}
+              {openCert.revoked_at && (
+                <p className="mt-3 whitespace-pre-wrap text-sm text-destructive">
+                  Revoked {new Date(openCert.revoked_at).toLocaleDateString()}:{" "}
+                  {openCert.revocation_reason}
+                </p>
+              )}
+              {openCert.source === "studio" && !openCert.validated_at && !openCert.revoked_at && (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Historical record issued before version-based validation.
+                </p>
+              )}
               <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
                 <span>
                   Issued{" "}
@@ -376,7 +405,7 @@ function MyCourses() {
                 </span>
                 <span className="flex items-center gap-1 font-semibold text-primary">
                   <BadgeCheck className="h-4 w-4" />
-                  Verified · {credentialCode(openCert.id)}
+                  {certificateStatus(openCert)} · {credentialCode(openCert.id)}
                 </span>
               </div>
             </div>

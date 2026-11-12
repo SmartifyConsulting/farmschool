@@ -150,7 +150,7 @@ export const getCourseAnalytics = createServerFn({ method: "POST" })
       supabaseAdmin.from("studio_lessons").select("id, title, kind, position").eq("course_id", data.courseId).order("position"),
       supabaseAdmin.from("lesson_progress").select("user_id, lesson_id, completed, updated_at").eq("course_id", data.courseId),
       supabaseAdmin.from("quiz_attempts").select("user_id, lesson_id, score, passed, created_at").eq("course_id", data.courseId),
-      supabaseAdmin.from("certificates").select("user_id").eq("source", "studio").eq("course_ref", data.courseId),
+      supabaseAdmin.from("certificates").select("user_id").eq("source", "studio").eq("course_ref", data.courseId).is("revoked_at", null),
     ]);
     const ids = [...new Set([...(progress ?? []).map(p => p.user_id), ...(attempts ?? []).map(a => a.user_id)])];
     const { data: profiles } = ids.length ? await supabaseAdmin.from("profiles").select("user_id, full_name, region, learner_role").in("user_id", ids) : { data: [] };

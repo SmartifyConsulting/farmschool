@@ -69,6 +69,7 @@ export type XapiInput = {
     course_ref: string;
     title: string;
     issued_at: string;
+    revoked_at?: string | null;
   }[];
 };
 
@@ -122,7 +123,7 @@ export function buildXapiStatements(input: XapiInput): XapiStatement[] {
           : { completion: done },
     });
   }
-  for (const c of input.certificates) {
+  for (const c of input.certificates.filter((certificate) => !certificate.revoked_at)) {
     statements.push({
       id: stableId("certificate", c.user_id, c.source, c.course_ref, c.issued_at),
       timestamp: c.issued_at,
@@ -155,7 +156,7 @@ export function summariseCompliance(input: XapiInput): ComplianceRow[] {
     lessonsByCourse.set(l.course_id, [...(lessonsByCourse.get(l.course_id) ?? []), l.id]);
   const courseTitle = new Map(input.courses.map((c) => [c.id, c.title]));
   const certified = new Set(
-    input.certificates.map((c) => c.source + ":" + c.course_ref + ":" + c.user_id),
+    input.certificates.filter((certificate) => !certificate.revoked_at).map((c) => c.source + ":" + c.course_ref + ":" + c.user_id),
   );
   const pairs = new Set(
     [...input.progress, ...input.attempts, ...(input.enrollments ?? [])].map((row) => row.user_id + ":" + row.course_id),
