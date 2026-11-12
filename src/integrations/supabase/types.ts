@@ -2044,6 +2044,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      server_certificate_records: { Args: Record<string, never>; Returns: { id: string; user_id: string; source: string; course_ref: string; title: string; issued_at: string; revoked_at: string | null; expires_at: string | null; current_valid: boolean }[] }
+      my_certificate_lifecycle: { Args: { _certificate: string }; Returns: Json }
+      course_certificate_policy: { Args: { _course: string }; Returns: Json }
+      set_course_certificate_policy: { Args: { _course: string; _days: number | null; _window: number; _version: number; _reason: string }; Returns: undefined }
+      start_certificate_renewal: { Args: { _certificate: string }; Returns: string }
+      set_certificate_sharing: { Args: { _certificate: string; _enabled: boolean }; Returns: string | null }
+      verify_certificate: { Args: { _token: string }; Returns: Json }
+      my_certificate_records: { Args: Record<string, never>; Returns: { id: string; title: string; source: string; course_ref: string; issued_at: string; course_version: number | null; validated_at: string | null; revoked_at: string | null; revocation_reason: string | null; expires_at: string | null }[] }
       course_license_order_report: { Args: { _order: string }; Returns: Json }
       create_course_license_order: { Args: { _cohort: string; _course: string; _quantity: number; _request: string }; Returns: Json }
       bind_course_license_checkout: { Args: { _order: string; _session: string; _url: string }; Returns: undefined }

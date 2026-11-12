@@ -50,6 +50,7 @@ import { Route as ScormIndexRouteImport } from './routes/scorm.index'
 import { Route as ScormIdRouteImport } from './routes/scorm.$id'
 import { Route as StudioIdRouteImport } from './routes/studio.$id'
 import { Route as StudioReportsRouteImport } from './routes/studio.reports'
+import { Route as VerifyTokenRouteImport } from './routes/verify.$token'
 import { Route as ApiCronCohortRemindersRouteImport } from './routes/api/cron/cohort-reminders'
 import { Route as ApiScormFileSplatRouteImport } from './routes/api/scorm-file.$'
 import { Route as LessonCourseIdLessonIdRouteImport } from './routes/lesson.$courseId.$lessonId'
@@ -262,6 +263,11 @@ const StudioReportsRoute = StudioReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => StudioRoute,
 } as any)
+const VerifyTokenRoute = VerifyTokenRouteImport.update({
+  id: '/verify/$token',
+  path: '/verify/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCronCohortRemindersRoute = ApiCronCohortRemindersRouteImport.update({
   id: '/api/cron/cohort-reminders',
   path: '/api/cron/cohort-reminders',
@@ -328,6 +334,7 @@ export interface FileRoutesByFullPath {
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
   '/studio/reports': typeof StudioReportsRoute
+  '/verify/$token': typeof VerifyTokenRoute
   '/admin/': typeof AdminIndexRoute
   '/scorm/': typeof ScormIndexRoute
   '/api/cron/cohort-reminders': typeof ApiCronCohortRemindersRoute
@@ -376,6 +383,7 @@ export interface FileRoutesByTo {
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
   '/studio/reports': typeof StudioReportsRoute
+  '/verify/$token': typeof VerifyTokenRoute
   '/admin': typeof AdminIndexRoute
   '/scorm': typeof ScormIndexRoute
   '/api/cron/cohort-reminders': typeof ApiCronCohortRemindersRoute
@@ -425,6 +433,7 @@ export interface FileRoutesById {
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
   '/studio/reports': typeof StudioReportsRoute
+  '/verify/$token': typeof VerifyTokenRoute
   '/admin/': typeof AdminIndexRoute
   '/scorm/': typeof ScormIndexRoute
   '/api/cron/cohort-reminders': typeof ApiCronCohortRemindersRoute
@@ -475,6 +484,7 @@ export interface FileRouteTypes {
     | '/scorm/$id'
     | '/studio/$id'
     | '/studio/reports'
+    | '/verify/$token'
     | '/admin/'
     | '/scorm/'
     | '/api/cron/cohort-reminders'
@@ -523,6 +533,7 @@ export interface FileRouteTypes {
     | '/scorm/$id'
     | '/studio/$id'
     | '/studio/reports'
+    | '/verify/$token'
     | '/admin'
     | '/scorm'
     | '/api/cron/cohort-reminders'
@@ -571,6 +582,7 @@ export interface FileRouteTypes {
     | '/scorm/$id'
     | '/studio/$id'
     | '/studio/reports'
+    | '/verify/$token'
     | '/admin/'
     | '/scorm/'
     | '/api/cron/cohort-reminders'
@@ -617,6 +629,7 @@ export interface RootRouteChildren {
   GradebookCourseIdRoute: typeof GradebookCourseIdRoute
   LearningActivitiesCourseIdRoute: typeof LearningActivitiesCourseIdRoute
   ScormIdRoute: typeof ScormIdRoute
+  VerifyTokenRoute: typeof VerifyTokenRoute
   AdminIndexRoute: typeof AdminIndexRoute
   ScormIndexRoute: typeof ScormIndexRoute
   ApiCronCohortRemindersRoute: typeof ApiCronCohortRemindersRoute
@@ -915,6 +928,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudioReportsRouteImport
       parentRoute: typeof StudioRoute
     }
+    '/verify/$token': {
+      id: '/verify/$token'
+      path: '/verify/$token'
+      fullPath: '/verify/$token'
+      preLoaderRoute: typeof VerifyTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cron/cohort-reminders': {
       id: '/api/cron/cohort-reminders'
       path: '/api/cron/cohort-reminders'
@@ -1015,6 +1035,7 @@ const rootRouteChildren: RootRouteChildren = {
   GradebookCourseIdRoute: GradebookCourseIdRoute,
   LearningActivitiesCourseIdRoute: LearningActivitiesCourseIdRoute,
   ScormIdRoute: ScormIdRoute,
+  VerifyTokenRoute: VerifyTokenRoute,
   AdminIndexRoute: AdminIndexRoute,
   ScormIndexRoute: ScormIndexRoute,
   ApiCronCohortRemindersRoute: ApiCronCohortRemindersRoute,

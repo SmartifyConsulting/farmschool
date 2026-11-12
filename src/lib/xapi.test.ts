@@ -140,6 +140,11 @@ describe("summariseCompliance", () => {
     expect(rows[0]).toMatchObject({ completionRate: 100, compliant: false });
   });
 
+  it("keeps expired awards as historical facts without counting current compliance", () => {
+    const input = { ...base, certificates: [{ user_id: "u1", source: "studio", course_ref: "c1", title: "Beekeeping", issued_at: "2025-01-01T00:00:00Z", expires_at: "2025-02-01T00:00:00Z" }] };
+    expect(summariseCompliance(input)[0]).toMatchObject({ compliant: false, certified: false });
+    expect(buildXapiStatements(input)).toHaveLength(1);
+  });
   it("includes certificate holders even without activity rows", () => {
     const rows = summariseCompliance({
       ...base,

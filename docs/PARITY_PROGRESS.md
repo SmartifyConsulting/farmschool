@@ -324,8 +324,10 @@ deferred at the user's request until sender details/configuration are supplied.
 
 1. Run database integration tests against a migrated isolated database, then
    exercise cross-user access and complete learner/trainer journeys.
-2. Browser-test certificate claiming and revocation; add public credential
-   verification, expiry/renewal policy and auditable recertification. Stress-test
+2. Browser-test certificate claiming, opt-in public verification, expiry and
+   assessment-based renewal. These are implemented in migrations 0060–0061;
+   renewal requires fresh quiz passes and practical photo approvals and retains
+   the original award. See docs/CERTIFICATE_LIFECYCLE.md. Stress-test
    issuance/revision/revocation with concurrent independent connections.
 3. Verify reporting at production scale and under concurrent changes.
 4. Verify real Stripe test-mode deliveries, webhook subscriptions, retries and
@@ -358,7 +360,7 @@ deferred at the user's request until sender details/configuration are supplied.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041 through 0051 and 0053 through 0059. Migration 0052 belongs to the intervening
+migrations 0041 through 0051 and 0053 through 0061. Migration 0052 belongs to the intervening
 Lovable API-management update and was not deployed by this certificate work.
 Test fixtures were rolled back; existing learner
 records were not edited.

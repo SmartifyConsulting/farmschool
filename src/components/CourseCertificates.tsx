@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { friendlyError } from "@/lib/friendly-error";
 import { certificateStatus } from "@/lib/certificates";
 import { credentialCode } from "@/lib/studio";
+import { CourseCertificatePolicy } from "@/components/CertificateLifecycle";
 
 const reportSchema = z.object({
   total: z.number().int().nonnegative(),
@@ -23,6 +24,7 @@ const reportSchema = z.object({
       validated_at: z.string().nullable(),
       revoked_at: z.string().nullable(),
       revocation_reason: z.string().nullable(),
+      expires_at: z.string().nullable(),
     }),
   ),
 });
@@ -88,6 +90,7 @@ export function CourseCertificates({ courseId }: { courseId: string }) {
   return (
     <section className="mt-8 space-y-3 rounded-xl border p-4">
       <h2 className="font-semibold">Course certificates</h2>
+      <CourseCertificatePolicy courseId={courseId} />
       <p className="text-sm text-muted-foreground">
         Certificates retain their issued course version when the course changes. Revoke only with a
         clear reason; the original record is kept.
@@ -108,6 +111,7 @@ export function CourseCertificates({ courseId }: { courseId: string }) {
                 {certificateStatus(record)} · Issued{" "}
                 {new Date(record.issued_at).toLocaleDateString()}
                 {record.course_version !== null ? ` · Version ${record.course_version}` : ""}
+                {record.expires_at ? ` · Valid until ${new Date(record.expires_at).toLocaleDateString()}` : ""}
               </p>
               {record.revoked_at ? (
                 <p className="whitespace-pre-wrap text-sm text-destructive">

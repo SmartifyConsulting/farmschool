@@ -15,6 +15,7 @@ import { readAllPages } from "@/lib/database-pages";
 import { certificateStatus } from "@/lib/certificates";
 import { extendedDeadline } from "@/lib/deadline-extension";
 import { CohortEmailPreferences } from "@/components/CohortEmailPreferences";
+import { CertificateLifecycle } from "@/components/CertificateLifecycle";
 
 export const Route = createFileRoute("/courses")({
   head: () =>
@@ -59,12 +60,7 @@ function MyCourses() {
     queryFn: async () => {
       const { data } = await readAllPages(
         supabase
-          .from("certificates")
-          .select(
-            "id,title,source,issued_at,course_version,validated_at,revoked_at,revocation_reason",
-            { count: "exact" },
-          )
-          .eq("user_id", user!.id)
+          .rpc("my_certificate_records", {}, { count: "exact" })
           .order("issued_at", { ascending: false })
           .order("id"),
       );
@@ -422,6 +418,7 @@ function MyCourses() {
                     year: "numeric",
                   })}
                 </span>
+                {openCert.expires_at && <span>Valid until {new Date(openCert.expires_at).toLocaleDateString()}</span>}
                 <span className="flex items-center gap-1 font-semibold text-primary">
                   <BadgeCheck className="h-4 w-4" />
                   {certificateStatus(openCert)} · {credentialCode(openCert.id)}
@@ -429,6 +426,7 @@ function MyCourses() {
               </div>
             </div>
           )}
+          {openCert && <CertificateLifecycle key={openCert.id} certificate={openCert} />}
           <button
             onClick={() => window.print()}
             className="mx-auto flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground print:hidden"
