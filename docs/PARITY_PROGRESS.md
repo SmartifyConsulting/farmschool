@@ -385,7 +385,7 @@ deferred at the user's request until sender details/configuration are supplied.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041 through 0051 and 0053 through 0071. Migration 0052 belongs to the intervening
+migrations 0041 through 0051 and 0053 through 0072. Migration 0052 belongs to the intervening
 Lovable API-management update and was not deployed by this certificate work.
 Test fixtures were rolled back; existing learner
 records were not edited.
@@ -395,3 +395,5 @@ Dynamic cohort rules are implemented in migrations 0069–0070, including saved-
 Studio manual import now offers opt-in, local English scanned-PDF recognition with progress, cancellation, page/pixel limits and author review. See docs/SCANNED_DOCUMENT_IMPORT.md. Broader media conversion and browser verification remain.
 
 Dependency hardening updated the PDF reader, input validation, Vite and compatible transitive packages. The production Bun audit now reports no advisory packages; two development-tool packages retain moderate advisories. No advisories were suppressed. See docs/DEPENDENCY_HARDENING.md.
+
+Migration 0072 corrects author draft creation with INSERT RETURNING under the tenant metadata policy. The policy now checks row ownership directly before the scoped lookup, preserving creator access for newly inserted rows. Authenticated non-admin creation/read/update, ownership forgery denial and unrelated-author denial passed in rolled-back database checks.
