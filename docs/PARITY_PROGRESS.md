@@ -295,10 +295,32 @@ daily start quota. Code tests prove saved keys/pass marks are used and public
 start responses omit answers. Validation: 220 tests passed, 17 environment-gated
 skips; TypeScript and production build passed. Browser journeys and independent
 connection concurrency/load testing remain outstanding.
-Paid bulk licence pools and push delivery remain outside the implemented cohort
-controls. Existing per-learner paid access, seat limits and free-course
-auto-enrolment are enforced. Email activation is deferred at the user's request
-until sender details and server configuration are supplied.
+Paid bulk licences now use the selected named-learner model at the listed
+per-learner course price. Cohort owners purchase through Stripe, wait for a
+verified signed payment event and then allocate permanent named seats. Orders,
+allocations and events are private and cannot be minted or edited directly by
+clients. Checkout uses an immutable price/quantity snapshot and a per-order
+idempotency key; return URLs merely select the cohort/purchase for management.
+Allocation locks the order and membership, enforces purchased capacity and keeps
+suspended/former members as consumed seats. It never overwrites a personal
+enrolment. Course visibility, assessments, submissions, random attempts and
+certificate issuance recognise live licensed access while retaining prerequisites.
+Licence rows/membership/assignment are locked for protected finalisation, and
+funding/suspension changes serialise with course activity. Full refunds revoke
+group funding, disputes suspend it and won disputes restore it. Partial refunds
+retain seats under the existing refund policy; proportional reductions are not
+implemented. Personal purchases remain independent. Owner-only reports export
+all named allocations in one database snapshot.
+
+Migration 0059 is applied. Rollback-only role checks cover payment validation,
+unpaid denial, idempotency, named capacity, suspension, membership changes,
+prerequisites, licensed certificate issuance, event ordering and independent
+purchases. Mocked checkout/webhook tests passed. Validation: 240 tests passed,
+17 environment-gated skips; TypeScript and production build passed. No real
+payments or refunds were made. See docs/PAID_COHORT_LICENSES.md for workflows and
+limits. Browser/provider test-mode verification and concurrency/load testing
+remain outstanding. Push delivery remains unimplemented. Email activation is
+deferred at the user's request until sender details/configuration are supplied.
 
 1. Run database integration tests against a migrated isolated database, then
    exercise cross-user access and complete learner/trainer journeys.
@@ -310,18 +332,22 @@ until sender details and server configuration are supplied.
    refund/dispute purchase recovery; the payment migration is applied and its
    state transitions have passed rollback-only database assertions.
 5. Validate xAPI with an LRS; implement portable SCORM export and LTI delivery.
-6. Transfer actual lessons/assessments to Moodle or clearly expose shell-only
-   publishing; verify user matching and completion synchronisation.
+6. Optional interoperability only: Moodle publishing currently transfers a
+   course shell; content transfer, user matching and completion synchronisation
+   need counterpart testing if a customer requests that integration. These are
+   not core requirements for Plusticity's independent LMS/course-creation parity.
 7. Activate and verify Resend delivery/hosting schedule when sender details are
-   supplied. Add push delivery, paid bulk licence pools and browser-tested
+   supplied. Add push delivery and browser-tested
    trainer/learner/manager workflows. Seat limits, free-course auto-enrolment,
-   scoped manager reports and the disabled email worker are implemented.
+   scoped manager reports, paid named bulk licences and the disabled email worker
+   are implemented. Real Stripe test-mode deliveries still need verification.
 8. Verify file transfers/deadline screens in the browser; add file content scanning,
    storage quotas/cleanup, secure exam-bank delivery and broader question-format
    compatibility. Individual extensions, shared libraries, sampled quiz attempts,
    weighted categories, reviewed overrides/moderation and full-course exports are
-   implemented. Verify Moodle XML against a real counterpart and test independent
-   concurrent grading/revision sessions. The course gradebook, evidence
+   implemented. Optionally verify Moodle XML interoperability against a real
+   counterpart; test independent concurrent grading/revision sessions for core
+   Plusticity delivery. The course gradebook, evidence
    submissions and versioned criterion-level rubric scoring are implemented.
 9. Expand authoring/media conversion and review against Coursebox workflows,
    including scanned-document handling and export fidelity.
@@ -332,7 +358,7 @@ until sender details and server configuration are supplied.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041 through 0051 and 0053 through 0058. Migration 0052 belongs to the intervening
+migrations 0041 through 0051 and 0053 through 0059. Migration 0052 belongs to the intervening
 Lovable API-management update and was not deployed by this certificate work.
 Test fixtures were rolled back; existing learner
 records were not edited.

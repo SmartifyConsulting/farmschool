@@ -12,6 +12,7 @@ const sessionSchema = z.object({
   metadata: z.object({
     course_id: z.string().uuid(), user_id: z.string().uuid(),
     price_cents: z.string().optional(), currency: z.string().optional(),
+    purchase_kind: z.literal("cohort_license").optional(), license_order_id: z.string().uuid().optional(), cohort_id: z.string().uuid().optional(), quantity: z.string().regex(/^[1-9][0-9]{0,3}$/).optional(),
   }),
 });
 
@@ -79,7 +80,9 @@ export async function handleStripeLearningWebhook(request: Request): Promise<Res
     const session = sessionSchema.safeParse(rawSession);
     if (!session.success) return new Response("Invalid course purchase", { status: 400 });
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.rpc("apply_learning_payment_event", {
+    const bulk=session.data.metadata.purchase_kind==="cohort_license";
+    if (bulk && (!session.data.metadata.license_order_id || !session.data.metadata.cohort_id || !session.data.metadata.quantity || !session.data.metadata.price_cents)) return new Response("Invalid group licence purchase",{status:400});
+    const { error } = await supabaseAdmin.rpc(bulk ? "apply_cohort_license_payment" : "apply_learning_payment_event", {
       _event: { id: event.id, type: event.type, created: event.created, action, session: session.data },
     });
     if (error) throw new Error("Could not record course payment");

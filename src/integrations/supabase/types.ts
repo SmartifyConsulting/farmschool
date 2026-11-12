@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      course_license_orders: {
+        Row: { id: string; request_id: string; course_id: string; cohort_id: string; buyer_id: string; course_title: string; quantity: number; unit_price_cents: number; currency: string; status: string; stripe_session_id: string | null; checkout_url: string | null; created_at: string; paid_at: string | null }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      course_license_seats: {
+        Row: { id: string; order_id: string; user_id: string; allocated_by: string; allocated_at: string; enabled: boolean; version: number; note: string }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      course_license_seat_events: {
+        Row: { id: string; seat_id: string; actor_id: string; enabled: boolean; reason: string; created_at: string }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       question_libraries: {
         Row: { id: string; owner_id: string; name: string; created_at: string }
         Insert: never
@@ -2026,6 +2044,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      course_license_order_report: { Args: { _order: string }; Returns: Json }
+      create_course_license_order: { Args: { _cohort: string; _course: string; _quantity: number; _request: string }; Returns: Json }
+      bind_course_license_checkout: { Args: { _order: string; _session: string; _url: string }; Returns: undefined }
+      apply_cohort_license_payment: { Args: { _event: Json }; Returns: string }
+      allocate_course_licenses: { Args: { _order: string; _learners: string[] }; Returns: number }
+      set_course_license_enabled: { Args: { _seat: string; _enabled: boolean; _reason: string; _expected_version: number }; Returns: undefined }
+      my_course_paid_access: { Args: { _course: string }; Returns: boolean }
+      course_license_candidates: { Args: { _cohort: string; _course: string }; Returns: { user_id: string; full_name: string; personal_access: boolean; cohort_access: boolean }[] }
+      course_license_allocations: { Args: { _order: string }; Returns: { id: string; user_id: string; full_name: string; enabled: boolean; version: number; note: string; allocated_at: string; current_member: boolean }[] }
       studio_save_quiz_pool: { Args: { _lesson_id: string; _title: string; _pass_mark: number; _questions: Json; _answers: Json; _sample_size: number | null }; Returns: undefined }
       start_quiz_exam: { Args: { _user: string; _lesson: string; _expected_body: string; _expected_quiz: Json; _expected_answers: Json; _selection: number[] }; Returns: Json }
       reserve_quiz_exam: { Args: { _session: string; _user: string; _lesson: string }; Returns: Json }

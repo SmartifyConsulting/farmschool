@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Phone, Header, Sheet, CanvasHeading, useIsAdmin } from "@/components/AppShell";
 import { AdminNav } from "@/components/AdminNav";
@@ -13,6 +13,7 @@ import { friendlyError } from "@/lib/friendly-error";
 import { pageMeta } from "@/lib/page-meta";
 import { readAllPages } from "@/lib/database-pages";
 import { CohortPolicies } from "@/components/CohortPolicies";
+import { CohortLicenses } from "@/components/CohortLicenses";
 
 export const Route = createFileRoute("/admin/cohorts")({
   component: CohortsPage,
@@ -25,6 +26,7 @@ function CohortsPage() {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const [selected, setSelected] = useState("");
+  useEffect(()=>{const cohort=new URLSearchParams(window.location.search).get("cohort");if(cohort&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cohort))setSelected(cohort);},[]);
   const [name, setName] = useState("");
   const [learner, setLearner] = useState("");
   const [search, setSearch] = useState("");
@@ -62,7 +64,7 @@ function CohortsPage() {
         readAllPages(
           supabase
             .from("cohort_course_assignments")
-            .select("course_id,due_at,studio_courses(title)", { count: "exact" })
+            .select("course_id,due_at,studio_courses(title,price_cents,currency,published)", { count: "exact" })
             .eq("cohort_id", selected)
             .order("course_id"),
         ),
@@ -174,6 +176,7 @@ function CohortsPage() {
                 {detail.isLoading && <p>Loading cohort…</p>}
                 {detail.error && <p role="alert">Could not load this cohort.</p>}
                 <CohortPolicies key={selected} cohortId={selected} people={options.data?.profiles ?? []} />
+                <CohortLicenses key={selected+":licenses"} cohortId={selected} courses={(detail.data?.assignments??[]).flatMap((item)=>item.studio_courses?.published&&item.studio_courses.price_cents>0?[{id:item.course_id,...item.studio_courses}]:[])} />
                 <section className="space-y-3">
                   <h2 className="font-semibold">Learners ({detail.data?.members.length ?? 0})</h2>
                   <Input

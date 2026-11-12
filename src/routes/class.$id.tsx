@@ -149,7 +149,10 @@ function ClassPage() {
   const prerequisiteLocked =
     !!course?.prerequisite_course_id && !isAuthor && !prerequisiteLoading && !prerequisiteOk;
   const disputed = enrollment?.payment_status === "disputed";
-  const locked = prerequisiteLocked || (paid && !isAuthor && (!user || !hasActiveEnrollment(enrollment)));
+  const { data: licensed=false,isLoading:licenseLoading }=useQuery({queryKey:["class-license",id,user?.id],enabled:!!user && paid && !isAuthor && !hasActiveEnrollment(enrollment),refetchInterval:30000,queryFn:async()=>{
+    const {data,error}=await supabase.rpc("my_course_paid_access",{_course:id}); if(error)throw error;return data===true;
+  }});
+  const locked = prerequisiteLocked || (paid && !isAuthor && (!user || (!hasActiveEnrollment(enrollment) && !licensed)));
   const qc = useQueryClient();
   const [idx, setIdx] = useState(0);
   const done = new Set(
@@ -227,12 +230,12 @@ function ClassPage() {
               {locked ? (
                 <div className="space-y-3 rounded-2xl border border-border p-6 text-center">
                   <Lock className="mx-auto h-6 w-6 text-muted-foreground" />
-                  <p className="font-semibold">{prerequisiteLocked ? "Complete the prerequisite course first" : disputed ? "Your payment is under review" : enrollment?.payment_status === "refunded" ? "This purchase was refunded" : "This is a paid course"}</p>
+                  <p className="font-semibold">{prerequisiteLocked ? "Complete the prerequisite course first" : licenseLoading ? "Checking your course access…" : disputed ? "Your payment is under review" : enrollment?.payment_status === "refunded" ? "This purchase was refunded" : "This is a paid course"}</p>
                   <p className="text-sm text-muted-foreground">
                     {prerequisiteLocked ? "This course unlocks after you earn the prerequisite certificate." : disputed ? "Course access is paused while the payment dispute is resolved. Please contact support for help." : `${formatPrice(course.price_cents, course.currency)} · one-time purchase`}
                   </p>
                   {!prerequisiteLocked && !disputed && <Button
-                    disabled={buying || !user || prerequisiteLoading || enrollmentLoading}
+                    disabled={buying || !user || prerequisiteLoading || enrollmentLoading || licenseLoading}
                     onClick={async () => {
                       if (!user) {
                         toast.error("Sign in to buy this course.");

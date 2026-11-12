@@ -161,6 +161,64 @@ describe("practical certificate requirements", () => {
   });
 });
 
+describe("certificate access through named cohort licences", () => {
+  function setup(licensed: boolean) {
+    mocks.rpc.mockImplementation(async (name: string) => ({
+      data: name === "studio_course_visible" ? true : licensed,
+      error: null,
+    }));
+    mocks.userFrom.mockImplementation((table: string) =>
+      query(
+        table === "lesson_progress"
+          ? [{ lesson_id: "lesson" }]
+          : {
+              id: "course",
+              title: "Training",
+              published: true,
+              price_cents: 2000,
+              author_id: "trainer",
+              version_number: 1,
+            },
+      ),
+    );
+    mocks.adminFrom.mockImplementation((table: string) =>
+      table === "course_enrollments"
+        ? query(null)
+        : table === "studio_lessons"
+          ? query([
+              {
+                id: "lesson",
+                kind: "reading",
+                body: "Read the notes.",
+                title: "Reading",
+                video_url: null,
+                quiz: null,
+              },
+            ])
+          : query([]),
+    );
+    mocks.adminRpc.mockResolvedValue({
+      data: { id: "10000000-0000-4000-8000-000000000001", title: "Training" },
+      error: null,
+    });
+  }
+  it("accepts verified cohort access without creating a personal purchase", async () => {
+    setup(true);
+    await expect(
+      invokeCertificate({ data: { source: "studio", courseRef: "course" }, context }),
+    ).resolves.toEqual({ ok: true, title: "Training" });
+    expect(mocks.rpc).toHaveBeenCalledWith("my_course_paid_access", { _course: "course" });
+    expect(mocks.adminFrom).not.toHaveBeenCalledWith("certificates");
+  });
+  it("rejects a missing or suspended licence when no personal purchase exists", async () => {
+    setup(false);
+    await expect(
+      invokeCertificate({ data: { source: "studio", courseRef: "course" }, context }),
+    ).rejects.toThrow("Enroll in this course");
+    expect(mocks.adminRpc).not.toHaveBeenCalled();
+  });
+});
+
 describe("random quiz attempt snapshots", () => {
   const attemptId = "10000000-0000-4000-8000-000000000001";
   const lease = "10000000-0000-4000-8000-000000000002";

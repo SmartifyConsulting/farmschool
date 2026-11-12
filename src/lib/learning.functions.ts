@@ -225,7 +225,10 @@ export const claimCertificate = createServerFn({ method: "POST" })
           .eq("user_id", context.userId)
           .eq("course_id", c.id)
           .maybeSingle();
-        if (!hasActiveEnrollment(enrollment)) throw new Error("Enroll in this course before claiming its certificate.");
+        if (!hasActiveEnrollment(enrollment)) {
+          const licensed=await context.supabase.rpc("my_course_paid_access",{_course:c.id});
+          if (licensed.error || licensed.data!==true) throw new Error("Enroll in this course before claiming its certificate.");
+        }
       }
       const { data: lessons } = await supabaseAdmin.from("studio_lessons").select("id, kind, body, title, video_url, quiz").eq("course_id", c.id);
       const { data: passes } = await supabaseAdmin.from("quiz_attempts").select("lesson_id").eq("user_id", context.userId).eq("course_id", c.id).eq("passed", true);
