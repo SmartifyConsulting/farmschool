@@ -2086,6 +2086,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cohort_billing_management: { Args: { _cohort: string }; Returns: Json }
+      set_cohort_billing_manager: { Args: { _cohort: string; _user: string; _allow: boolean; _expected: number; _reason: string }; Returns: undefined }
       save_organization_program: { Args: { _organization: string; _program: string; _title: string; _description: string; _stages: Json; _expected: number }; Returns: number }
       assign_organization_program: { Args: { _cohort: string; _version: string; _due: string | null; _active: boolean; _expected: number }; Returns: undefined }
       organization_program_drafts: { Args: { _organization: string }; Returns: Database["public"]["Tables"]["learning_programs"]["Row"][] }

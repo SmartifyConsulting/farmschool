@@ -15,9 +15,10 @@ in the separate scoped program reports. Workspace managers automatically receive
 reporting access to their organization's bound cohorts and can use the existing
 course/program report screens and CSV exports. They cannot report other tenants.
 
-The cohort creator can buy and manage its paid named licences while they remain
-a workspace manager. Other managers can manage roster/training assignments and
-report progress, while commercial inventory remains creator-only. Buyer identity,
+Migration 0068 extends billing to the organization owner and explicitly appointed
+current billing managers, while preserving creator authority for active managers.
+Other workspace managers can manage roster/training assignments and report
+progress without commercial inventory access. Buyer identity,
 verified provider payment, immutable pricing, capacity and permanent named-seat
 rules are unchanged. Checkout returns bound-cohort buyers to the correct
 organization page and selected purchase. No real payments were made to verify
@@ -42,6 +43,6 @@ testing remain outstanding.
 
 Migration 0067 adds company-managed programs and managerial succession; see
 docs/ORGANIZATION_PROGRAM_OWNERSHIP.md. Remaining enterprise work includes
-dynamic assignment rules and scheduled reports, billing succession when a cohort
-creator leaves, tenant-specific identity providers/custom domains, and full
+dynamic assignment rules and scheduled reports, tenant-specific identity providers/custom domains, and full
 company resource ownership beyond author ownership.
+Billing succession is implemented in migration 0068; see docs/ORGANIZATION_BILLING_SUCCESSION.md.

@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useLearning";
 import { readAllPages } from "@/lib/database-pages";
 import { licenseOrder, licenseReport, licenseReportCsv } from "@/lib/cohort-licenses";
 import { createCohortLicenseCheckout } from "@/lib/cohort-license-checkout.functions";
+import { resumeCohortLicenseCheckout } from "@/lib/cohort-license-resume.functions";
 import { formatPrice } from "@/lib/marketplace";
 import { friendlyError } from "@/lib/friendly-error";
 
@@ -20,6 +21,7 @@ export function CohortLicenses({ cohortId, courses }: { cohortId: string; course
   const qc = useQueryClient();
   const confirm = useConfirm();
   const checkout = useServerFn(createCohortLicenseCheckout);
+  const resumeCheckout = useServerFn(resumeCohortLicenseCheckout);
   const [courseId, setCourseId] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
@@ -123,7 +125,7 @@ export function CohortLicenses({ cohortId, courses }: { cohortId: string; course
       return;
     setBusy(true);
     try {
-      const result = await checkout({
+      const result = previous && previous.buyer_id !== user?.id ? await resumeCheckout({ data: { cohortId, orderId: previous.id } }) : await checkout({
         data: {
           cohortId,
           courseId: target,
@@ -337,13 +339,14 @@ export function CohortLicenses({ cohortId, courses }: { cohortId: string; course
                     type="button"
                     variant="outline"
                     size="sm"
-                    disabled={busy}
+                    disabled={busy || (order!.buyer_id !== user?.id && !order!.checkout_url)}
                     onClick={() => buy(true)}
                   >
                     Resume checkout
                   </Button>
                 )}
               </div>
+              {order!.status === "pending" && order!.buyer_id !== user?.id && <p className="text-sm">Resuming a bound checkout keeps its original buyer and price and does not create another order. If its link was never saved, the original buyer must finish initial checkout creation.</p>}
               {order!.status === "active" && report.data.remaining > 0 && (
                 <div className="space-y-2">
                   <h3 className="text-sm font-medium">Choose learners for permanent allocation</h3>

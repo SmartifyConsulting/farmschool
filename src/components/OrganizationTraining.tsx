@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { readAllPages } from "@/lib/database-pages";
 import { friendlyError } from "@/lib/friendly-error";
 import { CohortLicenses } from "@/components/CohortLicenses";
+import { CohortBillingManagers } from "@/components/CohortBillingManagers";
 
 const summarySchema = z.object({
   members: z.number(),
@@ -45,6 +46,7 @@ export function OrganizationTraining({ organizationId }: { organizationId: strin
   }, []);
   const overview = useQuery({
     queryKey: ["organization-training", organizationId, user?.id],
+    refetchInterval: 30000,
     queryFn: async () => {
       const [cohorts, summary] = await Promise.all([
         readAllPages(
@@ -498,6 +500,7 @@ export function OrganizationTraining({ organizationId }: { organizationId: strin
                   ))
                 )}
               </section>
+              <CohortBillingManagers key={selected+":billing"} cohortId={selected} organizationId={organizationId} />
               {current.can_bill && assignments.data && (
                 <CohortLicenses
                   key={selected}
@@ -514,8 +517,7 @@ export function OrganizationTraining({ organizationId }: { organizationId: strin
               )}
               {!current.can_bill && (
                 <p className="text-sm">
-                  The cohort's creator manages its paid licence purchases and permanent named
-                  allocations.
+                  Paid licence management is limited to the organization owner, active cohort creator and appointed billing managers.
                 </p>
               )}
             </div>
