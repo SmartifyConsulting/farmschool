@@ -24,6 +24,11 @@ const report: Gradebook = {
   ],
 };
 describe("course gradebook", () => {
+  it("loads valid score dictionaries through the report validator", () => {
+    const parsed = gradebookReport.parse(report);
+    expect(parsed.learners[0]?.quizScores["quiz"]).toEqual({ score: 0, passed: false, attempts: 2 });
+    expect(parsed.learners[0]?.competencyScores).toEqual({});
+  });
   it("preserves zero grades, excludes unknown lessons and leaves missing grades empty", () => {
     expect(gradebookSummary(report.learners[0]!, report)).toEqual({
       completed: 1,

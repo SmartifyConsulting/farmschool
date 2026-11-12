@@ -3,7 +3,7 @@ import { verifyStripeSignature } from "./stripe-webhook-verify";
 
 const eventSchema = z.object({
   id: z.string().min(1), type: z.string(), created: z.number().int().nonnegative(),
-  data: z.object({ object: z.record(z.unknown()) }),
+  data: z.object({ object: z.record(z.string(), z.unknown()) }),
 });
 const sessionSchema = z.object({
   id: z.string().startsWith("cs_"), created: z.number().int().nonnegative(),

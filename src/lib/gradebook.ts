@@ -46,9 +46,11 @@ export const gradebookReport = z.object({
         })
         .optional(),
       quizScores: z.record(
+        z.string(),
         z.object({ score, passed: z.boolean(), attempts: z.number().int().positive() }),
       ),
       competencyScores: z.record(
+        z.string(),
         z.object({
           score: score.nullable(),
           achieved: z.boolean(),
