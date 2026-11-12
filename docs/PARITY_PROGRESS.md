@@ -333,7 +333,10 @@ deferred at the user's request until sender details/configuration are supplied.
 4. Verify real Stripe test-mode deliveries, webhook subscriptions, retries and
    refund/dispute purchase recovery; the payment migration is applied and its
    state transitions have passed rollback-only database assertions.
-5. Validate xAPI with an LRS; implement portable SCORM export and LTI delivery.
+5. Validate xAPI with an LRS and native SCORM export in a destination LMS; implement
+   LTI delivery. A single-SCO SCORM 1.2 exporter is implemented for supported native
+   lessons and fixed-answer quizzes. It blocks unsupported server-dependent work
+   and documents flattened slides and externally hosted video. See docs/SCORM_EXPORT.md.
 6. Optional interoperability only: Moodle publishing currently transfers a
    course shell; content transfer, user matching and completion synchronisation
    need counterpart testing if a customer requests that integration. These are
@@ -352,7 +355,10 @@ deferred at the user's request until sender details/configuration are supplied.
    Plusticity delivery. The course gradebook, evidence
    submissions and versioned criterion-level rubric scoring are implemented.
 9. Expand authoring/media conversion and review against Coursebox workflows,
-   including scanned-document handling and export fidelity.
+   including scanned-document handling and export fidelity. Native course content
+   archives and atomic restoration to a new unpublished draft are implemented in
+   migration 0063. Media files and operational settings are not embedded; SCORM
+   activity archives need their original package ZIP. See docs/COURSE_CONTENT_ARCHIVES.md.
 10. Verify accessible, multilingual and mobile/offline delivery, backup/restore,
     operational monitoring and realistic load handling.
 11. Workplace scope: tenant isolation and branding, organisation hierarchies,
@@ -365,7 +371,7 @@ deferred at the user's request until sender details/configuration are supplied.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041 through 0051 and 0053 through 0062. Migration 0052 belongs to the intervening
+migrations 0041 through 0051 and 0053 through 0063. Migration 0052 belongs to the intervening
 Lovable API-management update and was not deployed by this certificate work.
 Test fixtures were rolled back; existing learner
 records were not edited.

@@ -2068,6 +2068,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      export_course_archive: { Args: { _course: string }; Returns: Json }
+      restore_course_archive: { Args: { _request: string; _archive: Json }; Returns: string }
       cohort_program_versions: { Args: { _cohort: string }; Returns: { id: string; title: string; version: number; active: boolean; due_at: string | null }[] }
       save_learning_program: { Args: { _program: string; _title: string; _description: string; _stages: Json; _expected: number }; Returns: number }
       publish_learning_program: { Args: { _program: string; _expected: number }; Returns: string }

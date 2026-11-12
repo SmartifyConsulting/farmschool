@@ -24,6 +24,7 @@ import { CoverImageInput } from "@/components/CoverImageInput";
 import { StudioCourseActions } from "@/components/StudioCourseActions";
 import { CourseViewToggle, useCourseView } from "@/components/CourseViewToggle";
 import { QuestionBank } from "@/components/QuestionBank";
+import { CourseArchiveRestore } from "@/components/CourseArchiveTools";
 
 export const Route = createFileRoute("/studio")({
   head: () => ({
@@ -350,6 +351,7 @@ function Studio() {
         <div className="mb-4">
           <CanvasHeading eyebrow="For trainers" title="Course Studio" />
           <QuestionBank />
+          {user && <CourseArchiveRestore />}
         </div>
         {ready && !user ? (
           <p className="py-10 text-center text-sm text-muted-foreground">

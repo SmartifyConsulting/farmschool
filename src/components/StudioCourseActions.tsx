@@ -7,12 +7,30 @@ import { supabase } from "@/integrations/supabase/client";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { friendlyError } from "@/lib/friendly-error";
 import { toast } from "sonner";
+import { downloadCourseArchive } from "@/components/CourseArchiveTools";
 
 type Course = { id: string; title: string; published: boolean };
 export function StudioCourseActions({ course, onChanged, revisionOnly = false }: { course: Course; onChanged: () => void; revisionOnly?: boolean }) {
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
   const confirm = useConfirm();
+  const exportArchive = async () => {
+    if (busy || !(await confirm({ title: "Export private course content?", description: "This content archive includes your lessons and quiz answer keys. Keep the file private. Media files, learner records and operational settings are not included.", confirmLabel: "Export content archive" }))) return;
+    setBusy(true);
+    try { await downloadCourseArchive(course.id); } catch (error) { toast.error(friendlyError(error, "Could not export the complete course archive.")); } finally { setBusy(false); }
+  };
+  const exportScorm = async () => {
+    if (busy || !(await confirm({ title: "Export a SCORM 1.2 package?", description: "The package contains quiz answer keys. The destination LMS manages learner access, progress and certificates. Text-based slides are flattened; video links need internet. Unsupported server-dependent activities stop the export. Test the package in the destination LMS before assigning it.", confirmLabel: "Export SCORM package" }))) return;
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.rpc("export_course_archive", { _course: course.id });
+      if (error) throw error;
+      const [{ validateCourseArchive }, { buildScormZip }] = await Promise.all([import("@/lib/course-archive"), import("@/lib/scorm-export")]);
+      const bytes = await buildScormZip(validateCourseArchive(data));
+      const url = URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: "application/zip" }));
+      const a = document.createElement("a"); a.href = url; a.download = "plusticity-scorm-" + course.id + ".zip"; a.click(); URL.revokeObjectURL(url);
+    } catch (error) { toast.error(friendlyError(error, "Could not export this course as a portable SCORM package.")); } finally { setBusy(false); }
+  };
   const copy = async (revision: boolean) => {
     if (busy) return;
     setBusy(true);
@@ -42,6 +60,8 @@ export function StudioCourseActions({ course, onChanged, revisionOnly = false }:
     <DropdownMenuItem asChild><Link to="/studio/$id" params={{ id: course.id }}><PenSquare className="h-4 w-4" />Open course</Link></DropdownMenuItem>
     {course.published && <DropdownMenuItem onClick={() => copy(true)}><PenSquare className="h-4 w-4" />Create draft revision</DropdownMenuItem>}
     <DropdownMenuItem onClick={() => copy(false)}><Copy className="h-4 w-4" />Duplicate as draft</DropdownMenuItem>
+    <DropdownMenuItem onClick={exportArchive}>Export content archive</DropdownMenuItem>
+    <DropdownMenuItem onClick={exportScorm}>Export SCORM 1.2 package</DropdownMenuItem>
     <DropdownMenuItem disabled={course.published} className="text-destructive" onClick={remove}><Trash2 className="h-4 w-4" />Delete draft</DropdownMenuItem>
   </DropdownMenuContent></DropdownMenu>;
 }
