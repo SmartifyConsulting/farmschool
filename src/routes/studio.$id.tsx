@@ -475,6 +475,12 @@ function Editor() {
   const [importing, setImporting] = useState(false);
   const [manualFormat, setManualFormat] = useState<"reading" | "slide">("reading");
   const [readingFile, setReadingFile] = useState(false);
+  const [localOcr, setLocalOcr] = useState(false);
+  const [extractionProgress, setExtractionProgress] = useState("");
+  const [recognizedPages, setRecognizedPages] = useState<{ page: number; confidence: number }[]>([]);
+  const [lowTextPages, setLowTextPages] = useState<number[]>([]);
+  const extractionController = useRef<AbortController | null>(null);
+  useEffect(() => () => extractionController.current?.abort(), []);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiDraft, setAiDraft] = useState<{
     lessonTitle: string;
@@ -966,14 +972,25 @@ function Editor() {
   };
 
   const readTextFile = async (file: File | undefined) => {
-    if (!file) return;
+    if (!file || readingFile) return;
     if (!/\.(pdf|docx|pptx|txt|md)$/i.test(file.name)) {
       toast.error("Choose a PDF, DOCX, PPTX, TXT or MD file.");
       return;
     }
     setReadingFile(true);
+    const controller = new AbortController();
+    extractionController.current = controller;
+    setRecognizedPages([]);
+    setLowTextPages([]);
+    setExtractionProgress("Opening document…");
     try {
-      const pages = await extractDocument(file);
+      const pages = await extractDocument(file, {
+        ocr: localOcr,
+        signal: controller.signal,
+        onProgress: (page, total, recognizing) => setExtractionProgress(`${recognizing ? "Recognizing scanned" : "Reading"} page ${page} of ${total}…`),
+        onRecognized: (page, confidence) => setRecognizedPages(previous => [...previous, { page, confidence }]),
+        onLowTextPage: page => setLowTextPages(previous => [...previous, page]),
+      });
       const text = pages.map((page) => page.text).join("\n\n");
       if (!text.trim()) throw new Error("This file has no readable text.");
       setSourceName(file.name);
@@ -986,9 +1003,12 @@ function Editor() {
       setFactoryStep(1);
       toast.success("Manual extracted. Review the lessons below.");
     } catch (error) {
-      toast.error(friendlyError(error, "Could not read file."));
+      if (controller.signal.aborted) toast.info("Document extraction cancelled.");
+      else toast.error(friendlyError(error, "Could not read file."));
     } finally {
+      if (extractionController.current === controller) extractionController.current = null;
       setReadingFile(false);
+      setExtractionProgress("");
     }
   };
   const previewSource = (override?: { pages?: SourcePage[]; name?: string; text?: string }) => {
@@ -2354,9 +2374,14 @@ function Editor() {
                       <p className="text-xs text-muted-foreground">
                         Paste extracted text from a training manual. Module and chapter headings
                         become draft reading lessons. Upload PDF, Word, PowerPoint or plain text.
-                        Scanned PDFs require OCR, which is not yet available. Review every lesson
+                        Enable local recognition for scanned English PDFs. Review every lesson
                         before publishing.
                       </p>
+                      <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={localOcr} disabled={readingFile} onChange={event => setLocalOcr(event.target.checked)} />Recognize scanned English PDF pages on this device</label>
+                      {localOcr && <p className="text-xs text-muted-foreground">Up to 20 pages with little embedded text, within the 12 MB document limit. First use downloads the recognition engine from Plusticity. Source pages stay on your device during recognition. Check spelling, numbers and reading order; tables and handwriting may be inaccurate.</p>}
+                      {readingFile && <div className="flex items-center gap-2"><p role="status" aria-live="polite" className="text-xs">{extractionProgress}</p><Button type="button" size="sm" variant="outline" onClick={() => extractionController.current?.abort()}>Cancel extraction</Button></div>}
+                      {!readingFile && recognizedPages.length > 0 && <p role="status" className="text-xs">Recognized {recognizedPages.length} scanned pages. Review all extracted text before importing.{recognizedPages.some(page => page.confidence < 70) && ` Low-confidence pages: ${recognizedPages.filter(page => page.confidence < 70).map(page => page.page).join(", ")}.`}</p>}
+                      {!readingFile && !recognizedPages.length && lowTextPages.length > 0 && <p role="status" className="text-xs">Pages with little embedded text: {lowTextPages.join(", ")}. Check the original pages. Scanned images may need local recognition; upload again with recognition enabled.</p>}
                       <label className="block text-xs font-medium">
                         Upload a manual (PDF, DOCX, PPTX, TXT or MD)
                         <input

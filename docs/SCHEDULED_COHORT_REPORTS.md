@@ -33,4 +33,6 @@ Failed scheduled generation is isolated and records a sanitized status.
 Migration 0071 and transactional SQL checks cover manual retry, complete private
 course data, due/duplicate scheduling, stale version rejection, cross-company and
 learner denial, creator demotion, unpublished-course redaction and retention.
-Browser downloads and the report timer still need observation after deployment.
+The first actual report timer check succeeded at 17:52 UTC on 12 November 2026.
+This was an empty production batch; report generation used rolled-back synthetic
+fixtures. Browser downloads still need observation after application deployment.
