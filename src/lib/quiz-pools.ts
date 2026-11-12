@@ -1,11 +1,17 @@
 import { z } from "zod";
 
 export function quizSampleSize(body: string | null | undefined): number | null {
-  const match = body?.match(/^pass:(\d{1,3})\nsample:([1-9]\d?)$/);
+  const match = body?.match(
+    /^pass:(\d{1,3})\nsample:([1-9]\d?)(?:\nbank:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/,
+  );
   if (!match) return null;
   const mark = Number(match[1]);
   const size = Number(match[2]);
   return mark >= 1 && mark <= 100 && size <= 50 ? size : null;
+}
+export function privateQuizBankId(body: string | null | undefined): string | null {
+  if (quizSampleSize(body) === null) return null;
+  return body?.match(/\nbank:([0-9a-f-]{36})$/)?.[1] ?? null;
 }
 const randomInt = (max: number) => {
   const cutoff = Math.floor(0x100000000 / max) * max;

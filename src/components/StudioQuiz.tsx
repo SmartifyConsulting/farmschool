@@ -74,7 +74,6 @@ export function StudioQuiz({
   };
   if (!questions)
     return <p className="text-sm text-muted-foreground">This quiz could not be loaded.</p>;
-  if (!questions.length) return <p className="text-sm text-muted-foreground">No questions yet.</p>;
   if (sampleSize !== null && !exam)
     return (
       <div className="space-y-3">
@@ -87,6 +86,7 @@ export function StudioQuiz({
         </Button>
       </div>
     );
+  if (!questions.length) return <p className="text-sm text-muted-foreground">No questions yet.</p>;
   const hasWrittenQuestions = questions.some((question) => question.kind === "written");
 
   const choose = (index: number, answer: QuizResponse) => {

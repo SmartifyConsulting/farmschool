@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { chooseQuizIndices, quizSampleSize } from "./quiz-pools";
+import { chooseQuizIndices, quizSampleSize, privateQuizBankId } from "./quiz-pools";
 import { parsePassMark } from "./studio";
 
 describe("random quiz question pools", () => {
+  it("recognizes private banks without accepting malformed sampling settings", () => {
+    const bank = "10000000-0000-4000-8000-000000000001";
+    expect(quizSampleSize(`pass:80\nsample:5\nbank:${bank}`)).toBe(5);
+    expect(privateQuizBankId(`pass:80\nsample:5\nbank:${bank}`)).toBe(bank);
+    expect(privateQuizBankId(`pass:0\nsample:5\nbank:${bank}`)).toBeNull();
+    expect(privateQuizBankId("pass:80\nsample:5\nbank:malformed")).toBeNull();
+    expect(privateQuizBankId("pass:80\nsample:5")).toBeNull();
+  });
   it("selects unique source indices without replacement", () => {
     expect(chooseQuizIndices(4, 3, (max) => max - 1)).toEqual([3, 0, 1]);
     expect(chooseQuizIndices(4, 4, (max) => max - 1).sort()).toEqual([0, 1, 2, 3]);

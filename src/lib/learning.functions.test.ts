@@ -220,6 +220,24 @@ describe("certificate access through named cohort licences", () => {
 });
 
 describe("random quiz attempt snapshots", () => {
+  it("samples a private pool while returning only the saved selection", async () => {
+    const bankId = "10000000-0000-4000-8000-000000000003";
+    const stub = [{ kind: "boolean", q: "Questions are selected when you start an attempt." }];
+    const body = `pass:80\nsample:2\nbank:${bankId}`;
+    mocks.rpc.mockResolvedValue({ data: true, error: null });
+    mocks.adminFrom.mockImplementation((table: string) => query(table === "studio_exam_banks" ? { questions: [{ kind: "boolean", q: "Private A" }, { kind: "boolean", q: "Private B" }, { kind: "boolean", q: "Private C" }] } : { id: "lesson", course_id: "course", body, quiz: stub, studio_courses: { published: true, author_id: "trainer" }, studio_quiz_answers: { course_id: "course", answers: [0] } }));
+    mocks.adminRpc.mockResolvedValue({ error: null, data: { attemptId: "10000000-0000-4000-8000-000000000004", questions: [{ kind: "boolean", q: "Private B", answer: 1 }, { kind: "boolean", q: "Private A" }], answers: [1, 0], expiresAt: "2026-11-12T16:00:00Z" } });
+    const started = await invokeBegin({ data: { lessonId: "lesson" }, context });
+    expect(started).toEqual({ attemptId: "10000000-0000-4000-8000-000000000004", questions: [{ kind: "boolean", q: "Private B" }, { kind: "boolean", q: "Private A" }], expiresAt: "2026-11-12T16:00:00Z" });
+    expect(mocks.adminRpc).toHaveBeenCalledWith("start_quiz_exam", expect.objectContaining({ _expected_body: body, _expected_quiz: stub, _expected_answers: [0], _selection: expect.arrayContaining([expect.any(Number), expect.any(Number)]) }));
+    await expect(invokeQuiz({ data: { lessonId: "lesson", answers: [0] }, context })).rejects.toThrow("Start a random quiz attempt");
+  });
+  it("does not read a private pool before learner access is verified", async () => {
+    mocks.rpc.mockResolvedValue({ data: false, error: null });
+    mocks.adminFrom.mockReturnValue(query({ id: "lesson", course_id: "course", body: "pass:80\nsample:1\nbank:10000000-0000-4000-8000-000000000003", quiz: [], studio_quiz_answers: { course_id: "course", answers: [0] } }));
+    await expect(invokeBegin({ data: { lessonId: "lesson" }, context })).rejects.toThrow("not available");
+    expect(mocks.adminFrom).not.toHaveBeenCalledWith("studio_exam_banks");
+  });
   const attemptId = "10000000-0000-4000-8000-000000000001";
   const lease = "10000000-0000-4000-8000-000000000002";
   const result = {

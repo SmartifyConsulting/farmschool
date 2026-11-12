@@ -385,15 +385,17 @@ deferred at the user's request until sender details/configuration are supplied.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041 through 0051 and 0053 through 0072. Migration 0052 belongs to the intervening
+migrations 0041 through 0051 and 0053 through 0073. Migration 0052 belongs to the intervening
 Lovable API-management update and was not deployed by this certificate work.
 Test fixtures were rolled back; existing learner
 records were not edited.
 
-Dynamic cohort rules are implemented in migrations 0069–0070, including saved-rule previews, manual-member protection, exclusion controls, scoped history/CSV, atomic capacity checks and a bounded database scheduler. Rules default to paused. Scheduled company cohort progress snapshots and CSV downloads are implemented in migration 0071; email remains deferred. See docs/SCHEDULED_COHORT_REPORTS.md. See docs/DYNAMIC_COHORT_RULES.md. Current checks: 278 passed, 17 environment-gated skipped; production build/type checks passed. The cohort-rule timer succeeded at 17:45 UTC on 12 November 2026. The report timer succeeded at 17:52 UTC. Browser verification remains.
+Dynamic cohort rules are implemented in migrations 0069–0070, including saved-rule previews, manual-member protection, exclusion controls, scoped history/CSV, atomic capacity checks and a bounded database scheduler. Rules default to paused. Scheduled company cohort progress snapshots and CSV downloads are implemented in migration 0071; email remains deferred. See docs/SCHEDULED_COHORT_REPORTS.md. See docs/DYNAMIC_COHORT_RULES.md. Current checks: 282 passed, 17 environment-gated skipped; production build/type checks passed. The cohort-rule timer succeeded at 17:45 UTC on 12 November 2026. The report timer succeeded at 17:52 UTC. Browser verification remains.
 
 Studio manual import now offers opt-in, local English scanned-PDF recognition with progress, cancellation, page/pixel limits and author review. See docs/SCANNED_DOCUMENT_IMPORT.md. Broader media conversion and browser verification remain.
 
 Dependency hardening updated the PDF reader, input validation, Vite and compatible transitive packages. The production Bun audit now reports no advisory packages; two development-tool packages retain moderate advisories. No advisories were suppressed. See docs/DEPENDENCY_HARDENING.md.
 
 Migration 0072 corrects author draft creation with INSERT RETURNING under the tenant metadata policy. The policy now checks row ownership directly before the scoped lookup, preserving creator access for newly inserted rows. Authenticated non-admin creation/read/update, ownership forgery denial and unrelated-author denial passed in rolled-back database checks.
+
+Optional private exam pools are implemented in migration 0073. Learner-readable lessons contain no bank questions/keys; attempts reveal only their server-selected snapshot. Copies/revisions preserve immutable banks and native archive restore preserves privacy. Legacy public random pools remain available. See docs/PRIVATE_EXAM_BANKS.md. Broader assessment formats, proctoring/adaptive testing and browser/concurrency verification remain.

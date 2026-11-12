@@ -368,6 +368,12 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      studio_exam_banks: {
+        Row: { id: string; owner_id: string; questions: Json; answers: Json; created_at: string }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       cohort_report_schedules: {
         Row: { cohort_id: string; enabled: boolean; interval_minutes: number; version: number; changed_by: string; next_run: string; last_run: string | null; last_status: string | null }
         Insert: never
@@ -2098,6 +2104,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      studio_save_private_quiz: { Args: { _lesson: string; _title: string; _pass_mark: number; _questions: Json; _answers: Json; _sample_size: number }; Returns: string }
       save_cohort_report_schedule: { Args: { _cohort: string; _enabled: boolean; _interval: number; _expected: number }; Returns: number }
       generate_cohort_report_snapshot: { Args: { _cohort: string; _request: string }; Returns: string }
       company_cohort_report_history: { Args: { _cohort: string }; Returns: { id: string; created_at: string; scheduled: boolean; schedule_version: number | null; rows: number }[] }

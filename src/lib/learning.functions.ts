@@ -6,7 +6,7 @@ import { parsePassMark } from "@/lib/studio";
 import { gradeQuiz, parseQuizQuestions, quizSubmission } from "@/lib/studio-quiz";
 import { parseLessonSlides, practicalTaskIndex } from "@/lib/lesson-slides";
 import { hasActiveEnrollment } from "@/lib/marketplace";
-import { chooseQuizIndices, quizSampleSize, quizResult } from "@/lib/quiz-pools";
+import { chooseQuizIndices, quizSampleSize, privateQuizBankId, quizResult } from "@/lib/quiz-pools";
 
 export const beginQuizAttempt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -28,7 +28,14 @@ export const beginQuizAttempt = createServerFn({ method: "POST" })
     });
     if (access.error || access.data !== true)
       throw new Error("This course is not available to you.");
-    const questions = parseQuizQuestions(lesson.quiz);
+    const bankId = privateQuizBankId(lesson.body);
+    let pool = lesson.quiz;
+    if (bankId) {
+      const bank = await supabaseAdmin.from("studio_exam_banks").select("questions").eq("id", bankId).maybeSingle();
+      if (bank.error || !bank.data) throw new Error("This private exam is not ready.");
+      pool = bank.data.questions;
+    }
+    const questions = parseQuizQuestions(pool);
     const size = quizSampleSize(lesson.body);
     if (!questions?.length || size === null || size > questions.length)
       throw new Error("This random quiz is not configured correctly.");

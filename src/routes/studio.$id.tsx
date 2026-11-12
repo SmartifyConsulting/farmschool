@@ -54,7 +54,7 @@ import { SlideEditor } from "@/components/SlideEditor";
 import { QuizQuestionEditor } from "@/components/QuizQuestionEditor";
 import { QuestionBank } from "@/components/QuestionBank";
 import { appendBankQuestion } from "@/lib/question-bank";
-import { quizSampleSize } from "@/lib/quiz-pools";
+import { quizSampleSize, privateQuizBankId } from "@/lib/quiz-pools";
 import {
   buildQuiz,
   loadQuizDraft,
@@ -3421,6 +3421,7 @@ function LessonEditor({
   );
   const [passMark, setPassMark] = useState(() => parsePassMark(lesson.body));
   const [sampleSize, setSampleSize] = useState<number | null>(() => quizSampleSize(lesson.body));
+  const [privateExam, setPrivateExam] = useState(() => privateQuizBankId(lesson.body) !== null);
   const confirm = useConfirm();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(true);
@@ -3433,29 +3434,36 @@ function LessonEditor({
       qs,
       passMark,
       sampleSize,
+      privateExam,
       objectives,
     }),
   );
   useEffect(() => {
     if (lesson.kind !== "quiz") return;
     let active = true;
-    supabase
-      .from("studio_quiz_answers")
-      .select("answers")
-      .eq("lesson_id", lesson.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (!active) return;
-        const questions = parseQuizQuestions(initialQuiz);
-        if (error || !questions) {
-          setQuizLoad("failed");
-          return;
+    void (async () => {
+      try {
+        const bankId = privateQuizBankId(lesson.body);
+        let questions = parseQuizQuestions(initialQuiz);
+        let keys: unknown;
+        if (bankId) {
+          const { data, error } = await supabase.from("studio_exam_banks").select("questions,answers").eq("id", bankId).maybeSingle();
+          if (error || !data) throw new Error("Private exam unavailable");
+          questions = parseQuizQuestions(data.questions);
+          keys = data.answers;
+        } else {
+          const { data, error } = await supabase.from("studio_quiz_answers").select("answers").eq("lesson_id", lesson.id).maybeSingle();
+          if (error) throw error;
+          keys = data?.answers;
         }
-        const next = loadQuizDraft(questions, data?.answers);
+        if (!active) return;
+        if (!questions) throw new Error("Quiz unavailable");
+        const next = loadQuizDraft(questions, keys);
         baseline.current = JSON.stringify({ ...JSON.parse(baseline.current), qs: next });
         setQs(next);
         setQuizLoad("ready");
-      });
+      } catch { if (active) setQuizLoad("failed"); }
+    })();
     return () => {
       active = false;
     };
@@ -3496,7 +3504,10 @@ function LessonEditor({
           if (!silent) toast.error("Choose a random sample size within the question pool.");
           return;
         }
-        ({ error } = await supabase.rpc("studio_save_quiz_pool", {
+        if (privateExam) {
+          if (sampleSize === null) { if (!silent) toast.error("Choose a sample size for the private exam."); return; }
+          ({ error } = await supabase.rpc("studio_save_private_quiz", { _lesson: lesson.id, _title: title, _pass_mark: passMark, _questions: quiz.questions, _answers: quiz.keys, _sample_size: sampleSize }));
+        } else ({ error } = await supabase.rpc("studio_save_quiz_pool", {
           _lesson_id: lesson.id,
           _title: title,
           _pass_mark: passMark,
@@ -3533,6 +3544,7 @@ function LessonEditor({
         qs,
         passMark,
         sampleSize,
+        privateExam,
         objectives,
       });
       setSaved(true);
@@ -3544,9 +3556,9 @@ function LessonEditor({
   useEffect(() => {
     setSaved(
       baseline.current ===
-        JSON.stringify({ title, video, body, kind, qs, passMark, sampleSize, objectives }),
+        JSON.stringify({ title, video, body, kind, qs, passMark, sampleSize, privateExam, objectives }),
     );
-  }, [title, video, body, kind, qs, passMark, sampleSize, objectives]);
+  }, [title, video, body, kind, qs, passMark, sampleSize, privateExam, objectives]);
   const del = async () => {
     if (
       readOnly ||
@@ -3735,7 +3747,7 @@ function LessonEditor({
               <input
                 type="checkbox"
                 checked={sampleSize !== null}
-                disabled={readOnly || saving || qs.length === 0}
+                disabled={readOnly || saving || privateExam || qs.length === 0}
                 onChange={(e) =>
                   setSampleSize(e.target.checked ? Math.min(5, Math.max(1, qs.length)) : null)
                 }
@@ -3757,6 +3769,9 @@ function LessonEditor({
                 />
               </label>
             )}
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={privateExam} disabled={readOnly || saving || qs.length === 0} onChange={event => { setPrivateExam(event.target.checked); if (event.target.checked && sampleSize === null) setSampleSize(Math.min(5, Math.max(1, qs.length))); }} />Keep the complete question pool private</label>
+            {privateExam && <p className="text-xs text-muted-foreground">Learners receive only the questions selected when starting an attempt. Each save creates a private bank version; active attempts keep their original selection. Questions seen in earlier public versions remain known. Authorized author exports include the complete questions and answers.</p>}
+            {!privateExam && privateQuizBankId(lesson.body) && <p className="text-xs text-muted-foreground">Saving with pool privacy off places the full question pool in lesson content. Learners can read it once the course is published.</p>}
             {sampleSize !== null && (
               <p className="text-xs text-muted-foreground">
                 The saved quiz questions form the pool (up to 50). Each learner gets a

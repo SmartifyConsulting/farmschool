@@ -35,6 +35,7 @@ export const courseArchiveSchema = z.object({
             position: z.number().int(),
             video_url: z.string().nullable(),
             quiz: z.unknown(),
+            secure_bank: z.boolean().optional(),
           })
           .passthrough(),
       )
@@ -84,6 +85,8 @@ export function validateCourseArchive(input: unknown): CourseArchive {
     buildQuiz(loadQuizDraft(questions, keys));
     lesson.quiz = questions;
     const sample = quizSampleSize(lesson.body);
+    if (lesson.secure_bank && sample === null)
+      throw new Error("Private exam archives require a saved question sample size.");
     lesson.body = `pass:${parsePassMark(lesson.body)}${sample === null ? "" : `\nsample:${sample}`}`;
   }
   return archive;

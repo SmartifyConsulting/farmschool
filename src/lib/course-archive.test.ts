@@ -27,6 +27,13 @@ const fixture = () => ({
   },
 });
 describe("native content archives", () => {
+  it("preserves private exam protection during archive validation", () => {
+    const source = fixture();
+    const archive = validateCourseArchive({ ...source, snapshot: { ...source.snapshot, lessons: source.snapshot.lessons.map(lesson => ({ ...lesson, body: "pass:75\nsample:1", secure_bank: true })) } });
+    expect(archive.snapshot.lessons[0]?.secure_bank).toBe(true);
+    expect(archive.snapshot.lessons[0]?.body).toBe("pass:75\nsample:1");
+    expect(() => validateCourseArchive({ ...source, snapshot: { ...source.snapshot, lessons: source.snapshot.lessons.map(lesson => ({ ...lesson, secure_bank: true })) } })).toThrow("sample size");
+  });
   it("retains organization privacy metadata for restore enforcement", () => {
     const source = fixture();
     const archive = validateCourseArchive({ ...source, snapshot: { ...source.snapshot, organization_id: course } });
