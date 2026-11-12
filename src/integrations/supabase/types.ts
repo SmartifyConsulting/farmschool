@@ -14,12 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      quiz_question_bank: {
-        Row: { id: string; owner_id: string; category: string; question: Json; answer: Json; version: number; created_at: string; updated_at: string }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
       activity_rubric_criteria: {
         Row: {
           activity_id: string
@@ -1337,6 +1331,39 @@ export type Database = {
         }
         Relationships: []
       }
+      quiz_question_bank: {
+        Row: {
+          answer: Json
+          category: string
+          created_at: string
+          id: string
+          owner_id: string
+          question: Json
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          answer: Json
+          category: string
+          created_at?: string
+          id?: string
+          owner_id?: string
+          question: Json
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          answer?: Json
+          category?: string
+          created_at?: string
+          id?: string
+          owner_id?: string
+          question?: Json
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
       scorm_attempts: {
         Row: {
           id: string
@@ -1932,8 +1959,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      save_bank_question: { Args: { _id: string | null; _category: string; _question: Json; _answer: Json; _expected_version: number }; Returns: string }
-      delete_bank_question: { Args: { _id: string; _expected_version: number }; Returns: undefined }
       add_course_competency: {
         Args: {
           _code: string
@@ -2062,6 +2087,10 @@ export type Database = {
         Args: { _display_name: string; _expertise: string; _industry: string }
         Returns: undefined
       }
+      delete_bank_question: {
+        Args: { _expected_version: number; _id: string }
+        Returns: undefined
+      }
       dm_threads: {
         Args: never
         Returns: {
@@ -2140,6 +2169,10 @@ export type Database = {
         Args: { _course: string }
         Returns: string
       }
+      question_bank_valid: {
+        Args: { _answer: Json; _question: Json }
+        Returns: boolean
+      }
       record_audit_event: {
         Args: {
           _action: string
@@ -2162,6 +2195,16 @@ export type Database = {
       reserve_api_key_request: {
         Args: { _key_id: string; _scope: string }
         Returns: boolean
+      }
+      save_bank_question: {
+        Args: {
+          _answer: Json
+          _category: string
+          _expected_version: number
+          _id: string
+          _question: Json
+        }
+        Returns: string
       }
       save_competency_rubric: {
         Args: {
