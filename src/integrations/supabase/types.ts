@@ -2086,6 +2086,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      organization_assignable_courses: { Args: { _organization: string }; Returns: { id: string; title: string }[] }
+      cohort_billing_destination: { Args: { _cohort: string }; Returns: string | null }
+      create_organization_cohort: { Args: { _organization: string; _cohort: string; _name: string }; Returns: string }
+      save_organization_cohort: { Args: { _cohort: string; _name: string; _seats: number | null; _auto_free: boolean; _expected: number }; Returns: number }
+      set_organization_cohort_member: { Args: { _cohort: string; _user: string; _include: boolean }; Returns: undefined }
+      set_organization_cohort_course: { Args: { _cohort: string; _course: string; _include: boolean; _due: string | null }; Returns: undefined }
+      organization_training_cohorts: { Args: { _organization: string }; Returns: { id: string; name: string; seat_limit: number | null; auto_enrol_free: boolean; policy_version: number; member_count: number; can_bill: boolean }[] }
+      organization_cohort_people: { Args: { _cohort: string }; Returns: { user_id: string; full_name: string }[] }
+      organization_cohort_courses: { Args: { _cohort: string }; Returns: { course_id: string; title: string; published: boolean; price_cents: number; currency: string; due_at: string | null }[] }
+      organization_learning_summary: { Args: { _organization: string }; Returns: Json }
       set_course_organization: { Args: { _course: string; _organization: string | null; _expected: string | null }; Returns: undefined }
       bind_organization_cohort: { Args: { _cohort: string; _organization: string; _expected: string | null }; Returns: undefined }
       my_organizations: { Args: Record<string, never>; Returns: { id: string; name: string; welcome: string; brand_color: string; logo_url: string | null; version: number; can_manage: boolean }[] }

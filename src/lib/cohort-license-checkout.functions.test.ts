@@ -52,7 +52,10 @@ beforeEach(() => {
   vi.stubEnv("STRIPE_SECRET_KEY", "test-only-placeholder");
   vi.stubEnv("SITE_URL", "https://learning.example.invalid");
   vi.stubGlobal("fetch", mocks.fetch);
-  mocks.userRpc.mockResolvedValue({ data: order, error: null });
+  mocks.userRpc.mockImplementation(async (name) => ({
+    data: name === "cohort_billing_destination" ? null : order,
+    error: null,
+  }));
   mocks.adminRpc.mockResolvedValue({ error: null });
   mocks.fetch.mockResolvedValue(
     Response.json({ id: "cs_bulk_fixture", url: "https://checkout.stripe.com/c/pay/fixture" }),
@@ -63,6 +66,28 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe("paid cohort checkout", () => {
+  it("returns organization buyers to their own workspace", async () => {
+    const organization = "10000000-0000-4000-8000-000000000006";
+    mocks.userRpc.mockImplementation(async (name) => ({
+      data: name === "cohort_billing_destination" ? organization : order,
+      error: null,
+    }));
+    await invoke(input());
+    const body = (mocks.fetch.mock.calls[0]?.[1] as RequestInit).body as URLSearchParams;
+    const destination = new URL(body.get("success_url")!);
+    expect(destination.pathname).toBe("/organizations/" + organization);
+    expect(destination.searchParams.get("cohort")).toBe(ids.cohort);
+    expect(destination.searchParams.get("license_order")).toBe(ids.order);
+  });
+  it("does not contact the provider when buyer return scope cannot be verified", async () => {
+    mocks.userRpc.mockImplementation(async (name) =>
+      name === "cohort_billing_destination"
+        ? { data: null, error: { message: "Access denied" } }
+        : { data: order, error: null },
+    );
+    await expect(invoke(input())).rejects.toThrow("return address");
+    expect(mocks.fetch).not.toHaveBeenCalled();
+  });
   it("uses the saved price and quantity rather than client pricing", async () => {
     expect(await invoke(input())).toEqual({
       kind: "checkout",

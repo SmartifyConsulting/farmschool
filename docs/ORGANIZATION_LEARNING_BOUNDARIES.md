@@ -47,9 +47,9 @@ The application suite passes 258 tests with 17 environment-gated skips;
 TypeScript and production build pass. Independent concurrent-connection and
 browser checks remain pending.
 
-Current limits: organization directory managers still need dedicated tenant
-cohort management controls and tenant-wide learning dashboards; existing cohort
-administration and bulk billing are platform-administrator/owner workflows.
+Migration 0066 adds dedicated tenant-manager cohort controls, scoped learning
+overviews/reports and creator-only named-licence billing. See
+docs/ORGANIZATION_COHORT_MANAGEMENT.md.
 Programs remain author-owned, and question-library collaboration is explicitly
 granted independently. Full corporate resource ownership, tenant-specific
 identity providers, domains and complete shared-shell branding are not claimed.

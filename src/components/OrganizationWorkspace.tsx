@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { readAllPages } from "@/lib/database-pages";
 import { friendlyError } from "@/lib/friendly-error";
 import { departmentPath } from "@/lib/organizations";
+import { OrganizationTraining } from "@/components/OrganizationTraining";
 
 export function OrganizationWorkspace({ organizationId }: { organizationId: string }) {
   const { user, ready } = useAuth();
@@ -236,6 +237,7 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
                 Switch organization
               </Link>
             </section>
+            {org.can_manage && <OrganizationTraining key={organizationId} organizationId={organizationId} />}
             {org.can_manage && (
               <section className="space-y-3 rounded-xl border p-4">
                 <h2 className="font-semibold">Workspace branding</h2>

@@ -27,8 +27,8 @@ This milestone isolates organization directory/branding data. Migration 0065
 adds opt-in private organization courses, bound cohort/program assignments and
 enforcement across database, server, SCORM and export paths. See
 docs/ORGANIZATION_LEARNING_BOUNDARIES.md. Author ownership is preserved. Dedicated
-tenant-manager cohort controls and tenant-wide learning dashboards, custom
-domains and a fully branded shared shell remain to be implemented.
+tenant-manager cohort controls and scoped learning dashboards are added in
+migration 0066. Custom domains and a fully branded shared shell remain to be implemented.
 
 Migration 0064 is applied. Rollback-only role checks passed for tenant reads,
 learner self-only directory access, manager scoping, no self-promotion, protected

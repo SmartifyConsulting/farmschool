@@ -51,7 +51,17 @@ export const createCohortLicenseCheckout = createServerFn({ method: "POST" })
       } as const;
     if (order.checkout_url)
       return { kind: "checkout" as const, url: secureUrl(order.checkout_url).href };
-    const destination = new URL("/admin/cohorts", origin);
+    const { data: organization, error: destinationError } = await context.supabase.rpc(
+      "cohort_billing_destination",
+      { _cohort: order.cohort_id },
+    );
+    if (destinationError)
+      throw new Error("Could not confirm the group checkout return address. Please retry.");
+    const organizationId = z.string().uuid().nullable().parse(organization);
+    const destination = new URL(
+      organizationId ? "/organizations/" + organizationId : "/admin/cohorts",
+      origin,
+    );
     destination.searchParams.set("cohort", order.cohort_id);
     destination.searchParams.set("license_order", order.id);
     const returnUrl = destination.href;
