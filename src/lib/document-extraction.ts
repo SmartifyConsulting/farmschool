@@ -3,6 +3,7 @@
  */
 import type { SourcePage } from "./course-factory";
 import { createDocumentOcr, MAX_OCR_PAGES, ocrViewport } from "./document-ocr";
+import { inspectOfficeDocument } from "./office-import";
 
 export const MAX_DOCUMENT_BYTES = 12 * 1024 * 1024;
 
@@ -20,15 +21,25 @@ export async function extractDocument(
 ): Promise<SourcePage[]> {
   options.signal?.throwIfAborted();
   if (file.size > MAX_DOCUMENT_BYTES) throw new Error("Document exceeds 12 MB.");
+  const complete = (pages: SourcePage[]) => {
+    options.signal?.throwIfAborted();
+    if (pages.reduce((total, page) => total + page.text.length, 0) > 1_000_000)
+      throw new Error(
+        "Extracted document exceeds one million characters. Split it into smaller files.",
+      );
+    return pages;
+  };
   const ext = file.name.split(".").pop()?.toLowerCase();
   if (ext === "txt" || ext === "md") {
-    return [{ sourceId: file.name, page: 1, text: await file.text() }];
+    return complete([{ sourceId: file.name, page: 1, text: await file.text() }]);
   }
   if (ext === "docx") {
     const mammoth = await import("mammoth/mammoth.browser");
-    const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+    const buffer = await file.arrayBuffer();
+    await inspectOfficeDocument(buffer, () => false, options.signal);
+    const result = await mammoth.extractRawText({ arrayBuffer: buffer });
     if (!result.value.trim()) throw new Error("No readable Word text found.");
-    return [{ sourceId: file.name, page: 1, text: result.value }];
+    return complete([{ sourceId: file.name, page: 1, text: result.value }]);
   }
   if (ext === "pdf") {
     const pdfjs = await import("pdfjs-dist");
@@ -42,6 +53,8 @@ export async function extractDocument(
       useSystemFonts: true,
       disableFontFace: true,
       enableXfa: false,
+      maxImageSize: 16_000_000,
+      canvasMaxAreaInBytes: 16_000_000,
     });
     const pages: SourcePage[] = [];
     let ocr: Awaited<ReturnType<typeof createDocumentOcr>> | undefined;
@@ -124,7 +137,7 @@ export async function extractDocument(
             : "This PDF appears scanned. Enable local scanned-PDF recognition or paste the text manually.",
         );
       signal.throwIfAborted();
-      return pages;
+      return complete(pages);
     } finally {
       signal.removeEventListener("abort", abortLoading);
       ocr?.close();
@@ -132,15 +145,19 @@ export async function extractDocument(
     }
   }
   if (ext === "pptx") {
-    const JSZip = (await import("jszip")).default;
-    const zip = await JSZip.loadAsync(await file.arrayBuffer());
-    const slides = Object.keys(zip.files)
+    const content = await inspectOfficeDocument(
+      await file.arrayBuffer(),
+      (name) => /^ppt\/slides\/slide\d+\.xml$/.test(name),
+      options.signal,
+    );
+    const slides = [...content.keys()]
       .filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name))
       .sort((a, b) => Number(a.match(/slide(\d+)/)?.[1]) - Number(b.match(/slide(\d+)/)?.[1]));
     if (slides.length > 500) throw new Error("Presentation exceeds 500 slides.");
     const pages: SourcePage[] = [];
     for (const [index, name] of slides.entries()) {
-      const xml = await zip.files[name]!.async("text");
+      options.signal?.throwIfAborted();
+      const xml = content.get(name)!;
       const document = new DOMParser().parseFromString(xml, "application/xml");
       if (document.querySelector("parsererror")) throw new Error("Invalid PowerPoint slide XML.");
       const text = Array.from(
@@ -155,7 +172,7 @@ export async function extractDocument(
     }
     if (!pages.length || pages.every((page) => !page.text.trim()))
       throw new Error("No readable slide text found.");
-    return pages;
+    return complete(pages);
   }
   throw new Error("Supported formats: PDF, DOCX, PPTX, TXT and MD.");
 }
