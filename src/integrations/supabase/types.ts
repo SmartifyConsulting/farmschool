@@ -2086,6 +2086,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      save_organization_program: { Args: { _organization: string; _program: string; _title: string; _description: string; _stages: Json; _expected: number }; Returns: number }
+      assign_organization_program: { Args: { _cohort: string; _version: string; _due: string | null; _active: boolean; _expected: number }; Returns: undefined }
+      organization_program_drafts: { Args: { _organization: string }; Returns: Database["public"]["Tables"]["learning_programs"]["Row"][] }
+      organization_program_versions: { Args: { _organization: string }; Returns: Database["public"]["Tables"]["learning_program_versions"]["Row"][] }
+      organization_program_assignments: { Args: { _organization: string }; Returns: Database["public"]["Tables"]["cohort_program_assignments"]["Row"][] }
       organization_assignable_courses: { Args: { _organization: string }; Returns: { id: string; title: string }[] }
       cohort_billing_destination: { Args: { _cohort: string }; Returns: string | null }
       create_organization_cohort: { Args: { _organization: string; _cohort: string; _name: string }; Returns: string }

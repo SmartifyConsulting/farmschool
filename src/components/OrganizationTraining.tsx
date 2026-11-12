@@ -64,7 +64,13 @@ export function OrganizationTraining({ organizationId }: { organizationId: strin
     },
   });
   const current = overview.data?.cohorts.find((c) => c.id === selected);
-  const { id: settingsId, name: settingsName, seat_limit: settingsLimit, auto_enrol_free: settingsAuto, policy_version: settingsVersion } = current ?? {};
+  const {
+    id: settingsId,
+    name: settingsName,
+    seat_limit: settingsLimit,
+    auto_enrol_free: settingsAuto,
+    policy_version: settingsVersion,
+  } = current ?? {};
   useEffect(() => {
     if (!settingsId) return;
     setName(settingsName ?? "");
@@ -256,6 +262,13 @@ export function OrganizationTraining({ organizationId }: { organizationId: strin
           </div>
           <Link className="block text-primary underline" to="/cohorts">
             Open scoped course and program reports
+          </Link>
+          <Link
+            className="block text-primary underline"
+            to="/organizations/$id/programs"
+            params={{ id: organizationId }}
+          >
+            Manage organization programs
           </Link>
           <div className="flex flex-wrap gap-3">
             <Input

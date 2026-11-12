@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { OrganizationWorkspace } from "@/components/OrganizationWorkspace";
 import { pageMeta } from "@/lib/page-meta";
 export const Route = createFileRoute("/organizations/$id")({
@@ -8,5 +8,10 @@ export const Route = createFileRoute("/organizations/$id")({
 });
 function Workspace() {
   const { id } = Route.useParams();
-  return <OrganizationWorkspace key={id} organizationId={id} />;
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  return path.replace(/\/$/, "") === "/organizations/" + id ? (
+    <OrganizationWorkspace key={id} organizationId={id} />
+  ) : (
+    <Outlet />
+  );
 }

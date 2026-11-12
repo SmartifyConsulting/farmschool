@@ -40,7 +40,8 @@ The application suite passes 260 tests with 17 environment-gated skips;
 TypeScript and production build pass. Browser and independent concurrency/load
 testing remain outstanding.
 
-Remaining enterprise work includes company-owned/delegated program management,
+Migration 0067 adds company-managed programs and managerial succession; see
+docs/ORGANIZATION_PROGRAM_OWNERSHIP.md. Remaining enterprise work includes
 dynamic assignment rules and scheduled reports, billing succession when a cohort
 creator leaves, tenant-specific identity providers/custom domains, and full
 company resource ownership beyond author ownership.

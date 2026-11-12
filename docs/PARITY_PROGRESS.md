@@ -375,13 +375,15 @@ deferred at the user's request until sender details/configuration are supplied.
     archives, SCORM/community access and account caches. Migration 0066 adds
     tenant-manager cohort controls, learning dashboards/reports and creator-only
     named-licence billing without platform roles. Full corporate resource ownership
-    and delegated program/billing succession remain. See
+    remains. Migration 0067 adds company-owned programs with scoped managerial
+    editing, immutable publication and assignment, plus succession after the
+    creator leaves. Billing succession remains. See docs/ORGANIZATION_PROGRAM_OWNERSHIP.md and
     docs/ORGANIZATION_LEARNING_BOUNDARIES.md and docs/ORGANIZATION_COHORT_MANAGEMENT.md.
     See docs/ORGANIZATION_WORKSPACES.md.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041 through 0051 and 0053 through 0066. Migration 0052 belongs to the intervening
+migrations 0041 through 0051 and 0053 through 0067. Migration 0052 belongs to the intervening
 Lovable API-management update and was not deployed by this certificate work.
 Test fixtures were rolled back; existing learner
 records were not edited.

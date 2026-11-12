@@ -58,6 +58,7 @@ import { Route as VerifyTokenRouteImport } from './routes/verify.$token'
 import { Route as ApiCronCohortRemindersRouteImport } from './routes/api/cron/cohort-reminders'
 import { Route as ApiScormFileSplatRouteImport } from './routes/api/scorm-file.$'
 import { Route as LessonCourseIdLessonIdRouteImport } from './routes/lesson.$courseId.$lessonId'
+import { Route as OrganizationsIdProgramsRouteImport } from './routes/organizations.$id.programs'
 import { Route as ApiPublicV1CoursesRouteImport } from './routes/api/public/v1/courses'
 import { Route as ApiPublicV1ProgressRouteImport } from './routes/api/public/v1/progress'
 
@@ -307,6 +308,11 @@ const LessonCourseIdLessonIdRoute = LessonCourseIdLessonIdRouteImport.update({
   path: '/lesson/$courseId/$lessonId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrganizationsIdProgramsRoute = OrganizationsIdProgramsRouteImport.update({
+  id: '/programs',
+  path: '/programs',
+  getParentRoute: () => OrganizationsIdRoute,
+} as any)
 const ApiPublicV1CoursesRoute = ApiPublicV1CoursesRouteImport.update({
   id: '/api/public/v1/courses',
   path: '/api/public/v1/courses',
@@ -357,7 +363,7 @@ export interface FileRoutesByFullPath {
   '/gradebook/$courseId': typeof GradebookCourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
-  '/organizations/$id': typeof OrganizationsIdRoute
+  '/organizations/$id': typeof OrganizationsIdRouteWithChildren
   '/programs/$id': typeof ProgramsIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
@@ -368,6 +374,7 @@ export interface FileRoutesByFullPath {
   '/api/cron/cohort-reminders': typeof ApiCronCohortRemindersRoute
   '/api/scorm-file/$': typeof ApiScormFileSplatRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
+  '/organizations/$id/programs': typeof OrganizationsIdProgramsRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
   '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
 }
@@ -410,7 +417,7 @@ export interface FileRoutesByTo {
   '/gradebook/$courseId': typeof GradebookCourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
-  '/organizations/$id': typeof OrganizationsIdRoute
+  '/organizations/$id': typeof OrganizationsIdRouteWithChildren
   '/programs/$id': typeof ProgramsIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
@@ -421,6 +428,7 @@ export interface FileRoutesByTo {
   '/api/cron/cohort-reminders': typeof ApiCronCohortRemindersRoute
   '/api/scorm-file/$': typeof ApiScormFileSplatRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
+  '/organizations/$id/programs': typeof OrganizationsIdProgramsRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
   '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
 }
@@ -464,7 +472,7 @@ export interface FileRoutesById {
   '/gradebook/$courseId': typeof GradebookCourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
-  '/organizations/$id': typeof OrganizationsIdRoute
+  '/organizations/$id': typeof OrganizationsIdRouteWithChildren
   '/programs/$id': typeof ProgramsIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
@@ -475,6 +483,7 @@ export interface FileRoutesById {
   '/api/cron/cohort-reminders': typeof ApiCronCohortRemindersRoute
   '/api/scorm-file/$': typeof ApiScormFileSplatRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
+  '/organizations/$id/programs': typeof OrganizationsIdProgramsRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
   '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
 }
@@ -530,6 +539,7 @@ export interface FileRouteTypes {
     | '/api/cron/cohort-reminders'
     | '/api/scorm-file/$'
     | '/lesson/$courseId/$lessonId'
+    | '/organizations/$id/programs'
     | '/api/public/v1/courses'
     | '/api/public/v1/progress'
   fileRoutesByTo: FileRoutesByTo
@@ -583,6 +593,7 @@ export interface FileRouteTypes {
     | '/api/cron/cohort-reminders'
     | '/api/scorm-file/$'
     | '/lesson/$courseId/$lessonId'
+    | '/organizations/$id/programs'
     | '/api/public/v1/courses'
     | '/api/public/v1/progress'
   id:
@@ -636,6 +647,7 @@ export interface FileRouteTypes {
     | '/api/cron/cohort-reminders'
     | '/api/scorm-file/$'
     | '/lesson/$courseId/$lessonId'
+    | '/organizations/$id/programs'
     | '/api/public/v1/courses'
     | '/api/public/v1/progress'
   fileRoutesById: FileRoutesById
@@ -1035,6 +1047,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LessonCourseIdLessonIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/organizations/$id/programs': {
+      id: '/organizations/$id/programs'
+      path: '/programs'
+      fullPath: '/organizations/$id/programs'
+      preLoaderRoute: typeof OrganizationsIdProgramsRouteImport
+      parentRoute: typeof OrganizationsIdRoute
+    }
     '/api/public/v1/courses': {
       id: '/api/public/v1/courses'
       path: '/api/public/v1/courses'
@@ -1064,12 +1083,24 @@ const MessagesRouteWithChildren = MessagesRoute._addFileChildren(
   MessagesRouteChildren,
 )
 
+interface OrganizationsIdRouteChildren {
+  OrganizationsIdProgramsRoute: typeof OrganizationsIdProgramsRoute
+}
+
+const OrganizationsIdRouteChildren: OrganizationsIdRouteChildren = {
+  OrganizationsIdProgramsRoute: OrganizationsIdProgramsRoute,
+}
+
+const OrganizationsIdRouteWithChildren = OrganizationsIdRoute._addFileChildren(
+  OrganizationsIdRouteChildren,
+)
+
 interface OrganizationsRouteChildren {
-  OrganizationsIdRoute: typeof OrganizationsIdRoute
+  OrganizationsIdRoute: typeof OrganizationsIdRouteWithChildren
 }
 
 const OrganizationsRouteChildren: OrganizationsRouteChildren = {
-  OrganizationsIdRoute: OrganizationsIdRoute,
+  OrganizationsIdRoute: OrganizationsIdRouteWithChildren,
 }
 
 const OrganizationsRouteWithChildren = OrganizationsRoute._addFileChildren(

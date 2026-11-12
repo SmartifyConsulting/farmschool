@@ -50,6 +50,7 @@ browser checks remain pending.
 Migration 0066 adds dedicated tenant-manager cohort controls, scoped learning
 overviews/reports and creator-only named-licence billing. See
 docs/ORGANIZATION_COHORT_MANAGEMENT.md.
-Programs remain author-owned, and question-library collaboration is explicitly
+Migration 0067 adds organization-owned programs maintained by current workspace
+managers; existing personal programs retain their prior ownership. Question-library collaboration is explicitly
 granted independently. Full corporate resource ownership, tenant-specific
 identity providers, domains and complete shared-shell branding are not claimed.
