@@ -14,6 +14,12 @@ export type Database = {
   }
   public: {
     Tables: {
+      quiz_question_bank: {
+        Row: { id: string; owner_id: string; category: string; question: Json; answer: Json; version: number; created_at: string; updated_at: string }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       activity_rubric_criteria: {
         Row: {
           activity_id: string
@@ -1926,6 +1932,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      save_bank_question: { Args: { _id: string | null; _category: string; _question: Json; _answer: Json; _expected_version: number }; Returns: string }
+      delete_bank_question: { Args: { _id: string; _expected_version: number }; Returns: undefined }
       add_course_competency: {
         Args: {
           _code: string

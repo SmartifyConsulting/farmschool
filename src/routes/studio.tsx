@@ -23,6 +23,7 @@ import { PolishButton } from "@/components/PolishButton";
 import { CoverImageInput } from "@/components/CoverImageInput";
 import { StudioCourseActions } from "@/components/StudioCourseActions";
 import { CourseViewToggle, useCourseView } from "@/components/CourseViewToggle";
+import { QuestionBank } from "@/components/QuestionBank";
 
 export const Route = createFileRoute("/studio")({
   head: () => ({
@@ -348,6 +349,7 @@ function Studio() {
       <Sheet wide>
         <div className="mb-4">
           <CanvasHeading eyebrow="For trainers" title="Course Studio" />
+          <QuestionBank />
         </div>
         {ready && !user ? (
           <p className="py-10 text-center text-sm text-muted-foreground">

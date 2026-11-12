@@ -52,6 +52,8 @@ import {
 import { FormattedLesson } from "@/components/FormattedLesson";
 import { SlideEditor } from "@/components/SlideEditor";
 import { QuizQuestionEditor } from "@/components/QuizQuestionEditor";
+import { QuestionBank } from "@/components/QuestionBank";
+import { appendBankQuestion } from "@/lib/question-bank";
 import {
   buildQuiz,
   loadQuizDraft,
@@ -3653,6 +3655,7 @@ function LessonEditor({
         )}
         {lesson.kind === "quiz" && quizLoad === "ready" && (
           <div className="space-y-3">
+            <QuestionBank questions={qs} disabled={readOnly || saving} onAdd={(row) => setQs(appendBankQuestion(qs, row.question, row.answer))} />
             {qs.map((question, qi) => (
               <QuizQuestionEditor
                 key={qi}

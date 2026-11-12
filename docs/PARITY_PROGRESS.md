@@ -162,6 +162,22 @@ learners can read/write only their own read receipts. Reproducible checks are
 in drizzle/tests/0044_notification_access.sql. These are in-app reminders,
 refreshed while using the app, not scheduled email or push delivery.
 
+Course Studio now includes a private question bank, also available inside each
+draft quiz. Authors can create questions, save copies from existing quizzes,
+search prompts, filter categories, page through the library, edit and delete
+entries, and add independent copies to quizzes. All five existing question types
+retain their private answer keys. Quiz imports enforce the 50-question and
+five-written-response limits; existing course copies do not track library edits.
+Migration 0051 is applied. Rollback-only authenticated-role tests passed for
+owner-only reads, denied anonymous access/direct writes, stale edit/delete
+rejection, answer validation and cross-user update/delete denial. Checks are in
+drizzle/tests/0051_question_bank_access.sql. The combined code preserves the
+Lovable sidebar/font release at 2208e6c. Validation: 170 tests passed, 17
+environment-gated tests skipped, TypeScript and production build passed.
+The question-bank interface still needs a signed-in browser journey. Shared
+department banks, random exam pools, question usage history and Moodle question
+format import/export are not implemented by this private copy-based library.
+
 1. Run database integration tests against a migrated isolated database, then
    exercise cross-user access and complete learner/trainer journeys.
 2. Make certificate validation and issuance transactional with course revision
@@ -176,7 +192,8 @@ refreshed while using the app, not scheduled email or push delivery.
 7. Extend cohort administration with enrolment/licensing policies, scheduled email/push reminders,
    manager reporting and browser-tested trainer/learner workflows.
 8. Verify file transfers/deadline screens in the browser; add file content scanning,
-   storage quotas/cleanup, individual deadline extensions, reusable question banks,
+   storage quotas/cleanup, individual deadline extensions, shared question banks
+   and random exam pools,
    weighted course categories, overrides, moderation
    and whole-course grade export. The course gradebook, text/evidence-link
    submissions and versioned criterion-level rubric scoring are implemented.
@@ -189,5 +206,5 @@ refreshed while using the app, not scheduled email or push delivery.
 
 No Lovable AI generation or paid AI calls were made. Committing application
 code does not establish production deployment. The connected database received
-migrations 0041 through 0050. Test fixtures were rolled back; existing learner
+migrations 0041 through 0051. Test fixtures were rolled back; existing learner
 records were not edited.
