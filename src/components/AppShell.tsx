@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { type ReactNode } from "react";
 import logo from "@/assets/plusticity-logo.png";
+import mobileLogo from "@/assets/plusticity-logo-navy.png";
 import { useBookmarks, useAuth } from "@/hooks/useLearning";
 import { LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -51,7 +52,7 @@ export function useIsAdmin() {
 export function Phone({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   return (
-    <div className="min-h-screen bg-muted md:pl-64">
+    <div className="min-h-screen bg-muted md:pl-[230.4px]">
       <DesktopSidebar />
       <div className="relative mx-auto min-h-screen w-full max-w-md overflow-hidden bg-card pb-32 md:max-w-none md:pb-14">
         {children}
@@ -80,9 +81,9 @@ export function Phone({ children }: { children: ReactNode }) {
 function DesktopSidebar() {
   const path = useRouterState({ select: (state) => state.location.pathname });
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col overflow-y-auto bg-[#2765BC] px-4 py-6 text-white md:flex">
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[230.4px] flex-col overflow-y-auto bg-[#2765BC] px-4 py-6 text-white md:flex">
       <Link to="/" aria-label="Plusticity home" className="mb-6 flex shrink-0 justify-center">
-        <img src={logo} alt="Plusticity" className="h-[165.6px] max-w-full object-contain" />
+        <img src={logo} alt="Plusticity" className="h-[149.04px] max-w-full object-contain" />
       </Link>
       <nav aria-label="Main navigation" className="space-y-2">
         {[...tabs, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const].map((item) => {
@@ -96,6 +97,16 @@ function DesktopSidebar() {
           );
         })}
       </nav>
+      <div className="mt-auto space-y-4 pt-8">
+        <div className="flex items-center justify-between gap-2">
+          <Link to="/notifications" aria-label="Notifications" className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-white/15 hover:bg-white/25">
+            <Bell aria-hidden="true" className="h-4 w-4" />
+          </Link>
+          <LanguageSwitcher />
+          <AvatarMenu horizontal />
+        </div>
+        <AccountLinks />
+      </div>
     </aside>
   );
 }
@@ -197,7 +208,7 @@ function HeaderAction() {
       <div className="flex shrink-0 gap-2 md:hidden">
         <Link
           to="/auth"
-          className="rounded-xl bg-white/15 px-3 py-2 text-xs font-semibold text-white"
+          className="rounded-xl bg-muted px-3 py-2 text-xs font-semibold text-foreground"
         >
           Sign in
         </Link>
@@ -216,31 +227,17 @@ function HeaderAction() {
 
 export function Header({ children, wide = false }: { children?: ReactNode; wide?: boolean }) {
   return (
-    <header className="relative bg-[#2765BC] px-5 pb-6 pt-5 text-white md:px-10 md:py-0">
+    <header className="relative bg-card px-5 pb-4 pt-5 text-foreground md:contents">
       <div className="mx-auto max-w-[1760px]">
-        <div className="hidden h-20 items-center justify-end gap-4 md:flex">
-          <div className="flex shrink-0 items-center gap-2">
-            <Link
-              to="/notifications"
-              aria-label="Notifications"
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-white/15 text-white hover:bg-white/25"
-            >
-              <Bell className="h-4 w-4" />
-            </Link>
-            <LanguageSwitcher />
-            <AccountLinks horizontal />
-            <AvatarMenu horizontal />
-          </div>
-        </div>
         <div className="flex items-center justify-between gap-3 md:hidden">
           <Link to="/" aria-label="Home" className="shrink-0">
-            <img src={logo} alt="Plusticity" className="h-[62.1px] w-auto object-contain" />
+            <img src={mobileLogo} alt="Plusticity" className="h-[55.89px] w-auto object-contain" />
           </Link>
           <div className="flex shrink-0 items-center gap-2">
             <Link
               to="/notifications"
               aria-label="Notifications"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-white/15 text-white hover:bg-white/25"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-foreground hover:bg-muted/75"
             >
               <Bell className="h-5 w-5" />
             </Link>
@@ -279,7 +276,7 @@ export function SearchBox() {
 
 function Footer() {
   return (
-    <footer className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-card px-5 py-2 text-[11px] text-muted-foreground md:left-64 md:px-10">
+    <footer className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-card px-5 py-2 text-[11px] text-muted-foreground md:left-[230.4px] md:px-10">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-1 sm:flex-row sm:justify-between">
         <p>© 2026 Smartify Consulting (Pty) Ltd. All rights reserved.</p>
         <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-3">
