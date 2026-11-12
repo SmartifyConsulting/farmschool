@@ -36,6 +36,7 @@ export const courseArchiveSchema = z.object({
             video_url: z.string().nullable(),
             quiz: z.unknown(),
             secure_bank: z.boolean().optional(),
+            exam_policy: z.object({ max_attempts: z.number().int().min(1).max(1000).nullable(), duration_minutes: z.number().int().min(1).max(1440), retry_minutes: z.number().int().min(0).max(10080) }).optional(),
           })
           .passthrough(),
       )
@@ -77,7 +78,10 @@ export function validateCourseArchive(input: unknown): CourseArchive {
   for (const lesson of lessons) {
     if (lesson.module_id && !modules.some((m) => m.id === lesson.module_id))
       throw new Error("Archive contains a lesson with a missing module.");
-    if (lesson.kind !== "quiz") continue;
+    if (lesson.kind !== "quiz") {
+      if (lesson.exam_policy) throw new Error("Exam controls require a quiz lesson.");
+      continue;
+    }
     const questions = parseQuizQuestions(lesson.quiz);
     const keys = answers.find((a) => a.lesson_id === lesson.id)?.answers;
     if (!questions?.length || !Array.isArray(keys) || questions.length !== keys.length)
@@ -85,6 +89,7 @@ export function validateCourseArchive(input: unknown): CourseArchive {
     buildQuiz(loadQuizDraft(questions, keys));
     lesson.quiz = questions;
     const sample = quizSampleSize(lesson.body);
+    if (lesson.exam_policy && sample === null) throw new Error("Archived exam controls require a question sample size.");
     if (lesson.secure_bank && sample === null)
       throw new Error("Private exam archives require a saved question sample size.");
     lesson.body = `pass:${parsePassMark(lesson.body)}${sample === null ? "" : `\nsample:${sample}`}`;

@@ -34,6 +34,7 @@ const responseSchema = z.union([
 export const quizSubmission = z.object({
   lessonId: z.string().uuid(),
   attemptId: z.string().uuid().optional(),
+  draftVersion: z.number().int().nonnegative().optional(),
   answers: z.array(responseSchema).min(1).max(50),
 });
 export type QuizResponse = z.infer<typeof responseSchema>;

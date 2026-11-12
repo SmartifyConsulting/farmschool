@@ -368,6 +368,12 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      studio_quiz_policies: {
+        Row: { lesson_id: string; course_id: string; max_attempts: number | null; duration_minutes: number; retry_minutes: number; version: number }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       studio_exam_banks: {
         Row: { id: string; owner_id: string; questions: Json; answers: Json; created_at: string }
         Insert: never
@@ -2104,6 +2110,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      save_quiz_exam_policy: { Args: { _lesson: string; _max: number | null; _duration: number; _retry: number; _expected: number }; Returns: number }
+      remove_quiz_exam_policy: { Args: { _lesson: string; _expected: number }; Returns: undefined }
+      save_quiz_exam_answers: { Args: { _session: string; _user: string; _responses: Json; _expected: number }; Returns: number }
+      my_quiz_exam_status: { Args: { _lesson: string }; Returns: Json }
       studio_save_private_quiz: { Args: { _lesson: string; _title: string; _pass_mark: number; _questions: Json; _answers: Json; _sample_size: number }; Returns: string }
       save_cohort_report_schedule: { Args: { _cohort: string; _enabled: boolean; _interval: number; _expected: number }; Returns: number }
       generate_cohort_report_snapshot: { Args: { _cohort: string; _request: string }; Returns: string }
@@ -2174,8 +2184,8 @@ export type Database = {
       course_license_candidates: { Args: { _cohort: string; _course: string }; Returns: { user_id: string; full_name: string; personal_access: boolean; cohort_access: boolean }[] }
       course_license_allocations: { Args: { _order: string }; Returns: { id: string; user_id: string; full_name: string; enabled: boolean; version: number; note: string; allocated_at: string; current_member: boolean }[] }
       studio_save_quiz_pool: { Args: { _lesson_id: string; _title: string; _pass_mark: number; _questions: Json; _answers: Json; _sample_size: number | null }; Returns: undefined }
-      start_quiz_exam: { Args: { _user: string; _lesson: string; _expected_body: string; _expected_quiz: Json; _expected_answers: Json; _selection: number[] }; Returns: Json }
-      reserve_quiz_exam: { Args: { _session: string; _user: string; _lesson: string }; Returns: Json }
+      start_quiz_exam: { Args: { _user: string; _lesson: string; _expected_body: string; _expected_quiz: Json; _expected_answers: Json; _selection: number[]; _fresh?: boolean; _request?: string }; Returns: Json }
+      reserve_quiz_exam: { Args: { _session: string; _user: string; _lesson: string; _responses?: Json; _expected_version?: number }; Returns: Json }
       release_quiz_exam: { Args: { _session: string; _lease: string }; Returns: undefined }
       finish_quiz_exam: { Args: { _session: string; _user: string; _lease: string; _correct: Json; _feedback: Json }; Returns: Json }
       my_question_libraries: { Args: never; Returns: { id: string; name: string; can_edit: boolean; owner: boolean }[] }

@@ -52,6 +52,7 @@ import {
 import { FormattedLesson } from "@/components/FormattedLesson";
 import { SlideEditor } from "@/components/SlideEditor";
 import { QuizQuestionEditor } from "@/components/QuizQuestionEditor";
+import { QuizExamPolicy } from "@/components/QuizExamPolicy";
 import { QuestionBank } from "@/components/QuestionBank";
 import { appendBankQuestion } from "@/lib/question-bank";
 import { quizSampleSize, privateQuizBankId } from "@/lib/quiz-pools";
@@ -3812,6 +3813,7 @@ function LessonEditor({
           </Button>
         </div>
       </fieldset>
+      {kind === "quiz" && <QuizExamPolicy key={lesson.id} lessonId={lesson.id} body={lesson.body} readOnly={readOnly} />}
       {kind === "slide" && readOnly && (
         <div className="px-4 pb-4 md:px-6 md:pb-6">
           <SlideEditor value={body} onChange={setBody} readOnly />

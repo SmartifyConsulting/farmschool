@@ -23,7 +23,7 @@ vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: { from: mocks.adminFrom, rpc: mocks.adminRpc },
 }));
 
-import { beginQuizAttempt, claimCertificate, submitQuiz } from "./learning.functions";
+import { beginQuizAttempt, claimCertificate, submitQuiz, saveQuizAttemptDraft } from "./learning.functions";
 
 function query(data: unknown, error: unknown = null) {
   const chain = {
@@ -43,6 +43,7 @@ const context = {
 const invokeQuiz = submitQuiz as unknown as (input: unknown) => Promise<unknown>;
 const invokeCertificate = claimCertificate as unknown as (input: unknown) => Promise<unknown>;
 const invokeBegin = beginQuizAttempt as unknown as (input: unknown) => Promise<unknown>;
+const invokeDraft = saveQuizAttemptDraft as unknown as (input: unknown) => Promise<unknown>;
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -220,6 +221,19 @@ describe("certificate access through named cohort licences", () => {
 });
 
 describe("random quiz attempt snapshots", () => {
+  it("restores a saved selection after the source sample size changes", async () => {
+    mocks.rpc.mockResolvedValue({ data: true, error: null });
+    mocks.adminFrom.mockReturnValue(query({ id: "lesson", course_id: "course", body: "pass:80\nsample:1", quiz: [{ kind: "boolean", q: "New source" }], studio_quiz_answers: { course_id: "course", answers: [0] } }));
+    mocks.adminRpc.mockResolvedValue({ data: { attemptId: "10000000-0000-4000-8000-000000000004", questions: [{ kind: "boolean", q: "Saved A" }, { kind: "boolean", q: "Saved B" }], expiresAt: "2026-11-12T18:00:00Z", resumed: true, draftAnswers: [1, null], draftVersion: 2, answers: [0, 1] }, error: null });
+    const saved = await invokeBegin({ data: { lessonId: "lesson", fresh: false, requestId: "10000000-0000-4000-8000-000000000005" }, context });
+    expect(saved).toMatchObject({ resumed: true, draftVersion: 2, draftAnswers: [1, null], questions: [{ kind: "boolean", q: "Saved A" }, { kind: "boolean", q: "Saved B" }] });
+    expect(saved).not.toHaveProperty("answers");
+  });
+  it("binds saved drafts to the authenticated learner and expected version", async () => {
+    mocks.adminRpc.mockResolvedValue({ data: 3, error: null });
+    await expect(invokeDraft({ data: { attemptId: "attempt", answers: [null, "unfinished"], version: 2, userId: "other" }, context })).resolves.toEqual({ version: 3 });
+    expect(mocks.adminRpc).toHaveBeenCalledWith("save_quiz_exam_answers", { _session: "attempt", _user: "learner", _responses: [null, "unfinished"], _expected: 2 });
+  });
   it("samples a private pool while returning only the saved selection", async () => {
     const bankId = "10000000-0000-4000-8000-000000000003";
     const stub = [{ kind: "boolean", q: "Questions are selected when you start an attempt." }];
@@ -290,6 +304,11 @@ describe("random quiz attempt snapshots", () => {
       _feedback: [null, null],
     });
     expect(mocks.adminFrom).not.toHaveBeenCalledWith("quiz_attempts");
+  });
+  it("reserves submitted answers against their saved version", async () => {
+    setup();
+    await invokeQuiz({ data: { lessonId: "lesson", attemptId, answers: [0, 0], draftVersion: 4 }, context });
+    expect(mocks.adminRpc).toHaveBeenCalledWith("reserve_quiz_exam", { _session: attemptId, _user: "learner", _lesson: "lesson", _responses: [0, 0], _expected_version: 4 });
   });
   it("returns an already recorded result without recording another grade", async () => {
     setup();

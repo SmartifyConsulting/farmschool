@@ -27,6 +27,13 @@ const fixture = () => ({
   },
 });
 describe("native content archives", () => {
+  it("retains exam controls and rejects missing attempt-mode settings", () => {
+    const source = fixture();
+    const policy = { max_attempts: 2, duration_minutes: 30, retry_minutes: 10 };
+    const archive = validateCourseArchive({ ...source, snapshot: { ...source.snapshot, lessons: source.snapshot.lessons.map(lesson => ({ ...lesson, body: "pass:75\nsample:1", exam_policy: policy })) } });
+    expect(archive.snapshot.lessons[0]?.exam_policy).toEqual(policy);
+    expect(() => validateCourseArchive({ ...source, snapshot: { ...source.snapshot, lessons: source.snapshot.lessons.map(lesson => ({ ...lesson, exam_policy: policy })) } })).toThrow("sample size");
+  });
   it("preserves private exam protection during archive validation", () => {
     const source = fixture();
     const archive = validateCourseArchive({ ...source, snapshot: { ...source.snapshot, lessons: source.snapshot.lessons.map(lesson => ({ ...lesson, body: "pass:75\nsample:1", secure_bank: true })) } });

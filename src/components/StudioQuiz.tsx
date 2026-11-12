@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,9 @@ import { submitQuiz } from "@/lib/learning.functions";
 import { beginQuizAttempt } from "@/lib/learning.functions";
 import { quizSampleSize } from "@/lib/quiz-pools";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { useExamDraft } from "@/hooks/useExamDraft";
+import { examStatus, remainingExamSeconds } from "@/lib/exam-controls";
+import { supabase } from "@/integrations/supabase/client";
 import {
   parseQuizQuestions,
   responseIsComplete,
@@ -38,11 +41,39 @@ export function StudioQuiz({
   const confirm = useConfirm();
   const [exam, setExam] = useState<Awaited<ReturnType<typeof beginQuizAttempt>> | null>(null);
   const [starting, setStarting] = useState(false);
+  const startRequest = useRef(crypto.randomUUID());
+  const startIntent = useRef<boolean | null>(null);
+  const [remaining, setRemaining] = useState<number | null>(null);
   const qc = useQueryClient();
   const { user } = useAuth();
   const questions = exam?.questions ?? parseQuizQuestions(quiz);
   const sampleSize = quizSampleSize(body);
-  const start = async () => {
+  const expired = !!exam && remaining !== null && remaining <= 0;
+  const draft = useExamDraft(exam, answers, !starting && !submitting && !result && !expired);
+  const status = useQuery({
+    queryKey: ["my-quiz-exam-status", lessonId, user?.id],
+    enabled: !!user && sampleSize !== null,
+    refetchInterval: 20000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("my_quiz_exam_status", { _lesson: lessonId });
+      if (error) throw error;
+      return examStatus.parse(data);
+    },
+  });
+  useEffect(() => {
+    if (!exam) {
+      setRemaining(null);
+      return;
+    }
+    const loaded = performance.now();
+    const serverNow = exam.serverNow ?? new Date().toISOString();
+    const tick = () =>
+      setRemaining(remainingExamSeconds(exam.expiresAt, serverNow, performance.now() - loaded));
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [exam]);
+  const start = async (fresh = false) => {
     if (starting || submitting) return;
     if (!user) {
       toast.error("Sign in to start the quiz.");
@@ -51,21 +82,33 @@ export function StudioQuiz({
     if (
       exam &&
       !result &&
-      answers.some((answer) => answer !== undefined) &&
       !(await confirm({
-        title: "Start a new random attempt?",
-        description:
-          "Your answers on this page will be discarded and a new question selection will be created.",
-        confirmLabel: "Start new attempt",
+        title: fresh ? "Replace this attempt?" : "Reload saved answers?",
+        description: fresh
+          ? "The unfinished attempt will close and another start will be consumed. Its answers on this page will be replaced."
+          : "Answers on this page will be replaced with the last successfully saved answers. The original questions and timer remain.",
+        confirmLabel: fresh ? "Start replacement" : "Reload saved answers",
       }))
     )
       return;
     setStarting(true);
     try {
-      const prepared = await begin({ data: { lessonId } });
+      await draft.settle();
+      if (startIntent.current !== fresh) {
+        startRequest.current = crypto.randomUUID();
+        startIntent.current = fresh;
+      }
+      const prepared = await begin({ data: { lessonId, fresh, requestId: startRequest.current } });
+      startRequest.current = crypto.randomUUID();
+      startIntent.current = null;
       setExam(prepared);
-      setAnswers([]);
-      setResult(null);
+      setAnswers(
+        (prepared.draftAnswers ?? []).map((answer) => (answer === null ? undefined : answer)),
+      );
+      setResult(prepared.result ?? null);
+      await qc.invalidateQueries({ queryKey: ["my-quiz-exam-status", lessonId] });
+      if (prepared.resumed)
+        toast.info("Saved attempt restored. Its original timer is still running.");
     } catch (error) {
       toast.error(friendlyError(error, "Could not start the quiz."));
     } finally {
@@ -78,11 +121,24 @@ export function StudioQuiz({
     return (
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          This quiz draws {sampleSize} questions for each attempt. Complete the attempt within four
-          hours. Up to 50 new random attempts are available per day.
+          This quiz draws {sampleSize} questions for each attempt.{" "}
+          {status.data
+            ? `Time limit: ${status.data.durationMinutes} minutes. Starts used this cycle: ${status.data.attemptsUsed}${status.data.maxAttempts === null ? "" : ` of ${status.data.maxAttempts}`}. Minimum ${status.data.startSpacingMinutes} minutes between starts.`
+            : "The server checks the current exam limits when you start."}{" "}
+          Up to 50 new exam starts are available per day across quizzes. Expired and abandoned
+          attempts count.
         </p>
-        <Button type="button" disabled={starting} onClick={start}>
-          {starting ? "Preparing questions…" : "Start random quiz"}
+        {status.isError && (
+          <p role="status" className="text-sm">
+            Could not load current controls. The server still enforces them when you start.
+          </p>
+        )}
+        <Button type="button" disabled={starting} onClick={() => start(false)}>
+          {starting
+            ? "Preparing questions…"
+            : status.data?.canResume
+              ? "Resume saved attempt"
+              : "Start exam"}
         </Button>
       </div>
     );
@@ -110,15 +166,18 @@ export function StudioQuiz({
         }
         setSubmitting(true);
         try {
+          const savedVersion = exam ? await draft.flush() : undefined;
           const response = await submit({
             data: {
               lessonId,
               ...(exam ? { attemptId: exam.attemptId } : {}),
+              ...(savedVersion !== undefined ? { draftVersion: savedVersion } : {}),
               answers: answers as QuizResponse[],
             },
           });
           setResult(response);
           await qc.invalidateQueries({ queryKey: ["progress"] });
+          await qc.invalidateQueries({ queryKey: ["my-quiz-exam-status", lessonId] });
         } catch (error) {
           toast.error(friendlyError(error, "Could not grade the quiz."));
         } finally {
@@ -128,16 +187,66 @@ export function StudioQuiz({
     >
       {exam && (
         <div className="space-y-2 text-sm">
-          <p>Attempt expires {new Date(exam.expiresAt).toLocaleString()}.</p>
+          <p role="timer">
+            {result ? "Attempt submitted." : expired
+              ? "Time has ended. Answers remain saved, but this attempt can no longer be submitted."
+              : `Time remaining: ${Math.floor((remaining ?? 0) / 60)}:${String((remaining ?? 0) % 60).padStart(2, "0")}`}
+          </p>
+          <p>
+            Attempt expires {new Date(exam.expiresAt).toLocaleString()}. On-time submissions may
+            finish grading within their reserved grading period.
+          </p>
+          {!result && (
+            <p role="status">
+              {draft.saving
+                ? "Saving answers…"
+                : draft.error
+                  ? draft.error
+                  : draft.dirty
+                    ? "Changes waiting to save. Keep this page open."
+                    : "Answers saved."}
+            </p>
+          )}
+          {draft.error && !expired && !result && (
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={draft.saving || starting || submitting}
+                onClick={() => void draft.flush().catch(() => {})}
+              >
+                Retry saving
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={draft.saving || starting || submitting}
+                onClick={() => start(false)}
+              >
+                Reload saved answers
+              </Button>
+            </div>
+          )}
           <Button
             type="button"
             size="sm"
             variant="outline"
-            disabled={starting || submitting}
-            onClick={start}
+            disabled={starting || submitting || draft.saving}
+            onClick={() => start(true)}
           >
-            {starting ? "Preparing…" : "Start a new random attempt"}
+            {starting ? "Preparing…" : "Start a new attempt"}
           </Button>
+          {!result && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={starting || submitting || draft.saving}
+              onClick={() => start(false)}
+            >
+              Reload saved attempt
+            </Button>
+          )}
         </div>
       )}
       {passed && !result && (
@@ -161,7 +270,7 @@ export function StudioQuiz({
         return (
           <fieldset
             key={index}
-            disabled={submitting || starting || (!!exam && !!result)}
+            disabled={submitting || starting || expired || (!!exam && !!result)}
             className="min-w-0 space-y-2 rounded-2xl border border-border p-3"
           >
             <legend className="px-1 text-sm font-semibold">
@@ -291,7 +400,10 @@ export function StudioQuiz({
             : result.score + "% — you need " + result.passMark + "% to pass. Try again."}
         </p>
       )}
-      <Button type="submit" disabled={submitting || starting || (!!exam && !!result)}>
+      <Button
+        type="submit"
+        disabled={submitting || starting || expired || draft.saving || (!!exam && !!result)}
+      >
         {submitting ? "Grading…" : "Submit answers"}
       </Button>
     </form>

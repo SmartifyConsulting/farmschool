@@ -90,6 +90,7 @@ export function portableCourse(input: unknown): PortableCourse {
           .join("\n\n");
       }
       const questions = lesson.kind === "quiz" ? (parseQuizQuestions(lesson.quiz) ?? []) : [];
+      if (lesson.exam_policy) throw new Error("Exam attempt controls require the Plusticity server and cannot be preserved in this standalone export.");
       if (questions.some((q) => q.kind === "written"))
         throw new Error(
           "AI-graded written responses require the Plusticity server and cannot be exported as a standalone quiz.",

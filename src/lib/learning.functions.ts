@@ -7,10 +7,12 @@ import { gradeQuiz, parseQuizQuestions, quizSubmission } from "@/lib/studio-quiz
 import { parseLessonSlides, practicalTaskIndex } from "@/lib/lesson-slides";
 import { hasActiveEnrollment } from "@/lib/marketplace";
 import { chooseQuizIndices, quizSampleSize, privateQuizBankId, quizResult } from "@/lib/quiz-pools";
+import { examDraftAnswers, examStartResponse } from "@/lib/exam-controls";
+import { friendlyError } from "@/lib/friendly-error";
 
 export const beginQuizAttempt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => z.object({ lessonId: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ lessonId: z.string().uuid(), fresh: z.boolean().default(false), requestId: z.string().uuid().optional() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: lesson, error } = await supabaseAdmin
@@ -46,18 +48,28 @@ export const beginQuizAttempt = createServerFn({ method: "POST" })
       _expected_quiz: lesson.quiz,
       _expected_answers: lesson.studio_quiz_answers.answers,
       _selection: chooseQuizIndices(questions.length, size),
+      _fresh: data.fresh ?? false,
+      _request: data.requestId ?? crypto.randomUUID(),
     });
     if (startError)
       throw new Error(
-        "Could not start the quiz. Refresh and try again; new random attempts are limited to 50 per day.",
+        friendlyError(startError, "Could not start the quiz. Refresh and try again."),
       );
-    const result = z
-      .object({ attemptId: z.string().uuid(), questions: z.unknown(), expiresAt: z.string() })
-      .parse(started);
+    const result = examStartResponse.parse(started);
     const selected = parseQuizQuestions(result.questions);
-    if (!selected || selected.length !== size)
+    if (!selected?.length || (!result.resumed && selected.length !== size))
       throw new Error("Could not load the selected questions.");
-    return { attemptId: result.attemptId, questions: selected, expiresAt: result.expiresAt };
+    return { ...result, questions: selected };
+  });
+
+export const saveQuizAttemptDraft = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({ attemptId: z.string().uuid(), answers: examDraftAnswers, version: z.number().int().nonnegative() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const saved = await supabaseAdmin.rpc("save_quiz_exam_answers", { _session: data.attemptId, _user: context.userId, _responses: data.answers, _expected: data.version });
+    if (saved.error || typeof saved.data !== "number") throw new Error(friendlyError(saved.error, "Could not save these answers. Keep this page open and retry."));
+    return { version: saved.data };
   });
 
 /** Grades a studio quiz on the server so answer keys never reach learners. */
@@ -98,10 +110,11 @@ export const submitQuiz = createServerFn({ method: "POST" })
         _session: data.attemptId,
         _user: context.userId,
         _lesson: lesson.id,
+        ...(data.draftVersion !== undefined ? { _responses: data.answers, _expected_version: data.draftVersion } : {}),
       });
       if (reserved.error)
         throw new Error(
-          "This attempt is unavailable, expired or already being graded. Wait or start a new attempt.",
+          friendlyError(reserved.error, "This attempt is unavailable, expired or already being graded. Wait or resume the attempt again."),
         );
       const saved = z.object({ result: quizResult }).safeParse(reserved.data);
       if (saved.success) return saved.data.result;
