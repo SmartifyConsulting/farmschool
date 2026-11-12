@@ -1,5 +1,12 @@
 # Plusticity capability parity work
 
+FarmerPlus delivery is restricted to agriculture by migration 0080. Its customer
+portal is configured, and the FarmerPlus `/farmschool` entry page uses a minimal
+public catalogue and hands learning/scoring to native Plusticity. Other-industry,
+unknown, draft and foreign-private courses are excluded; local FarmerPlus
+accreditation issuance is removed from its delivery routes. See
+FARMERPLUS_AGRICULTURE.md for tests, rollout status and the separate-account limit.
+
 ## Current direction: customer white-label Plusticity
 
 The customer clarified that Plusticity itself supplies training, assessments,

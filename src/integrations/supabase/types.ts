@@ -369,7 +369,7 @@ export type Database = {
         Relationships: []
       }
       organization_portals: {
-        Row: { organization_id: string; slug: string; enabled: boolean; public_message: string; version: number }
+        Row: { organization_id: string; slug: string; enabled: boolean; public_message: string; version: number; agriculture_only: boolean }
         Insert: never
         Update: never
         Relationships: []
@@ -2127,7 +2127,8 @@ export type Database = {
       save_quiz_exam_answers: { Args: { _session: string; _user: string; _responses: Json; _expected: number }; Returns: number }
       my_quiz_exam_status: { Args: { _lesson: string }; Returns: Json }
       learning_shell_brand: { Args: { _course?: string | null; _organization?: string | null }; Returns: Json }
-      save_organization_portal: { Args: { _organization: string; _slug: string; _enabled: boolean; _message: string; _expected: number }; Returns: number }
+      save_organization_portal: { Args: { _organization: string; _slug: string; _enabled: boolean; _message: string; _expected: number; _agriculture_only?: boolean }; Returns: number }
+      public_portal_courses: { Args: { _slug: string; _query?: string; _offset?: number; _limit?: number }; Returns: Json }
       organization_portal: { Args: { _slug: string }; Returns: Json }
       portal_course_report: { Args: { _slug: string; _learning?: boolean; _query?: string; _offset?: number; _limit?: number }; Returns: Json }
       portal_learning_brand: { Args: { _slug: string; _course?: string | null }; Returns: Json }

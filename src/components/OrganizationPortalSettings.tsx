@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { friendlyError } from "@/lib/friendly-error";
 import { portalPath, portalSlugSchema } from "@/lib/customer-portal";
 
-type Settings = { slug: string; enabled: boolean; public_message: string; version: number };
+type Settings = { slug: string; enabled: boolean; public_message: string; version: number; agriculture_only: boolean };
 
 export function OrganizationPortalSettings({ organizationId }: { organizationId: string }) {
   const { user } = useAuth();
@@ -20,7 +20,7 @@ export function OrganizationPortalSettings({ organizationId }: { organizationId:
     queryFn: async () => {
       const { data, error } = await supabase
         .from("organization_portals")
-        .select("slug,enabled,public_message,version")
+        .select("slug,enabled,public_message,version,agriculture_only")
         .eq("organization_id", organizationId)
         .maybeSingle();
       if (error) throw error;
@@ -65,6 +65,7 @@ function PortalEditor({
   const qc = useQueryClient();
   const [slug, setSlug] = useState(initial?.slug ?? "");
   const [enabled, setEnabled] = useState(initial?.enabled ?? false);
+  const [agricultureOnly, setAgricultureOnly] = useState(initial?.agriculture_only ?? false);
   const [message, setMessage] = useState(
     initial?.public_message ?? "Sign in to access your training.",
   );
@@ -77,7 +78,7 @@ function PortalEditor({
       !(await confirm({
         title: enabled ? "Publish this training portal?" : "Save this portal as disabled?",
         description: enabled
-          ? `Your workspace name, logo, colour and this public welcome message will be visible at ${path}. Your private workspace welcome and member details remain private. Learners still need membership and the usual course access. The chosen address is permanent.`
+          ? `Your workspace name, logo, colour and this public welcome message will be visible at ${path}. ${agricultureOnly ? "Only agriculture-classified training will appear, including published public agriculture courses. Their catalogue details may also appear on a connected customer website." : "Training is limited to your workspace inventory."} Your private workspace welcome and member details remain private. Learners still need membership and the usual course access. The chosen address is permanent.`
           : "The address stays reserved. Visitors will not see the portal while it is disabled. Existing training records remain available through Plusticity.",
         confirmLabel: "Save portal",
       }))
@@ -91,6 +92,7 @@ function PortalEditor({
         _enabled: enabled,
         _message: message.trim(),
         _expected: initial?.version ?? 0,
+        _agriculture_only: agricultureOnly,
       });
       if (error) throw error;
       await Promise.all([
@@ -132,6 +134,11 @@ function PortalEditor({
           onChange={(event) => setMessage(event.target.value)}
         />
       </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={agricultureOnly} disabled={busy} onChange={event => setAgricultureOnly(event.target.checked)} />
+        Agriculture training only, including published public agriculture courses
+      </label>
+      <p className="text-xs text-muted-foreground">This uses the course's classified topic. Unknown and other-industry topics are excluded. Content must still be reviewed and accurately classified before publishing.</p>
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
