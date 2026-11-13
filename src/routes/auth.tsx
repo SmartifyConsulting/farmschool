@@ -112,7 +112,7 @@ function AuthPage() {
         <div>
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium" htmlFor="password">Password</label>
-            {mode === "in" && <Link to="/forgot-password" search={search.portal ? { portal: search.portal } : {}} tabIndex={-1} className="text-xs text-primary">Forgot password?</Link>}
+            {mode === "in" && <Link to="/forgot-password" search={search.portal ? { portal: search.portal } : {}} className="rounded-sm text-xs text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">Forgot password?</Link>}
           </div>
           <PasswordInput id="password" value={f.password} onChange={set("password")} autoComplete={mode === "in" ? "current-password" : "new-password"} />
           <Err id="e-pw" msg={errors.password} />
