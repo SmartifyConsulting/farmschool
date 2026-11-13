@@ -26,11 +26,11 @@ export const Route = createFileRoute("/auth")({
 
 export function AuthCard({ title, children, brand }: { title: string; children: React.ReactNode; brand?: LearningBrand | null | undefined }) {
   const tone = brand ? accessibleBrandColor(brand.color).css : null;
-  const style = tone ? { "--primary": tone, "--primary-foreground": "oklch(1 0 0)", "--ring": tone, "--accent": tone, "--accent-foreground": "oklch(1 0 0)" } as CSSProperties : undefined;
+  const style = tone ? { "--primary": tone, "--primary-foreground": "oklch(1 0 0)", "--ring": tone, "--accent": tone, "--accent-foreground": "oklch(1 0 0)", "--gradient-accent": `linear-gradient(90deg, ${tone}, ${tone})` } as CSSProperties : undefined;
   return (
     <div style={style} className="grid min-h-screen place-items-center bg-primary p-5">
       <div className="w-full max-w-sm rounded-3xl bg-card p-6 shadow-xl sm:max-w-md sm:p-8 md:max-w-lg">
-        {brand?.portalSlug ? <Link to="/portal/$slug" params={{ slug: brand.portalSlug }} className="mb-5 flex justify-center"><OrganizationLogo key={brand.id + brand.logo} brand={brand} /></Link> : <Link to="/"><img src={logo} alt="Plusticity" className="mx-auto mb-4 h-[370px] w-auto object-contain" /></Link>}
+        {brand?.portalSlug ? <Link to="/portal/$slug" params={{ slug: brand.portalSlug }} className="mb-5 flex justify-center"><OrganizationLogo key={brand.id + brand.logo} brand={brand} /></Link> : <Link to="/"><img src={logo} alt="Plusticity" className="mx-auto mb-4 h-32 w-auto object-contain sm:h-44 md:h-[370px]" /></Link>}
         <h1 className="mb-5 text-center text-xl font-semibold">{title}</h1>
         {children}
       </div>

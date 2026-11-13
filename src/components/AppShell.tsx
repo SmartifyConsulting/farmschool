@@ -10,6 +10,7 @@ import {
   Mail,
   BarChart3,
   Building2,
+  Award,
 } from "lucide-react";
 import { type CSSProperties, type ReactNode } from "react";
 import logo from "@/assets/plusticity-logo.png";
@@ -59,7 +60,8 @@ export function Phone({ children }: { children: ReactNode }) {
   const search = useRouterState({ select: (s) => s.location.searchStr });
   const branding = useLearningBrandForPath(path, readPortalSlug(new URLSearchParams(search).get("portal")));
   const { brand } = branding;
-  const theme = brand ? { "--primary": accessibleBrandColor(brand.color).css, "--primary-foreground": "oklch(1 0 0)", "--ring": accessibleBrandColor(brand.color).css } as CSSProperties : undefined;
+  const brandTone = brand ? accessibleBrandColor(brand.color).css : null;
+  const theme = brandTone ? { "--primary": brandTone, "--primary-foreground": "oklch(1 0 0)", "--ring": brandTone, "--gradient-accent": `linear-gradient(90deg, ${brandTone}, ${brandTone})` } as CSSProperties : undefined;
   if (branding.portal && !brand) return (
     <main className="grid min-h-screen place-items-center bg-muted p-5">
       <section className="w-full max-w-lg space-y-4 rounded-2xl bg-card p-6" aria-busy={branding.isPending}>
@@ -133,7 +135,12 @@ function DesktopSidebar() {
   );
 }
 function PortalNavigation({ slug, mobile = false }: { slug: string; mobile?: boolean }) {
-  return <>{([{ view: "learning", label: "My Learning", icon: BookOpen }, { view: "catalogue", label: "Catalogue", icon: Search }, { view: "certificates", label: "Certificates", icon: BookOpen }, { view: "programs", label: "Programs", icon: LayoutGrid }] as const).map(item => <Link key={item.view} to="/portal/$slug" params={{ slug }} search={{ view: item.view }} aria-label={item.label} className={mobile ? "grid h-10 w-10 place-items-center rounded-full text-navy-foreground" : "flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium text-white hover:bg-white/10"}><item.icon aria-hidden="true" className="h-5 w-5 shrink-0" />{!mobile && item.label}</Link>)}</>;
+  const location = useRouterState({ select: state => state.location });
+  const selected = new URLSearchParams(location.searchStr).get("view") ?? "learning";
+  return <>{([{ view: "learning", label: "My Learning", icon: BookOpen }, { view: "catalogue", label: "Catalogue", icon: Search }, { view: "certificates", label: "Certificates", icon: Award }, { view: "programs", label: "Programs", icon: LayoutGrid }] as const).map(item => {
+    const active = location.pathname.replace(/\/$/, "") === `/portal/${slug}` && selected === item.view;
+    return <Link key={item.view} to="/portal/$slug" params={{ slug }} search={{ view: item.view }} aria-label={item.label} aria-current={active ? "page" : undefined} title={item.label} className={mobile ? `grid h-10 w-10 place-items-center rounded-full text-navy-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${active ? "bg-navy-foreground/20" : ""}` : `flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${active ? "bg-white/15 font-semibold" : "hover:bg-white/10"}`}><item.icon aria-hidden="true" className="h-5 w-5 shrink-0" />{!mobile && item.label}</Link>;
+  })}</>;
 }
 
 function AvatarMenu({
@@ -279,11 +286,11 @@ export function Header({ children, wide = false }: { children?: ReactNode; wide?
   return (
     <header className="relative bg-card px-5 pb-4 pt-5 text-foreground md:contents">
       <div className="mx-auto max-w-[1760px]">
-        <div className="flex items-center justify-between gap-3 md:hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 md:hidden">
           {brand ? <BrandHome brand={brand} className="min-w-0 max-w-[40%]"><OrganizationLogo key={brand.id + brand.logo} brand={brand} mobile /></BrandHome> : <Link to="/" aria-label="Home" className="shrink-0">
             <img src={mobileLogo} alt="Plusticity" className="h-[55.89px] w-auto object-contain" />
           </Link>}
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
             {!brand?.portalSlug && <NotificationBell className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-foreground hover:bg-muted/75" />}
             <LanguageSwitcher />
             <HeaderAction />
