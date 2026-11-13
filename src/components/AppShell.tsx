@@ -71,8 +71,10 @@ export function Phone({ children }: { children: ReactNode }) {
         </> : <>
           <h1 className="text-xl font-semibold">Training portal unavailable</h1>
           <p>This portal or course may be unavailable to your account. Contact your training manager to check your access.</p>
-          <Button variant="outline" onClick={() => branding.retry()}>Retry</Button>
-          <Button asChild variant="outline"><Link to="/portal/$slug" params={{ slug: branding.portal }}>Open portal home</Link></Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => branding.retry()}>Retry</Button>
+            <Button asChild variant="outline"><Link to="/portal/$slug" params={{ slug: branding.portal }}>Open portal home</Link></Button>
+          </div>
         </>}
       </section>
     </main>
