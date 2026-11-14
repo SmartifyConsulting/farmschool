@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ArrowDownToLine, Scissors, Trash2, ChevronDown, Check, Wand2, FolderOpen, Image as ImageIcon, Loader2, X } from "lucide-react";
+import { ArrowDownToLine, Scissors, Trash2, ChevronDown, Check, Wand2, Sparkles, FolderOpen, Image as ImageIcon, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -101,7 +101,7 @@ type Props = {
   onPreview: (index: number, lesson: DraftLesson) => void;
   suggestions: Record<number, MethodSuggestions>;
   suggestLoading: number | null;
-  onSuggest: (index: number, lesson: DraftLesson) => void;
+  onSuggest: (index: number, lesson: DraftLesson, methods: string[]) => void;
 };
 
 export function ManualLessonReview(props: Props) {
@@ -109,6 +109,7 @@ export function ManualLessonReview(props: Props) {
   const [splitting, setSplitting] = useState<number | null>(null);
   const [splitAt, setSplitAt] = useState<number | null>(null);
   const [splitTitle, setSplitTitle] = useState("");
+  const [aiMethods, setAiMethods] = useState<Record<number, string[]>>({});
   const moduleCount = new Set(props.draft.lessons.map(lesson => lesson.module).filter(Boolean)).size;
   const pageCount = new Set(props.draft.lessons.flatMap(lesson => lesson.sourceRefs.map(ref => `${ref.sourceId}:${ref.page}`))).size;
   return <section aria-label="Detected lessons" className="min-w-0 space-y-4">
@@ -155,13 +156,14 @@ export function ManualLessonReview(props: Props) {
               onClick={() => {
                 const opening = expanded !== index;
                 setExpanded(opening ? index : null);
-                if (opening && selected.length && !props.suggestions[index]) props.onSuggest(index, lesson);
+                if (opening && !aiMethods[index]) setAiMethods((p) => ({ ...p, [index]: selected }));
               }}
             >
               <ChevronDown className={`h-4 w-4 transition-transform ${expanded === index ? "" : "-rotate-90"}`} />
-              {props.suggestLoading === index ? "Generating suggestions…" : "Suggest AI content"}
+              <Sparkles className="h-4 w-4" />
+              {props.suggestLoading === index ? "Generating…" : "Generate"}
             </Button>
-            <Button size="sm" variant="secondary" disabled={props.readOnly || props.previewLoading !== null || lesson.body.length < 100 || !selected.length} onClick={() => props.onPreview(index, lesson)}>{props.previewLoading === index ? "Generating preview…" : "Preview page"}</Button>
+            <Button size="sm" variant="secondary" disabled={props.readOnly || props.previewLoading !== null || lesson.body.length < 100 || !selected.length} onClick={() => props.onPreview(index, lesson)}>{props.previewLoading === index ? "Generating…" : "Preview"}</Button>
             <Button size="sm" variant={props.approved[index] ? "secondary" : "outline"} disabled={props.readOnly || props.busy || !selected.length || !lesson.title.trim()} onClick={() => props.onApprove(index, lesson)}><Check className="h-4 w-4" />{props.approved[index] ? "Reopen" : "Approve"}</Button>
           </div>
           {props.previews[index] && <div className="mt-4 space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
@@ -201,10 +203,34 @@ export function ManualLessonReview(props: Props) {
           </div>}
           {expanded === index && <div className="mt-4 space-y-3 border-t border-border pt-4">
             {props.rationale[index] && <p className="text-xs text-muted-foreground">{props.rationale[index]}</p>}
+            {!!selected.length && <fieldset disabled={props.readOnly || props.suggestLoading !== null} className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
+              <legend className="px-1 text-xs font-medium">Get AI help with:</legend>
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {props.methods.filter((m) => selected.includes(m.id)).map((method) => {
+                  const chosen = aiMethods[index] ?? selected;
+                  return <label key={method.id} className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={chosen.includes(method.id)} onChange={(event) => setAiMethods((p) => ({
+                      ...p,
+                      [index]: event.target.checked ? [...chosen, method.id] : chosen.filter((m) => m !== method.id),
+                    }))} />
+                    {method.label}
+                  </label>;
+                })}
+              </div>
+              <Button
+                size="sm"
+                disabled={!(aiMethods[index] ?? selected).length}
+                onClick={() => props.onSuggest(index, lesson, aiMethods[index] ?? selected)}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {props.suggestLoading === index ? "Generating…" : "Generate"}
+              </Button>
+            </fieldset>}
             <div className="space-y-3">
               {props.methods.map((method) => {
                 const s = props.suggestions[index];
                 const isSelected = selected.includes(method.id);
+                const wantsAi = (aiMethods[index] ?? selected).includes(method.id);
                 if (!isSelected) {
                   return (
                     <div key={method.id} className="space-y-1 rounded-md border border-dashed border-border p-2">
@@ -213,11 +239,19 @@ export function ManualLessonReview(props: Props) {
                     </div>
                   );
                 }
+                if (!wantsAi) {
+                  return (
+                    <div key={method.id} className="space-y-1 rounded-md border border-dashed border-border p-2">
+                      <p className="text-xs font-medium text-muted-foreground">{method.label}</p>
+                      <p className="text-xs text-muted-foreground">You've chosen to write this one yourself.</p>
+                    </div>
+                  );
+                }
                 if (props.suggestLoading === index || !s) {
                   return (
                     <div key={method.id} className="space-y-1">
                       <p className="text-xs font-medium">{method.label}</p>
-                      <p className="text-xs text-muted-foreground">{props.suggestLoading === index ? "Generating…" : "Click \"Suggest AI content\" to generate."}</p>
+                      <p className="text-xs text-muted-foreground">{props.suggestLoading === index ? "Generating…" : "Click \"Generate\" above."}</p>
                     </div>
                   );
                 }

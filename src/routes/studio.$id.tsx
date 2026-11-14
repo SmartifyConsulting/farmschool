@@ -551,11 +551,11 @@ function Editor() {
   const suggestMethodContent = async (
     index: number,
     lesson: { title: string; body: string },
+    methods: string[],
   ) => {
     if (suggestLoading !== null || course?.published) return;
-    const methods = choicesFor(index, lesson.title, lesson.body);
     if (!methods.length) {
-      toast.error("Tick at least one method first.");
+      toast.error("Choose at least one method to get AI help with.");
       return;
     }
     setSuggestLoading(index);
@@ -958,7 +958,7 @@ function Editor() {
     },
     {
       id: "video",
-      label: "Video demonstration",
+      label: "Video",
       detail: "Suggest a demonstration; trainer supplies or verifies the video",
     },
     {
@@ -1909,22 +1909,31 @@ function Editor() {
                             const collapsed = collapsedOutlineModules.has(group.title);
                             return (
                               <div key={group.title} className="space-y-0.5">
-                                <button
-                                  type="button"
-                                  className="flex w-full cursor-pointer items-center gap-1.5 px-1 py-1 text-left text-xs font-bold text-primary"
-                                  onClick={() =>
-                                    setCollapsedOutlineModules((prev) => {
-                                      const next = new Set(prev);
-                                      if (next.has(group.title)) next.delete(group.title);
-                                      else next.add(group.title);
-                                      return next;
-                                    })
-                                  }
-                                >
-                                  <ChevronDown className={`h-3 w-3 shrink-0 transition-transform ${collapsed ? "-rotate-90" : ""}`} />
-                                  <FolderOpen className="h-3.5 w-3.5 shrink-0" />
-                                  <span className="min-w-0 truncate">{group.title}</span>
-                                </button>
+                                <div className="flex w-full items-center gap-1.5 px-1 py-1 text-left text-xs font-bold text-primary">
+                                  <button
+                                    type="button"
+                                    aria-label={collapsed ? `Expand ${group.title}` : `Collapse ${group.title}`}
+                                    className="shrink-0"
+                                    onClick={() =>
+                                      setCollapsedOutlineModules((prev) => {
+                                        const next = new Set(prev);
+                                        if (next.has(group.title)) next.delete(group.title);
+                                        else next.add(group.title);
+                                        return next;
+                                      })
+                                    }
+                                  >
+                                    <ChevronDown className={`h-3 w-3 transition-transform ${collapsed ? "-rotate-90" : ""}`} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="flex min-w-0 flex-1 items-center gap-1.5 text-left hover:underline"
+                                    onClick={() => goToLesson(group.items[0]!.index)}
+                                  >
+                                    <FolderOpen className="h-3.5 w-3.5 shrink-0" />
+                                    <span className="min-w-0 truncate">{group.title}</span>
+                                  </button>
+                                </div>
                                 {!collapsed && lessonList}
                               </div>
                             );
@@ -1945,6 +1954,7 @@ function Editor() {
                 ),
               )}
             </nav>
+            {screen !== "publish" && <>
             <div className="mt-5 flex items-center justify-between">
               <h3 className="text-sm font-semibold">Curriculum</h3>
               <Button
@@ -2052,6 +2062,7 @@ function Editor() {
                 SCORM
               </Button>
             </div>
+            </>}
           </aside>
           <main className="min-w-0 space-y-6">
             {course.published && (
@@ -2855,7 +2866,7 @@ function Editor() {
                           onApprove={(index, lesson) => void toggleDesignApproval(index, lesson)}
                           suggestions={methodSuggestions}
                           suggestLoading={suggestLoading}
-                          onSuggest={(index, lesson) => void suggestMethodContent(index, lesson)}
+                          onSuggest={(index, lesson, methods) => void suggestMethodContent(index, lesson, methods)}
                         />
                         <div className="flex flex-wrap justify-between gap-2 border-t border-border pt-4">
                           <Button variant="outline" onClick={() => setFactoryStep(0)}>
