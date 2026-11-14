@@ -36,6 +36,7 @@ import { Route as AdminComplianceRouteImport } from './routes/admin.compliance'
 import { Route as AdminCreatorsRouteImport } from './routes/admin.creators'
 import { Route as AdminExternalContentRouteImport } from './routes/admin.external-content'
 import { Route as AdminGradeModerationRouteImport } from './routes/admin.grade-moderation'
+import { Route as AdminLtiRouteImport } from './routes/admin.lti'
 import { Route as AdminProgramsRouteImport } from './routes/admin.programs'
 import { Route as AdminTokenLedgerRouteImport } from './routes/admin.token-ledger'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
@@ -61,6 +62,9 @@ import { Route as StudioIdRouteImport } from './routes/studio.$id'
 import { Route as StudioReportsRouteImport } from './routes/studio.reports'
 import { Route as VerifyTokenRouteImport } from './routes/verify.$token'
 import { Route as ApiCronCohortRemindersRouteImport } from './routes/api/cron/cohort-reminders'
+import { Route as ApiLtiJwksRouteImport } from './routes/api/lti/jwks'
+import { Route as ApiLtiLaunchRouteImport } from './routes/api/lti/launch'
+import { Route as ApiLtiLoginRouteImport } from './routes/api/lti/login'
 import { Route as ApiScormFileSplatRouteImport } from './routes/api/scorm-file.$'
 import { Route as ForumCourseIdThreadIdRouteImport } from './routes/forum.$courseId.$threadId'
 import { Route as LessonCourseIdLessonIdRouteImport } from './routes/lesson.$courseId.$lessonId'
@@ -203,6 +207,11 @@ const AdminGradeModerationRoute = AdminGradeModerationRouteImport.update({
   path: '/admin/grade-moderation',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminLtiRoute = AdminLtiRouteImport.update({
+  id: '/admin/lti',
+  path: '/admin/lti',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminProgramsRoute = AdminProgramsRouteImport.update({
   id: '/admin/programs',
   path: '/admin/programs',
@@ -329,6 +338,21 @@ const ApiCronCohortRemindersRoute = ApiCronCohortRemindersRouteImport.update({
   path: '/api/cron/cohort-reminders',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiLtiJwksRoute = ApiLtiJwksRouteImport.update({
+  id: '/api/lti/jwks',
+  path: '/api/lti/jwks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLtiLaunchRoute = ApiLtiLaunchRouteImport.update({
+  id: '/api/lti/launch',
+  path: '/api/lti/launch',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLtiLoginRoute = ApiLtiLoginRouteImport.update({
+  id: '/api/lti/login',
+  path: '/api/lti/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiScormFileSplatRoute = ApiScormFileSplatRouteImport.update({
   id: '/api/scorm-file/$',
   path: '/api/scorm-file/$',
@@ -387,6 +411,7 @@ export interface FileRoutesByFullPath {
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/grade-moderation': typeof AdminGradeModerationRoute
+  '/admin/lti': typeof AdminLtiRoute
   '/admin/programs': typeof AdminProgramsRoute
   '/admin/token-ledger': typeof AdminTokenLedgerRoute
   '/admin/users': typeof AdminUsersRoute
@@ -413,6 +438,9 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/scorm/': typeof ScormIndexRoute
   '/api/cron/cohort-reminders': typeof ApiCronCohortRemindersRoute
+  '/api/lti/jwks': typeof ApiLtiJwksRoute
+  '/api/lti/launch': typeof ApiLtiLaunchRoute
+  '/api/lti/login': typeof ApiLtiLoginRoute
   '/api/scorm-file/$': typeof ApiScormFileSplatRoute
   '/forum/$courseId/$threadId': typeof ForumCourseIdThreadIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
@@ -447,6 +475,7 @@ export interface FileRoutesByTo {
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/grade-moderation': typeof AdminGradeModerationRoute
+  '/admin/lti': typeof AdminLtiRoute
   '/admin/programs': typeof AdminProgramsRoute
   '/admin/token-ledger': typeof AdminTokenLedgerRoute
   '/admin/users': typeof AdminUsersRoute
@@ -473,6 +502,9 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/scorm': typeof ScormIndexRoute
   '/api/cron/cohort-reminders': typeof ApiCronCohortRemindersRoute
+  '/api/lti/jwks': typeof ApiLtiJwksRoute
+  '/api/lti/launch': typeof ApiLtiLaunchRoute
+  '/api/lti/login': typeof ApiLtiLoginRoute
   '/api/scorm-file/$': typeof ApiScormFileSplatRoute
   '/forum/$courseId/$threadId': typeof ForumCourseIdThreadIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
@@ -508,6 +540,7 @@ export interface FileRoutesById {
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/grade-moderation': typeof AdminGradeModerationRoute
+  '/admin/lti': typeof AdminLtiRoute
   '/admin/programs': typeof AdminProgramsRoute
   '/admin/token-ledger': typeof AdminTokenLedgerRoute
   '/admin/users': typeof AdminUsersRoute
@@ -534,6 +567,9 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/scorm/': typeof ScormIndexRoute
   '/api/cron/cohort-reminders': typeof ApiCronCohortRemindersRoute
+  '/api/lti/jwks': typeof ApiLtiJwksRoute
+  '/api/lti/launch': typeof ApiLtiLaunchRoute
+  '/api/lti/login': typeof ApiLtiLoginRoute
   '/api/scorm-file/$': typeof ApiScormFileSplatRoute
   '/forum/$courseId/$threadId': typeof ForumCourseIdThreadIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
@@ -570,6 +606,7 @@ export interface FileRouteTypes {
     | '/admin/creators'
     | '/admin/external-content'
     | '/admin/grade-moderation'
+    | '/admin/lti'
     | '/admin/programs'
     | '/admin/token-ledger'
     | '/admin/users'
@@ -596,6 +633,9 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/scorm/'
     | '/api/cron/cohort-reminders'
+    | '/api/lti/jwks'
+    | '/api/lti/launch'
+    | '/api/lti/login'
     | '/api/scorm-file/$'
     | '/forum/$courseId/$threadId'
     | '/lesson/$courseId/$lessonId'
@@ -630,6 +670,7 @@ export interface FileRouteTypes {
     | '/admin/creators'
     | '/admin/external-content'
     | '/admin/grade-moderation'
+    | '/admin/lti'
     | '/admin/programs'
     | '/admin/token-ledger'
     | '/admin/users'
@@ -656,6 +697,9 @@ export interface FileRouteTypes {
     | '/admin'
     | '/scorm'
     | '/api/cron/cohort-reminders'
+    | '/api/lti/jwks'
+    | '/api/lti/launch'
+    | '/api/lti/login'
     | '/api/scorm-file/$'
     | '/forum/$courseId/$threadId'
     | '/lesson/$courseId/$lessonId'
@@ -690,6 +734,7 @@ export interface FileRouteTypes {
     | '/admin/creators'
     | '/admin/external-content'
     | '/admin/grade-moderation'
+    | '/admin/lti'
     | '/admin/programs'
     | '/admin/token-ledger'
     | '/admin/users'
@@ -716,6 +761,9 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/scorm/'
     | '/api/cron/cohort-reminders'
+    | '/api/lti/jwks'
+    | '/api/lti/launch'
+    | '/api/lti/login'
     | '/api/scorm-file/$'
     | '/forum/$courseId/$threadId'
     | '/lesson/$courseId/$lessonId'
@@ -751,6 +799,7 @@ export interface RootRouteChildren {
   AdminCreatorsRoute: typeof AdminCreatorsRoute
   AdminExternalContentRoute: typeof AdminExternalContentRoute
   AdminGradeModerationRoute: typeof AdminGradeModerationRoute
+  AdminLtiRoute: typeof AdminLtiRoute
   AdminProgramsRoute: typeof AdminProgramsRoute
   AdminTokenLedgerRoute: typeof AdminTokenLedgerRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -773,6 +822,9 @@ export interface RootRouteChildren {
   AdminIndexRoute: typeof AdminIndexRoute
   ScormIndexRoute: typeof ScormIndexRoute
   ApiCronCohortRemindersRoute: typeof ApiCronCohortRemindersRoute
+  ApiLtiJwksRoute: typeof ApiLtiJwksRoute
+  ApiLtiLaunchRoute: typeof ApiLtiLaunchRoute
+  ApiLtiLoginRoute: typeof ApiLtiLoginRoute
   ApiScormFileSplatRoute: typeof ApiScormFileSplatRoute
   LessonCourseIdLessonIdRoute: typeof LessonCourseIdLessonIdRoute
   ApiPublicV1CoursesRoute: typeof ApiPublicV1CoursesRoute
@@ -970,6 +1022,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminGradeModerationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/lti': {
+      id: '/admin/lti'
+      path: '/admin/lti'
+      fullPath: '/admin/lti'
+      preLoaderRoute: typeof AdminLtiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/programs': {
       id: '/admin/programs'
       path: '/admin/programs'
@@ -1145,6 +1204,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCronCohortRemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/lti/jwks': {
+      id: '/api/lti/jwks'
+      path: '/api/lti/jwks'
+      fullPath: '/api/lti/jwks'
+      preLoaderRoute: typeof ApiLtiJwksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/lti/launch': {
+      id: '/api/lti/launch'
+      path: '/api/lti/launch'
+      fullPath: '/api/lti/launch'
+      preLoaderRoute: typeof ApiLtiLaunchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/lti/login': {
+      id: '/api/lti/login'
+      path: '/api/lti/login'
+      fullPath: '/api/lti/login'
+      preLoaderRoute: typeof ApiLtiLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/scorm-file/$': {
       id: '/api/scorm-file/$'
       path: '/api/scorm-file/$'
@@ -1278,6 +1358,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminCreatorsRoute: AdminCreatorsRoute,
   AdminExternalContentRoute: AdminExternalContentRoute,
   AdminGradeModerationRoute: AdminGradeModerationRoute,
+  AdminLtiRoute: AdminLtiRoute,
   AdminProgramsRoute: AdminProgramsRoute,
   AdminTokenLedgerRoute: AdminTokenLedgerRoute,
   AdminUsersRoute: AdminUsersRoute,
@@ -1300,6 +1381,9 @@ const rootRouteChildren: RootRouteChildren = {
   AdminIndexRoute: AdminIndexRoute,
   ScormIndexRoute: ScormIndexRoute,
   ApiCronCohortRemindersRoute: ApiCronCohortRemindersRoute,
+  ApiLtiJwksRoute: ApiLtiJwksRoute,
+  ApiLtiLaunchRoute: ApiLtiLaunchRoute,
+  ApiLtiLoginRoute: ApiLtiLoginRoute,
   ApiScormFileSplatRoute: ApiScormFileSplatRoute,
   LessonCourseIdLessonIdRoute: LessonCourseIdLessonIdRoute,
   ApiPublicV1CoursesRoute: ApiPublicV1CoursesRoute,

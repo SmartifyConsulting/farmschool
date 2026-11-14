@@ -816,6 +816,91 @@ export type Database = {
           },
         ]
       }
+      lti_platforms: {
+        Row: {
+          auth_login_url: string
+          auth_token_url: string
+          client_id: string
+          created_at: string
+          created_by: string
+          default_course_id: string | null
+          deployment_id: string
+          enabled: boolean
+          id: string
+          issuer: string
+          key_set_url: string
+          name: string
+        }
+        Insert: {
+          auth_login_url: string
+          auth_token_url: string
+          client_id: string
+          created_at?: string
+          created_by?: string
+          default_course_id?: string | null
+          deployment_id: string
+          enabled?: boolean
+          id?: string
+          issuer: string
+          key_set_url: string
+          name: string
+        }
+        Update: {
+          auth_login_url?: string
+          auth_token_url?: string
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          default_course_id?: string | null
+          deployment_id?: string
+          enabled?: boolean
+          id?: string
+          issuer?: string
+          key_set_url?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lti_platforms_default_course_id_fkey"
+            columns: ["default_course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lti_launch_states: {
+        Row: {
+          created_at: string
+          nonce: string
+          platform_id: string
+          state: string
+          target_link_uri: string | null
+        }
+        Insert: {
+          created_at?: string
+          nonce: string
+          platform_id: string
+          state: string
+          target_link_uri?: string | null
+        }
+        Update: {
+          created_at?: string
+          nonce?: string
+          platform_id?: string
+          state?: string
+          target_link_uri?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lti_launch_states_platform_id_fkey"
+            columns: ["platform_id"]
+            isOneToOne: false
+            referencedRelation: "lti_platforms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       competency_rubric_assessments: {
         Row: {
           criteria_snapshot: Json
@@ -2606,6 +2691,59 @@ export type Database = {
           submission_body: string
           status: string
         }[]
+      }
+      lti_list_platforms: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          issuer: string
+          client_id: string
+          deployment_id: string
+          auth_login_url: string
+          auth_token_url: string
+          key_set_url: string
+          default_course_id: string | null
+          enabled: boolean
+          created_by: string
+          created_at: string
+        }[]
+      }
+      lti_save_platform: {
+        Args: {
+          _id: string | null
+          _name: string
+          _issuer: string
+          _client_id: string
+          _deployment_id: string
+          _auth_login_url: string
+          _auth_token_url: string
+          _key_set_url: string
+          _default_course_id: string | null
+          _enabled: boolean
+        }
+        Returns: {
+          id: string
+          name: string
+          issuer: string
+          client_id: string
+          deployment_id: string
+          auth_login_url: string
+          auth_token_url: string
+          key_set_url: string
+          default_course_id: string | null
+          enabled: boolean
+          created_by: string
+          created_at: string
+        }
+      }
+      lti_delete_platform: {
+        Args: { _id: string }
+        Returns: undefined
+      }
+      lti_user_id_by_email: {
+        Args: { _email: string }
+        Returns: string
       }
       course_assessment_learners: {
         Args: { _course: string }
