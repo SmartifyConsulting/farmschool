@@ -487,12 +487,52 @@ function Editor() {
   const extractionController = useRef<AbortController | null>(null);
   useEffect(() => () => extractionController.current?.abort(), []);
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiDraft, setAiDraft] = useState<{
+  type LessonPreview = {
     lessonTitle: string;
     lessonSummary: string;
     questions: { question: string; options: string[]; correctIndex: number; sourceQuote: string }[];
     droppedUnsupportedQuestions: number;
-  } | null>(null);
+  };
+  const [aiDraft, setAiDraft] = useState<LessonPreview | null>(null);
+  const [lessonPreviews, setLessonPreviews] = useState<Record<number, LessonPreview>>({});
+  const [previewLoading, setPreviewLoading] = useState<number | null>(null);
+  const previewLessonPage = async (
+    index: number,
+    lesson: { title: string; body: string; sourceRefs: { sourceId: string }[] },
+  ) => {
+    if (previewLoading !== null || course?.published) return;
+    const methods = choicesFor(index, lesson.title, lesson.body);
+    if (!methods.length) {
+      toast.error("Tick at least one method first.");
+      return;
+    }
+    setPreviewLoading(index);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session?.access_token) throw new Error("Please sign in.");
+      const response = await fetch("/api/course-factory", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.session.access_token}`,
+        },
+        body: JSON.stringify({
+          courseId: id,
+          title: lesson.title,
+          sourceId: lesson.sourceRefs[0]?.sourceId ?? sourceName,
+          sourceText: lesson.body.slice(0, 12000),
+          approvedMethods: methods,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message ?? "AI preview failed.");
+      setLessonPreviews((p) => ({ ...p, [index]: payload }));
+    } catch (error) {
+      toast.error(friendlyError(error, "Could not generate a preview."));
+    } finally {
+      setPreviewLoading(null);
+    }
+  };
   const [batchRunning, setBatchRunning] = useState(false);
   const [batchProgress, setBatchProgress] = useState("");
   const [batchDrafts, setBatchDrafts] = useState<
@@ -2703,6 +2743,9 @@ function Editor() {
                           choices={choicesFor}
                           approved={designApproved}
                           rationale={designRationale}
+                          previews={lessonPreviews}
+                          previewLoading={previewLoading}
+                          onPreview={(index, lesson) => void previewLessonPage(index, lesson)}
                           onEdit={(index, lesson) =>
                             reviseOutline(
                               draft.lessons.map((item, i) => (i === index ? lesson : item)),

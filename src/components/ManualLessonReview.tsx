@@ -5,7 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { FormattedLesson } from "@/components/FormattedLesson";
 import { reflowText, type DraftCourse, type DraftLesson } from "@/lib/course-factory";
+
+export type LessonPagePreview = {
+  lessonTitle: string;
+  lessonSummary: string;
+  questions: { question: string; options: string[]; correctIndex: number; sourceQuote: string }[];
+  droppedUnsupportedQuestions: number;
+};
 
 const ILLUSTRATION_BUCKET = "lesson-illustrations";
 const MAX_MEDIA_BYTES = 25 * 1024 * 1024;
@@ -91,6 +99,9 @@ type Props = {
   onApprove: (index: number, lesson: DraftLesson) => void;
   onPropose: (index: number, lesson: DraftLesson) => void;
   activity: (method: string, lesson: DraftLesson) => ReactNode;
+  previews: Record<number, LessonPagePreview>;
+  previewLoading: number | null;
+  onPreview: (index: number, lesson: DraftLesson) => void;
 };
 
 export function ManualLessonReview(props: Props) {
@@ -155,8 +166,25 @@ export function ManualLessonReview(props: Props) {
             <Button size="icon" variant="ghost" title="Remove lesson from outline" aria-label={`Remove lesson ${index + 1}`} disabled={props.readOnly || props.busy} onClick={() => props.onDelete(index)}><Trash2 className="h-4 w-4" /></Button>
             <Button size="sm" variant="outline" disabled={props.readOnly || props.busy || lesson.body.length < 100} onClick={() => props.onPropose(index, lesson)}>Suggest activities with AI</Button>
             <Button size="sm" variant="ghost" aria-expanded={expanded === index} onClick={() => setExpanded(expanded === index ? null : index)}><ChevronDown className="h-4 w-4" />Activities</Button>
+            <Button size="sm" variant="secondary" disabled={props.readOnly || props.previewLoading !== null || lesson.body.length < 100 || !selected.length} onClick={() => props.onPreview(index, lesson)}>{props.previewLoading === index ? "Generating preview…" : "Preview page"}</Button>
             <Button size="sm" variant={props.approved[index] ? "secondary" : "outline"} disabled={props.readOnly || props.busy || !selected.length || !lesson.title.trim()} onClick={() => props.onApprove(index, lesson)}><Check className="h-4 w-4" />{props.approved[index] ? "Reopen" : "Approve"}</Button>
           </div>
+          {props.previews[index] && <div className="mt-4 space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
+            <p className="text-xs font-semibold text-primary">AI-generated page preview — for your checked methods; review before publishing</p>
+            <FormattedLesson content={props.previews[index].lessonSummary} />
+            {props.previews[index].questions.map((q, i) => (
+              <div key={i} className="space-y-1 border-t border-border pt-2 text-sm">
+                <p className="font-medium">{i + 1}. {q.question}</p>
+                {q.options.map((option, j) => (
+                  <p key={j} className="text-sm">{j === q.correctIndex ? "✓ " : "○ "}{option}</p>
+                ))}
+                <p className="text-xs italic text-muted-foreground">Source quote: {q.sourceQuote}</p>
+              </div>
+            ))}
+            {!!props.previews[index].droppedUnsupportedQuestions && (
+              <p className="text-xs text-muted-foreground">{props.previews[index].droppedUnsupportedQuestions} question(s) removed — their source quotes weren't found in the text.</p>
+            )}
+          </div>}
           {splitting === index && <div className="mt-4 space-y-2 border-t border-border pt-3">
             <h4 className="text-sm font-medium">Click “Split here” where the next lesson should start</h4>
             <div className="max-h-[28rem] space-y-1 overflow-y-auto rounded-md border border-border p-3">
