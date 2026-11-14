@@ -22,6 +22,7 @@ import {
   ArrowDown,
   Package,
   FolderOpen,
+  Pencil,
 } from "lucide-react";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -1971,14 +1972,43 @@ function Editor() {
             <div className="mt-2 max-h-72 space-y-4 overflow-y-auto lg:max-h-[65vh]">
               {modules.map((mod) => (
                 <div key={mod.key} className="space-y-0.5">
-                  <Button
-                    variant={screen === mod.key ? "secondary" : "ghost"}
-                    className="h-auto w-full justify-start whitespace-normal text-left text-xs font-bold"
-                    onClick={() => setScreen(mod.key)}
-                  >
-                    {mod.title}
-                    <span className="ml-auto pl-2 text-muted-foreground">{mod.lessons.length}</span>
-                  </Button>
+                  <div className="flex items-center gap-0.5">
+                    <Button
+                      variant={screen === mod.key ? "secondary" : "ghost"}
+                      className="h-auto min-w-0 flex-1 justify-start whitespace-normal text-left text-xs font-bold"
+                      onClick={() => setScreen(mod.key)}
+                    >
+                      <span className="min-w-0 flex-1 truncate">{mod.title}</span>
+                      <span className="ml-auto shrink-0 pl-2 text-muted-foreground">{mod.lessons.length}</span>
+                    </Button>
+                    {mod.moduleId && !course.published && (
+                      <>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 shrink-0"
+                          title="Rename module"
+                          aria-label={`Rename ${mod.title}`}
+                          onClick={() => {
+                            const title = window.prompt("Module title", mod.title)?.trim();
+                            if (title && title !== mod.title) void renameModule(mod.moduleId!, title);
+                          }}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 shrink-0"
+                          title="Delete module"
+                          aria-label={`Delete ${mod.title}`}
+                          onClick={() => void deleteModule(mod.moduleId!)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                   <div className="space-y-0.5 border-l border-border pl-2">
                     {mod.lessons.map((lesson) => {
                       const Icon =
