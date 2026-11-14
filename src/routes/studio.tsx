@@ -247,7 +247,7 @@ function NewCourseDialog({
         }
       }}
     >
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>Course details</DialogTitle>
         </DialogHeader>
@@ -258,204 +258,208 @@ function NewCourseDialog({
           }}
           className="space-y-3"
         >
-          <Input
-            value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
-            placeholder="Course title, e.g. Raising broilers"
-            aria-label="Title"
-            maxLength={120}
-            autoFocus
-          />
-          <div className="space-y-1.5 rounded-lg border border-dashed border-border p-3">
-            <label className="block text-xs font-medium">
-              Start from a training manual (optional)
-              <input
-                type="file"
-                accept=".pdf,.docx,.pptx,.txt,.md"
-                disabled={extracting}
-                onChange={(e) => {
-                  void analyzeManual(e.target.files?.[0]);
-                  e.target.value = "";
-                }}
-                className="mt-1 block w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-primary"
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-3">
+              <Input
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="Course title, e.g. Raising broilers"
+                aria-label="Title"
+                maxLength={120}
+                autoFocus
               />
-            </label>
-            <p className="text-xs text-muted-foreground">
-              {extracting
-                ? "Analyzing manual…"
-                : manualFileName
-                  ? `Analyzed "${manualFileName}" — description and topic below are auto-filled; review before creating.`
-                  : "Upload a manual and the description and topic below will be pre-filled from it."}
-            </p>
-          </div>
-          <Textarea
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            placeholder="What will learners gain from this course?"
-            rows={3}
-            maxLength={4000}
-          />
-          <PolishButton
-            title={form.title}
-            text={form.description}
-            onText={(t) => setForm({ ...form, description: t })}
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <div className="col-span-2 space-y-2">
-              <label className="block text-xs font-medium">Industry</label>
-              <select
-                value={courseIndustry(form.category)}
-                onChange={(e) => {
-                  const selected = e.target.value;
-                  setForm({
-                    ...form,
-                    category:
-                      selected === "Agriculture" ? "Farm Management" : selected + " / General",
-                  });
-                  setNewTopic("");
-                }}
-                className="w-full rounded-md border border-input bg-background px-2 py-2 text-sm"
-                aria-label="Industry"
-              >
-                {INDUSTRIES.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-              <label className="block text-xs font-medium">Topic</label>
-              {(() => {
-                const industry = courseIndustry(form.category);
-                const curated = industry === "Agriculture" ? STUDIO_CATEGORIES : (INDUSTRY_TOPICS[industry] ?? []);
-                const bareTopic =
-                  industry === "Agriculture" ? form.category : form.category.split(" / ").slice(1).join(" / ");
-                const showOther = otherTopic || (!!bareTopic && !curated.includes(bareTopic));
-                if (!curated.length) {
-                  return (
-                    <Input
-                      value={newTopic || bareTopic}
-                      onChange={(e) => {
-                        setNewTopic(e.target.value);
-                        setForm({ ...form, category: industry + " / " + e.target.value });
-                      }}
-                      aria-label="Topic"
-                      placeholder="e.g. Patient care, Retail operations"
-                      maxLength={100}
-                    />
-                  );
-                }
-                return (
-                  <>
-                    <select
-                      value={showOther ? "__other__" : curated.includes(bareTopic) ? bareTopic : ""}
-                      onChange={(e) => {
-                        if (e.target.value === "__other__") {
-                          setOtherTopic(true);
-                          setNewTopic("");
-                          return;
-                        }
-                        setOtherTopic(false);
-                        setNewTopic("");
-                        setForm({
-                          ...form,
-                          category: industry === "Agriculture" ? e.target.value : industry + " / " + e.target.value,
-                        });
-                      }}
-                      className="w-full rounded-md border border-input bg-background px-2 py-2 text-sm"
-                      aria-label="Topic"
-                    >
-                      {!showOther && !curated.includes(bareTopic) && <option value="">Select a topic</option>}
-                      {curated.map((c) => (
-                        <option key={c}>{c}</option>
-                      ))}
-                      <option value="__other__">Other</option>
-                    </select>
-                    {showOther && (
-                      <Input
-                        value={newTopic}
-                        onChange={(e) => {
-                          setNewTopic(e.target.value);
-                          setForm({
-                            ...form,
-                            category:
-                              industry === "Agriculture" ? e.target.value : industry + " / " + e.target.value,
-                          });
-                        }}
-                        aria-label="Custom topic"
-                        placeholder="Describe the topic"
-                        maxLength={100}
-                        autoFocus
-                      />
-                    )}
-                  </>
-                );
-              })()}
+              <div className="space-y-1.5 rounded-lg border border-dashed border-border p-3">
+                <label className="block text-xs font-medium">
+                  Start from a training manual (optional)
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,.pptx,.txt,.md"
+                    disabled={extracting}
+                    onChange={(e) => {
+                      void analyzeManual(e.target.files?.[0]);
+                      e.target.value = "";
+                    }}
+                    className="mt-1 block w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-primary"
+                  />
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  {extracting
+                    ? "Analyzing manual…"
+                    : manualFileName
+                      ? `Analyzed "${manualFileName}" — description and topic below are auto-filled; review before creating.`
+                      : "Upload a manual and the description and topic below will be pre-filled from it."}
+                </p>
+              </div>
+              <CoverImageInput
+                value={form.cover_url}
+                onChange={(url) => setForm({ ...form, cover_url: url })}
+              />
+              <Textarea
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder="What will learners gain from this course?"
+                rows={3}
+                maxLength={4000}
+              />
+              <PolishButton
+                title={form.title}
+                text={form.description}
+                onText={(t) => setForm({ ...form, description: t })}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <div className="col-span-2 space-y-2">
+                  <label className="block text-xs font-medium">Industry</label>
+                  <select
+                    value={courseIndustry(form.category)}
+                    onChange={(e) => {
+                      const selected = e.target.value;
+                      setForm({
+                        ...form,
+                        category:
+                          selected === "Agriculture" ? "Farm Management" : selected + " / General",
+                      });
+                      setNewTopic("");
+                    }}
+                    className="w-full rounded-md border border-input bg-background px-2 py-2 text-sm"
+                    aria-label="Industry"
+                  >
+                    {INDUSTRIES.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="block text-xs font-medium">Topic</label>
+                  {(() => {
+                    const industry = courseIndustry(form.category);
+                    const curated = industry === "Agriculture" ? STUDIO_CATEGORIES : (INDUSTRY_TOPICS[industry] ?? []);
+                    const bareTopic =
+                      industry === "Agriculture" ? form.category : form.category.split(" / ").slice(1).join(" / ");
+                    const showOther = otherTopic || (!!bareTopic && !curated.includes(bareTopic));
+                    if (!curated.length) {
+                      return (
+                        <Input
+                          value={newTopic || bareTopic}
+                          onChange={(e) => {
+                            setNewTopic(e.target.value);
+                            setForm({ ...form, category: industry + " / " + e.target.value });
+                          }}
+                          aria-label="Topic"
+                          placeholder="e.g. Patient care, Retail operations"
+                          maxLength={100}
+                        />
+                      );
+                    }
+                    return (
+                      <>
+                        <select
+                          value={showOther ? "__other__" : curated.includes(bareTopic) ? bareTopic : ""}
+                          onChange={(e) => {
+                            if (e.target.value === "__other__") {
+                              setOtherTopic(true);
+                              setNewTopic("");
+                              return;
+                            }
+                            setOtherTopic(false);
+                            setNewTopic("");
+                            setForm({
+                              ...form,
+                              category: industry === "Agriculture" ? e.target.value : industry + " / " + e.target.value,
+                            });
+                          }}
+                          className="w-full rounded-md border border-input bg-background px-2 py-2 text-sm"
+                          aria-label="Topic"
+                        >
+                          {!showOther && !curated.includes(bareTopic) && <option value="">Select a topic</option>}
+                          {curated.map((c) => (
+                            <option key={c}>{c}</option>
+                          ))}
+                          <option value="__other__">Other</option>
+                        </select>
+                        {showOther && (
+                          <Input
+                            value={newTopic}
+                            onChange={(e) => {
+                              setNewTopic(e.target.value);
+                              setForm({
+                                ...form,
+                                category:
+                                  industry === "Agriculture" ? e.target.value : industry + " / " + e.target.value,
+                              });
+                            }}
+                            aria-label="Custom topic"
+                            placeholder="Describe the topic"
+                            maxLength={100}
+                            autoFocus
+                          />
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+                <select
+                  value={form.level}
+                  onChange={(e) => setForm({ ...form, level: e.target.value })}
+                  className="rounded-md border border-input bg-background px-2 py-2 text-sm"
+                  aria-label="Level"
+                >
+                  {["Beginner", "Intermediate", "Advanced"].map((c) => (
+                    <option key={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <select
-              value={form.level}
-              onChange={(e) => setForm({ ...form, level: e.target.value })}
-              className="rounded-md border border-input bg-background px-2 py-2 text-sm"
-              aria-label="Level"
-            >
-              {["Beginner", "Intermediate", "Advanced"].map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-          <CoverImageInput
-            value={form.cover_url}
-            onChange={(url) => setForm({ ...form, cover_url: url })}
-          />
-          <div className="space-y-3 border-t border-border pt-3">
-            <div>
-              <label className="block text-xs font-medium">Prerequisites</label>
-              <p className="text-xs text-muted-foreground">
-                Require a learner to finish another published course first.
-              </p>
-              <select
-                value={form.prerequisite_course_id}
-                onChange={(e) => setForm({ ...form, prerequisite_course_id: e.target.value })}
-                className="mt-1 w-full rounded-md border border-input bg-background px-2 py-2 text-sm"
-                aria-label="Prerequisite course"
-              >
-                <option value="">None</option>
-                {prereqOptions.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.title}
-                  </option>
-                ))}
-              </select>
+            <div className="space-y-3 md:border-l md:border-border md:pl-6">
+              <div>
+                <label className="block text-xs font-medium">Prerequisites</label>
+                <p className="text-xs text-muted-foreground">
+                  Require a learner to finish another published course first.
+                </p>
+                <select
+                  value={form.prerequisite_course_id}
+                  onChange={(e) => setForm({ ...form, prerequisite_course_id: e.target.value })}
+                  className="mt-1 w-full rounded-md border border-input bg-background px-2 py-2 text-sm"
+                  aria-label="Prerequisite course"
+                >
+                  <option value="">None</option>
+                  {prereqOptions.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <label className="block space-y-1 text-xs font-medium">
+                Target Audience
+                <Textarea
+                  value={form.target_audience}
+                  onChange={(e) => setForm({ ...form, target_audience: e.target.value })}
+                  placeholder="Ideal audience & market profile"
+                  rows={3}
+                  maxLength={2000}
+                />
+              </label>
+              <label className="block space-y-1 text-xs font-medium">
+                Value Proposition
+                <Textarea
+                  value={form.value_proposition}
+                  onChange={(e) => setForm({ ...form, value_proposition: e.target.value })}
+                  placeholder="Value of certification / qualification"
+                  rows={3}
+                  maxLength={2000}
+                />
+              </label>
+              <label className="block space-y-1 text-xs font-medium">
+                Outcomes & Timeline
+                <Textarea
+                  value={form.outcomes_timeline}
+                  onChange={(e) => setForm({ ...form, outcomes_timeline: e.target.value })}
+                  placeholder="Key learning outcomes & program duration"
+                  rows={3}
+                  maxLength={2000}
+                />
+              </label>
             </div>
-            <label className="block space-y-1 text-xs font-medium">
-              Target Audience
-              <Textarea
-                value={form.target_audience}
-                onChange={(e) => setForm({ ...form, target_audience: e.target.value })}
-                placeholder="Ideal audience & market profile"
-                rows={2}
-                maxLength={2000}
-              />
-            </label>
-            <label className="block space-y-1 text-xs font-medium">
-              Value Proposition
-              <Textarea
-                value={form.value_proposition}
-                onChange={(e) => setForm({ ...form, value_proposition: e.target.value })}
-                placeholder="Value of certification / qualification"
-                rows={2}
-                maxLength={2000}
-              />
-            </label>
-            <label className="block space-y-1 text-xs font-medium">
-              Outcomes & Timeline
-              <Textarea
-                value={form.outcomes_timeline}
-                onChange={(e) => setForm({ ...form, outcomes_timeline: e.target.value })}
-                placeholder="Key learning outcomes & program duration"
-                rows={2}
-                maxLength={2000}
-              />
-            </label>
           </div>
           <DialogFooter>
             <Button type="submit" disabled={creating || extracting} className="w-full">
