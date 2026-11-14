@@ -72,17 +72,6 @@ function MediaPicker({ lesson, disabled, onChange }: { lesson: DraftLesson; disa
   );
 }
 
-/** A handful of short lines for the slide mock-up — a rough layout preview, not generated content. */
-function previewLines(body: string): string[] {
-  return body
-    .replace(/\s+/g, " ")
-    .split(/(?<=[.!?])\s+/)
-    .map(s => s.trim())
-    .filter(Boolean)
-    .slice(0, 4)
-    .map(s => (s.length > 90 ? `${s.slice(0, 87)}…` : s));
-}
-
 type Props = {
   draft: DraftCourse;
   readOnly: boolean;
@@ -133,29 +122,10 @@ export function ManualLessonReview(props: Props) {
               <p className="mt-2 text-xs text-muted-foreground">{pages.length ? `Source pages ${Math.min(...pages)}–${Math.max(...pages)}` : "Pasted source"}{props.approved[index] ? " · Approved" : " · Needs review"}</p>
             </div>
           </div>
-          <div className="mt-3 grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_14rem]">
-            <label className="block space-y-1 text-xs font-medium text-muted-foreground">
-              <span>Source</span>
-              <Textarea aria-label={`Lesson ${index + 1} source`} rows={5} value={lesson.body} disabled={props.readOnly || props.busy} onChange={event => props.onEdit(index, { ...lesson, body: event.target.value })} className="text-sm leading-relaxed text-foreground" />
-            </label>
-            <div className="min-w-0 space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Preview — rough layout, not final art</p>
-              <div className="flex h-full min-h-32 flex-col rounded-md border border-border bg-card p-2 text-[11px] shadow-sm">
-                <p className="truncate border-b border-border pb-1 font-semibold">{lesson.title || `Lesson ${index + 1}`}</p>
-                {(selected.includes("illustrated") || selected.includes("visual") || lesson.mediaUrl) && (
-                  <MediaPicker
-                    lesson={lesson}
-                    disabled={props.readOnly || props.busy}
-                    onChange={(mediaUrl, mediaKind) => props.onEdit(index, { ...lesson, mediaUrl, mediaKind })}
-                  />
-                )}
-                <ul className="mt-1 list-disc space-y-0.5 pl-3 text-muted-foreground">
-                  {previewLines(lesson.body).map((line, i) => <li key={i} className="line-clamp-1">{line}</li>)}
-                  {!lesson.body.trim() && <li className="list-none text-muted-foreground/70">No source text yet</li>}
-                </ul>
-              </div>
-            </div>
-          </div>
+          <label className="mt-3 block space-y-1 text-xs font-medium text-muted-foreground">
+            <span>Source</span>
+            <Textarea aria-label={`Lesson ${index + 1} source`} rows={5} value={lesson.body} disabled={props.readOnly || props.busy} onChange={event => props.onEdit(index, { ...lesson, body: event.target.value })} className="text-sm leading-relaxed text-foreground" />
+          </label>
           <fieldset disabled={props.readOnly || props.busy} className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
             {props.methods.map(method => <label key={method.id} title={method.detail} className="flex items-center gap-2 text-xs"><input type="checkbox" checked={selected.includes(method.id)} onChange={event => props.onMethods(index, event.target.checked ? [...selected, method.id] : selected.filter(value => value !== method.id))} />{method.label}</label>)}
           </fieldset>
@@ -171,6 +141,16 @@ export function ManualLessonReview(props: Props) {
           </div>
           {props.previews[index] && <div className="mt-4 space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
             <p className="text-xs font-semibold text-primary">AI-generated page preview — for your checked methods; review before publishing</p>
+            {(selected.includes("illustrated") || selected.includes("visual") || lesson.mediaUrl) && (
+              <div className="max-w-xs space-y-1">
+                <p className="text-xs text-muted-foreground">{selected.includes("visual") ? "Visual identification image" : "Illustration for this lesson"}</p>
+                <MediaPicker
+                  lesson={lesson}
+                  disabled={props.readOnly || props.busy}
+                  onChange={(mediaUrl, mediaKind) => props.onEdit(index, { ...lesson, mediaUrl, mediaKind })}
+                />
+              </div>
+            )}
             <FormattedLesson content={props.previews[index].lessonSummary} />
             {props.previews[index].questions.map((q, i) => (
               <div key={i} className="space-y-1 border-t border-border pt-2 text-sm">
