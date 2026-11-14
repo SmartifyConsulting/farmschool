@@ -230,10 +230,11 @@ export const generateCourseDetails = createServerFn({ method: "POST" })
     try {
       const { output } = await generateText({
         model: createOpenAI({ apiKey }).responses("gpt-6-luna"), maxRetries: 1,
-        system: `${SAFETY} From this training manual, write: (1) targetAudience — one or two sentences on who this course is for; (2) valueProposition — one or two sentences on why it is worth taking; (3) outcomesTimeline — one or two sentences on what learners will be able to do and roughly how long the material takes to complete. Use only what the manual supports; do not invent numbers or durations it does not state.`,
+        system: `${SAFETY} From this training manual, write: (1) description — a 2 to 4 sentence catalogue summary of what the course covers and who it helps, written as flowing prose (no mid-sentence cutoffs); (2) targetAudience — one or two sentences on who this course is for; (3) valueProposition — one or two sentences on why it is worth taking; (4) outcomesTimeline — one or two sentences on what learners will be able to do and roughly how long the material takes to complete. Use only what the manual supports; do not invent numbers, durations, or a delivery format (e.g. do not say "facilitator-led", "instructor-led", "self-paced" or similar) unless the manual itself states it.`,
         prompt: JSON.stringify({ title: data.title, manual: data.sourceText.slice(0, 15000) }),
         output: Output.object({
           schema: z.object({
+            description: z.string().max(600),
             targetAudience: z.string().max(400),
             valueProposition: z.string().max(400),
             outcomesTimeline: z.string().max(400),

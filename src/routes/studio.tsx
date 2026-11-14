@@ -64,6 +64,14 @@ const BLANK_DETAILS = {
   outcomes_timeline: "",
 };
 
+/** Truncates to at most `max` chars without cutting a word in half, appending an ellipsis if shortened. */
+function truncateAtWord(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+}
+
 /** Published courses by any creator, for the Prerequisites dropdown. */
 function usePrerequisiteOptions(excludeId?: string) {
   return useQuery({
@@ -134,13 +142,14 @@ function NewCourseDialog({
         .trim();
       const draft = buildCourseDraft(fallbackTitle || "Untitled course", pages);
       const firstBody = draft.lessons[0]?.body ?? "";
-      const description = firstBody.replace(/\s+/g, " ").trim().slice(0, 280);
+      const fallbackDescription = truncateAtWord(firstBody.replace(/\s+/g, " ").trim(), 280);
       const combinedText = pages.map((p) => p.text).join("\n");
       const guessedCategory = guessCategory(combinedText);
+      const descriptionWasEmpty = !form.description.trim();
       setForm((prev) => ({
         ...prev,
         title: prev.title.trim() ? prev.title : fallbackTitle.slice(0, 120),
-        description: prev.description.trim() ? prev.description : description,
+        description: prev.description.trim() ? prev.description : fallbackDescription,
         category: guessedCategory ?? prev.category,
       }));
       setExtractedPages(pages);
@@ -153,6 +162,11 @@ function NewCourseDialog({
         });
         setForm((prev) => ({
           ...prev,
+          // Only replace the description if it's still the placeholder we just set (or still empty) —
+          // never overwrite text the user typed in the meantime.
+          description: descriptionWasEmpty && (prev.description === fallbackDescription || !prev.description.trim())
+            ? details.description
+            : prev.description,
           target_audience: prev.target_audience.trim() ? prev.target_audience : details.targetAudience,
           value_proposition: prev.value_proposition.trim() ? prev.value_proposition : details.valueProposition,
           outcomes_timeline: prev.outcomes_timeline.trim() ? prev.outcomes_timeline : details.outcomesTimeline,
