@@ -244,6 +244,14 @@ function NewCourseDialog({
           }}
           className="space-y-3"
         >
+          <Input
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            placeholder="Course title, e.g. Raising broilers"
+            aria-label="Title"
+            maxLength={120}
+            autoFocus
+          />
           <div className="space-y-1.5 rounded-lg border border-dashed border-border p-3">
             <label className="block text-xs font-medium">
               Start from a training manual (optional)
@@ -262,18 +270,10 @@ function NewCourseDialog({
               {extracting
                 ? "Analyzing manual…"
                 : manualFileName
-                  ? `Analyzed "${manualFileName}" — title, description and topic below are auto-filled; review before creating.`
-                  : "Upload a manual first and the details below will be pre-filled from it."}
+                  ? `Analyzed "${manualFileName}" — description and topic below are auto-filled; review before creating.`
+                  : "Upload a manual and the description and topic below will be pre-filled from it."}
             </p>
           </div>
-          <Input
-            value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
-            placeholder="Course title, e.g. Raising broilers"
-            aria-label="Title"
-            maxLength={120}
-            autoFocus
-          />
           <Textarea
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
