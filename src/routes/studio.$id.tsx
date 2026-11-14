@@ -2349,17 +2349,22 @@ function Editor() {
                 <section className="space-y-3 border-b border-border pb-6">
                   <h2 className="font-semibold">Build from a manual</h2>
                   <nav aria-label="Course Factory steps" className="flex flex-wrap gap-2">
-                    {["Upload", "Review & approve", "Generate & import"].map((label, i) => (
-                      <Button
-                        key={label}
-                        type="button"
-                        size="sm"
-                        variant={factoryStep === i ? "secondary" : "ghost"}
-                        onClick={() => setFactoryStep(i)}
-                      >
-                        {i + 1}. {label}
-                      </Button>
-                    ))}
+                    {["Upload", "Review & approve", "Generate & import"].map((label, i) => {
+                      const reachable = i === 0 || (i === 1 && !!sourceText.trim()) || (i === 2 && !!draft);
+                      return (
+                        <Button
+                          key={label}
+                          type="button"
+                          size="sm"
+                          variant={factoryStep === i ? "secondary" : "ghost"}
+                          disabled={!reachable}
+                          title={reachable ? undefined : "Complete the earlier steps first"}
+                          onClick={() => setFactoryStep(i)}
+                        >
+                          {i + 1}. {label}
+                        </Button>
+                      );
+                    })}
                   </nav>
 
                   {factoryStep === 0 && (
@@ -2643,9 +2648,16 @@ function Editor() {
                         </div>
                       </div>
                     ) : (
-                      <p className="py-6 text-sm text-muted-foreground">
-                        Upload a manual to review its lessons.
-                      </p>
+                      <div className="space-y-2 py-6 text-center">
+                        <p className="text-sm text-muted-foreground">
+                          {sourceText.trim()
+                            ? "Analyse the manual before reviewing its lessons."
+                            : "Upload a manual to review its lessons."}
+                        </p>
+                        <Button type="button" variant="outline" size="sm" onClick={() => setFactoryStep(0)}>
+                          Go to Step 1: Upload
+                        </Button>
+                      </div>
                     ))}
 
                   {factoryStep === 2 &&
@@ -2804,9 +2816,16 @@ function Editor() {
                         )}
                       </div>
                     ) : (
-                      <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                        Upload or paste a source manual and analyse it first.
-                      </p>
+                      <div className="space-y-2 rounded-2xl border border-dashed border-border p-6 text-center">
+                        <p className="text-sm text-muted-foreground">
+                          {sourceText.trim()
+                            ? "Analyse the manual to build a course outline before generating lessons."
+                            : "Upload or paste a source manual and analyse it first."}
+                        </p>
+                        <Button type="button" variant="outline" size="sm" onClick={() => setFactoryStep(0)}>
+                          Go to Step 1: Upload
+                        </Button>
+                      </div>
                     ))}
                 </section>
               </div>
