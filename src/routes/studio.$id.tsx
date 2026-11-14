@@ -2815,14 +2815,6 @@ function Editor() {
                           onMethods={(index, methods) => void saveDesignSelection(index, methods)}
                           onApprove={(index, lesson) => void toggleDesignApproval(index, lesson)}
                           onPropose={(index, lesson) => void proposeDesign(index, lesson)}
-                          activity={(method, lesson) => (
-                            <SourceActivity
-                              method={method}
-                              lesson={lesson}
-                              courseId={id}
-                              published={course.published}
-                            />
-                          )}
                         />
                         <div className="flex flex-wrap justify-between gap-2 border-t border-border pt-4">
                           <Button variant="outline" onClick={() => setFactoryStep(0)}>

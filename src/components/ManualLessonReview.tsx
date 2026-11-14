@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState } from "react";
 import { ArrowDownToLine, Scissors, Trash2, ChevronDown, Check, Wand2, FolderOpen, Image as ImageIcon, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -87,7 +87,6 @@ type Props = {
   onMethods: (index: number, methods: string[]) => void;
   onApprove: (index: number, lesson: DraftLesson) => void;
   onPropose: (index: number, lesson: DraftLesson) => void;
-  activity: (method: string, lesson: DraftLesson) => ReactNode;
   previews: Record<number, LessonPagePreview>;
   previewLoading: number | null;
   onPreview: (index: number, lesson: DraftLesson) => void;
@@ -180,11 +179,9 @@ export function ManualLessonReview(props: Props) {
             </div>
           </div>}
           {expanded === index && <div className="mt-4 space-y-3 border-t border-border pt-4">
-            {props.rationale[index] && <p className="text-xs text-muted-foreground">{props.rationale[index]}</p>}
-            {selected.filter(method => method === "steps" || method === "scenario").map(method => <div key={method}>{props.activity(method, lesson)}</div>)}
-            {!props.rationale[index] && !selected.some(method => method === "steps" || method === "scenario") && (
-              <p className="text-xs text-muted-foreground">No activity plan yet — select a method above or click "Suggest activities with AI".</p>
-            )}
+            {props.rationale[index]
+              ? <p className="text-xs text-muted-foreground">{props.rationale[index]}</p>
+              : <p className="text-xs text-muted-foreground">Click "Suggest activities with AI" for a method rationale, or "Preview page" to generate the full lesson — including every ticked method — for review.</p>}
           </div>}
           </div>
         </li>;
