@@ -643,6 +643,9 @@ function Editor() {
             lesson.sourceRefs.map((ref) => ref.page),
           );
           if (firstPage.length) setFirstContentPage(Math.min(...firstPage));
+          // A manual uploaded at course creation is already analyzed —
+          // land on Review & approve instead of an empty Upload step.
+          setFactoryStep((current) => (current === 0 ? 1 : current));
         }
       }
       setCloudDraftEnabled(true);

@@ -211,6 +211,42 @@ export const polishText = createServerFn({ method: "POST" })
     }
   });
 
+/** Drafts target audience, value proposition and outcomes/timeline from an uploaded manual, before a course exists. Nothing is saved here. */
+export const generateCourseDetails = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({ title: z.string().max(120), sourceText: z.string().max(200000) }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    if (!data.sourceText.trim()) throw new Error("Upload a manual first.");
+    const apiKey = process.env["OPENAI_API_KEY"];
+    if (!apiKey) throw new Error("The AI connection is not configured yet.");
+    const { data: count, error: quotaError } = await context.supabase.rpc("course_factory_reserve_ai_request" as never);
+    if (quotaError || typeof count !== "number") {
+      throw new Error(quotaError?.message.includes("Daily AI generation limit") ? "Your daily AI allowance is used up. Try again tomorrow." : "Your AI allowance could not be checked. Please try later.");
+    }
+    const { createOpenAI } = await import("@ai-sdk/openai");
+    const { generateText, Output } = await import("ai");
+    try {
+      const { output } = await generateText({
+        model: createOpenAI({ apiKey }).responses("gpt-6-luna"), maxRetries: 1,
+        system: `${SAFETY} From this training manual, write: (1) targetAudience — one or two sentences on who this course is for; (2) valueProposition — one or two sentences on why it is worth taking; (3) outcomesTimeline — one or two sentences on what learners will be able to do and roughly how long the material takes to complete. Use only what the manual supports; do not invent numbers or durations it does not state.`,
+        prompt: JSON.stringify({ title: data.title, manual: data.sourceText.slice(0, 15000) }),
+        output: Output.object({
+          schema: z.object({
+            targetAudience: z.string().max(400),
+            valueProposition: z.string().max(400),
+            outcomesTimeline: z.string().max(400),
+          }),
+        }),
+      });
+      return output;
+    } catch (e) {
+      console.error("generateCourseDetails failed", e);
+      throw new Error("The AI assistant couldn't finish. Please try again.");
+    }
+  });
+
 /** Drafts a course description from the uploaded manual (when given) or the course's lessons. Nothing is saved here. */
 export const generateCourseDescription = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

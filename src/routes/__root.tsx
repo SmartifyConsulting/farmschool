@@ -127,7 +127,7 @@ function RootComponent() {
         <ConfirmProvider>
           <Outlet />
         </ConfirmProvider>
-        <Toaster position="top-center" richColors closeButton duration={5000} />
+        <Toaster position="top-center" closeButton duration={5000} />
       </LanguageProvider>
       </AuthDataBoundary>
     </QueryClientProvider>

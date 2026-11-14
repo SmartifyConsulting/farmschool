@@ -1,5 +1,6 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { Plus, PenSquare } from "lucide-react";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
@@ -17,7 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useLearning";
 import { toast } from "sonner";
 import { STUDIO_CATEGORIES } from "@/lib/studio";
-import { INDUSTRIES, courseIndustry } from "@/lib/industries";
+import { INDUSTRIES, INDUSTRY_TOPICS, courseIndustry } from "@/lib/industries";
 import { CourseWizard } from "@/components/CourseWizard";
 import { PolishButton } from "@/components/PolishButton";
 import { CoverImageInput } from "@/components/CoverImageInput";
@@ -27,6 +28,7 @@ import { QuestionBank } from "@/components/QuestionBank";
 import { CourseArchiveRestore } from "@/components/CourseArchiveTools";
 import { extractDocument } from "@/lib/document-extraction";
 import { buildCourseDraft, type DraftCourse, type SourcePage } from "@/lib/course-factory";
+import { generateCourseDetails } from "@/lib/studio-ai.functions";
 
 export const Route = createFileRoute("/studio")({
   head: () => ({
@@ -60,7 +62,6 @@ const BLANK_DETAILS = {
   target_audience: "",
   value_proposition: "",
   outcomes_timeline: "",
-  core_messaging: "",
 };
 
 /** Published courses by any creator, for the Prerequisites dropdown. */
@@ -91,12 +92,14 @@ function NewCourseDialog({
   const { user } = useAuth();
   const [form, setForm] = useState(BLANK_DETAILS);
   const [newTopic, setNewTopic] = useState("");
+  const [otherTopic, setOtherTopic] = useState(false);
   const [creating, setCreating] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [manualFileName, setManualFileName] = useState("");
   const [extractedPages, setExtractedPages] = useState<SourcePage[] | null>(null);
   const [extractedDraft, setExtractedDraft] = useState<DraftCourse | null>(null);
   const { data: prereqOptions = [] } = usePrerequisiteOptions();
+  const runGenerateCourseDetails = useServerFn(generateCourseDetails);
 
   const resetManual = () => {
     setManualFileName("");
@@ -144,6 +147,20 @@ function NewCourseDialog({
       setExtractedDraft(draft);
       setManualFileName(file.name);
       toast.success("Manual analyzed — review the auto-filled details below before creating.");
+      try {
+        const details = await runGenerateCourseDetails({
+          data: { title: fallbackTitle || "Untitled course", sourceText: combinedText },
+        });
+        setForm((prev) => ({
+          ...prev,
+          target_audience: prev.target_audience.trim() ? prev.target_audience : details.targetAudience,
+          value_proposition: prev.value_proposition.trim() ? prev.value_proposition : details.valueProposition,
+          outcomes_timeline: prev.outcomes_timeline.trim() ? prev.outcomes_timeline : details.outcomesTimeline,
+        }));
+      } catch {
+        // AI quota/key issues are non-fatal here: the manual is already analyzed and
+        // these fields are optional, so the user can just fill them in manually.
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not read this document.");
     } finally {
@@ -170,7 +187,6 @@ function NewCourseDialog({
         target_audience: form.target_audience.trim(),
         value_proposition: form.value_proposition.trim(),
         outcomes_timeline: form.outcomes_timeline.trim(),
-        core_messaging: form.core_messaging.trim(),
         author_id: user.id,
       })
       .select("id")
@@ -197,6 +213,7 @@ function NewCourseDialog({
     setCreating(false);
     setForm(BLANK_DETAILS);
     setNewTopic("");
+    setOtherTopic(false);
     resetManual();
     onCreated(c.id);
   };
@@ -210,6 +227,7 @@ function NewCourseDialog({
           if (!next) {
             setForm(BLANK_DETAILS);
             setNewTopic("");
+            setOtherTopic(false);
             resetManual();
           }
         }
@@ -292,35 +310,72 @@ function NewCourseDialog({
                 ))}
               </select>
               <label className="block text-xs font-medium">Topic</label>
-              {courseIndustry(form.category) === "Agriculture" ? (
-                <select
-                  value={STUDIO_CATEGORIES.includes(form.category) ? form.category : ""}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  className="w-full rounded-md border border-input bg-background px-2 py-2 text-sm"
-                  aria-label="Topic"
-                >
-                  {!STUDIO_CATEGORIES.includes(form.category) && (
-                    <option value="">Select a topic</option>
-                  )}
-                  {STUDIO_CATEGORIES.map((c) => (
-                    <option key={c}>{c}</option>
-                  ))}
-                </select>
-              ) : (
-                <Input
-                  value={newTopic || form.category.split(" / ").slice(1).join(" / ")}
-                  onChange={(e) => {
-                    setNewTopic(e.target.value);
-                    setForm({
-                      ...form,
-                      category: courseIndustry(form.category) + " / " + e.target.value,
-                    });
-                  }}
-                  aria-label="Topic"
-                  placeholder="e.g. Patient care, Retail operations"
-                  maxLength={100}
-                />
-              )}
+              {(() => {
+                const industry = courseIndustry(form.category);
+                const curated = industry === "Agriculture" ? STUDIO_CATEGORIES : (INDUSTRY_TOPICS[industry] ?? []);
+                const bareTopic =
+                  industry === "Agriculture" ? form.category : form.category.split(" / ").slice(1).join(" / ");
+                const showOther = otherTopic || (!!bareTopic && !curated.includes(bareTopic));
+                if (!curated.length) {
+                  return (
+                    <Input
+                      value={newTopic || bareTopic}
+                      onChange={(e) => {
+                        setNewTopic(e.target.value);
+                        setForm({ ...form, category: industry + " / " + e.target.value });
+                      }}
+                      aria-label="Topic"
+                      placeholder="e.g. Patient care, Retail operations"
+                      maxLength={100}
+                    />
+                  );
+                }
+                return (
+                  <>
+                    <select
+                      value={showOther ? "__other__" : curated.includes(bareTopic) ? bareTopic : ""}
+                      onChange={(e) => {
+                        if (e.target.value === "__other__") {
+                          setOtherTopic(true);
+                          setNewTopic("");
+                          return;
+                        }
+                        setOtherTopic(false);
+                        setNewTopic("");
+                        setForm({
+                          ...form,
+                          category: industry === "Agriculture" ? e.target.value : industry + " / " + e.target.value,
+                        });
+                      }}
+                      className="w-full rounded-md border border-input bg-background px-2 py-2 text-sm"
+                      aria-label="Topic"
+                    >
+                      {!showOther && !curated.includes(bareTopic) && <option value="">Select a topic</option>}
+                      {curated.map((c) => (
+                        <option key={c}>{c}</option>
+                      ))}
+                      <option value="__other__">Other</option>
+                    </select>
+                    {showOther && (
+                      <Input
+                        value={newTopic}
+                        onChange={(e) => {
+                          setNewTopic(e.target.value);
+                          setForm({
+                            ...form,
+                            category:
+                              industry === "Agriculture" ? e.target.value : industry + " / " + e.target.value,
+                          });
+                        }}
+                        aria-label="Custom topic"
+                        placeholder="Describe the topic"
+                        maxLength={100}
+                        autoFocus
+                      />
+                    )}
+                  </>
+                );
+              })()}
             </div>
             <select
               value={form.level}
@@ -387,16 +442,6 @@ function NewCourseDialog({
                 maxLength={2000}
               />
             </label>
-            <label className="block space-y-1 text-xs font-medium">
-              Core Messaging
-              <Textarea
-                value={form.core_messaging}
-                onChange={(e) => setForm({ ...form, core_messaging: e.target.value })}
-                placeholder="Key messaging on ROI"
-                rows={2}
-                maxLength={2000}
-              />
-            </label>
           </div>
           <DialogFooter>
             <Button type="submit" disabled={creating || extracting} className="w-full">
@@ -448,8 +493,6 @@ function Studio() {
       <Sheet wide>
         <div className="mb-4">
           <CanvasHeading eyebrow="For trainers" title="Course Studio" />
-          <QuestionBank />
-          {user && <CourseArchiveRestore />}
         </div>
         {ready && !user ? (
           <p className="py-10 text-center text-sm text-muted-foreground">
@@ -483,6 +526,15 @@ function Studio() {
               onOpenChange={setDialogOpen}
               onCreated={handleCreated}
             />
+            <details className="mt-4 rounded-xl border border-border/60 bg-muted/30 p-3 text-sm">
+              <summary className="cursor-pointer font-medium text-muted-foreground">
+                Advanced tools (question bank, restore from archive)
+              </summary>
+              <div className="mt-3 space-y-3">
+                <QuestionBank />
+                {user && <CourseArchiveRestore />}
+              </div>
+            </details>
             <div className="mt-5 flex flex-wrap gap-3">
               <Input
                 aria-label="Search your courses"

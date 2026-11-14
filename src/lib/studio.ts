@@ -2,7 +2,9 @@ export const STUDIO_CATEGORIES = [
   "Crop Farming", "Livestock", "Poultry", "Horticulture", "Soil Management", "Irrigation and Water Management",
   "Pest and Disease Management", "Agricultural Machinery", "Farm Management", "Agribusiness and Entrepreneurship",
   "Cooperative Management", "Sustainable and Climate-Smart Agriculture", "Agricultural Technology and Innovation",
-  "Food Safety and Post-Harvest Management",
+  "Food Safety and Post-Harvest Management", "Aquaculture and Fish Farming", "Beekeeping",
+  "Dairy Farming", "Forestry and Agroforestry", "Greenhouse and Protected Cultivation",
+  "Agricultural Finance and Insurance", "Rural Development", "Veterinary and Animal Health",
 ];
 
 /** Turns a YouTube link into an embeddable URL; returns null for direct video files. */
