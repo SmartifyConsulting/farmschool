@@ -37,6 +37,7 @@ import { Route as AdminCreatorsRouteImport } from './routes/admin.creators'
 import { Route as AdminExternalContentRouteImport } from './routes/admin.external-content'
 import { Route as AdminGradeModerationRouteImport } from './routes/admin.grade-moderation'
 import { Route as AdminLtiRouteImport } from './routes/admin.lti'
+import { Route as AdminOrganizationsRouteImport } from './routes/admin.organizations'
 import { Route as AdminProgramsRouteImport } from './routes/admin.programs'
 import { Route as AdminTokenLedgerRouteImport } from './routes/admin.token-ledger'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
@@ -210,6 +211,11 @@ const AdminGradeModerationRoute = AdminGradeModerationRouteImport.update({
 const AdminLtiRoute = AdminLtiRouteImport.update({
   id: '/admin/lti',
   path: '/admin/lti',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminOrganizationsRoute = AdminOrganizationsRouteImport.update({
+  id: '/admin/organizations',
+  path: '/admin/organizations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminProgramsRoute = AdminProgramsRouteImport.update({
@@ -412,6 +418,7 @@ export interface FileRoutesByFullPath {
   '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/grade-moderation': typeof AdminGradeModerationRoute
   '/admin/lti': typeof AdminLtiRoute
+  '/admin/organizations': typeof AdminOrganizationsRoute
   '/admin/programs': typeof AdminProgramsRoute
   '/admin/token-ledger': typeof AdminTokenLedgerRoute
   '/admin/users': typeof AdminUsersRoute
@@ -476,6 +483,7 @@ export interface FileRoutesByTo {
   '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/grade-moderation': typeof AdminGradeModerationRoute
   '/admin/lti': typeof AdminLtiRoute
+  '/admin/organizations': typeof AdminOrganizationsRoute
   '/admin/programs': typeof AdminProgramsRoute
   '/admin/token-ledger': typeof AdminTokenLedgerRoute
   '/admin/users': typeof AdminUsersRoute
@@ -541,6 +549,7 @@ export interface FileRoutesById {
   '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/grade-moderation': typeof AdminGradeModerationRoute
   '/admin/lti': typeof AdminLtiRoute
+  '/admin/organizations': typeof AdminOrganizationsRoute
   '/admin/programs': typeof AdminProgramsRoute
   '/admin/token-ledger': typeof AdminTokenLedgerRoute
   '/admin/users': typeof AdminUsersRoute
@@ -607,6 +616,7 @@ export interface FileRouteTypes {
     | '/admin/external-content'
     | '/admin/grade-moderation'
     | '/admin/lti'
+    | '/admin/organizations'
     | '/admin/programs'
     | '/admin/token-ledger'
     | '/admin/users'
@@ -671,6 +681,7 @@ export interface FileRouteTypes {
     | '/admin/external-content'
     | '/admin/grade-moderation'
     | '/admin/lti'
+    | '/admin/organizations'
     | '/admin/programs'
     | '/admin/token-ledger'
     | '/admin/users'
@@ -735,6 +746,7 @@ export interface FileRouteTypes {
     | '/admin/external-content'
     | '/admin/grade-moderation'
     | '/admin/lti'
+    | '/admin/organizations'
     | '/admin/programs'
     | '/admin/token-ledger'
     | '/admin/users'
@@ -800,6 +812,7 @@ export interface RootRouteChildren {
   AdminExternalContentRoute: typeof AdminExternalContentRoute
   AdminGradeModerationRoute: typeof AdminGradeModerationRoute
   AdminLtiRoute: typeof AdminLtiRoute
+  AdminOrganizationsRoute: typeof AdminOrganizationsRoute
   AdminProgramsRoute: typeof AdminProgramsRoute
   AdminTokenLedgerRoute: typeof AdminTokenLedgerRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -1027,6 +1040,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/lti'
       fullPath: '/admin/lti'
       preLoaderRoute: typeof AdminLtiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/organizations': {
+      id: '/admin/organizations'
+      path: '/admin/organizations'
+      fullPath: '/admin/organizations'
+      preLoaderRoute: typeof AdminOrganizationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/programs': {
@@ -1359,6 +1379,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminExternalContentRoute: AdminExternalContentRoute,
   AdminGradeModerationRoute: AdminGradeModerationRoute,
   AdminLtiRoute: AdminLtiRoute,
+  AdminOrganizationsRoute: AdminOrganizationsRoute,
   AdminProgramsRoute: AdminProgramsRoute,
   AdminTokenLedgerRoute: AdminTokenLedgerRoute,
   AdminUsersRoute: AdminUsersRoute,
