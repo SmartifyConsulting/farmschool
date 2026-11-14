@@ -2,7 +2,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { generateCourseOutlineWithAI } from "@/lib/studio-ai.functions";
+import { generateCourseOutlineWithAI, generateMethodSuggestions } from "@/lib/studio-ai.functions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -536,6 +536,40 @@ function Editor() {
       setPreviewLoading(null);
     }
   };
+  type MethodSuggestions = {
+    illustrated?: string;
+    visual?: string;
+    videoQueries?: string[];
+    steps?: string[];
+    scenarios?: string[];
+    quiz?: { question: string; options: string[]; correctIndex: number; sourceQuote: string };
+    activities?: string;
+  };
+  const runGenerateMethodSuggestions = useServerFn(generateMethodSuggestions);
+  const [methodSuggestions, setMethodSuggestions] = useState<Record<number, MethodSuggestions>>({});
+  const [suggestLoading, setSuggestLoading] = useState<number | null>(null);
+  const suggestMethodContent = async (
+    index: number,
+    lesson: { title: string; body: string },
+  ) => {
+    if (suggestLoading !== null || course?.published) return;
+    const methods = choicesFor(index, lesson.title, lesson.body);
+    if (!methods.length) {
+      toast.error("Tick at least one method first.");
+      return;
+    }
+    setSuggestLoading(index);
+    try {
+      const result = await runGenerateMethodSuggestions({
+        data: { title: lesson.title, sourceText: lesson.body.slice(0, 12000), methods },
+      });
+      setMethodSuggestions((p) => ({ ...p, [index]: result }));
+    } catch (error) {
+      toast.error(friendlyError(error, "Could not generate suggestions."));
+    } finally {
+      setSuggestLoading(null);
+    }
+  };
   const [batchRunning, setBatchRunning] = useState(false);
   const [batchProgress, setBatchProgress] = useState("");
   const [batchDrafts, setBatchDrafts] = useState<
@@ -946,6 +980,11 @@ function Editor() {
       id: "visual",
       label: "Visual identification",
       detail: "Identify equipment, crops, symptoms or animals",
+    },
+    {
+      id: "activities",
+      label: "Activities",
+      detail: "A hands-on practical activity learners can do",
     },
   ];
   const recommendMethods = (title: string, body: string) => {
@@ -2814,7 +2853,9 @@ function Editor() {
                           }}
                           onMethods={(index, methods) => void saveDesignSelection(index, methods)}
                           onApprove={(index, lesson) => void toggleDesignApproval(index, lesson)}
-                          onPropose={(index, lesson) => void proposeDesign(index, lesson)}
+                          suggestions={methodSuggestions}
+                          suggestLoading={suggestLoading}
+                          onSuggest={(index, lesson) => void suggestMethodContent(index, lesson)}
                         />
                         <div className="flex flex-wrap justify-between gap-2 border-t border-border pt-4">
                           <Button variant="outline" onClick={() => setFactoryStep(0)}>

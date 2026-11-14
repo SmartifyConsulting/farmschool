@@ -15,6 +15,16 @@ export type LessonPagePreview = {
   droppedUnsupportedQuestions: number;
 };
 
+export type MethodSuggestions = {
+  illustrated?: string;
+  visual?: string;
+  videoQueries?: string[];
+  steps?: string[];
+  scenarios?: string[];
+  quiz?: { question: string; options: string[]; correctIndex: number; sourceQuote: string };
+  activities?: string;
+};
+
 const ILLUSTRATION_BUCKET = "lesson-illustrations";
 const MAX_MEDIA_BYTES = 25 * 1024 * 1024;
 
@@ -86,10 +96,12 @@ type Props = {
   onDelete: (index: number) => void;
   onMethods: (index: number, methods: string[]) => void;
   onApprove: (index: number, lesson: DraftLesson) => void;
-  onPropose: (index: number, lesson: DraftLesson) => void;
   previews: Record<number, LessonPagePreview>;
   previewLoading: number | null;
   onPreview: (index: number, lesson: DraftLesson) => void;
+  suggestions: Record<number, MethodSuggestions>;
+  suggestLoading: number | null;
+  onSuggest: (index: number, lesson: DraftLesson) => void;
 };
 
 export function ManualLessonReview(props: Props) {
@@ -133,21 +145,16 @@ export function ManualLessonReview(props: Props) {
             <Button size="sm" variant="ghost" disabled={props.readOnly || props.busy || paragraphs.length < 2} onClick={() => { setSplitting(splitting === index ? null : index); setSplitAt(null); }}><Scissors className="h-4 w-4" />Split</Button>
             <Button size="sm" variant="ghost" disabled={props.readOnly || props.busy || index === props.draft.lessons.length - 1} onClick={() => props.onMerge(index)}><ArrowDownToLine className="h-4 w-4" />Merge next</Button>
             <Button size="icon" variant="ghost" title="Remove lesson from outline" aria-label={`Remove lesson ${index + 1}`} disabled={props.readOnly || props.busy} onClick={() => props.onDelete(index)}><Trash2 className="h-4 w-4" /></Button>
-            <Button size="sm" variant="outline" disabled={props.readOnly || props.busy || lesson.body.length < 100} onClick={() => props.onPropose(index, lesson)}>Suggest activities with AI</Button>
+            <Button size="sm" variant="outline" disabled={props.readOnly || props.suggestLoading !== null || lesson.body.length < 100 || !selected.length} onClick={() => props.onSuggest(index, lesson)}>{props.suggestLoading === index ? "Generating suggestions…" : "Suggest AI content"}</Button>
             <Button size="sm" variant="ghost" aria-expanded={expanded === index} onClick={() => setExpanded(expanded === index ? null : index)}><ChevronDown className="h-4 w-4" />Activities</Button>
             <Button size="sm" variant="secondary" disabled={props.readOnly || props.previewLoading !== null || lesson.body.length < 100 || !selected.length} onClick={() => props.onPreview(index, lesson)}>{props.previewLoading === index ? "Generating preview…" : "Preview page"}</Button>
             <Button size="sm" variant={props.approved[index] ? "secondary" : "outline"} disabled={props.readOnly || props.busy || !selected.length || !lesson.title.trim()} onClick={() => props.onApprove(index, lesson)}><Check className="h-4 w-4" />{props.approved[index] ? "Reopen" : "Approve"}</Button>
           </div>
           {props.previews[index] && <div className="mt-4 space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
             <p className="text-xs font-semibold text-primary">AI-generated page preview — for your checked methods; review before publishing</p>
-            {(selected.includes("illustrated") || selected.includes("visual") || lesson.mediaUrl) && (
-              <div className="max-w-xs space-y-1">
-                <p className="text-xs text-muted-foreground">{selected.includes("visual") ? "Visual identification image" : "Illustration for this lesson"}</p>
-                <MediaPicker
-                  lesson={lesson}
-                  disabled={props.readOnly || props.busy}
-                  onChange={(mediaUrl, mediaKind) => props.onEdit(index, { ...lesson, mediaUrl, mediaKind })}
-                />
+            {lesson.mediaUrl && (
+              <div className="max-w-xs overflow-hidden rounded bg-muted">
+                {lesson.mediaKind === "video" ? <video src={lesson.mediaUrl} className="h-24 w-full object-cover" muted /> : <img src={lesson.mediaUrl} alt="" className="h-24 w-full object-cover" />}
               </div>
             )}
             <FormattedLesson content={props.previews[index].lessonSummary} />
@@ -179,9 +186,44 @@ export function ManualLessonReview(props: Props) {
             </div>
           </div>}
           {expanded === index && <div className="mt-4 space-y-3 border-t border-border pt-4">
-            {props.rationale[index]
-              ? <p className="text-xs text-muted-foreground">{props.rationale[index]}</p>
-              : <p className="text-xs text-muted-foreground">Click "Suggest activities with AI" for a method rationale, or "Preview page" to generate the full lesson — including every ticked method — for review.</p>}
+            {props.rationale[index] && <p className="text-xs text-muted-foreground">{props.rationale[index]}</p>}
+            {(() => {
+              const s = props.suggestions[index];
+              if (!s) return <p className="text-xs text-muted-foreground">Tick the methods above, then click "Suggest AI content" for ideas per method.</p>;
+              return <div className="space-y-3">
+                {(selected.includes("illustrated") || selected.includes("visual")) && (s.illustrated || s.visual || lesson.mediaUrl) && (
+                  <div className="max-w-xs space-y-1">
+                    <p className="text-xs font-medium">{selected.includes("visual") ? "Visual identification" : "Illustration"}</p>
+                    {(s.illustrated || s.visual) && <p className="text-xs text-muted-foreground">{s.illustrated ?? s.visual}</p>}
+                    <MediaPicker lesson={lesson} disabled={props.readOnly || props.busy} onChange={(mediaUrl, mediaKind) => props.onEdit(index, { ...lesson, mediaUrl, mediaKind })} />
+                  </div>
+                )}
+                {!!s.videoQueries?.length && <div className="space-y-1">
+                  <p className="text-xs font-medium">Video demonstration — suggested searches</p>
+                  <ul className="list-disc space-y-0.5 pl-4 text-xs">
+                    {s.videoQueries.map((q, i) => <li key={i}><a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`} target="_blank" rel="noreferrer" className="text-primary underline">{q}</a></li>)}
+                  </ul>
+                </div>}
+                {!!s.steps?.length && <div className="space-y-1">
+                  <p className="text-xs font-medium">Step-by-step practice</p>
+                  <ol className="list-decimal space-y-0.5 pl-4 text-xs text-muted-foreground">{s.steps.map((step, i) => <li key={i}>{step}</li>)}</ol>
+                </div>}
+                {!!s.scenarios?.length && <div className="space-y-1">
+                  <p className="text-xs font-medium">Scenario ideas</p>
+                  {s.scenarios.map((sc, i) => <p key={i} className="text-xs text-muted-foreground">{sc}</p>)}
+                </div>}
+                {s.quiz && <div className="space-y-1">
+                  <p className="text-xs font-medium">Knowledge check</p>
+                  <p className="text-xs">{s.quiz.question}</p>
+                  {s.quiz.options.map((option, j) => <p key={j} className="text-xs text-muted-foreground">{j === s.quiz!.correctIndex ? "✓ " : "○ "}{option}</p>)}
+                  <p className="text-xs italic text-muted-foreground">Source quote: {s.quiz.sourceQuote}</p>
+                </div>}
+                {s.activities && <div className="space-y-1">
+                  <p className="text-xs font-medium">Activity idea</p>
+                  <p className="text-xs text-muted-foreground">{s.activities}</p>
+                </div>}
+              </div>;
+            })()}
           </div>}
           </div>
         </li>;

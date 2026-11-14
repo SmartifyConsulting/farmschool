@@ -349,3 +349,66 @@ export const generateCourseDescription = createServerFn({ method: "POST" })
       throw new Error("The AI assistant couldn't finish. Please try again.");
     }
   });
+
+const METHOD_IDS = ["illustrated", "video", "steps", "scenario", "quiz", "visual", "activities"] as const;
+
+/**
+ * Per-method content suggestions for a draft lesson — one idea per ticked checkbox, not a full
+ * rewritten lesson. "video" returns search phrases (never a claimed link to a specific video);
+ * "illustrated"/"visual" return only a caption, since no image is generated — the trainer uploads
+ * their own via the media picker. Everything else is grounded in the supplied lesson text only.
+ */
+export const generateMethodSuggestions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({
+      title: z.string().max(120),
+      sourceText: z.string().min(1).max(20000),
+      methods: z.array(z.enum(METHOD_IDS)).min(1).max(METHOD_IDS.length),
+    }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const apiKey = process.env["OPENAI_API_KEY"];
+    if (!apiKey) throw new Error("The AI connection is not configured yet.");
+    const { data: count, error: quotaError } = await context.supabase.rpc("course_factory_reserve_ai_request" as never);
+    if (quotaError || typeof count !== "number") {
+      throw new Error(quotaError?.message.includes("Daily AI generation limit") ? "Your daily AI allowance is used up. Try again tomorrow." : "Your AI allowance could not be checked. Please try later.");
+    }
+    const { createOpenAI } = await import("@ai-sdk/openai");
+    const { generateText, Output } = await import("ai");
+    try {
+      const { output } = await generateText({
+        model: createOpenAI({ apiKey }).responses("gpt-6-luna"), maxRetries: 1,
+        system: `${SAFETY} Only fill in the fields for these requested methods: ${data.methods.join(", ")}. Leave every other field out.
+- illustrated: one sentence captioning what a diagram or photo for this lesson should show. Do not claim an image exists.
+- visual: one sentence captioning what a visual-identification image should show (equipment, crop, symptom, etc). Do not claim an image exists.
+- videoQueries: 2 to 3 short YouTube search phrases (not links, not claims a video exists) that would find a relevant demonstration.
+- steps: an ordered checklist (3 to 8 items) turning the lesson's procedure into actionable steps.
+- scenarios: 1 to 2 concrete, realistic scenario prompts a learner could be asked to resolve, grounded only in the lesson.
+- quiz: one multiple-choice question, 4 options, the correct option's index, and an exact contiguous quote from the lesson supporting the answer.
+- activities: one concrete hands-on practical activity a learner could do.`,
+        prompt: JSON.stringify({ title: data.title, lesson: data.sourceText.slice(0, 12000) }),
+        output: Output.object({
+          schema: z.object({
+            illustrated: z.string().max(300).optional(),
+            visual: z.string().max(300).optional(),
+            videoQueries: z.array(z.string().max(120)).max(3).optional(),
+            steps: z.array(z.string().max(200)).max(8).optional(),
+            scenarios: z.array(z.string().max(400)).max(2).optional(),
+            quiz: z.object({
+              question: z.string().max(300),
+              options: z.array(z.string().max(220)).length(4),
+              correctIndex: z.number().int().min(0).max(3),
+              sourceQuote: z.string().max(350),
+            }).optional(),
+            activities: z.string().max(300).optional(),
+          }),
+        }),
+      });
+      if (output.quiz && !data.sourceText.includes(output.quiz.sourceQuote.trim())) delete output.quiz;
+      return output;
+    } catch (e) {
+      console.error("generateMethodSuggestions failed", e);
+      throw new Error("The AI assistant couldn't finish. Please try again.");
+    }
+  });
