@@ -11,6 +11,9 @@ export type DraftLesson = {
   reviewRequired: true;
   /** Heading 1 the lesson belongs to; becomes a Studio module on import. */
   module?: string;
+  /** Trainer-uploaded preview media (review stage only — not yet carried through to the published lesson). */
+  mediaUrl?: string | null;
+  mediaKind?: "image" | "video" | null;
 };
 export type DraftCourse = {
   title: string;

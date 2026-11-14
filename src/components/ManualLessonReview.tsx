@@ -1,9 +1,68 @@
-import { useState, type ReactNode } from "react";
-import { ArrowDownToLine, Scissors, Trash2, ChevronDown, Check, Wand2, FolderOpen, Image as ImageIcon } from "lucide-react";
+import { useRef, useState, type ReactNode } from "react";
+import { ArrowDownToLine, Scissors, Trash2, ChevronDown, Check, Wand2, FolderOpen, Image as ImageIcon, Loader2, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
 import { reflowText, type DraftCourse, type DraftLesson } from "@/lib/course-factory";
+
+const ILLUSTRATION_BUCKET = "lesson-illustrations";
+const MAX_MEDIA_BYTES = 25 * 1024 * 1024;
+
+/** Preview-only media picker for a draft lesson: click/drop an image or video, uploaded to a
+ * public bucket under the trainer's own folder. Not yet carried through to the published lesson —
+ * this is just to let the trainer see roughly how the lesson will look while reviewing the outline. */
+function MediaPicker({ lesson, disabled, onChange }: { lesson: DraftLesson; disabled: boolean; onChange: (mediaUrl: string | null, mediaKind: "image" | "video" | null) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const upload = async (file: File) => {
+    const kind = file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") ? "video" : null;
+    if (!kind) { toast.error("Choose an image or video file."); return; }
+    if (file.size > MAX_MEDIA_BYTES) { toast.error("File must be smaller than 25MB."); return; }
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) { toast.error("Please sign in to upload."); return; }
+    setUploading(true);
+    const path = `${auth.user.id}/${crypto.randomUUID()}-${file.name}`.replace(/\s+/g, "-");
+    const { error } = await supabase.storage.from(ILLUSTRATION_BUCKET).upload(path, file, { contentType: file.type });
+    setUploading(false);
+    if (error) { toast.error("Could not upload the file."); return; }
+    const { data } = supabase.storage.from(ILLUSTRATION_BUCKET).getPublicUrl(path);
+    onChange(data.publicUrl, kind);
+  };
+  if (lesson.mediaUrl) {
+    return (
+      <div className="relative mt-1 overflow-hidden rounded bg-muted">
+        {lesson.mediaKind === "video" ? (
+          <video src={lesson.mediaUrl} className="h-16 w-full object-cover" muted />
+        ) : (
+          <img src={lesson.mediaUrl} alt="" className="h-16 w-full object-cover" />
+        )}
+        {!disabled && (
+          <button type="button" onClick={() => onChange(null, null)} className="absolute right-1 top-1 rounded-full bg-background p-0.5 shadow" aria-label="Remove media">
+            <X className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      disabled={disabled || uploading}
+      onClick={() => inputRef.current?.click()}
+      className="mt-1 flex h-10 w-full items-center justify-center gap-1.5 rounded bg-muted text-muted-foreground hover:bg-muted/70 disabled:opacity-60"
+    >
+      {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+      <span>{uploading ? "Uploading…" : "Add image or video"}</span>
+      <input ref={inputRef} type="file" accept="image/*,video/*" className="hidden" onChange={event => {
+        const file = event.target.files?.[0];
+        if (file) void upload(file);
+        event.target.value = "";
+      }} />
+    </button>
+  );
+}
 
 /** A handful of short lines for the slide mock-up — a rough layout preview, not generated content. */
 function previewLines(body: string): string[] {
@@ -72,10 +131,12 @@ export function ManualLessonReview(props: Props) {
               <p className="text-xs font-medium text-muted-foreground">Preview — rough layout, not final art</p>
               <div className="flex h-full min-h-32 flex-col rounded-md border border-border bg-card p-2 text-[11px] shadow-sm">
                 <p className="truncate border-b border-border pb-1 font-semibold">{lesson.title || `Lesson ${index + 1}`}</p>
-                {(selected.includes("illustrated") || selected.includes("visual")) && (
-                  <div className="mt-1 flex h-10 items-center justify-center rounded bg-muted text-muted-foreground">
-                    <ImageIcon className="h-4 w-4" />
-                  </div>
+                {(selected.includes("illustrated") || selected.includes("visual") || lesson.mediaUrl) && (
+                  <MediaPicker
+                    lesson={lesson}
+                    disabled={props.readOnly || props.busy}
+                    onChange={(mediaUrl, mediaKind) => props.onEdit(index, { ...lesson, mediaUrl, mediaKind })}
+                  />
                 )}
                 <ul className="mt-1 list-disc space-y-0.5 pl-3 text-muted-foreground">
                   {previewLines(lesson.body).map((line, i) => <li key={i} className="line-clamp-1">{line}</li>)}
