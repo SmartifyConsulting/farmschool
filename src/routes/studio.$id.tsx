@@ -1,6 +1,8 @@
 import { useConfirm } from "@/components/ConfirmDialog";
 import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { generateCourseOutlineWithAI } from "@/lib/studio-ai.functions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -1041,6 +1043,46 @@ function Editor() {
       if (!next.lessons.length) toast.error("No readable lessons found.");
     } catch (error) {
       toast.error(friendlyError(error, "Could not parse source."));
+    }
+  };
+  const runGenerateOutlineWithAI = useServerFn(generateCourseOutlineWithAI);
+  const [aiOutlineLoading, setAiOutlineLoading] = useState(false);
+  const generateOutlineWithAI = async () => {
+    const pages = sourcePages ?? (sourceText.trim()
+      ? [{ sourceId: (sourceName || "Pasted source").trim() || "Pasted source", page: 1, text: sourceText }]
+      : null);
+    if (!pages || aiOutlineLoading) {
+      if (!pages) toast.error("Upload or paste a manual first.");
+      return;
+    }
+    setAiOutlineLoading(true);
+    try {
+      const result = await runGenerateOutlineWithAI({
+        data: { title: form.title || course?.title || "Course", pages },
+      });
+      const lessons: DraftCourse["lessons"] = result.modules.flatMap((mod) =>
+        mod.lessons.map((lesson) => ({
+          title: lesson.title.slice(0, 120),
+          body: lesson.body,
+          sourceRefs: (lesson.sourcePages.length ? lesson.sourcePages : [pages[0]!.page]).map((page) => ({
+            sourceId: pages.find((p) => p.page === page)?.sourceId ?? pages[0]!.sourceId,
+            page,
+          })),
+          reviewRequired: true as const,
+          module: mod.title.slice(0, 120),
+        })),
+      );
+      if (!lessons.length) { toast.error("The AI assistant didn't return any lessons."); return; }
+      setDraft({ title: form.title || course?.title || "Course", lessons, status: "draft", warnings: result.truncated ? ["Only the first part of the manual was used — it was too long for one AI pass."] : [] });
+      setDesignChoices({});
+      setDesignApproved({});
+      setDesignRationale({});
+      setFactoryStep(1);
+      toast.success("AI outline ready — review the lessons below.");
+    } catch (error) {
+      toast.error(friendlyError(error, "Could not generate an AI outline."));
+    } finally {
+      setAiOutlineLoading(false);
     }
   };
   const reviseOutline = (nextLessons: DraftCourse["lessons"]) => {
@@ -2469,17 +2511,30 @@ function Editor() {
                           aria-label="Extracted manual text"
                         />
                       )}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          previewSource();
-                          setFactoryStep(1);
-                        }}
-                        disabled={!sourceText.trim()}
-                      >
-                        Analyse manual & build course outline
-                      </Button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            previewSource();
+                            setFactoryStep(1);
+                          }}
+                          disabled={!sourceText.trim()}
+                        >
+                          Analyse manual & build course outline
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={generateOutlineWithAI}
+                          disabled={!sourceText.trim() || aiOutlineLoading}
+                        >
+                          {aiOutlineLoading ? "Generating with AI…" : "Generate outline with AI"}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        "Analyse manual" splits the manual by its own headings. "Generate outline with AI" lets the AI organise it instead — useful when the manual's headings are inconsistent. Either way, review and approve lessons before publishing.
+                      </p>
                       <p role="status" aria-live="polite" className="text-xs text-muted-foreground">
                         Cloud source draft:{" "}
                         {cloudSaveStatus === "saved"

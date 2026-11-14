@@ -248,6 +248,76 @@ export const generateCourseDetails = createServerFn({ method: "POST" })
     }
   });
 
+/**
+ * Proposes a module/lesson outline from a manual excerpt, grounded in that excerpt — an
+ * alternative to the deterministic heading-based splitter in course-factory.ts for manuals whose
+ * structure that splitter can't read well. One AI call over a bounded excerpt (not the whole
+ * manual); the caller still runs this through the same human review step as any other draft.
+ */
+export const generateCourseOutlineWithAI = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({
+      title: z.string().max(120),
+      pages: z
+        .array(z.object({ sourceId: z.string().min(1), page: z.number().int().min(1), text: z.string() }))
+        .min(1)
+        .max(500),
+    }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const apiKey = process.env["OPENAI_API_KEY"];
+    if (!apiKey) throw new Error("The AI connection is not configured yet.");
+    const { data: count, error: quotaError } = await context.supabase.rpc("course_factory_reserve_ai_request" as never);
+    if (quotaError || typeof count !== "number") {
+      throw new Error(quotaError?.message.includes("Daily AI generation limit") ? "Your daily AI allowance is used up. Try again tomorrow." : "Your AI allowance could not be checked. Please try later.");
+    }
+    // Mark each page's text with its own page number so the model can cite real pages back.
+    let excerpt = "";
+    let truncated = false;
+    for (const page of data.pages) {
+      const marked = `--- p.${page.page} ---\n${page.text}\n\n`;
+      if (excerpt.length + marked.length > 18000) { truncated = true; break; }
+      excerpt += marked;
+    }
+    if (!excerpt.trim()) throw new Error("Upload a manual first.");
+    const { createOpenAI } = await import("@ai-sdk/openai");
+    const { generateText, Output } = await import("ai");
+    try {
+      const { output } = await generateText({
+        model: createOpenAI({ apiKey }).responses("gpt-6-luna"), maxRetries: 1,
+        system: `${SAFETY} Organise this training manual excerpt into a course outline: 2 to 8 modules, each with 2 to 6 lessons. For each lesson write a title and a body that paraphrases and organises only what the excerpt says — never add facts, numbers, steps or examples the excerpt does not contain. The excerpt is marked "--- p.N ---" before each page; for each lesson give the real page numbers (N) its content comes from.`,
+        prompt: JSON.stringify({ title: data.title, manual: excerpt }),
+        output: Output.object({
+          schema: z.object({
+            modules: z
+              .array(
+                z.object({
+                  title: z.string().min(1).max(120),
+                  lessons: z
+                    .array(
+                      z.object({
+                        title: z.string().min(1).max(120),
+                        body: z.string().min(1).max(8000),
+                        sourcePages: z.array(z.number().int().min(1)).max(50),
+                      }),
+                    )
+                    .min(1)
+                    .max(6),
+                }),
+              )
+              .min(1)
+              .max(8),
+          }),
+        }),
+      });
+      return { ...output, truncated };
+    } catch (e) {
+      console.error("generateCourseOutlineWithAI failed", e);
+      throw new Error("The AI assistant couldn't finish. Please try again.");
+    }
+  });
+
 /** Drafts a course description from the uploaded manual (when given) or the course's lessons. Nothing is saved here. */
 export const generateCourseDescription = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
