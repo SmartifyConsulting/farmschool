@@ -1853,7 +1853,7 @@ function Editor() {
                                     type="button"
                                     key={index}
                                     onClick={() => goToLesson(index)}
-                                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent"
+                                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent hover:text-accent-foreground"
                                   >
                                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-secondary text-[10px] font-semibold text-secondary-foreground">
                                       {index + 1}
