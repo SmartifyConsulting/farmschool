@@ -593,10 +593,10 @@ function Studio() {
                       <img
                         src={c.cover_url}
                         alt=""
-                        className={view === "cards" ? "h-32 w-full object-cover" : "h-24 w-24 shrink-0 object-cover sm:w-36"}
+                        className={view === "cards" ? "aspect-video w-full object-cover" : "aspect-video w-32 shrink-0 object-cover sm:w-44"}
                       />
                     ) : (
-                      <div className={`grid place-items-center bg-muted text-xs text-muted-foreground ${view === "cards" ? "h-32 w-full" : "h-24 w-24 shrink-0 sm:w-36"}`}>
+                      <div className={`grid aspect-video place-items-center bg-muted text-xs text-muted-foreground ${view === "cards" ? "w-full" : "w-32 shrink-0 sm:w-44"}`}>
                         No cover image
                       </div>
                     )}

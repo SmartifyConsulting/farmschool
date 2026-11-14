@@ -190,9 +190,9 @@ function SearchPage() {
                 className={`overflow-hidden rounded-2xl border border-border bg-card transition hover:border-primary/50 ${view === "list" ? "flex items-center" : ""}`}
               >
                 {c.cover ? (
-                  <img src={c.cover} alt="" loading="lazy" className={view === "cards" ? "h-36 w-full object-cover" : "h-28 w-24 shrink-0 object-cover sm:w-40"} />
+                  <img src={c.cover} alt="" loading="lazy" className={view === "cards" ? "aspect-video w-full object-cover" : "aspect-video w-36 shrink-0 object-cover sm:w-48"} />
                 ) : (
-                  <div className={`grid place-items-center bg-muted ${view === "cards" ? "h-36" : "h-28 w-24 shrink-0 sm:w-40"}`}>
+                  <div className={`grid aspect-video place-items-center bg-muted ${view === "cards" ? "w-full" : "w-36 shrink-0 sm:w-48"}`}>
                     <BookOpen className="h-9 w-9 text-primary" />
                   </div>
                 )}

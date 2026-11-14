@@ -313,13 +313,13 @@ function MyCourses() {
                     alt=""
                     className={
                       view === "cards"
-                        ? "h-36 w-full rounded-xl object-cover"
-                        : "h-20 w-20 shrink-0 rounded-xl object-cover"
+                        ? "aspect-video w-full rounded-xl object-cover"
+                        : "aspect-video w-36 shrink-0 rounded-xl object-cover"
                     }
                   />
                 ) : (
                   <div
-                    className={`grid shrink-0 place-items-center rounded-xl bg-muted ${view === "cards" ? "h-36 w-full" : "h-20 w-20"}`}
+                    className={`grid aspect-video shrink-0 place-items-center rounded-xl bg-muted ${view === "cards" ? "w-full" : "w-36"}`}
                   >
                     <BookOpen className="h-6 w-6 text-primary" />
                   </div>
