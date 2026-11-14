@@ -1781,6 +1781,7 @@ function Editor() {
                 </Button>
               ))}
             </nav>
+            {(screen !== "import" || designTab === "manual") && <>
             <div className="mt-5 flex items-center justify-between">
               <h3 className="text-sm font-semibold">Curriculum</h3>
               <Button
@@ -1888,6 +1889,7 @@ function Editor() {
                 SCORM
               </Button>
             </div>
+            </>}
           </aside>
           <main className="min-w-0 space-y-6">
             {course.published && (
