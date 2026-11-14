@@ -1891,14 +1891,14 @@ function Editor() {
             </div>
             </>}
             {screen === "import" && designTab === "auto" && draft && (
-              <>
-                <div className="mt-5 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Course outline</h3>
+              <div className="ml-2 space-y-2 border-l border-border pl-2">
+                <div className="mt-3 flex items-center justify-between">
+                  <h4 className="text-xs font-semibold text-muted-foreground">Course outline</h4>
                   <span className="text-xs text-muted-foreground">
                     {Object.values(designApproved).filter(Boolean).length}/{draft.lessons.length} approved
                   </span>
                 </div>
-                <div className="mt-2 max-h-72 space-y-3 overflow-y-auto lg:max-h-[65vh]">
+                <div className="max-h-72 space-y-3 overflow-y-auto lg:max-h-[65vh]">
                   {draftOutline.map((group) => (
                     <div key={group.title} className="space-y-0.5">
                       {group.title !== "Introduction" && (
@@ -1926,7 +1926,7 @@ function Editor() {
                     </div>
                   ))}
                 </div>
-              </>
+              </div>
             )}
           </aside>
           <main className="min-w-0 space-y-6">
