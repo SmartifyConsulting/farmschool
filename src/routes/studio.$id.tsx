@@ -26,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { STUDIO_CATEGORIES, PASS_MARKS, parsePassMark } from "@/lib/studio";
+import { lessonKindIcon, lessonKindDefaultTitle } from "@/lib/lesson-kinds";
 import { INDUSTRIES, courseIndustry } from "@/lib/industries";
 import { toast } from "sonner";
 import {
@@ -1359,16 +1360,7 @@ function Editor() {
       ).data ?? []) as unknown as VideoLink[],
   });
   const addLesson = async (kind: string, moduleId?: string | null) => {
-    const title =
-      kind === "quiz"
-        ? "Knowledge check"
-        : kind === "video"
-          ? "New video lesson"
-          : kind === "scorm"
-            ? "SCORM e-learning"
-            : kind === "slide"
-              ? "New slide lesson"
-              : "New reading";
+    const title = lessonKindDefaultTitle(kind);
     const { data, error } = await supabase
       .from("studio_lessons")
       .insert({
@@ -3469,14 +3461,7 @@ function LessonEditor({
       active = false;
     };
   }, [lesson.id, lesson.kind, initialQuiz]);
-  const Icon =
-    lesson.kind === "video"
-      ? Video
-      : lesson.kind === "quiz"
-        ? HelpCircle
-        : lesson.kind === "scorm"
-          ? Package
-          : FileText;
+  const Icon = lessonKindIcon(lesson.kind);
   const save = async (silent = false) => {
     if (readOnly || saving || quizLoad !== "ready") return;
     setSaving(true);

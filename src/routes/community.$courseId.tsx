@@ -120,6 +120,11 @@ function CommunityPage() {
       <Header />
       <Sheet>
         <CanvasHeading eyebrow={course?.title ?? "Community"} title="Course community" />
+        <div className="mt-2">
+          <Link to="/forum/$courseId" params={{ courseId }} search={portal ? { portal } : {}} className="text-sm font-semibold text-primary">
+            Open discussion forum
+          </Link>
+        </div>
         {portal && <p className="mb-3 text-sm text-muted-foreground">This community is shared by eligible learners of this course. For shared courses, learners may come from other organizations. Personal messages belong to your learner account.</p>}
         {joining ? (
           <p className="py-10 text-center text-sm text-muted-foreground">Checking access…</p>

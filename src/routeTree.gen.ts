@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as CohortsRouteImport } from './routes/cohorts'
 import { Route as CoursesRouteImport } from './routes/courses'
 import { Route as CreatorApplicationRouteImport } from './routes/creator-application'
@@ -19,6 +20,7 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as OrganizationsRouteImport } from './routes/organizations'
+import { Route as PeerReviewRouteImport } from './routes/peer-review'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -45,10 +47,12 @@ import { Route as ClassIdRouteImport } from './routes/class.$id'
 import { Route as CommunityCourseIdRouteImport } from './routes/community.$courseId'
 import { Route as CompetenciesCourseIdRouteImport } from './routes/competencies.$courseId'
 import { Route as CourseIdRouteImport } from './routes/course.$id'
+import { Route as ForumCourseIdRouteImport } from './routes/forum.$courseId'
 import { Route as GradebookCourseIdRouteImport } from './routes/gradebook.$courseId'
 import { Route as LearningActivitiesCourseIdRouteImport } from './routes/learning-activities.$courseId'
 import { Route as MessagesPartnerIdRouteImport } from './routes/messages.$partnerId'
 import { Route as OrganizationsIdRouteImport } from './routes/organizations.$id'
+import { Route as PeerCourseIdRouteImport } from './routes/peer.$courseId'
 import { Route as PortalSlugRouteImport } from './routes/portal.$slug'
 import { Route as ProgramsIdRouteImport } from './routes/programs.$id'
 import { Route as ScormIndexRouteImport } from './routes/scorm.index'
@@ -58,6 +62,7 @@ import { Route as StudioReportsRouteImport } from './routes/studio.reports'
 import { Route as VerifyTokenRouteImport } from './routes/verify.$token'
 import { Route as ApiCronCohortRemindersRouteImport } from './routes/api/cron/cohort-reminders'
 import { Route as ApiScormFileSplatRouteImport } from './routes/api/scorm-file.$'
+import { Route as ForumCourseIdThreadIdRouteImport } from './routes/forum.$courseId.$threadId'
 import { Route as LessonCourseIdLessonIdRouteImport } from './routes/lesson.$courseId.$lessonId'
 import { Route as OrganizationsIdProgramsRouteImport } from './routes/organizations.$id.programs'
 import { Route as ApiPublicV1CoursesRouteImport } from './routes/api/public/v1/courses'
@@ -71,6 +76,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CohortsRoute = CohortsRouteImport.update({
@@ -111,6 +121,11 @@ const NotificationsRoute = NotificationsRouteImport.update({
 const OrganizationsRoute = OrganizationsRouteImport.update({
   id: '/organizations',
   path: '/organizations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PeerReviewRoute = PeerReviewRouteImport.update({
+  id: '/peer-review',
+  path: '/peer-review',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -243,6 +258,11 @@ const CourseIdRoute = CourseIdRouteImport.update({
   path: '/course/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ForumCourseIdRoute = ForumCourseIdRouteImport.update({
+  id: '/forum/$courseId',
+  path: '/forum/$courseId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GradebookCourseIdRoute = GradebookCourseIdRouteImport.update({
   id: '/gradebook/$courseId',
   path: '/gradebook/$courseId',
@@ -263,6 +283,11 @@ const OrganizationsIdRoute = OrganizationsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => OrganizationsRoute,
+} as any)
+const PeerCourseIdRoute = PeerCourseIdRouteImport.update({
+  id: '/peer/$courseId',
+  path: '/peer/$courseId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const PortalSlugRoute = PortalSlugRouteImport.update({
   id: '/portal/$slug',
@@ -309,6 +334,11 @@ const ApiScormFileSplatRoute = ApiScormFileSplatRouteImport.update({
   path: '/api/scorm-file/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ForumCourseIdThreadIdRoute = ForumCourseIdThreadIdRouteImport.update({
+  id: '/$threadId',
+  path: '/$threadId',
+  getParentRoute: () => ForumCourseIdRoute,
+} as any)
 const LessonCourseIdLessonIdRoute = LessonCourseIdLessonIdRouteImport.update({
   id: '/lesson/$courseId/$lessonId',
   path: '/lesson/$courseId/$lessonId',
@@ -333,6 +363,7 @@ const ApiPublicV1ProgressRoute = ApiPublicV1ProgressRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/calendar': typeof CalendarRoute
   '/cohorts': typeof CohortsRoute
   '/courses': typeof CoursesRoute
   '/creator-application': typeof CreatorApplicationRoute
@@ -341,6 +372,7 @@ export interface FileRoutesByFullPath {
   '/messages': typeof MessagesRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/organizations': typeof OrganizationsRouteWithChildren
+  '/peer-review': typeof PeerReviewRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -366,10 +398,12 @@ export interface FileRoutesByFullPath {
   '/community/$courseId': typeof CommunityCourseIdRoute
   '/competencies/$courseId': typeof CompetenciesCourseIdRoute
   '/course/$id': typeof CourseIdRoute
+  '/forum/$courseId': typeof ForumCourseIdRouteWithChildren
   '/gradebook/$courseId': typeof GradebookCourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
   '/organizations/$id': typeof OrganizationsIdRouteWithChildren
+  '/peer/$courseId': typeof PeerCourseIdRoute
   '/portal/$slug': typeof PortalSlugRoute
   '/programs/$id': typeof ProgramsIdRoute
   '/scorm/$id': typeof ScormIdRoute
@@ -380,6 +414,7 @@ export interface FileRoutesByFullPath {
   '/scorm/': typeof ScormIndexRoute
   '/api/cron/cohort-reminders': typeof ApiCronCohortRemindersRoute
   '/api/scorm-file/$': typeof ApiScormFileSplatRoute
+  '/forum/$courseId/$threadId': typeof ForumCourseIdThreadIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/organizations/$id/programs': typeof OrganizationsIdProgramsRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
@@ -388,6 +423,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/calendar': typeof CalendarRoute
   '/cohorts': typeof CohortsRoute
   '/courses': typeof CoursesRoute
   '/creator-application': typeof CreatorApplicationRoute
@@ -396,6 +432,7 @@ export interface FileRoutesByTo {
   '/messages': typeof MessagesRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/organizations': typeof OrganizationsRouteWithChildren
+  '/peer-review': typeof PeerReviewRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -421,10 +458,12 @@ export interface FileRoutesByTo {
   '/community/$courseId': typeof CommunityCourseIdRoute
   '/competencies/$courseId': typeof CompetenciesCourseIdRoute
   '/course/$id': typeof CourseIdRoute
+  '/forum/$courseId': typeof ForumCourseIdRouteWithChildren
   '/gradebook/$courseId': typeof GradebookCourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
   '/organizations/$id': typeof OrganizationsIdRouteWithChildren
+  '/peer/$courseId': typeof PeerCourseIdRoute
   '/portal/$slug': typeof PortalSlugRoute
   '/programs/$id': typeof ProgramsIdRoute
   '/scorm/$id': typeof ScormIdRoute
@@ -435,6 +474,7 @@ export interface FileRoutesByTo {
   '/scorm': typeof ScormIndexRoute
   '/api/cron/cohort-reminders': typeof ApiCronCohortRemindersRoute
   '/api/scorm-file/$': typeof ApiScormFileSplatRoute
+  '/forum/$courseId/$threadId': typeof ForumCourseIdThreadIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/organizations/$id/programs': typeof OrganizationsIdProgramsRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
@@ -444,6 +484,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/calendar': typeof CalendarRoute
   '/cohorts': typeof CohortsRoute
   '/courses': typeof CoursesRoute
   '/creator-application': typeof CreatorApplicationRoute
@@ -452,6 +493,7 @@ export interface FileRoutesById {
   '/messages': typeof MessagesRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/organizations': typeof OrganizationsRouteWithChildren
+  '/peer-review': typeof PeerReviewRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -477,10 +519,12 @@ export interface FileRoutesById {
   '/community/$courseId': typeof CommunityCourseIdRoute
   '/competencies/$courseId': typeof CompetenciesCourseIdRoute
   '/course/$id': typeof CourseIdRoute
+  '/forum/$courseId': typeof ForumCourseIdRouteWithChildren
   '/gradebook/$courseId': typeof GradebookCourseIdRoute
   '/learning-activities/$courseId': typeof LearningActivitiesCourseIdRoute
   '/messages/$partnerId': typeof MessagesPartnerIdRoute
   '/organizations/$id': typeof OrganizationsIdRouteWithChildren
+  '/peer/$courseId': typeof PeerCourseIdRoute
   '/portal/$slug': typeof PortalSlugRoute
   '/programs/$id': typeof ProgramsIdRoute
   '/scorm/$id': typeof ScormIdRoute
@@ -491,6 +535,7 @@ export interface FileRoutesById {
   '/scorm/': typeof ScormIndexRoute
   '/api/cron/cohort-reminders': typeof ApiCronCohortRemindersRoute
   '/api/scorm-file/$': typeof ApiScormFileSplatRoute
+  '/forum/$courseId/$threadId': typeof ForumCourseIdThreadIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/organizations/$id/programs': typeof OrganizationsIdProgramsRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
@@ -501,6 +546,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/calendar'
     | '/cohorts'
     | '/courses'
     | '/creator-application'
@@ -509,6 +555,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/organizations'
+    | '/peer-review'
     | '/privacy'
     | '/profile'
     | '/reset-password'
@@ -534,10 +581,12 @@ export interface FileRouteTypes {
     | '/community/$courseId'
     | '/competencies/$courseId'
     | '/course/$id'
+    | '/forum/$courseId'
     | '/gradebook/$courseId'
     | '/learning-activities/$courseId'
     | '/messages/$partnerId'
     | '/organizations/$id'
+    | '/peer/$courseId'
     | '/portal/$slug'
     | '/programs/$id'
     | '/scorm/$id'
@@ -548,6 +597,7 @@ export interface FileRouteTypes {
     | '/scorm/'
     | '/api/cron/cohort-reminders'
     | '/api/scorm-file/$'
+    | '/forum/$courseId/$threadId'
     | '/lesson/$courseId/$lessonId'
     | '/organizations/$id/programs'
     | '/api/public/v1/courses'
@@ -556,6 +606,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/calendar'
     | '/cohorts'
     | '/courses'
     | '/creator-application'
@@ -564,6 +615,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/organizations'
+    | '/peer-review'
     | '/privacy'
     | '/profile'
     | '/reset-password'
@@ -589,10 +641,12 @@ export interface FileRouteTypes {
     | '/community/$courseId'
     | '/competencies/$courseId'
     | '/course/$id'
+    | '/forum/$courseId'
     | '/gradebook/$courseId'
     | '/learning-activities/$courseId'
     | '/messages/$partnerId'
     | '/organizations/$id'
+    | '/peer/$courseId'
     | '/portal/$slug'
     | '/programs/$id'
     | '/scorm/$id'
@@ -603,6 +657,7 @@ export interface FileRouteTypes {
     | '/scorm'
     | '/api/cron/cohort-reminders'
     | '/api/scorm-file/$'
+    | '/forum/$courseId/$threadId'
     | '/lesson/$courseId/$lessonId'
     | '/organizations/$id/programs'
     | '/api/public/v1/courses'
@@ -611,6 +666,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/auth'
+    | '/calendar'
     | '/cohorts'
     | '/courses'
     | '/creator-application'
@@ -619,6 +675,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/organizations'
+    | '/peer-review'
     | '/privacy'
     | '/profile'
     | '/reset-password'
@@ -644,10 +701,12 @@ export interface FileRouteTypes {
     | '/community/$courseId'
     | '/competencies/$courseId'
     | '/course/$id'
+    | '/forum/$courseId'
     | '/gradebook/$courseId'
     | '/learning-activities/$courseId'
     | '/messages/$partnerId'
     | '/organizations/$id'
+    | '/peer/$courseId'
     | '/portal/$slug'
     | '/programs/$id'
     | '/scorm/$id'
@@ -658,6 +717,7 @@ export interface FileRouteTypes {
     | '/scorm/'
     | '/api/cron/cohort-reminders'
     | '/api/scorm-file/$'
+    | '/forum/$courseId/$threadId'
     | '/lesson/$courseId/$lessonId'
     | '/organizations/$id/programs'
     | '/api/public/v1/courses'
@@ -667,6 +727,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  CalendarRoute: typeof CalendarRoute
   CohortsRoute: typeof CohortsRoute
   CoursesRoute: typeof CoursesRoute
   CreatorApplicationRoute: typeof CreatorApplicationRoute
@@ -675,6 +736,7 @@ export interface RootRouteChildren {
   MessagesRoute: typeof MessagesRouteWithChildren
   NotificationsRoute: typeof NotificationsRoute
   OrganizationsRoute: typeof OrganizationsRouteWithChildren
+  PeerReviewRoute: typeof PeerReviewRoute
   PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -700,8 +762,10 @@ export interface RootRouteChildren {
   CommunityCourseIdRoute: typeof CommunityCourseIdRoute
   CompetenciesCourseIdRoute: typeof CompetenciesCourseIdRoute
   CourseIdRoute: typeof CourseIdRoute
+  ForumCourseIdRoute: typeof ForumCourseIdRouteWithChildren
   GradebookCourseIdRoute: typeof GradebookCourseIdRoute
   LearningActivitiesCourseIdRoute: typeof LearningActivitiesCourseIdRoute
+  PeerCourseIdRoute: typeof PeerCourseIdRoute
   PortalSlugRoute: typeof PortalSlugRoute
   ProgramsIdRoute: typeof ProgramsIdRoute
   ScormIdRoute: typeof ScormIdRoute
@@ -729,6 +793,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cohorts': {
@@ -785,6 +856,13 @@ declare module '@tanstack/react-router' {
       path: '/organizations'
       fullPath: '/organizations'
       preLoaderRoute: typeof OrganizationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/peer-review': {
+      id: '/peer-review'
+      path: '/peer-review'
+      fullPath: '/peer-review'
+      preLoaderRoute: typeof PeerReviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -969,6 +1047,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CourseIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/forum/$courseId': {
+      id: '/forum/$courseId'
+      path: '/forum/$courseId'
+      fullPath: '/forum/$courseId'
+      preLoaderRoute: typeof ForumCourseIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/gradebook/$courseId': {
       id: '/gradebook/$courseId'
       path: '/gradebook/$courseId'
@@ -996,6 +1081,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/organizations/$id'
       preLoaderRoute: typeof OrganizationsIdRouteImport
       parentRoute: typeof OrganizationsRoute
+    }
+    '/peer/$courseId': {
+      id: '/peer/$courseId'
+      path: '/peer/$courseId'
+      fullPath: '/peer/$courseId'
+      preLoaderRoute: typeof PeerCourseIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/portal/$slug': {
       id: '/portal/$slug'
@@ -1059,6 +1151,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/scorm-file/$'
       preLoaderRoute: typeof ApiScormFileSplatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/forum/$courseId/$threadId': {
+      id: '/forum/$courseId/$threadId'
+      path: '/$threadId'
+      fullPath: '/forum/$courseId/$threadId'
+      preLoaderRoute: typeof ForumCourseIdThreadIdRouteImport
+      parentRoute: typeof ForumCourseIdRoute
     }
     '/lesson/$courseId/$lessonId': {
       id: '/lesson/$courseId/$lessonId'
@@ -1140,9 +1239,22 @@ const StudioRouteChildren: StudioRouteChildren = {
 const StudioRouteWithChildren =
   StudioRoute._addFileChildren(StudioRouteChildren)
 
+interface ForumCourseIdRouteChildren {
+  ForumCourseIdThreadIdRoute: typeof ForumCourseIdThreadIdRoute
+}
+
+const ForumCourseIdRouteChildren: ForumCourseIdRouteChildren = {
+  ForumCourseIdThreadIdRoute: ForumCourseIdThreadIdRoute,
+}
+
+const ForumCourseIdRouteWithChildren = ForumCourseIdRoute._addFileChildren(
+  ForumCourseIdRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  CalendarRoute: CalendarRoute,
   CohortsRoute: CohortsRoute,
   CoursesRoute: CoursesRoute,
   CreatorApplicationRoute: CreatorApplicationRoute,
@@ -1151,6 +1263,7 @@ const rootRouteChildren: RootRouteChildren = {
   MessagesRoute: MessagesRouteWithChildren,
   NotificationsRoute: NotificationsRoute,
   OrganizationsRoute: OrganizationsRouteWithChildren,
+  PeerReviewRoute: PeerReviewRoute,
   PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
   ResetPasswordRoute: ResetPasswordRoute,
@@ -1176,8 +1289,10 @@ const rootRouteChildren: RootRouteChildren = {
   CommunityCourseIdRoute: CommunityCourseIdRoute,
   CompetenciesCourseIdRoute: CompetenciesCourseIdRoute,
   CourseIdRoute: CourseIdRoute,
+  ForumCourseIdRoute: ForumCourseIdRouteWithChildren,
   GradebookCourseIdRoute: GradebookCourseIdRoute,
   LearningActivitiesCourseIdRoute: LearningActivitiesCourseIdRoute,
+  PeerCourseIdRoute: PeerCourseIdRoute,
   PortalSlugRoute: PortalSlugRoute,
   ProgramsIdRoute: ProgramsIdRoute,
   ScormIdRoute: ScormIdRoute,

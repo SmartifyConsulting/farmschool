@@ -584,6 +584,238 @@ export type Database = {
           },
         ]
       }
+      forum_threads: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          last_activity_at: string
+          locked: boolean
+          pinned: boolean
+          title: string
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          last_activity_at?: string
+          locked?: boolean
+          pinned?: boolean
+          title: string
+          user_id?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          last_activity_at?: string
+          locked?: boolean
+          pinned?: boolean
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_threads_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forum_replies: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          thread_id: string
+          user_id?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_replies_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "forum_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      peer_assignments: {
+        Row: {
+          author_id: string
+          course_id: string
+          created_at: string
+          id: string
+          instructions: string
+          reviews_required: number
+          rubric: Json
+          title: string
+        }
+        Insert: {
+          author_id?: string
+          course_id: string
+          created_at?: string
+          id?: string
+          instructions?: string
+          reviews_required?: number
+          rubric: Json
+          title: string
+        }
+        Update: {
+          author_id?: string
+          course_id?: string
+          created_at?: string
+          id?: string
+          instructions?: string
+          reviews_required?: number
+          rubric?: Json
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "peer_assignments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      peer_submissions: {
+        Row: {
+          assignment_id: string
+          body: string
+          calibrated_score: number | null
+          id: string
+          review_count: number
+          submitted_at: string
+          user_id: string
+        }
+        Insert: {
+          assignment_id: string
+          body: string
+          calibrated_score?: number | null
+          id?: string
+          review_count?: number
+          submitted_at?: string
+          user_id?: string
+        }
+        Update: {
+          assignment_id?: string
+          body?: string
+          calibrated_score?: number | null
+          id?: string
+          review_count?: number
+          submitted_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "peer_submissions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "peer_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      peer_review_assignments: {
+        Row: {
+          created_at: string
+          id: string
+          peer_assignment_id: string
+          reviewer_id: string
+          status: string
+          submission_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          peer_assignment_id: string
+          reviewer_id: string
+          status?: string
+          submission_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          peer_assignment_id?: string
+          reviewer_id?: string
+          status?: string
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "peer_review_assignments_peer_assignment_id_fkey"
+            columns: ["peer_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "peer_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "peer_review_assignments_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "peer_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      peer_reviews: {
+        Row: {
+          comment: string
+          id: string
+          marks: Json
+          max_points: number
+          review_assignment_id: string
+          score: number
+          submitted_at: string
+        }
+        Insert: {
+          comment?: string
+          id?: string
+          marks: Json
+          max_points: number
+          review_assignment_id: string
+          score: number
+          submitted_at?: string
+        }
+        Update: {
+          comment?: string
+          id?: string
+          marks?: Json
+          max_points?: number
+          review_assignment_id?: string
+          score?: number
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "peer_reviews_review_assignment_id_fkey"
+            columns: ["review_assignment_id"]
+            isOneToOne: true
+            referencedRelation: "peer_review_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       competency_rubric_assessments: {
         Row: {
           criteria_snapshot: Json
@@ -2345,6 +2577,34 @@ export type Database = {
           full_name: string
           joined_at: string
           user_id: string
+        }[]
+      }
+      forum_delete_thread: {
+        Args: { _thread_id: string }
+        Returns: undefined
+      }
+      forum_delete_reply: {
+        Args: { _reply_id: string }
+        Returns: undefined
+      }
+      forum_set_thread_state: {
+        Args: { _thread_id: string; _pinned: boolean; _locked: boolean }
+        Returns: undefined
+      }
+      peer_assign_reviewers: {
+        Args: { _assignment_id: string }
+        Returns: number
+      }
+      my_peer_review_queue: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          review_assignment_id: string
+          assignment_id: string
+          assignment_title: string
+          rubric: Json
+          submission_id: string
+          submission_body: string
+          status: string
         }[]
       }
       course_assessment_learners: {

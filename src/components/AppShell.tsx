@@ -22,6 +22,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
+import { CalendarLink } from "@/components/CalendarLink";
 import { BrandHome, LearningBrandContext, OrganizationLogo, useLearningBrand, useLearningBrandForPath } from "@/components/LearningBrand";
 import { accessibleBrandColor } from "@/lib/learning-brand";
 import { readPortalSlug } from "@/lib/customer-portal";
@@ -293,6 +294,7 @@ export function Header({ children, wide = false }: { children?: ReactNode; wide?
             <img src={mobileLogo} alt="Plusticity" className="h-[55.89px] w-auto object-contain" />
           </Link>}
           <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
+            {!brand?.portalSlug && <CalendarLink className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-foreground hover:bg-muted/75" />}
             {!brand?.portalSlug && <NotificationBell className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-foreground hover:bg-muted/75" />}
             <LanguageSwitcher />
             <HeaderAction />
@@ -300,6 +302,7 @@ export function Header({ children, wide = false }: { children?: ReactNode; wide?
         </div>
         <div className="hidden items-center justify-end gap-2 px-10 pt-5 md:flex">
           {brand && <BrandHome brand={brand} className="mr-auto max-w-sm truncate text-sm font-semibold text-primary">{brand.name}</BrandHome>}
+          {!brand?.portalSlug && <CalendarLink className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-muted text-foreground hover:bg-muted/75" />}
           {!brand?.portalSlug && <NotificationBell className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-muted text-foreground hover:bg-muted/75" />}
           <LanguageSwitcher />
           <DesktopTopAccount />

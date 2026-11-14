@@ -27,6 +27,7 @@ import { ScormLesson } from "@/components/ScormLesson";
 import { SlidePlayer } from "@/components/SlidePlayer";
 import { LessonNarration } from "@/components/LessonNarration";
 import { LessonTutor } from "@/components/LessonTutor";
+import { lessonKindIcon } from "@/lib/lesson-kinds";
 import {
   lessonContentKey,
   parseLessonSlides,
@@ -394,14 +395,7 @@ function ClassPage() {
               {user && <ProgressBar pct={pct} label={`${count}/${total} lessons`} />}
               <ol className="space-y-1.5">
                 {(lessons ?? []).map((l, i) => {
-                  const Icon =
-                    l.kind === "video"
-                      ? Video
-                      : l.kind === "quiz"
-                        ? HelpCircle
-                        : l.kind === "scorm"
-                          ? Package
-                          : FileText;
+                  const Icon = lessonKindIcon(l.kind);
                   return (
                     <li key={l.id}>
                       <button
@@ -445,6 +439,14 @@ function ClassPage() {
                   <Link to="/community/$courseId" params={{ courseId: id }} search={portal ? { portal } : {}}>
                     <Users className="h-4 w-4" />
                     Join the community
+                  </Link>
+                </Button>
+              )}
+              {user && (
+                <Button asChild variant="outline" className="w-full">
+                  <Link to="/peer/$courseId" params={{ courseId: id }}>
+                    <Users className="h-4 w-4" />
+                    Peer assessment
                   </Link>
                 </Button>
               )}
