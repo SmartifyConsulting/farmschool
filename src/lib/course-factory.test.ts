@@ -129,6 +129,19 @@ describe("manual structure", () => {
     expect(d.lessons.some(l => l.body.includes("Smith"))).toBe(false);
   });
 
+  it("does not treat a numbered list item inside a section as its own module", () => {
+    const d = _build("Beekeeping", [
+      {
+        sourceId: "m.pdf",
+        page: 3,
+        text: "Module 1: Gain appreciation of the history of bees\nCreate a pipeline of beekeepers.\nEXPECTED OUTCOMES\nParticipants will be empowered.\n4 Promote leadership and community engagement\nBuild leadership capabilities.",
+      },
+    ]);
+    // "4 Promote leadership…" has no "." or ")" after the number, so it reads as a numbered
+    // list item (outcome #4), not a new module — it must stay nested under Module 1.
+    expect(d.lessons.every(l => l.module === "Module 1: Gain appreciation of the history of bees")).toBe(true);
+  });
+
   it("keeps a sub-heading separate when it has substantial content of its own", () => {
     const d = _build("Water", [
       {

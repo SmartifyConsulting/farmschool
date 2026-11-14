@@ -21,13 +21,17 @@ export type DraftCourse = {
 
 const MAX_PAGES = 500;
 const MAX_CHARS = 1_000_000;
-const heading = /^(?:(?:module|chapter|unit|lesson|section|part|topic)\s+(?:\d+|[IVX]+|[A-Z])(?:[.:\s–-]+.*)?|\d+(?:\.\d+)*[.)]?\s+[A-Z][^.!?]{2,100}|[IVX]+[.)]\s+[A-Z][^.!?]{2,100})$/i;
+// A bare single-integer number ("4 Promote leadership…") needs a trailing "." or ")" to count as a
+// heading — without one it reads as a numbered list item (an outcome, an objective), not a section,
+// so it is left as body text. A multi-level decimal ("1.1 Wetlands") is unambiguous either way.
+const heading = /^(?:(?:module|chapter|unit|lesson|section|part|topic)\s+(?:\d+|[IVX]+|[A-Z])(?:[.:\s–-]+.*)?|(?:\d+\.\d+(?:\.\d+)*|\d+[.)])\s+[A-Z][^.!?]{2,100}|[IVX]+[.)]\s+[A-Z][^.!?]{2,100})$/i;
 const contentsEntry = /(?:\.{2,}|…+|\s{3,})\s*\d{1,3}\s*$/;
 const coverMarker = /^(?:short learning programme|training manual|copyright|all rights reserved|entrepreneurship|equip\s*[•·-]\s*learn|building skills,? empowering people|protecting pollinators|future leaders)$/i;
 function normalise(text: string): string {
   return text.replace(/\r\n?/g, "\n").replace(/[\t ]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
 }
-const h1 = /^(?:(?:module|chapter|unit|part)\s+(?:\d+|[IVX]+|[A-Z])(?:[.:\s–-]+.*)?|\d+[.)]?\s+[A-Z][^.!?]{2,100}|[IVX]+[.)]\s+[A-Z][^.!?]{2,100})$/i;
+const h1 = /^(?:(?:module|chapter|unit|part)\s+(?:\d+|[IVX]+|[A-Z])(?:[.:\s–-]+.*)?|\d+[.)]\s+[A-Z][^.!?]{2,100}|[IVX]+[.)]\s+[A-Z][^.!?]{2,100})$/i;
+// (h1 keeps the stricter single-integer+punctuation form: "1." starts a module, "1.1" never does.)
 const referencesHeading = /^(?:\d+(?:\.\d+)*[.)]?\s+)?(?:references?(?: list)?|bibliography|works cited|sources|further reading)$/i;
 const listItem = /^(?:[•●▪◦·*-]|\(?\d+[.)]|\(?[a-z][.)])\s+/;
 
@@ -54,7 +58,6 @@ function titleCase(line: string): boolean {
   return line.length < 100 && words.length >= 2 && words.length <= 12 && !/[.!?;]$/.test(line)
     && words.filter(word => /^[A-Z]/.test(word)).length >= Math.ceil(words.length * 0.7);
 }
-
 /** Preserve content after front matter, including text before the first recognised heading. */
 export function buildCourseDraft(title: string, pages: SourcePage[], firstContentPage?: number): DraftCourse {
   if (!title.trim() || title.length > 120) throw new Error("Course title must be 1–120 characters.");
