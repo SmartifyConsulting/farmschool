@@ -15,6 +15,7 @@ import {
   Eye,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   LayoutGrid,
   Check,
   ArrowUp,
@@ -440,6 +441,8 @@ function Editor() {
   const [reviewingLessons, setReviewingLessons] = useState(false);
   const { user, ready: authReady } = useAuth();
   const [factoryStep, setFactoryStep] = useState(0);
+  const [outlineOpen, setOutlineOpen] = useState(true);
+  const [collapsedOutlineModules, setCollapsedOutlineModules] = useState<Set<string>>(new Set());
   const [showExtractedText, setShowExtractedText] = useState(false);
   const [firstContentPage, setFirstContentPage] = useState(1);
   const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
@@ -1812,60 +1815,85 @@ function Editor() {
                 { key: "publish", label: "Review & publish" },
               ].map((item) =>
                 item.key === "import" && draft && draft.lessons.length ? (
-                  <details key={item.key} open className="contents">
-                    <summary
-                      className={`flex h-auto min-h-9 cursor-pointer list-none items-center justify-start whitespace-normal rounded-md px-4 py-2 text-left text-sm font-medium [&::-webkit-details-marker]:hidden ${screen === item.key ? "bg-secondary text-secondary-foreground" : "hover:bg-accent hover:text-accent-foreground"}`}
-                      onClick={(e) => {
-                        e.preventDefault();
+                  <div key={item.key} className="contents">
+                    <button
+                      type="button"
+                      className={`flex h-auto min-h-9 w-full items-center justify-start gap-1.5 whitespace-normal rounded-md px-4 py-2 text-left text-sm font-medium ${screen === item.key ? "bg-secondary text-secondary-foreground" : "hover:bg-accent hover:text-accent-foreground"}`}
+                      onClick={() => {
                         setScreen(item.key);
-                        const details = e.currentTarget.parentElement as HTMLDetailsElement;
-                        details.open = !details.open;
+                        setOutlineOpen((v) => !v);
                       }}
                     >
+                      <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${outlineOpen ? "" : "-rotate-90"}`} />
                       {item.label}
-                    </summary>
-                    <div className="col-span-2 ml-2 space-y-2 border-l border-border pl-2 lg:col-span-1">
-                      <div className="mt-2 flex items-center justify-between">
-                        <h4 className="text-xs font-semibold text-muted-foreground">Course outline</h4>
-                        <span className="text-xs text-muted-foreground">
-                          {Object.values(designApproved).filter(Boolean).length}/{draft.lessons.length} approved
-                        </span>
-                      </div>
-                      <div className="max-h-72 space-y-1 overflow-y-auto lg:max-h-[65vh]">
-                        {draftOutline.map((group) => {
-                          const lessonList = (
-                            <div className="space-y-0.5 border-l border-border pl-2">
-                              {group.items.map(({ lesson, index }) => (
-                                <div
-                                  key={index}
-                                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs"
+                    </button>
+                    {outlineOpen && (
+                      <div className="col-span-2 ml-2 space-y-2 border-l border-border pl-2 lg:col-span-1">
+                        <div className="mt-2 flex items-center justify-between">
+                          <h4 className="text-xs font-semibold text-muted-foreground">Course outline</h4>
+                          <span className="text-xs text-muted-foreground">
+                            {Object.values(designApproved).filter(Boolean).length}/{draft.lessons.length} approved
+                          </span>
+                        </div>
+                        <div className="max-h-72 space-y-1 overflow-y-auto lg:max-h-[65vh]">
+                          {draftOutline.map((group) => {
+                            const goToLesson = (index: number) => {
+                              setScreen("import");
+                              setFactoryStep(1);
+                              requestAnimationFrame(() =>
+                                document
+                                  .getElementById(`outline-lesson-${index}`)
+                                  ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+                              );
+                            };
+                            const lessonList = (
+                              <div className="space-y-0.5 border-l border-border pl-2">
+                                {group.items.map(({ lesson, index }) => (
+                                  <button
+                                    type="button"
+                                    key={index}
+                                    onClick={() => goToLesson(index)}
+                                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent"
+                                  >
+                                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-secondary text-[10px] font-semibold text-secondary-foreground">
+                                      {index + 1}
+                                    </span>
+                                    <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
+                                    {designApproved[index] && (
+                                      <Check className="h-3 w-3 shrink-0 text-primary" />
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                            );
+                            if (group.title === "Introduction") return <div key={group.title} className="space-y-0.5">{lessonList}</div>;
+                            const collapsed = collapsedOutlineModules.has(group.title);
+                            return (
+                              <div key={group.title} className="space-y-0.5">
+                                <button
+                                  type="button"
+                                  className="flex w-full cursor-pointer items-center gap-1.5 px-1 py-1 text-left text-xs font-bold text-primary"
+                                  onClick={() =>
+                                    setCollapsedOutlineModules((prev) => {
+                                      const next = new Set(prev);
+                                      if (next.has(group.title)) next.delete(group.title);
+                                      else next.add(group.title);
+                                      return next;
+                                    })
+                                  }
                                 >
-                                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-secondary text-[10px] font-semibold text-secondary-foreground">
-                                    {index + 1}
-                                  </span>
-                                  <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
-                                  {designApproved[index] && (
-                                    <Check className="h-3 w-3 shrink-0 text-primary" />
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          );
-                          return group.title === "Introduction" ? (
-                            <div key={group.title} className="space-y-0.5">{lessonList}</div>
-                          ) : (
-                            <details key={group.title} open className="space-y-0.5">
-                              <summary className="flex cursor-pointer list-none items-center gap-1.5 px-1 py-1 text-xs font-bold text-primary [&::-webkit-details-marker]:hidden">
-                                <FolderOpen className="h-3.5 w-3.5 shrink-0" />
-                                <span className="min-w-0 truncate">{group.title}</span>
-                              </summary>
-                              {lessonList}
-                            </details>
-                          );
-                        })}
+                                  <ChevronDown className={`h-3 w-3 shrink-0 transition-transform ${collapsed ? "-rotate-90" : ""}`} />
+                                  <FolderOpen className="h-3.5 w-3.5 shrink-0" />
+                                  <span className="min-w-0 truncate">{group.title}</span>
+                                </button>
+                                {!collapsed && lessonList}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  </details>
+                    )}
+                  </div>
                 ) : (
                   <Button
                     key={item.key}

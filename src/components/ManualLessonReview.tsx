@@ -123,7 +123,7 @@ export function ManualLessonReview(props: Props) {
         const selected = props.choices(index, lesson.title, lesson.body);
         const paragraphs = lesson.body.split(/\n{2,}/);
         const newModule = lesson.module && lesson.module !== props.draft.lessons[index - 1]?.module;
-        return <li key={index} className="min-w-0 space-y-3">
+        return <li key={index} id={`outline-lesson-${index}`} className="min-w-0 scroll-mt-4 space-y-3">
           {newModule && <h4 className="flex items-center gap-2 pt-2 text-sm font-semibold text-primary"><FolderOpen className="h-4 w-4" />Module: {lesson.module}</h4>}
           <div className={`min-w-0 rounded-lg border border-border bg-background p-4 sm:p-5 ${lesson.module ? "sm:ml-4" : ""}`}>
           <div className="flex items-start gap-3">
