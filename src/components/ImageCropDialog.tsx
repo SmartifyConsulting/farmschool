@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-const PREVIEW_W = 480;
-const PREVIEW_H = 270; // 16:9
+const PREVIEW_W = 400;
+const PREVIEW_H = 225; // 16:9
 const OUTPUT_W = 1600;
 const OUTPUT_H = 900;
 const RATIO = OUTPUT_W / PREVIEW_W;
