@@ -1741,45 +1741,6 @@ function Editor() {
                 </Button>
               ))}
             </nav>
-            {screen === "import" && draft ? (
-              <>
-                <div className="mt-5 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Course outline (draft)</h3>
-                  <p className="text-xs text-muted-foreground">
-                    {Object.values(designApproved).filter(Boolean).length}/{draft.lessons.length} approved
-                  </p>
-                </div>
-                <div className="mt-2 max-h-72 space-y-3 overflow-y-auto lg:max-h-[65vh]">
-                  {draftOutline.map((group) => (
-                    <div key={group.title} className="space-y-0.5">
-                      {group.title !== "Introduction" && (
-                        <p className="flex items-center gap-1.5 px-1 text-xs font-bold text-primary">
-                          <FolderOpen className="h-3.5 w-3.5 shrink-0" />
-                          <span className="min-w-0 truncate">{group.title}</span>
-                        </p>
-                      )}
-                      <div className="space-y-0.5 border-l border-border pl-2">
-                        {group.items.map(({ lesson, index }) => (
-                          <div
-                            key={index}
-                            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs"
-                          >
-                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-secondary text-[10px] font-semibold text-secondary-foreground">
-                              {index + 1}
-                            </span>
-                            <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
-                            {designApproved[index] && (
-                              <Check className="h-3 w-3 shrink-0 text-primary" />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <>
             <div className="mt-5 flex items-center justify-between">
               <h3 className="text-sm font-semibold">Curriculum</h3>
               <Button
@@ -1887,8 +1848,6 @@ function Editor() {
                 SCORM
               </Button>
             </div>
-              </>
-            )}
           </aside>
           <main className="min-w-0 space-y-6">
             {course.published && (
@@ -2408,8 +2367,8 @@ function Editor() {
                 <section className="space-y-3 border-b border-border pb-6">
                   <h2 className="font-semibold">Build from a manual</h2>
                   <nav aria-label="Course Factory steps" className="flex flex-wrap gap-2">
-                    {["Upload", "Review & approve", "Generate & import"].map((label, i) => {
-                      const reachable = i === 0 || (i === 1 && !!sourceText.trim()) || (i === 2 && !!draft);
+                    {["Upload", "Review & approve", "Choose activities", "Generate & import"].map((label, i) => {
+                      const reachable = i === 0 || (i === 1 && !!sourceText.trim()) || ((i === 2 || i === 3) && !!draft);
                       return (
                         <Button
                           key={label}
@@ -2425,6 +2384,43 @@ function Editor() {
                       );
                     })}
                   </nav>
+
+                  {draft && factoryStep > 0 && (
+                    <details className="rounded-xl border border-border bg-muted/30 p-3 text-sm">
+                      <summary className="cursor-pointer font-medium">
+                        Course outline ·{" "}
+                        {Object.values(designApproved).filter(Boolean).length}/{draft.lessons.length} approved
+                      </summary>
+                      <div className="mt-3 max-h-80 space-y-3 overflow-y-auto">
+                        {draftOutline.map((group) => (
+                          <div key={group.title} className="space-y-0.5">
+                            {group.title !== "Introduction" && (
+                              <p className="flex items-center gap-1.5 px-1 text-xs font-bold text-primary">
+                                <FolderOpen className="h-3.5 w-3.5 shrink-0" />
+                                <span className="min-w-0 truncate">{group.title}</span>
+                              </p>
+                            )}
+                            <div className="space-y-0.5 border-l border-border pl-2">
+                              {group.items.map(({ lesson, index }) => (
+                                <div
+                                  key={index}
+                                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs"
+                                >
+                                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-secondary text-[10px] font-semibold text-secondary-foreground">
+                                    {index + 1}
+                                  </span>
+                                  <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
+                                  {designApproved[index] && (
+                                    <Check className="h-3 w-3 shrink-0 text-primary" />
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
 
                   {factoryStep === 0 && (
                     <div className="space-y-3">
@@ -2635,6 +2631,7 @@ function Editor() {
                           </Button>
                         </div>
                         <ManualLessonReview
+                          mode="outline"
                           draft={draft}
                           readOnly={course.published}
                           busy={
@@ -2702,7 +2699,7 @@ function Editor() {
                             disabled={!draft.lessons.length}
                             onClick={() => setFactoryStep(2)}
                           >
-                            Continue to generation
+                            Continue to activities
                           </Button>
                         </div>
                       </div>
@@ -2720,6 +2717,91 @@ function Editor() {
                     ))}
 
                   {factoryStep === 2 &&
+                    (draft ? (
+                      <div className="space-y-5">
+                        <ManualLessonReview
+                          mode="methods"
+                          draft={draft}
+                          readOnly={course.published}
+                          busy={
+                            designSyncing || designLoading !== null || batchRunning || aiLoading
+                          }
+                          methods={learningMethods}
+                          choices={choicesFor}
+                          approved={designApproved}
+                          rationale={designRationale}
+                          onEdit={(index, lesson) =>
+                            reviseOutline(
+                              draft.lessons.map((item, i) => (i === index ? lesson : item)),
+                            )
+                          }
+                          onSplit={(index, paragraph, title) => {
+                            const lesson = draft.lessons[index];
+                            if (lesson)
+                              reviseOutline(
+                                draft.lessons.flatMap((item, i) =>
+                                  i === index
+                                    ? splitDraftLessonAt(lesson, paragraph, title)
+                                    : [item],
+                                ),
+                              );
+                          }}
+                          onMerge={(index) => {
+                            const first = draft.lessons[index];
+                            const second = draft.lessons[index + 1];
+                            if (first && second)
+                              reviseOutline([
+                                ...draft.lessons.slice(0, index),
+                                mergeDraftLessons(first, second),
+                                ...draft.lessons.slice(index + 2),
+                              ]);
+                          }}
+                          onDelete={async (index) => {
+                            if (
+                              await confirm({
+                                title: "Remove this lesson from the outline?",
+                                description:
+                                  "The original manual and saved course lessons will not be deleted.",
+                                confirmLabel: "Remove lesson",
+                                tone: "danger",
+                              })
+                            )
+                              reviseOutline(draft.lessons.filter((_, i) => i !== index));
+                          }}
+                          onMethods={(index, methods) => void saveDesignSelection(index, methods)}
+                          onApprove={(index, lesson) => void toggleDesignApproval(index, lesson)}
+                          onPropose={(index, lesson) => void proposeDesign(index, lesson)}
+                          activity={(method, lesson) => (
+                            <SourceActivity
+                              method={method}
+                              lesson={lesson}
+                              courseId={id}
+                              published={course.published}
+                            />
+                          )}
+                        />
+                        <div className="flex flex-wrap justify-between gap-2 border-t border-border pt-4">
+                          <Button variant="outline" onClick={() => setFactoryStep(1)}>
+                            Back to outline
+                          </Button>
+                          <Button
+                            disabled={!draft.lessons.length}
+                            onClick={() => setFactoryStep(3)}
+                          >
+                            Continue to generation
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 py-6 text-center">
+                        <p className="text-sm text-muted-foreground">Build the outline first.</p>
+                        <Button type="button" variant="outline" size="sm" onClick={() => setFactoryStep(1)}>
+                          Go to Step 2: Review & approve
+                        </Button>
+                      </div>
+                    ))}
+
+                  {factoryStep === 3 &&
                     (draft ? (
                       <div className="space-y-3">
                         <div className="space-y-2 rounded-xl border border-border bg-background p-4">
@@ -2841,8 +2923,8 @@ function Editor() {
                           ))}
                         </div>
                         <div className="flex items-center justify-between border-t border-border pt-3">
-                          <Button variant="outline" onClick={() => setFactoryStep(1)}>
-                            Back: Review & approve
+                          <Button variant="outline" onClick={() => setFactoryStep(2)}>
+                            Back: Choose activities
                           </Button>
                           <label className="flex flex-wrap items-center gap-2 text-sm">
                             Import as
