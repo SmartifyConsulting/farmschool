@@ -940,7 +940,6 @@ function Editor() {
     target_audience: "",
     value_proposition: "",
     outcomes_timeline: "",
-    core_messaging: "",
   });
   useEffect(() => {
     if (course)
@@ -956,7 +955,6 @@ function Editor() {
         target_audience: course.target_audience ?? "",
         value_proposition: course.value_proposition ?? "",
         outcomes_timeline: course.outcomes_timeline ?? "",
-        core_messaging: course.core_messaging ?? "",
       });
   }, [course]);
   const { data: prereqOptions = [] } = useQuery({
@@ -2121,7 +2119,7 @@ function Editor() {
                         value={form.target_audience}
                         onChange={(e) => setForm({ ...form, target_audience: e.target.value })}
                         placeholder="Ideal audience & market profile"
-                        rows={2}
+                        rows={4}
                         maxLength={2000}
                       />
                     </label>
@@ -2131,7 +2129,7 @@ function Editor() {
                         value={form.value_proposition}
                         onChange={(e) => setForm({ ...form, value_proposition: e.target.value })}
                         placeholder="Value of certification / qualification"
-                        rows={2}
+                        rows={4}
                         maxLength={2000}
                       />
                     </label>
@@ -2141,17 +2139,7 @@ function Editor() {
                         value={form.outcomes_timeline}
                         onChange={(e) => setForm({ ...form, outcomes_timeline: e.target.value })}
                         placeholder="Key learning outcomes & program duration"
-                        rows={2}
-                        maxLength={2000}
-                      />
-                    </label>
-                    <label className="block space-y-1 text-xs font-medium">
-                      Core Messaging
-                      <Textarea
-                        value={form.core_messaging}
-                        onChange={(e) => setForm({ ...form, core_messaging: e.target.value })}
-                        placeholder="Key messaging on ROI"
-                        rows={2}
+                        rows={4}
                         maxLength={2000}
                       />
                     </label>
