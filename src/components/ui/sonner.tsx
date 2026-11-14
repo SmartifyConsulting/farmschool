@@ -9,14 +9,15 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast:
-            "group toast rounded-2xl border border-border bg-card font-sans text-sm text-foreground group-[.toaster]:shadow-lg",
-          description: "group-[.toast]:text-muted-foreground",
-          actionButton: "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
-          cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
-          success: "group-[.toast]:border-primary/40 group-[.toast]:bg-primary/10 group-[.toast]:text-foreground",
-          error: "group-[.toast]:border-destructive/40 group-[.toast]:bg-destructive/10 group-[.toast]:text-foreground",
-          warning: "group-[.toast]:border-border group-[.toast]:bg-muted group-[.toast]:text-foreground",
-          info: "group-[.toast]:border-primary/40 group-[.toast]:bg-primary/10 group-[.toast]:text-foreground",
+            "group toast rounded-2xl border border-navy bg-navy font-sans text-sm text-navy-foreground group-[.toaster]:shadow-lg",
+          description: "group-[.toast]:text-navy-foreground/80",
+          actionButton: "group-[.toast]:bg-navy-foreground/20 group-[.toast]:text-navy-foreground",
+          cancelButton: "group-[.toast]:bg-navy-foreground/10 group-[.toast]:text-navy-foreground",
+          success: "group-[.toast]:border-navy group-[.toast]:bg-navy group-[.toast]:text-navy-foreground",
+          error: "group-[.toast]:border-destructive group-[.toast]:bg-destructive group-[.toast]:text-destructive-foreground",
+          warning: "group-[.toast]:border-navy group-[.toast]:bg-navy group-[.toast]:text-navy-foreground",
+          info: "group-[.toast]:border-navy group-[.toast]:bg-navy group-[.toast]:text-navy-foreground",
+          closeButton: "group-[.toast]:border-navy-foreground/30 group-[.toast]:bg-navy group-[.toast]:text-navy-foreground",
         },
       }}
       {...props}
