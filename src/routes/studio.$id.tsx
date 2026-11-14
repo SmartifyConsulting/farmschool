@@ -18,6 +18,7 @@ import {
   ArrowUp,
   ArrowDown,
   Package,
+  FolderOpen,
 } from "lucide-react";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -1469,6 +1470,20 @@ function Editor() {
   };
   const modules = groupLessonsIntoModules(lessons ?? [], studioModules ?? []);
   const draftGroups = draft ? groupDraftLessons(draft.lessons) : [];
+  /** Groups the AI-detected draft outline by `lesson.module`, in reading order, for the sidebar preview. */
+  const draftOutline: { title: string; items: { lesson: DraftCourse["lessons"][number]; index: number }[] }[] = [];
+  if (draft) {
+    for (const [index, lesson] of draft.lessons.entries()) {
+      const title = lesson.module ?? "Introduction";
+      const last = draftOutline.at(-1);
+      const group = last && last.title === title ? last : (() => {
+        const next = { title, items: [] as { lesson: DraftCourse["lessons"][number]; index: number }[] };
+        draftOutline.push(next);
+        return next;
+      })();
+      group.items.push({ lesson, index });
+    }
+  }
   const draftGroupFor = (moduleTitle: string) =>
     draftGroups.find(
       (g) => g.title === moduleTitle || moduleTitle.startsWith(g.title.split(" · ")[0] ?? g.title),
@@ -1726,6 +1741,45 @@ function Editor() {
                 </Button>
               ))}
             </nav>
+            {screen === "import" && draft ? (
+              <>
+                <div className="mt-5 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold">Course outline (draft)</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {Object.values(designApproved).filter(Boolean).length}/{draft.lessons.length} approved
+                  </p>
+                </div>
+                <div className="mt-2 max-h-72 space-y-3 overflow-y-auto lg:max-h-[65vh]">
+                  {draftOutline.map((group) => (
+                    <div key={group.title} className="space-y-0.5">
+                      {group.title !== "Introduction" && (
+                        <p className="flex items-center gap-1.5 px-1 text-xs font-bold text-primary">
+                          <FolderOpen className="h-3.5 w-3.5 shrink-0" />
+                          <span className="min-w-0 truncate">{group.title}</span>
+                        </p>
+                      )}
+                      <div className="space-y-0.5 border-l border-border pl-2">
+                        {group.items.map(({ lesson, index }) => (
+                          <div
+                            key={index}
+                            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs"
+                          >
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-secondary text-[10px] font-semibold text-secondary-foreground">
+                              {index + 1}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
+                            {designApproved[index] && (
+                              <Check className="h-3 w-3 shrink-0 text-primary" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
             <div className="mt-5 flex items-center justify-between">
               <h3 className="text-sm font-semibold">Curriculum</h3>
               <Button
@@ -1833,6 +1887,8 @@ function Editor() {
                 SCORM
               </Button>
             </div>
+              </>
+            )}
           </aside>
           <main className="min-w-0 space-y-6">
             {course.published && (
