@@ -1890,6 +1890,44 @@ function Editor() {
               </Button>
             </div>
             </>}
+            {screen === "import" && designTab === "auto" && draft && (
+              <>
+                <div className="mt-5 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold">Course outline</h3>
+                  <span className="text-xs text-muted-foreground">
+                    {Object.values(designApproved).filter(Boolean).length}/{draft.lessons.length} approved
+                  </span>
+                </div>
+                <div className="mt-2 max-h-72 space-y-3 overflow-y-auto lg:max-h-[65vh]">
+                  {draftOutline.map((group) => (
+                    <div key={group.title} className="space-y-0.5">
+                      {group.title !== "Introduction" && (
+                        <p className="flex items-center gap-1.5 px-1 text-xs font-bold text-primary">
+                          <FolderOpen className="h-3.5 w-3.5 shrink-0" />
+                          <span className="min-w-0 truncate">{group.title}</span>
+                        </p>
+                      )}
+                      <div className="space-y-0.5 border-l border-border pl-2">
+                        {group.items.map(({ lesson, index }) => (
+                          <div
+                            key={index}
+                            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs"
+                          >
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-secondary text-[10px] font-semibold text-secondary-foreground">
+                              {index + 1}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
+                            {designApproved[index] && (
+                              <Check className="h-3 w-3 shrink-0 text-primary" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </aside>
           <main className="min-w-0 space-y-6">
             {course.published && (
@@ -2416,43 +2454,6 @@ function Editor() {
                       );
                     })}
                   </nav>
-
-                  {draft && factoryStep > 0 && (
-                    <details className="rounded-xl border border-border bg-muted/30 p-3 text-sm">
-                      <summary className="cursor-pointer font-medium">
-                        Course outline ·{" "}
-                        {Object.values(designApproved).filter(Boolean).length}/{draft.lessons.length} approved
-                      </summary>
-                      <div className="mt-3 max-h-80 space-y-3 overflow-y-auto">
-                        {draftOutline.map((group) => (
-                          <div key={group.title} className="space-y-0.5">
-                            {group.title !== "Introduction" && (
-                              <p className="flex items-center gap-1.5 px-1 text-xs font-bold text-primary">
-                                <FolderOpen className="h-3.5 w-3.5 shrink-0" />
-                                <span className="min-w-0 truncate">{group.title}</span>
-                              </p>
-                            )}
-                            <div className="space-y-0.5 border-l border-border pl-2">
-                              {group.items.map(({ lesson, index }) => (
-                                <div
-                                  key={index}
-                                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs"
-                                >
-                                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-secondary text-[10px] font-semibold text-secondary-foreground">
-                                    {index + 1}
-                                  </span>
-                                  <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
-                                  {designApproved[index] && (
-                                    <Check className="h-3 w-3 shrink-0 text-primary" />
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </details>
-                  )}
 
                   {factoryStep === 0 && (
                     <div className="space-y-3">
