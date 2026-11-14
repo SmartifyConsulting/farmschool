@@ -1,15 +1,23 @@
 import { useState, type ReactNode } from "react";
-import { ArrowDownToLine, Scissors, Trash2, ChevronDown, Check, Wand2, FolderOpen } from "lucide-react";
+import { ArrowDownToLine, Scissors, Trash2, ChevronDown, Check, Wand2, FolderOpen, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { reflowText, type DraftCourse, type DraftLesson } from "@/lib/course-factory";
 
+/** A handful of short lines for the slide mock-up — a rough layout preview, not generated content. */
+function previewLines(body: string): string[] {
+  return body
+    .replace(/\s+/g, " ")
+    .split(/(?<=[.!?])\s+/)
+    .map(s => s.trim())
+    .filter(Boolean)
+    .slice(0, 4)
+    .map(s => (s.length > 90 ? `${s.slice(0, 87)}…` : s));
+}
+
 type Props = {
   draft: DraftCourse;
-  /** "outline": clean up titles/boundaries only, no activity choices or approval yet.
-   * "methods": outline is final (read-only title, no split/merge/delete) — choose activities and approve. */
-  mode: "outline" | "methods";
   readOnly: boolean;
   busy: boolean;
   methods: { id: string; label: string; detail: string }[];
@@ -51,33 +59,42 @@ export function ManualLessonReview(props: Props) {
           <div className="flex items-start gap-3">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary text-sm font-semibold text-secondary-foreground">{index + 1}</span>
             <div className="min-w-0 flex-1">
-              {props.mode === "outline" ? (
-                <Input aria-label={`Lesson ${index + 1} title`} value={lesson.title} maxLength={120} disabled={props.readOnly || props.busy} onChange={event => props.onEdit(index, { ...lesson, title: event.target.value })} className="font-semibold" />
-              ) : (
-                <p className="font-semibold">{lesson.title}</p>
-              )}
-              <p className="mt-2 text-xs text-muted-foreground">{pages.length ? `Source pages ${Math.min(...pages)}–${Math.max(...pages)}` : "Pasted source"}{props.mode === "methods" && (props.approved[index] ? " · Approved" : " · Needs review")}</p>
+              <Input aria-label={`Lesson ${index + 1} title`} value={lesson.title} maxLength={120} disabled={props.readOnly || props.busy} onChange={event => props.onEdit(index, { ...lesson, title: event.target.value })} className="font-semibold" />
+              <p className="mt-2 text-xs text-muted-foreground">{pages.length ? `Source pages ${Math.min(...pages)}–${Math.max(...pages)}` : "Pasted source"}{props.approved[index] ? " · Approved" : " · Needs review"}</p>
             </div>
           </div>
-          <label className="mt-3 block space-y-1 text-xs font-medium text-muted-foreground">
-            <span>Source</span>
-            <Textarea aria-label={`Lesson ${index + 1} source`} rows={props.mode === "outline" ? 6 : 3} value={lesson.body} disabled={props.readOnly || props.busy} onChange={event => props.onEdit(index, { ...lesson, body: event.target.value })} className="text-sm leading-relaxed text-foreground" />
-          </label>
-          {props.mode === "methods" && <fieldset disabled={props.readOnly || props.busy} className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
+          <div className="mt-3 grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_14rem]">
+            <label className="block space-y-1 text-xs font-medium text-muted-foreground">
+              <span>Source</span>
+              <Textarea aria-label={`Lesson ${index + 1} source`} rows={5} value={lesson.body} disabled={props.readOnly || props.busy} onChange={event => props.onEdit(index, { ...lesson, body: event.target.value })} className="text-sm leading-relaxed text-foreground" />
+            </label>
+            <div className="min-w-0 space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Preview — rough layout, not final art</p>
+              <div className="flex h-full min-h-32 flex-col rounded-md border border-border bg-card p-2 text-[11px] shadow-sm">
+                <p className="truncate border-b border-border pb-1 font-semibold">{lesson.title || `Lesson ${index + 1}`}</p>
+                {(selected.includes("illustrated") || selected.includes("visual")) && (
+                  <div className="mt-1 flex h-10 items-center justify-center rounded bg-muted text-muted-foreground">
+                    <ImageIcon className="h-4 w-4" />
+                  </div>
+                )}
+                <ul className="mt-1 list-disc space-y-0.5 pl-3 text-muted-foreground">
+                  {previewLines(lesson.body).map((line, i) => <li key={i} className="line-clamp-1">{line}</li>)}
+                  {!lesson.body.trim() && <li className="list-none text-muted-foreground/70">No source text yet</li>}
+                </ul>
+              </div>
+            </div>
+          </div>
+          <fieldset disabled={props.readOnly || props.busy} className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
             {props.methods.map(method => <label key={method.id} title={method.detail} className="flex items-center gap-2 text-xs"><input type="checkbox" checked={selected.includes(method.id)} onChange={event => props.onMethods(index, event.target.checked ? [...selected, method.id] : selected.filter(value => value !== method.id))} />{method.label}</label>)}
-          </fieldset>}
+          </fieldset>
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-            {props.mode === "outline" && <>
-              <Button size="sm" variant="outline" disabled={props.readOnly || props.busy} onClick={() => props.onEdit(index, { ...lesson, body: reflowText(lesson.body) })}><Wand2 className="h-4 w-4" />Tidy paragraphs</Button>
-              <Button size="sm" variant="ghost" disabled={props.readOnly || props.busy || paragraphs.length < 2} onClick={() => { setSplitting(splitting === index ? null : index); setSplitAt(null); }}><Scissors className="h-4 w-4" />Split</Button>
-              <Button size="sm" variant="ghost" disabled={props.readOnly || props.busy || index === props.draft.lessons.length - 1} onClick={() => props.onMerge(index)}><ArrowDownToLine className="h-4 w-4" />Merge next</Button>
-              <Button size="icon" variant="ghost" title="Remove lesson from outline" aria-label={`Remove lesson ${index + 1}`} disabled={props.readOnly || props.busy} onClick={() => props.onDelete(index)}><Trash2 className="h-4 w-4" /></Button>
-            </>}
-            {props.mode === "methods" && <>
-              <Button size="sm" variant="outline" disabled={props.readOnly || props.busy || lesson.body.length < 100} onClick={() => props.onPropose(index, lesson)}>Suggest activities with AI</Button>
-              <Button size="sm" variant="ghost" aria-expanded={expanded === index} onClick={() => setExpanded(expanded === index ? null : index)}><ChevronDown className="h-4 w-4" />Activities</Button>
-              <Button size="sm" variant={props.approved[index] ? "secondary" : "outline"} disabled={props.readOnly || props.busy || !selected.length || !lesson.title.trim()} onClick={() => props.onApprove(index, lesson)}><Check className="h-4 w-4" />{props.approved[index] ? "Reopen" : "Approve"}</Button>
-            </>}
+            <Button size="sm" variant="outline" disabled={props.readOnly || props.busy} onClick={() => props.onEdit(index, { ...lesson, body: reflowText(lesson.body) })}><Wand2 className="h-4 w-4" />Tidy paragraphs</Button>
+            <Button size="sm" variant="ghost" disabled={props.readOnly || props.busy || paragraphs.length < 2} onClick={() => { setSplitting(splitting === index ? null : index); setSplitAt(null); }}><Scissors className="h-4 w-4" />Split</Button>
+            <Button size="sm" variant="ghost" disabled={props.readOnly || props.busy || index === props.draft.lessons.length - 1} onClick={() => props.onMerge(index)}><ArrowDownToLine className="h-4 w-4" />Merge next</Button>
+            <Button size="icon" variant="ghost" title="Remove lesson from outline" aria-label={`Remove lesson ${index + 1}`} disabled={props.readOnly || props.busy} onClick={() => props.onDelete(index)}><Trash2 className="h-4 w-4" /></Button>
+            <Button size="sm" variant="outline" disabled={props.readOnly || props.busy || lesson.body.length < 100} onClick={() => props.onPropose(index, lesson)}>Suggest activities with AI</Button>
+            <Button size="sm" variant="ghost" aria-expanded={expanded === index} onClick={() => setExpanded(expanded === index ? null : index)}><ChevronDown className="h-4 w-4" />Activities</Button>
+            <Button size="sm" variant={props.approved[index] ? "secondary" : "outline"} disabled={props.readOnly || props.busy || !selected.length || !lesson.title.trim()} onClick={() => props.onApprove(index, lesson)}><Check className="h-4 w-4" />{props.approved[index] ? "Reopen" : "Approve"}</Button>
           </div>
           {splitting === index && <div className="mt-4 space-y-2 border-t border-border pt-3">
             <h4 className="text-sm font-medium">Click “Split here” where the next lesson should start</h4>
