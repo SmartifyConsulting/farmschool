@@ -22,7 +22,7 @@ export function PolishButton({
   const [tone, setTone] = useState<PolishTone>("professional");
   const [busy, setBusy] = useState(false);
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center justify-end gap-2">
       <select
         aria-label="Polish tone"
         value={tone}
