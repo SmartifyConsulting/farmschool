@@ -59,18 +59,25 @@ export function ManualLessonReview(props: Props) {
               <p className="mt-2 text-xs text-muted-foreground">{pages.length ? `Source pages ${Math.min(...pages)}–${Math.max(...pages)}` : "Pasted source"}{props.mode === "methods" && (props.approved[index] ? " · Approved" : " · Needs review")}</p>
             </div>
           </div>
-          <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">{lesson.body.replace(/\s+/g, " ")}</p>
+          <label className="mt-3 block space-y-1 text-xs font-medium text-muted-foreground">
+            <span>Source</span>
+            <Textarea aria-label={`Lesson ${index + 1} source`} rows={props.mode === "outline" ? 6 : 3} value={lesson.body} disabled={props.readOnly || props.busy} onChange={event => props.onEdit(index, { ...lesson, body: event.target.value })} className="text-sm leading-relaxed text-foreground" />
+          </label>
           {props.mode === "methods" && <fieldset disabled={props.readOnly || props.busy} className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
             {props.methods.map(method => <label key={method.id} title={method.detail} className="flex items-center gap-2 text-xs"><input type="checkbox" checked={selected.includes(method.id)} onChange={event => props.onMethods(index, event.target.checked ? [...selected, method.id] : selected.filter(value => value !== method.id))} />{method.label}</label>)}
           </fieldset>}
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-            <Button size="sm" variant="ghost" aria-expanded={expanded === index} onClick={() => setExpanded(expanded === index ? null : index)}><ChevronDown className="h-4 w-4" />Source{props.mode === "methods" ? " & activities" : ""}</Button>
             {props.mode === "outline" && <>
+              <Button size="sm" variant="outline" disabled={props.readOnly || props.busy} onClick={() => props.onEdit(index, { ...lesson, body: reflowText(lesson.body) })}><Wand2 className="h-4 w-4" />Tidy paragraphs</Button>
               <Button size="sm" variant="ghost" disabled={props.readOnly || props.busy || paragraphs.length < 2} onClick={() => { setSplitting(splitting === index ? null : index); setSplitAt(null); }}><Scissors className="h-4 w-4" />Split</Button>
               <Button size="sm" variant="ghost" disabled={props.readOnly || props.busy || index === props.draft.lessons.length - 1} onClick={() => props.onMerge(index)}><ArrowDownToLine className="h-4 w-4" />Merge next</Button>
               <Button size="icon" variant="ghost" title="Remove lesson from outline" aria-label={`Remove lesson ${index + 1}`} disabled={props.readOnly || props.busy} onClick={() => props.onDelete(index)}><Trash2 className="h-4 w-4" /></Button>
             </>}
-            {props.mode === "methods" && <Button size="sm" variant={props.approved[index] ? "secondary" : "outline"} disabled={props.readOnly || props.busy || !selected.length || !lesson.title.trim()} onClick={() => props.onApprove(index, lesson)}><Check className="h-4 w-4" />{props.approved[index] ? "Reopen" : "Approve"}</Button>}
+            {props.mode === "methods" && <>
+              <Button size="sm" variant="outline" disabled={props.readOnly || props.busy || lesson.body.length < 100} onClick={() => props.onPropose(index, lesson)}>Suggest activities with AI</Button>
+              <Button size="sm" variant="ghost" aria-expanded={expanded === index} onClick={() => setExpanded(expanded === index ? null : index)}><ChevronDown className="h-4 w-4" />Activities</Button>
+              <Button size="sm" variant={props.approved[index] ? "secondary" : "outline"} disabled={props.readOnly || props.busy || !selected.length || !lesson.title.trim()} onClick={() => props.onApprove(index, lesson)}><Check className="h-4 w-4" />{props.approved[index] ? "Reopen" : "Approve"}</Button>
+            </>}
           </div>
           {splitting === index && <div className="mt-4 space-y-2 border-t border-border pt-3">
             <h4 className="text-sm font-medium">Click “Split here” where the next lesson should start</h4>
@@ -86,14 +93,12 @@ export function ManualLessonReview(props: Props) {
               </div>)}
             </div>
           </div>}
-          {expanded === index && <div className="mt-4 space-y-4 border-t border-border pt-4">
-            <label className="block space-y-2 text-sm font-medium"><span>Extracted source</span><Textarea aria-label={`Lesson ${index + 1} source`} rows={10} value={lesson.body} disabled={props.readOnly || props.busy} onChange={event => props.onEdit(index, { ...lesson, body: event.target.value })} className="text-sm leading-relaxed" /></label>
-            <div className="flex flex-wrap gap-2">
-              {props.mode === "outline" && <Button size="sm" variant="outline" disabled={props.readOnly || props.busy} onClick={() => props.onEdit(index, { ...lesson, body: reflowText(lesson.body) })}><Wand2 className="h-4 w-4" />Tidy paragraphs</Button>}
-              {props.mode === "methods" && <Button size="sm" variant="outline" disabled={props.readOnly || props.busy || lesson.body.length < 100} onClick={() => props.onPropose(index, lesson)}>Suggest activities with AI</Button>}
-            </div>
+          {expanded === index && <div className="mt-4 space-y-3 border-t border-border pt-4">
             {props.rationale[index] && <p className="text-xs text-muted-foreground">{props.rationale[index]}</p>}
             {selected.filter(method => method === "steps" || method === "scenario").map(method => <div key={method}>{props.activity(method, lesson)}</div>)}
+            {!props.rationale[index] && !selected.some(method => method === "steps" || method === "scenario") && (
+              <p className="text-xs text-muted-foreground">No activity plan yet — select a method above or click "Suggest activities with AI".</p>
+            )}
           </div>}
           </div>
         </li>;
