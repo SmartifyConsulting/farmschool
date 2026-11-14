@@ -25,6 +25,8 @@ import { StudioCourseActions } from "@/components/StudioCourseActions";
 import { CourseViewToggle, useCourseView } from "@/components/CourseViewToggle";
 import { QuestionBank } from "@/components/QuestionBank";
 import { CourseArchiveRestore } from "@/components/CourseArchiveTools";
+import { extractDocument } from "@/lib/document-extraction";
+import { buildCourseDraft, type DraftCourse, type SourcePage } from "@/lib/course-factory";
 
 export const Route = createFileRoute("/studio")({
   head: () => ({
@@ -90,7 +92,64 @@ function NewCourseDialog({
   const [form, setForm] = useState(BLANK_DETAILS);
   const [newTopic, setNewTopic] = useState("");
   const [creating, setCreating] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [manualFileName, setManualFileName] = useState("");
+  const [extractedPages, setExtractedPages] = useState<SourcePage[] | null>(null);
+  const [extractedDraft, setExtractedDraft] = useState<DraftCourse | null>(null);
   const { data: prereqOptions = [] } = usePrerequisiteOptions();
+
+  const resetManual = () => {
+    setManualFileName("");
+    setExtractedPages(null);
+    setExtractedDraft(null);
+  };
+
+  const guessCategory = (text: string): string | null => {
+    const lower = text.toLowerCase();
+    let best: { category: string; score: number } | null = null;
+    for (const category of STUDIO_CATEGORIES) {
+      const words = category.toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 3);
+      if (!words.length) continue;
+      const score = words.reduce(
+        (sum, word) => sum + (lower.match(new RegExp(`\\b${word}`, "g"))?.length ?? 0),
+        0,
+      );
+      if (score > 0 && (!best || score > best.score)) best = { category, score };
+    }
+    return best?.category ?? null;
+  };
+
+  const analyzeManual = async (file: File | undefined) => {
+    if (!file || extracting) return;
+    setExtracting(true);
+    try {
+      const pages = await extractDocument(file);
+      const fallbackTitle = file.name
+        .replace(/\.[^.]+$/, "")
+        .replace(/[_-]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      const draft = buildCourseDraft(fallbackTitle || "Untitled course", pages);
+      const firstBody = draft.lessons[0]?.body ?? "";
+      const description = firstBody.replace(/\s+/g, " ").trim().slice(0, 280);
+      const combinedText = pages.map((p) => p.text).join("\n");
+      const guessedCategory = guessCategory(combinedText);
+      setForm((prev) => ({
+        ...prev,
+        title: prev.title.trim() ? prev.title : fallbackTitle.slice(0, 120),
+        description: prev.description.trim() ? prev.description : description,
+        category: guessedCategory ?? prev.category,
+      }));
+      setExtractedPages(pages);
+      setExtractedDraft(draft);
+      setManualFileName(file.name);
+      toast.success("Manual analyzed — review the auto-filled details below before creating.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not read this document.");
+    } finally {
+      setExtracting(false);
+    }
+  };
 
   const create = async () => {
     if (!user || creating) return;
@@ -116,13 +175,29 @@ function NewCourseDialog({
       })
       .select("id")
       .single();
-    setCreating(false);
     if (error) {
+      setCreating(false);
       toast.error("Could not create the course.");
       return;
     }
+    if (extractedPages && extractedDraft) {
+      const { error: draftError } = await supabase.from("studio_course_source_drafts" as never).upsert({
+        course_id: c.id,
+        source_name: manualFileName,
+        source_text: extractedPages.map((p) => p.text).join("\n\n"),
+        source_pages: extractedPages,
+        draft: extractedDraft,
+      } as never);
+      if (draftError) {
+        toast.error(
+          "Course created, but the analyzed manual could not be carried over — upload it again in Studio.",
+        );
+      }
+    }
+    setCreating(false);
     setForm(BLANK_DETAILS);
     setNewTopic("");
+    resetManual();
     onCreated(c.id);
   };
 
@@ -135,6 +210,7 @@ function NewCourseDialog({
           if (!next) {
             setForm(BLANK_DETAILS);
             setNewTopic("");
+            resetManual();
           }
         }
       }}
@@ -150,6 +226,28 @@ function NewCourseDialog({
           }}
           className="space-y-3"
         >
+          <div className="space-y-1.5 rounded-lg border border-dashed border-border p-3">
+            <label className="block text-xs font-medium">
+              Start from a training manual (optional)
+              <input
+                type="file"
+                accept=".pdf,.docx,.pptx,.txt,.md"
+                disabled={extracting}
+                onChange={(e) => {
+                  void analyzeManual(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+                className="mt-1 block w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-primary"
+              />
+            </label>
+            <p className="text-xs text-muted-foreground">
+              {extracting
+                ? "Analyzing manual…"
+                : manualFileName
+                  ? `Analyzed "${manualFileName}" — title, description and topic below are auto-filled; review before creating.`
+                  : "Upload a manual first and the details below will be pre-filled from it."}
+            </p>
+          </div>
           <Input
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -301,7 +399,7 @@ function NewCourseDialog({
             </label>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={creating} className="w-full">
+            <Button type="submit" disabled={creating || extracting} className="w-full">
               <Plus className="h-4 w-4" />
               {creating ? "Creating…" : "Create course"}
             </Button>
