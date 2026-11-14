@@ -901,6 +901,90 @@ export type Database = {
           },
         ]
       }
+      organization_notifications: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          organization_id: string
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      organization_notification_rules: {
+        Row: {
+          body: string
+          department_id: string | null
+          enabled: boolean
+          id: string
+          include_descendants: boolean
+          interval_minutes: number
+          job_contains: string | null
+          last_run: string | null
+          last_sent: number
+          last_status: string | null
+          next_run: string
+          organization_id: string
+          role_filter: string
+          title: string
+          version: number
+        }
+        Insert: {
+          body?: string
+          department_id?: string | null
+          enabled?: boolean
+          id?: string
+          include_descendants?: boolean
+          interval_minutes?: number
+          job_contains?: string | null
+          last_run?: string | null
+          last_sent?: number
+          last_status?: string | null
+          next_run?: string
+          organization_id: string
+          role_filter?: string
+          title: string
+          version?: number
+        }
+        Update: {
+          body?: string
+          department_id?: string | null
+          enabled?: boolean
+          id?: string
+          include_descendants?: boolean
+          interval_minutes?: number
+          job_contains?: string | null
+          last_run?: string | null
+          last_sent?: number
+          last_status?: string | null
+          next_run?: string
+          organization_id?: string
+          role_filter?: string
+          title?: string
+          version?: number
+        }
+        Relationships: []
+      }
       competency_rubric_assessments: {
         Row: {
           criteria_snapshot: Json
@@ -2487,6 +2571,12 @@ export type Database = {
       bind_organization_cohort: { Args: { _cohort: string; _organization: string; _expected: string | null }; Returns: undefined }
       my_organizations: { Args: Record<string, never>; Returns: { id: string; name: string; welcome: string; brand_color: string; logo_url: string | null; version: number; can_manage: boolean }[] }
       admin_list_organizations: { Args: Record<string, never>; Returns: { id: string; name: string; parent_id: string | null }[] }
+      save_organization_notification_rule: { Args: { _id: string | null; _organization: string; _title: string; _body: string; _department: string | null; _descendants: boolean; _job: string | null; _role: string; _interval: number; _expected: number }; Returns: string }
+      preview_organization_notification_rule: { Args: { _rule: string; _expected: number }; Returns: Json }
+      run_organization_notification_rule: { Args: { _rule: string; _hash: string | null; _request: string }; Returns: Json }
+      set_organization_notification_rule_schedule: { Args: { _rule: string; _expected: number; _enabled: boolean }; Returns: number }
+      my_organization_notifications: { Args: Record<string, never>; Returns: { id: string; organization_name: string; title: string; body: string; created_at: string; read_at: string | null }[] }
+      organization_notification_rule_history: { Args: { _rule: string }; Returns: { request_id: string; created_at: string; actor_name: string; result: Json }[] }
       admin_set_organization_parent: { Args: { _organization: string; _parent: string | null }; Returns: undefined }
       organization_people: { Args: { _organization: string }; Returns: { user_id: string; full_name: string; email: string; role: string; department_id: string | null; manager_id: string | null; job_title: string; manager_name: string; is_owner: boolean; version: number }[] }
       save_organization: { Args: { _organization: string; _name: string; _welcome: string; _color: string; _logo: string | null; _expected: number }; Returns: number }

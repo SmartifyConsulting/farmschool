@@ -69,6 +69,7 @@ import { Route as ApiLtiLoginRouteImport } from './routes/api/lti/login'
 import { Route as ApiScormFileSplatRouteImport } from './routes/api/scorm-file.$'
 import { Route as ForumCourseIdThreadIdRouteImport } from './routes/forum.$courseId.$threadId'
 import { Route as LessonCourseIdLessonIdRouteImport } from './routes/lesson.$courseId.$lessonId'
+import { Route as OrganizationsIdNotificationsRouteImport } from './routes/organizations.$id.notifications'
 import { Route as OrganizationsIdProgramsRouteImport } from './routes/organizations.$id.programs'
 import { Route as ApiPublicV1CoursesRouteImport } from './routes/api/public/v1/courses'
 import { Route as ApiPublicV1ProgressRouteImport } from './routes/api/public/v1/progress'
@@ -374,6 +375,12 @@ const LessonCourseIdLessonIdRoute = LessonCourseIdLessonIdRouteImport.update({
   path: '/lesson/$courseId/$lessonId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrganizationsIdNotificationsRoute =
+  OrganizationsIdNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => OrganizationsIdRoute,
+  } as any)
 const OrganizationsIdProgramsRoute = OrganizationsIdProgramsRouteImport.update({
   id: '/programs',
   path: '/programs',
@@ -451,6 +458,7 @@ export interface FileRoutesByFullPath {
   '/api/scorm-file/$': typeof ApiScormFileSplatRoute
   '/forum/$courseId/$threadId': typeof ForumCourseIdThreadIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
+  '/organizations/$id/notifications': typeof OrganizationsIdNotificationsRoute
   '/organizations/$id/programs': typeof OrganizationsIdProgramsRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
   '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
@@ -516,6 +524,7 @@ export interface FileRoutesByTo {
   '/api/scorm-file/$': typeof ApiScormFileSplatRoute
   '/forum/$courseId/$threadId': typeof ForumCourseIdThreadIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
+  '/organizations/$id/notifications': typeof OrganizationsIdNotificationsRoute
   '/organizations/$id/programs': typeof OrganizationsIdProgramsRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
   '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
@@ -582,6 +591,7 @@ export interface FileRoutesById {
   '/api/scorm-file/$': typeof ApiScormFileSplatRoute
   '/forum/$courseId/$threadId': typeof ForumCourseIdThreadIdRoute
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
+  '/organizations/$id/notifications': typeof OrganizationsIdNotificationsRoute
   '/organizations/$id/programs': typeof OrganizationsIdProgramsRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
   '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
@@ -649,6 +659,7 @@ export interface FileRouteTypes {
     | '/api/scorm-file/$'
     | '/forum/$courseId/$threadId'
     | '/lesson/$courseId/$lessonId'
+    | '/organizations/$id/notifications'
     | '/organizations/$id/programs'
     | '/api/public/v1/courses'
     | '/api/public/v1/progress'
@@ -714,6 +725,7 @@ export interface FileRouteTypes {
     | '/api/scorm-file/$'
     | '/forum/$courseId/$threadId'
     | '/lesson/$courseId/$lessonId'
+    | '/organizations/$id/notifications'
     | '/organizations/$id/programs'
     | '/api/public/v1/courses'
     | '/api/public/v1/progress'
@@ -779,6 +791,7 @@ export interface FileRouteTypes {
     | '/api/scorm-file/$'
     | '/forum/$courseId/$threadId'
     | '/lesson/$courseId/$lessonId'
+    | '/organizations/$id/notifications'
     | '/organizations/$id/programs'
     | '/api/public/v1/courses'
     | '/api/public/v1/progress'
@@ -1266,6 +1279,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LessonCourseIdLessonIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/organizations/$id/notifications': {
+      id: '/organizations/$id/notifications'
+      path: '/notifications'
+      fullPath: '/organizations/$id/notifications'
+      preLoaderRoute: typeof OrganizationsIdNotificationsRouteImport
+      parentRoute: typeof OrganizationsIdRoute
+    }
     '/organizations/$id/programs': {
       id: '/organizations/$id/programs'
       path: '/programs'
@@ -1303,10 +1323,12 @@ const MessagesRouteWithChildren = MessagesRoute._addFileChildren(
 )
 
 interface OrganizationsIdRouteChildren {
+  OrganizationsIdNotificationsRoute: typeof OrganizationsIdNotificationsRoute
   OrganizationsIdProgramsRoute: typeof OrganizationsIdProgramsRoute
 }
 
 const OrganizationsIdRouteChildren: OrganizationsIdRouteChildren = {
+  OrganizationsIdNotificationsRoute: OrganizationsIdNotificationsRoute,
   OrganizationsIdProgramsRoute: OrganizationsIdProgramsRoute,
 }
 

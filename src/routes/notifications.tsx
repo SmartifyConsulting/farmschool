@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { Bell } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Bell, Megaphone } from "lucide-react";
 import { toast } from "sonner";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,28 @@ function Notifications() {
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
   const unread = notes.filter((note) => !note.read);
+  const announcements = useQuery({
+    queryKey: ["organization-notifications", user?.id],
+    enabled: !!user,
+    refetchInterval: 60000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("my_organization_notifications");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const markAnnouncementRead = async (id: string) => {
+    if (busy) return;
+    const { error } = await supabase
+      .from("organization_notifications")
+      .update({ read_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) {
+      toast.error(friendlyError(error, "Could not mark this as read."));
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["organization-notifications", user?.id] });
+  };
   const markRead = async (keys: string[]) => {
     if (!user || busy || !keys.length) return;
     setBusy(true);
@@ -131,6 +153,34 @@ function Notifications() {
               </li>
             ))}
           </ul>
+        )}
+        {!!announcements.data?.length && (
+          <>
+            <h2 className="mt-6 text-sm font-semibold">Announcements</h2>
+            <ul className="mt-2 divide-y divide-border">
+              {announcements.data.map((a) => (
+                <li
+                  key={a.id}
+                  className={`flex flex-wrap items-start gap-3 py-4 ${a.read_at ? "opacity-70" : ""}`}
+                >
+                  <Megaphone aria-hidden="true" className="mt-1 h-5 w-5 shrink-0 text-primary" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-primary">
+                      {a.organization_name}
+                      {!a.read_at ? " · Unread" : ""}
+                    </p>
+                    <p className="break-words text-sm font-semibold">{a.title}</p>
+                    {a.body && <p className="text-xs text-muted-foreground">{a.body}</p>}
+                  </div>
+                  {!a.read_at && (
+                    <Button size="sm" variant="outline" disabled={busy} onClick={() => markAnnouncementRead(a.id)}>
+                      Mark as read
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </Sheet>
     </Phone>

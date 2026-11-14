@@ -274,6 +274,13 @@ export function OrganizationTraining({ organizationId }: { organizationId: strin
           >
             Manage organization programs
           </Link>
+          <Link
+            className="block text-primary underline"
+            to="/organizations/$id/notifications"
+            params={{ id: organizationId }}
+          >
+            Manage notification rules
+          </Link>
           <div className="flex flex-wrap gap-3">
             <Input
               aria-label="New organization cohort name"
