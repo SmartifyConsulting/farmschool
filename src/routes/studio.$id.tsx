@@ -1579,54 +1579,6 @@ function Editor() {
     setSelectedLesson(data[0]!.id);
     setScreen("lesson");
   };
-  const createModule = async () => {
-    const { data, error } = await supabase
-      .from("studio_modules" as never)
-      .insert({
-        course_id: id,
-        title: `Module ${(studioModules?.length ?? 0) + 1}`,
-        position: studioModules?.length ?? 0,
-      } as never)
-      .select("id")
-      .single();
-    if (error || !data) {
-      toast.error("Could not create module.");
-      return;
-    }
-    qc.invalidateQueries({ queryKey: ["studio-modules", id] });
-    return (data as unknown as { id: string }).id;
-  };
-  const renameModule = async (moduleId: string, title: string) => {
-    const { error } = await supabase
-      .from("studio_modules" as never)
-      .update({ title } as never)
-      .eq("id", moduleId);
-    if (error) {
-      toast.error("Could not rename module.");
-      return;
-    }
-    qc.invalidateQueries({ queryKey: ["studio-modules", id] });
-  };
-  const deleteModule = async (moduleId: string) => {
-    const ok = await confirm({
-      tone: "danger",
-      title: "Delete this module?",
-      confirmLabel: "Delete module",
-      description: <p>Its lessons move to Unassigned lessons, not deleted.</p>,
-    });
-    if (!ok) return;
-    const { error } = await supabase
-      .from("studio_modules" as never)
-      .delete()
-      .eq("id", moduleId);
-    if (error) {
-      toast.error("Could not delete module.");
-      return;
-    }
-    qc.invalidateQueries({ queryKey: ["studio-modules", id] });
-    qc.invalidateQueries({ queryKey: ["studio-lessons", id] });
-    if (screen === moduleId) setScreen("overview");
-  };
   const assignLessonToModule = async (lessonId: string, moduleId: string | null) => {
     const { error } = await supabase
       .from("studio_lessons")
@@ -2104,94 +2056,6 @@ function Editor() {
               })()}
             {screen === "overview" && (
               <fieldset disabled={course.published} className="min-w-0 space-y-6">
-                <section className="space-y-3 border-b border-border pb-6">
-                  <div>
-                    <h2 className="font-semibold">Illustration guide</h2>
-                    <p className="text-xs text-muted-foreground">
-                      Decide the visual style and any recurring characters once, before designing lessons, so every illustrated explanation stays consistent — no continuity errors.
-                    </p>
-                  </div>
-                  <label className="flex items-center gap-2 text-xs font-medium">
-                    Style
-                    <select
-                      aria-label="Illustration style"
-                      value={form.illustration_guide.style}
-                      onChange={(e) =>
-                        setForm((f) => ({ ...f, illustration_guide: { ...f.illustration_guide, style: e.target.value } }))
-                      }
-                      className="rounded-md border border-input bg-background px-2 py-1.5 text-xs"
-                    >
-                      {ILLUSTRATED_STYLES.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium">Recurring characters (optional)</p>
-                    {form.illustration_guide.characters.map((c, i) => (
-                      <div key={i} className="flex flex-wrap items-center gap-2">
-                        <Input
-                          aria-label={`Character ${i + 1} name`}
-                          value={c.name}
-                          placeholder="Name"
-                          maxLength={60}
-                          onChange={(e) =>
-                            setForm((f) => ({
-                              ...f,
-                              illustration_guide: {
-                                ...f.illustration_guide,
-                                characters: f.illustration_guide.characters.map((x, xi) => (xi === i ? { ...x, name: e.target.value } : x)),
-                              },
-                            }))
-                          }
-                          className="h-8 w-32"
-                        />
-                        <Input
-                          aria-label={`Character ${i + 1} description`}
-                          value={c.description}
-                          placeholder="Role / appearance, for consistency"
-                          maxLength={200}
-                          onChange={(e) =>
-                            setForm((f) => ({
-                              ...f,
-                              illustration_guide: {
-                                ...f.illustration_guide,
-                                characters: f.illustration_guide.characters.map((x, xi) => (xi === i ? { ...x, description: e.target.value } : x)),
-                              },
-                            }))
-                          }
-                          className="h-8 min-w-[12rem] flex-1"
-                        />
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          aria-label={`Remove character ${i + 1}`}
-                          onClick={() =>
-                            setForm((f) => ({
-                              ...f,
-                              illustration_guide: { ...f.illustration_guide, characters: f.illustration_guide.characters.filter((_, xi) => xi !== i) },
-                            }))
-                          }
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        setForm((f) => ({
-                          ...f,
-                          illustration_guide: { ...f.illustration_guide, characters: [...f.illustration_guide.characters, { name: "", description: "" }] },
-                        }))
-                      }
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add character
-                    </Button>
-                  </div>
-                </section>
                 <section className="space-y-4 border-b border-border pb-6">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h2 className="font-semibold">Course details</h2>
@@ -2447,6 +2311,89 @@ function Editor() {
                         </div>
                       </div>
                       <div>
+                        <label className="block text-xs font-medium">Illustration guide</label>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Decide the visual style and any recurring characters once, before designing lessons, so every illustrated explanation stays consistent — no continuity errors.
+                        </p>
+                        <select
+                          aria-label="Illustration style"
+                          value={form.illustration_guide.style}
+                          onChange={(e) =>
+                            setForm((f) => ({ ...f, illustration_guide: { ...f.illustration_guide, style: e.target.value } }))
+                          }
+                          className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+                        >
+                          {ILLUSTRATED_STYLES.map((s) => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                        <div className="mt-2 space-y-2">
+                          <p className="text-xs text-muted-foreground">Recurring characters (optional)</p>
+                          {form.illustration_guide.characters.map((c, i) => (
+                            <div key={i} className="flex flex-wrap items-center gap-2">
+                              <Input
+                                aria-label={`Character ${i + 1} name`}
+                                value={c.name}
+                                placeholder="Name"
+                                maxLength={60}
+                                onChange={(e) =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    illustration_guide: {
+                                      ...f.illustration_guide,
+                                      characters: f.illustration_guide.characters.map((x, xi) => (xi === i ? { ...x, name: e.target.value } : x)),
+                                    },
+                                  }))
+                                }
+                                className="h-8 w-32"
+                              />
+                              <Input
+                                aria-label={`Character ${i + 1} description`}
+                                value={c.description}
+                                placeholder="Role / appearance, for consistency"
+                                maxLength={200}
+                                onChange={(e) =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    illustration_guide: {
+                                      ...f.illustration_guide,
+                                      characters: f.illustration_guide.characters.map((x, xi) => (xi === i ? { ...x, description: e.target.value } : x)),
+                                    },
+                                  }))
+                                }
+                                className="h-8 min-w-[10rem] flex-1"
+                              />
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                aria-label={`Remove character ${i + 1}`}
+                                onClick={() =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    illustration_guide: { ...f.illustration_guide, characters: f.illustration_guide.characters.filter((_, xi) => xi !== i) },
+                                  }))
+                                }
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              setForm((f) => ({
+                                ...f,
+                                illustration_guide: { ...f.illustration_guide, characters: [...f.illustration_guide.characters, { name: "", description: "" }] },
+                              }))
+                            }
+                          >
+                            <Plus className="h-4 w-4" />
+                            Add character
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
                         <label className="block text-xs font-medium">Price (USD)</label>
                         <Input
                           type="number"
@@ -2517,54 +2464,6 @@ function Editor() {
                   Preview
                 </Link>
               </div>
-            )}
-            {screen === "import" && (
-              <fieldset disabled={course.published} className="min-w-0">
-                <section className="space-y-3 border-b border-border pb-6">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h2 className="font-semibold">Modules</h2>
-                    <Button size="sm" variant="outline" onClick={createModule}>
-                      <Plus className="h-4 w-4" />
-                      Add module
-                    </Button>
-                  </div>
-                  {studioModules?.length ? (
-                    <ul className="space-y-2">
-                      {studioModules.map((m) => (
-                        <li key={m.id} className="space-y-2 rounded-lg border border-border p-2">
-                          <div className="flex items-center gap-2">
-                            <Input
-                              key={m.id + m.title}
-                              defaultValue={m.title}
-                              onBlur={(e) => {
-                                if (e.target.value.trim() && e.target.value !== m.title)
-                                  void renameModule(m.id, e.target.value);
-                              }}
-                              className="h-8"
-                              aria-label="Module title"
-                            />
-                            <span className="shrink-0 text-xs text-muted-foreground">
-                              {modules.find((g) => g.moduleId === m.id)?.lessons.length ?? 0} lessons
-                            </span>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              aria-label="Delete module"
-                              onClick={() => deleteModule(m.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      No modules yet. Add one, or use Auto Design to create modules automatically.
-                    </p>
-                  )}
-                </section>
-              </fieldset>
             )}
             {screen === "import" && designTab === "manual" && (
               <fieldset disabled={course.published} className="min-w-0 space-y-6">

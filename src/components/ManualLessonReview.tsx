@@ -249,22 +249,24 @@ export function ManualLessonReview(props: Props) {
                     {method.icon && <method.icon className="h-3.5 w-3.5" />}
                     {method.label}
                   </Button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8"
-                    aria-pressed={wantsAi}
-                    disabled={!isSelected}
-                    title="Generate this with AI"
-                    aria-label={`Generate ${method.label} with AI`}
-                    onClick={() => setAiMethods(p => ({
-                      ...p,
-                      [index]: wantsAi ? aiChosen.filter(m => m !== method.id) : [...aiChosen, method.id],
-                    }))}
-                  >
-                    <Wand2 className={`h-4 w-4 ${isSelected && wantsAi ? "text-primary" : "text-muted-foreground"}`} />
-                  </Button>
+                  {method.id !== "illustrated" && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      aria-pressed={wantsAi}
+                      disabled={!isSelected}
+                      title="Generate this with AI"
+                      aria-label={`Generate ${method.label} with AI`}
+                      onClick={() => setAiMethods(p => ({
+                        ...p,
+                        [index]: wantsAi ? aiChosen.filter(m => m !== method.id) : [...aiChosen, method.id],
+                      }))}
+                    >
+                      <Wand2 className={`h-4 w-4 ${isSelected && wantsAi ? "text-primary" : "text-muted-foreground"}`} />
+                    </Button>
+                  )}
                   {method.id === "illustrated" && isSelected && (
                     <span className="text-xs text-muted-foreground" title="Set once in Course details so every lesson's illustrations stay consistent">
                       Course style: {props.illustrationGuide.style}
@@ -288,7 +290,7 @@ export function ManualLessonReview(props: Props) {
                   <legend className="text-xs font-semibold text-muted-foreground">Training format</legend>
                   <div className="flex items-center gap-2">
                     <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-sm font-medium">Slides</span>
+                    <span className="text-xs font-medium">Slides</span>
                     <select
                       aria-label="Number of slides"
                       value={slides.length}
@@ -359,7 +361,7 @@ export function ManualLessonReview(props: Props) {
                         key={id}
                         draggable
                         onDragStart={event => { event.dataTransfer.setData("application/json", JSON.stringify({ source: "delivery", id })); event.dataTransfer.effectAllowed = "copy"; }}
-                        className="flex cursor-grab items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm active:cursor-grabbing"
+                        className="flex h-8 cursor-grab items-center gap-1 rounded-md border border-border bg-background px-3 text-xs font-medium active:cursor-grabbing"
                       >
                         <Icon className="h-3.5 w-3.5" />{label}
                       </div>
@@ -370,7 +372,7 @@ export function ManualLessonReview(props: Props) {
                         key={id}
                         draggable
                         onDragStart={event => { event.dataTransfer.setData("application/json", JSON.stringify({ source: "delivery", id })); event.dataTransfer.effectAllowed = "copy"; }}
-                        className="flex cursor-grab items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm active:cursor-grabbing"
+                        className="flex h-8 cursor-grab items-center gap-1 rounded-md border border-border bg-background px-3 text-xs font-medium active:cursor-grabbing"
                       >
                         <Icon className="h-3.5 w-3.5" />{label}
                       </div>
