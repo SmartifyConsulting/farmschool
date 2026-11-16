@@ -32,3 +32,4 @@
 - Native slide decks use kind=slide and keep their teaching content in studio_lessons.body so existing draft, review and revision workflows preserve it. Slide/checklist position is local to the browser; signed-in lesson completion uses lesson_progress.
 - The lesson tutor reads the current published lesson through learner RLS, excludes quiz material and flashcard backs, and calls OpenAI directly with a per-learner SQL quota. Narration uses browser speech synthesis.
 - Method suggestions use the shared method-suggestions schema with required nullable output fields; the editor omits null values — why: strict OpenAI output requires every property without displaying unused methods.
+- Studio lesson illustrations use the direct OpenAI Image API with `gpt-image-2.5-sunburst`; retain authentication and the existing daily quota — why: retired image models reject requests, and generation must stay within learner allowances.
