@@ -1,3 +1,4 @@
+import { rpcArgs } from "@/lib/rpc-args";
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -34,7 +35,7 @@ function Organizations() {
     queryFn: async () =>
       (
         await readAllPages(
-          supabase.rpc("my_organizations", {}, { count: "exact" }).order("name").order("id"),
+          supabase.rpc("my_organizations", undefined, { count: "exact" }).order("name").order("id"),
         )
       ).data,
   });
@@ -42,14 +43,14 @@ function Organizations() {
     if (busy || name.trim().length < 2) return;
     setBusy(true);
     try {
-      const { error } = await supabase.rpc("save_organization", {
+      const { error } = await supabase.rpc("save_organization", rpcArgs("save_organization", {
         _organization: id,
         _name: name.trim(),
         _welcome: "",
         _color: "#2765BC",
         _logo: null,
         _expected: 0,
-      });
+      }));
       if (error) throw error;
       navigate({ to: "/organizations/$id", params: { id } });
     } catch (error) {

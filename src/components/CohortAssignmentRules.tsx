@@ -1,3 +1,4 @@
+import { rpcArgs } from "@/lib/rpc-args";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -164,7 +165,7 @@ function RuleEditor({ cohortId, organizationId, rule }: Props & { rule: Rule | n
         }))
       )
         return;
-      const { data, error } = await supabase.rpc("save_cohort_assignment_rule", {
+      const { data, error } = await supabase.rpc("save_cohort_assignment_rule", rpcArgs("save_cohort_assignment_rule", {
         _cohort: cohortId,
         _department: parsed.department,
         _descendants: parsed.descendants,
@@ -174,7 +175,7 @@ function RuleEditor({ cohortId, organizationId, rule }: Props & { rule: Rule | n
         _enabled: false,
         _interval: parsed.interval,
         _expected: version,
-      });
+      }));
       if (error) throw error;
       setVersion(data);
       setPreview(null);
@@ -205,12 +206,12 @@ function RuleEditor({ cohortId, organizationId, rule }: Props & { rule: Rule | n
         }))
       )
         return;
-      const { data, error } = await supabase.rpc("set_cohort_assignment_schedule", {
+      const { data, error } = await supabase.rpc("set_cohort_assignment_schedule", rpcArgs("set_cohort_assignment_schedule", {
         _cohort: cohortId,
         _expected: version,
         _enabled: enabled,
         _hash: enabled ? (preview?.hash ?? null) : null,
-      });
+      }));
       if (error) throw error;
       setVersion(data);
       setPreview(null);

@@ -1,3 +1,4 @@
+import { rpcArgs } from "@/lib/rpc-args";
 import { z } from "zod";
 import { authenticateCronRequest } from "@/integrations/supabase/cron-auth";
 import {
@@ -63,12 +64,12 @@ export async function handleCohortReminders(request: Request) {
       } catch {
         errorCode = "provider_unconfirmed";
       }
-      const recorded = await supabaseAdmin.rpc("finish_cohort_reminder", {
+      const recorded = await supabaseAdmin.rpc("finish_cohort_reminder", rpcArgs("finish_cohort_reminder", {
         _id: job.id,
         _lease: job.lease,
         _provider_id: providerId,
         _error: errorCode,
-      });
+      }));
       if (recorded.error) throw new Error("Queue confirmation unavailable");
       if (errorCode) failed++;
       else sent++;

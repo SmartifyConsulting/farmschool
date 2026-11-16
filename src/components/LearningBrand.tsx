@@ -1,3 +1,4 @@
+import { rpcArgs } from "@/lib/rpc-args";
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -31,14 +32,14 @@ export function useLearningBrandForPath(path: string, portalSearch?: string) {
         return data === null ? null : publicPortalSchema.parse(data).brand;
       }
       if (portalSearch && !scope.organization) {
-        const { data, error } = await supabase.rpc("portal_learning_brand", { _slug: portalSearch, _course: scope.course });
+        const { data, error } = await supabase.rpc("portal_learning_brand", rpcArgs("portal_learning_brand", { _slug: portalSearch, _course: scope.course }));
         if (error) throw error;
         return data === null ? null : learningBrandSchema.parse(data);
       }
-      const { data, error } = await supabase.rpc("learning_shell_brand", {
+      const { data, error } = await supabase.rpc("learning_shell_brand", rpcArgs("learning_shell_brand", {
         _course: scope.course,
         _organization: scope.organization,
-      });
+      }));
       if (error) throw error;
       return data === null ? null : learningBrandSchema.parse(data);
     },

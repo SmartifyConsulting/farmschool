@@ -12,7 +12,7 @@ async function loadXapiInput() {
     readAllPages(supabaseAdmin.from("quiz_attempts").select("user_id, course_id, lesson_id, score, passed, created_at", { count: "exact" }).order("id")),
     readAllPages(supabaseAdmin.from("scorm_packages").select("id, title", { count: "exact" }).order("id")),
     readAllPages(supabaseAdmin.from("scorm_attempts").select("user_id, package_id, lesson_status, score_raw, score_max, updated_at", { count: "exact" }).order("user_id").order("package_id")),
-    readAllPages(supabaseAdmin.rpc("server_certificate_records", {}, { count: "exact" }).order("id")),
+    readAllPages(supabaseAdmin.rpc("server_certificate_records", undefined, { count: "exact" }).order("id")),
     readAllPages(supabaseAdmin.from("course_enrollments").select("user_id, course_id", { count: "exact" }).order("id")),
     readAllPages(supabaseAdmin.from("cohort_members").select("cohort_id, user_id", { count: "exact" }).order("cohort_id").order("user_id")),
     readAllPages(supabaseAdmin.from("cohort_course_assignments").select("cohort_id, course_id", { count: "exact" }).order("cohort_id").order("course_id")),

@@ -60,7 +60,7 @@ function MyCourses() {
     queryFn: async () => {
       const { data } = await readAllPages(
         supabase
-          .rpc("my_certificate_records", {}, { count: "exact" })
+          .rpc("my_certificate_records", undefined, { count: "exact" })
           .order("issued_at", { ascending: false })
           .order("id"),
       );

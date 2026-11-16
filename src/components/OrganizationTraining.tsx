@@ -1,3 +1,4 @@
+import { rpcArgs } from "@/lib/rpc-args";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -188,13 +189,13 @@ export function OrganizationTraining({ organizationId }: { organizationId: strin
     }
     act(
       () =>
-        supabase.rpc("save_organization_cohort", {
+        supabase.rpc("save_organization_cohort", rpcArgs("save_organization_cohort", {
           _cohort: selected,
           _name: name.trim(),
           _seats: limit,
           _auto_free: autoFree,
           _expected: policyVersion,
-        }),
+        })),
       "Cohort settings saved.",
     );
   };
@@ -232,12 +233,12 @@ export function OrganizationTraining({ organizationId }: { organizationId: strin
       return;
     act(
       () =>
-        supabase.rpc("set_organization_cohort_course", {
+        supabase.rpc("set_organization_cohort_course", rpcArgs("set_organization_cohort_course", {
           _cohort: selected,
           _course: id,
           _include: include,
           _due: include && due ? new Date(due).toISOString() : null,
-        }),
+        })),
       "Course assignment saved.",
     );
   };

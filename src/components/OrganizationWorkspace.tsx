@@ -1,3 +1,4 @@
+import { rpcArgs } from "@/lib/rpc-args";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -46,7 +47,7 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
     queryFn: async () =>
       (
         await readAllPages(
-          supabase.rpc("my_organizations", {}, { count: "exact" }).order("name").order("id"),
+          supabase.rpc("my_organizations", undefined, { count: "exact" }).order("name").order("id"),
         )
       ).data,
   });
@@ -108,27 +109,27 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
     if (!org) return;
     mutate(
       () =>
-        supabase.rpc("save_organization", {
+        supabase.rpc("save_organization", rpcArgs("save_organization", {
           _organization: organizationId,
           _name: name.trim(),
           _welcome: welcome,
           _color: color,
           _logo: logo.trim() || null,
           _expected: org.version,
-        }),
+        })),
       "Organization settings saved.",
     );
   };
   const saveDepartment = async () => {
     const saved = await mutate(
       () =>
-        supabase.rpc("save_organization_department", {
+        supabase.rpc("save_organization_department", rpcArgs("save_organization_department", {
           _organization: organizationId,
           _department: department || newDepartmentId,
           _name: departmentName.trim(),
           _parent: parent || null,
           _expected: departmentVersion,
-        }),
+        })),
       "Department saved.",
     );
     if (saved) {
@@ -153,7 +154,7 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
       return;
     const saved = await mutate(
       () =>
-        supabase.rpc("set_organization_member", {
+        supabase.rpc("set_organization_member", rpcArgs("set_organization_member", {
           _organization: organizationId,
           _email: email.trim(),
           _role: role,
@@ -161,7 +162,7 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
           _manager: manager || null,
           _job: job,
           _expected: personVersion,
-        }),
+        })),
       "Workspace member saved.",
     );
     if (saved) {

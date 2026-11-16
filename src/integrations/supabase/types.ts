@@ -14,72 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      course_license_orders: {
-        Row: { id: string; request_id: string; course_id: string; cohort_id: string; buyer_id: string; course_title: string; quantity: number; unit_price_cents: number; currency: string; status: string; stripe_session_id: string | null; checkout_url: string | null; created_at: string; paid_at: string | null }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-      course_license_seats: {
-        Row: { id: string; order_id: string; user_id: string; allocated_by: string; allocated_at: string; enabled: boolean; version: number; note: string }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-      course_license_seat_events: {
-        Row: { id: string; seat_id: string; actor_id: string; enabled: boolean; reason: string; created_at: string }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-      question_libraries: {
-        Row: { id: string; owner_id: string; name: string; created_at: string }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-      question_library_members: {
-        Row: { library_id: string; user_id: string; member_email: string; role: string; granted_at: string }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-      cohort_email_preferences: {
-        Row: { user_id: string; enabled: boolean }
-        Insert: { user_id?: string; enabled: boolean }
-        Update: { enabled?: boolean }
-        Relationships: []
-      }
-      course_deadline_extensions: {
-        Row: { course_id: string; user_id: string; due_at: string | null; reason: string; changed_by: string; changed_at: string; version: number }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-      course_deadline_events: {
-        Row: { id: string; course_id: string; user_id: string; due_at: string | null; reason: string; changed_by: string; changed_at: string; version: number }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-      cohort_report_managers: {
-        Row: { cohort_id: string; user_id: string; granted_by: string; granted_at: string }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-      course_grading_schemes: {
-        Row: { course_id: string; version: number; categories: Json; updated_at: string }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-      course_grade_decisions: {
-        Row: { id: string; course_id: string; user_id: string; proposed_by: string; proposed_at: string; score: number; reason: string; scheme_version: number; previous_decision: string | null; status: string; reviewed_by: string | null; reviewed_at: string | null; review_note: string | null }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
       activity_rubric_criteria: {
         Row: {
           activity_id: string
@@ -317,116 +251,290 @@ export type Database = {
         }
         Relationships: []
       }
-      certificates: {
+      certificate_brand_snapshots: {
         Row: {
+          certificate_id: string
+          color: string
+          footer: string
+          heading: string
+          issuer_name: string
+          logo: string | null
+          organization_id: string
+          recorded_at: string
+          signatory_name: string
+          signatory_title: string
+          template_version: number
+        }
+        Insert: {
+          certificate_id: string
+          color: string
+          footer: string
+          heading: string
+          issuer_name: string
+          logo?: string | null
+          organization_id: string
+          recorded_at?: string
+          signatory_name: string
+          signatory_title: string
+          template_version: number
+        }
+        Update: {
+          certificate_id?: string
+          color?: string
+          footer?: string
+          heading?: string
+          issuer_name?: string
+          logo?: string | null
+          organization_id?: string
+          recorded_at?: string
+          signatory_name?: string
+          signatory_title?: string
+          template_version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificate_brand_snapshots_certificate_id_fkey"
+            columns: ["certificate_id"]
+            isOneToOne: true
+            referencedRelation: "certificates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certificate_brand_snapshots_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      certificate_renewals: {
+        Row: {
+          certificate_id: string
+          completed_at: string | null
           course_version: number | null
           curriculum_digest: string | null
-          validated_at: string | null
-          revoked_at: string | null
-          revoked_by: string | null
-          revocation_reason: string | null
+          expires_at: string | null
+          id: string
+          started_at: string
+          validity_days: number
+        }
+        Insert: {
+          certificate_id: string
+          completed_at?: string | null
+          course_version?: number | null
+          curriculum_digest?: string | null
+          expires_at?: string | null
+          id?: string
+          started_at?: string
+          validity_days: number
+        }
+        Update: {
+          certificate_id?: string
+          completed_at?: string | null
+          course_version?: number | null
+          curriculum_digest?: string | null
+          expires_at?: string | null
+          id?: string
+          started_at?: string
+          validity_days?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificate_renewals_certificate_id_fkey"
+            columns: ["certificate_id"]
+            isOneToOne: false
+            referencedRelation: "certificates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      certificate_shares: {
+        Row: {
+          certificate_id: string
+          enabled: boolean
+          learner_name: string
+          token: string
+        }
+        Insert: {
+          certificate_id: string
+          enabled?: boolean
+          learner_name: string
+          token?: string
+        }
+        Update: {
+          certificate_id?: string
+          enabled?: boolean
+          learner_name?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificate_shares_certificate_id_fkey"
+            columns: ["certificate_id"]
+            isOneToOne: true
+            referencedRelation: "certificates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      certificates: {
+        Row: {
           course_ref: string
+          course_version: number | null
+          curriculum_digest: string | null
+          expires_at: string | null
           id: string
           issued_at: string
+          revocation_reason: string | null
+          revoked_at: string | null
+          revoked_by: string | null
           source: string
           title: string
           user_id: string
+          validated_at: string | null
         }
         Insert: {
           course_ref: string
+          course_version?: number | null
+          curriculum_digest?: string | null
+          expires_at?: string | null
           id?: string
           issued_at?: string
+          revocation_reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
           source: string
           title: string
           user_id: string
+          validated_at?: string | null
         }
         Update: {
           course_ref?: string
+          course_version?: number | null
+          curriculum_digest?: string | null
+          expires_at?: string | null
           id?: string
           issued_at?: string
+          revocation_reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
           source?: string
           title?: string
           user_id?: string
+          validated_at?: string | null
         }
         Relationships: []
       }
-      learning_programs: {
-        Row: { id: string; owner_id: string; title: string; description: string; stages: Json; draft_version: number; created_at: string }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-      organization_departments: {
-        Row: { id: string; organization_id: string; name: string; parent_id: string | null; version: number }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-      organization_courses: {
-        Row: { course_id: string; organization_id: string }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-      organization_portals: {
-        Row: { organization_id: string; slug: string; enabled: boolean; public_message: string; version: number; agriculture_only: boolean }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-      organization_certificate_settings: {
-        Row: { organization_id: string; heading: string; signatory_name: string; signatory_title: string; footer: string; version: number }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-      studio_quiz_policies: {
-        Row: { lesson_id: string; course_id: string; max_attempts: number | null; duration_minutes: number; retry_minutes: number; version: number }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-      studio_exam_banks: {
-        Row: { id: string; owner_id: string; questions: Json; answers: Json; created_at: string }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-      cohort_report_schedules: {
-        Row: { cohort_id: string; enabled: boolean; interval_minutes: number; version: number; changed_by: string; next_run: string; last_run: string | null; last_status: string | null }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
       cohort_assignment_rules: {
-        Row: { id: string; cohort_id: string; department_id: string | null; include_descendants: boolean; job_contains: string | null; role_filter: string; add_only: boolean; enabled: boolean; interval_minutes: number; version: number; changed_by: string; next_run: string; last_run: string | null; last_status: string | null; last_run_version: number | null; last_added: number; last_removed: number }
-        Insert: never
-        Update: never
-        Relationships: []
+        Row: {
+          add_only: boolean
+          changed_by: string
+          cohort_id: string
+          department_id: string | null
+          enabled: boolean
+          id: string
+          include_descendants: boolean
+          interval_minutes: number
+          job_contains: string | null
+          last_added: number
+          last_removed: number
+          last_run: string | null
+          last_run_version: number | null
+          last_status: string | null
+          next_run: string
+          role_filter: string
+          version: number
+        }
+        Insert: {
+          add_only?: boolean
+          changed_by: string
+          cohort_id: string
+          department_id?: string | null
+          enabled?: boolean
+          id?: string
+          include_descendants?: boolean
+          interval_minutes?: number
+          job_contains?: string | null
+          last_added?: number
+          last_removed?: number
+          last_run?: string | null
+          last_run_version?: number | null
+          last_status?: string | null
+          next_run?: string
+          role_filter?: string
+          version?: number
+        }
+        Update: {
+          add_only?: boolean
+          changed_by?: string
+          cohort_id?: string
+          department_id?: string | null
+          enabled?: boolean
+          id?: string
+          include_descendants?: boolean
+          interval_minutes?: number
+          job_contains?: string | null
+          last_added?: number
+          last_removed?: number
+          last_run?: string | null
+          last_run_version?: number | null
+          last_status?: string | null
+          next_run?: string
+          role_filter?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_assignment_rules_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: true
+            referencedRelation: "organization_cohorts"
+            referencedColumns: ["cohort_id"]
+          },
+          {
+            foreignKeyName: "cohort_assignment_rules_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "organization_departments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      organization_cohorts: {
-        Row: { cohort_id: string; organization_id: string }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-      learning_program_versions: {
-        Row: { id: string; program_id: string; version: number; title: string; description: string; stages: Json; published_at: string }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-      cohort_program_assignments: {
-        Row: { id: string; cohort_id: string; version_id: string; due_at: string | null; active: boolean; version: number }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-      program_awards: {
-        Row: { id: string; version_id: string; user_id: string; title: string; issued_at: string; expires_at: string | null; evidence: Json; evidence_digest: string }
-        Insert: never
-        Update: never
-        Relationships: []
+      cohort_billing_managers: {
+        Row: {
+          changed_at: string
+          cohort_id: string
+          granted_by: string
+          reason: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          changed_at?: string
+          cohort_id: string
+          granted_by: string
+          reason: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          changed_at?: string
+          cohort_id?: string
+          granted_by?: string
+          reason?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_billing_managers_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cohort_course_assignments: {
         Row: {
@@ -464,6 +572,21 @@ export type Database = {
           },
         ]
       }
+      cohort_email_preferences: {
+        Row: {
+          enabled: boolean
+          user_id: string
+        }
+        Insert: {
+          enabled?: boolean
+          user_id?: string
+        }
+        Update: {
+          enabled?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       cohort_members: {
         Row: {
           added_at: string
@@ -490,39 +613,393 @@ export type Database = {
           },
         ]
       }
+      cohort_program_assignments: {
+        Row: {
+          active: boolean
+          cohort_id: string
+          due_at: string | null
+          id: string
+          version: number
+          version_id: string
+        }
+        Insert: {
+          active?: boolean
+          cohort_id: string
+          due_at?: string | null
+          id?: string
+          version?: number
+          version_id: string
+        }
+        Update: {
+          active?: boolean
+          cohort_id?: string
+          due_at?: string | null
+          id?: string
+          version?: number
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_program_assignments_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cohort_program_assignments_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "learning_program_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cohort_reminder_outbox: {
+        Row: {
+          assigned_at: string
+          attempts: number
+          cohort_id: string
+          course_id: string
+          created_at: string
+          due_at: string | null
+          event_key: string
+          first_attempt_at: string | null
+          id: string
+          kind: string
+          last_error: string | null
+          lease: string | null
+          locked_at: string | null
+          not_before: string
+          payload: Json | null
+          provider_id: string | null
+          sent_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          assigned_at: string
+          attempts?: number
+          cohort_id: string
+          course_id: string
+          created_at?: string
+          due_at?: string | null
+          event_key: string
+          first_attempt_at?: string | null
+          id?: string
+          kind: string
+          last_error?: string | null
+          lease?: string | null
+          locked_at?: string | null
+          not_before?: string
+          payload?: Json | null
+          provider_id?: string | null
+          sent_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string
+          attempts?: number
+          cohort_id?: string
+          course_id?: string
+          created_at?: string
+          due_at?: string | null
+          event_key?: string
+          first_attempt_at?: string | null
+          id?: string
+          kind?: string
+          last_error?: string | null
+          lease?: string | null
+          locked_at?: string | null
+          not_before?: string
+          payload?: Json | null
+          provider_id?: string | null
+          sent_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_reminder_outbox_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cohort_reminder_outbox_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cohort_report_managers: {
+        Row: {
+          cohort_id: string
+          granted_at: string
+          granted_by: string
+          user_id: string
+        }
+        Insert: {
+          cohort_id: string
+          granted_at?: string
+          granted_by: string
+          user_id: string
+        }
+        Update: {
+          cohort_id?: string
+          granted_at?: string
+          granted_by?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_report_managers_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cohort_report_schedules: {
+        Row: {
+          changed_by: string
+          cohort_id: string
+          enabled: boolean
+          interval_minutes: number
+          last_run: string | null
+          last_status: string | null
+          next_run: string
+          version: number
+        }
+        Insert: {
+          changed_by: string
+          cohort_id: string
+          enabled?: boolean
+          interval_minutes?: number
+          last_run?: string | null
+          last_status?: string | null
+          next_run?: string
+          version?: number
+        }
+        Update: {
+          changed_by?: string
+          cohort_id?: string
+          enabled?: boolean
+          interval_minutes?: number
+          last_run?: string | null
+          last_status?: string | null
+          next_run?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_report_schedules_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: true
+            referencedRelation: "organization_cohorts"
+            referencedColumns: ["cohort_id"]
+          },
+        ]
+      }
+      cohort_report_snapshots: {
+        Row: {
+          actor_id: string | null
+          cohort_id: string
+          created_at: string
+          id: string
+          report: Json
+          schedule_version: number | null
+          scheduled: boolean
+        }
+        Insert: {
+          actor_id?: string | null
+          cohort_id: string
+          created_at?: string
+          id: string
+          report: Json
+          schedule_version?: number | null
+          scheduled: boolean
+        }
+        Update: {
+          actor_id?: string | null
+          cohort_id?: string
+          created_at?: string
+          id?: string
+          report?: Json
+          schedule_version?: number | null
+          scheduled?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_report_snapshots_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "organization_cohorts"
+            referencedColumns: ["cohort_id"]
+          },
+        ]
+      }
+      cohort_rule_exclusions: {
+        Row: {
+          excluded_at: string
+          excluded_by: string | null
+          rule_id: string
+          user_id: string
+        }
+        Insert: {
+          excluded_at?: string
+          excluded_by?: string | null
+          rule_id: string
+          user_id: string
+        }
+        Update: {
+          excluded_at?: string
+          excluded_by?: string | null
+          rule_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_rule_exclusions_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "cohort_assignment_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cohort_rule_members: {
+        Row: {
+          cohort_id: string
+          rule_id: string
+          user_id: string
+        }
+        Insert: {
+          cohort_id: string
+          rule_id: string
+          user_id: string
+        }
+        Update: {
+          cohort_id?: string
+          rule_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_rule_members_cohort_id_user_id_fkey"
+            columns: ["cohort_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "cohort_members"
+            referencedColumns: ["cohort_id", "user_id"]
+          },
+          {
+            foreignKeyName: "cohort_rule_members_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "cohort_assignment_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cohort_rule_operation_markers: {
+        Row: {
+          rule_id: string
+          transaction_id: number
+        }
+        Insert: {
+          rule_id: string
+          transaction_id: number
+        }
+        Update: {
+          rule_id?: string
+          transaction_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_rule_operation_markers_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "cohort_assignment_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cohort_rule_runs: {
+        Row: {
+          actor_id: string | null
+          changes: Json
+          created_at: string
+          preview_hash: string | null
+          request_id: string
+          result: Json
+          rule_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          changes: Json
+          created_at?: string
+          preview_hash?: string | null
+          request_id: string
+          result: Json
+          rule_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          changes?: Json
+          created_at?: string
+          preview_hash?: string | null
+          request_id?: string
+          result?: Json
+          rule_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_rule_runs_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "cohort_assignment_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cohorts: {
         Row: {
-          seat_limit: number | null
-          policy_version: number
           auto_enrol_free: boolean
-          reminders_enabled: boolean
           created_at: string
           description: string
           id: string
           name: string
           owner_id: string
+          policy_version: number
+          reminders_enabled: boolean
+          seat_limit: number | null
         }
         Insert: {
-          seat_limit?: number | null
-          policy_version?: number
           auto_enrol_free?: boolean
-          reminders_enabled?: boolean
           created_at?: string
           description?: string
           id?: string
           name: string
           owner_id?: string
+          policy_version?: number
+          reminders_enabled?: boolean
+          seat_limit?: number | null
         }
         Update: {
-          seat_limit?: number | null
-          policy_version?: number
           auto_enrol_free?: boolean
-          reminders_enabled?: boolean
           created_at?: string
           description?: string
           id?: string
           name?: string
           owner_id?: string
+          policy_version?: number
+          reminders_enabled?: boolean
+          seat_limit?: number | null
         }
         Relationships: []
       }
@@ -583,407 +1060,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      forum_threads: {
-        Row: {
-          course_id: string
-          created_at: string
-          id: string
-          last_activity_at: string
-          locked: boolean
-          pinned: boolean
-          title: string
-          user_id: string
-        }
-        Insert: {
-          course_id: string
-          created_at?: string
-          id?: string
-          last_activity_at?: string
-          locked?: boolean
-          pinned?: boolean
-          title: string
-          user_id?: string
-        }
-        Update: {
-          course_id?: string
-          created_at?: string
-          id?: string
-          last_activity_at?: string
-          locked?: boolean
-          pinned?: boolean
-          title?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "forum_threads_course_id_fkey"
-            columns: ["course_id"]
-            isOneToOne: false
-            referencedRelation: "studio_courses"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      forum_replies: {
-        Row: {
-          body: string
-          created_at: string
-          id: string
-          thread_id: string
-          user_id: string
-        }
-        Insert: {
-          body: string
-          created_at?: string
-          id?: string
-          thread_id: string
-          user_id?: string
-        }
-        Update: {
-          body?: string
-          created_at?: string
-          id?: string
-          thread_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "forum_replies_thread_id_fkey"
-            columns: ["thread_id"]
-            isOneToOne: false
-            referencedRelation: "forum_threads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      peer_assignments: {
-        Row: {
-          author_id: string
-          course_id: string
-          created_at: string
-          id: string
-          instructions: string
-          reviews_required: number
-          rubric: Json
-          title: string
-        }
-        Insert: {
-          author_id?: string
-          course_id: string
-          created_at?: string
-          id?: string
-          instructions?: string
-          reviews_required?: number
-          rubric: Json
-          title: string
-        }
-        Update: {
-          author_id?: string
-          course_id?: string
-          created_at?: string
-          id?: string
-          instructions?: string
-          reviews_required?: number
-          rubric?: Json
-          title?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "peer_assignments_course_id_fkey"
-            columns: ["course_id"]
-            isOneToOne: false
-            referencedRelation: "studio_courses"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      peer_submissions: {
-        Row: {
-          assignment_id: string
-          body: string
-          calibrated_score: number | null
-          id: string
-          review_count: number
-          submitted_at: string
-          user_id: string
-        }
-        Insert: {
-          assignment_id: string
-          body: string
-          calibrated_score?: number | null
-          id?: string
-          review_count?: number
-          submitted_at?: string
-          user_id?: string
-        }
-        Update: {
-          assignment_id?: string
-          body?: string
-          calibrated_score?: number | null
-          id?: string
-          review_count?: number
-          submitted_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "peer_submissions_assignment_id_fkey"
-            columns: ["assignment_id"]
-            isOneToOne: false
-            referencedRelation: "peer_assignments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      peer_review_assignments: {
-        Row: {
-          created_at: string
-          id: string
-          peer_assignment_id: string
-          reviewer_id: string
-          status: string
-          submission_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          peer_assignment_id: string
-          reviewer_id: string
-          status?: string
-          submission_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          peer_assignment_id?: string
-          reviewer_id?: string
-          status?: string
-          submission_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "peer_review_assignments_peer_assignment_id_fkey"
-            columns: ["peer_assignment_id"]
-            isOneToOne: false
-            referencedRelation: "peer_assignments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "peer_review_assignments_submission_id_fkey"
-            columns: ["submission_id"]
-            isOneToOne: false
-            referencedRelation: "peer_submissions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      peer_reviews: {
-        Row: {
-          comment: string
-          id: string
-          marks: Json
-          max_points: number
-          review_assignment_id: string
-          score: number
-          submitted_at: string
-        }
-        Insert: {
-          comment?: string
-          id?: string
-          marks: Json
-          max_points: number
-          review_assignment_id: string
-          score: number
-          submitted_at?: string
-        }
-        Update: {
-          comment?: string
-          id?: string
-          marks?: Json
-          max_points?: number
-          review_assignment_id?: string
-          score?: number
-          submitted_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "peer_reviews_review_assignment_id_fkey"
-            columns: ["review_assignment_id"]
-            isOneToOne: true
-            referencedRelation: "peer_review_assignments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lti_platforms: {
-        Row: {
-          auth_login_url: string
-          auth_token_url: string
-          client_id: string
-          created_at: string
-          created_by: string
-          default_course_id: string | null
-          deployment_id: string
-          enabled: boolean
-          id: string
-          issuer: string
-          key_set_url: string
-          name: string
-        }
-        Insert: {
-          auth_login_url: string
-          auth_token_url: string
-          client_id: string
-          created_at?: string
-          created_by?: string
-          default_course_id?: string | null
-          deployment_id: string
-          enabled?: boolean
-          id?: string
-          issuer: string
-          key_set_url: string
-          name: string
-        }
-        Update: {
-          auth_login_url?: string
-          auth_token_url?: string
-          client_id?: string
-          created_at?: string
-          created_by?: string
-          default_course_id?: string | null
-          deployment_id?: string
-          enabled?: boolean
-          id?: string
-          issuer?: string
-          key_set_url?: string
-          name?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lti_platforms_default_course_id_fkey"
-            columns: ["default_course_id"]
-            isOneToOne: false
-            referencedRelation: "studio_courses"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lti_launch_states: {
-        Row: {
-          created_at: string
-          nonce: string
-          platform_id: string
-          state: string
-          target_link_uri: string | null
-        }
-        Insert: {
-          created_at?: string
-          nonce: string
-          platform_id: string
-          state: string
-          target_link_uri?: string | null
-        }
-        Update: {
-          created_at?: string
-          nonce?: string
-          platform_id?: string
-          state?: string
-          target_link_uri?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lti_launch_states_platform_id_fkey"
-            columns: ["platform_id"]
-            isOneToOne: false
-            referencedRelation: "lti_platforms"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      organization_notifications: {
-        Row: {
-          body: string
-          created_at: string
-          id: string
-          organization_id: string
-          read_at: string | null
-          title: string
-          user_id: string
-        }
-        Insert: {
-          body?: string
-          created_at?: string
-          id?: string
-          organization_id: string
-          read_at?: string | null
-          title: string
-          user_id: string
-        }
-        Update: {
-          body?: string
-          created_at?: string
-          id?: string
-          organization_id?: string
-          read_at?: string | null
-          title?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      organization_notification_rules: {
-        Row: {
-          body: string
-          department_id: string | null
-          enabled: boolean
-          id: string
-          include_descendants: boolean
-          interval_minutes: number
-          job_contains: string | null
-          last_run: string | null
-          last_sent: number
-          last_status: string | null
-          next_run: string
-          organization_id: string
-          role_filter: string
-          title: string
-          version: number
-        }
-        Insert: {
-          body?: string
-          department_id?: string | null
-          enabled?: boolean
-          id?: string
-          include_descendants?: boolean
-          interval_minutes?: number
-          job_contains?: string | null
-          last_run?: string | null
-          last_sent?: number
-          last_status?: string | null
-          next_run?: string
-          organization_id: string
-          role_filter?: string
-          title: string
-          version?: number
-        }
-        Update: {
-          body?: string
-          department_id?: string | null
-          enabled?: boolean
-          id?: string
-          include_descendants?: boolean
-          interval_minutes?: number
-          job_contains?: string | null
-          last_run?: string | null
-          last_sent?: number
-          last_status?: string | null
-          next_run?: string
-          organization_id?: string
-          role_filter?: string
-          title?: string
-          version?: number
-        }
-        Relationships: []
       }
       competency_rubric_assessments: {
         Row: {
@@ -1110,6 +1186,67 @@ export type Database = {
           },
         ]
       }
+      course_archive_restores: {
+        Row: {
+          archive_digest: string
+          course_id: string
+          created_at: string
+          request_id: string
+          user_id: string
+        }
+        Insert: {
+          archive_digest: string
+          course_id: string
+          created_at?: string
+          request_id: string
+          user_id: string
+        }
+        Update: {
+          archive_digest?: string
+          course_id?: string
+          created_at?: string
+          request_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_archive_restores_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_certificate_policies: {
+        Row: {
+          course_id: string
+          renewal_window_days: number
+          validity_days: number | null
+          version: number
+        }
+        Insert: {
+          course_id: string
+          renewal_window_days?: number
+          validity_days?: number | null
+          version?: number
+        }
+        Update: {
+          course_id?: string
+          renewal_window_days?: number
+          validity_days?: number | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_certificate_policies_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: true
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_competencies: {
         Row: {
           code: string
@@ -1150,6 +1287,85 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "course_competencies_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_deadline_events: {
+        Row: {
+          changed_at: string
+          changed_by: string
+          course_id: string
+          due_at: string | null
+          id: string
+          reason: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          changed_at?: string
+          changed_by: string
+          course_id: string
+          due_at?: string | null
+          id?: string
+          reason: string
+          user_id: string
+          version: number
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string
+          course_id?: string
+          due_at?: string | null
+          id?: string
+          reason?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_deadline_events_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_deadline_extensions: {
+        Row: {
+          changed_at: string
+          changed_by: string
+          course_id: string
+          due_at: string | null
+          reason: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          changed_at?: string
+          changed_by: string
+          course_id: string
+          due_at?: string | null
+          reason: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string
+          course_id?: string
+          due_at?: string | null
+          reason?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_deadline_extensions_course_id_fkey"
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "studio_courses"
@@ -1270,6 +1486,240 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      course_grade_decisions: {
+        Row: {
+          course_id: string
+          id: string
+          previous_decision: string | null
+          proposed_at: string
+          proposed_by: string
+          reason: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          scheme_version: number
+          score: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          id?: string
+          previous_decision?: string | null
+          proposed_at?: string
+          proposed_by: string
+          reason: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          scheme_version: number
+          score: number
+          status?: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string
+          id?: string
+          previous_decision?: string | null
+          proposed_at?: string
+          proposed_by?: string
+          reason?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          scheme_version?: number
+          score?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_grade_decisions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_grade_decisions_previous_decision_fkey"
+            columns: ["previous_decision"]
+            isOneToOne: false
+            referencedRelation: "course_grade_decisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_grading_schemes: {
+        Row: {
+          categories: Json
+          course_id: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          categories: Json
+          course_id: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          categories?: Json
+          course_id?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_grading_schemes_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: true
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_license_orders: {
+        Row: {
+          buyer_id: string
+          checkout_url: string | null
+          cohort_id: string
+          course_id: string
+          course_title: string
+          created_at: string
+          currency: string
+          id: string
+          paid_at: string | null
+          quantity: number
+          request_id: string
+          status: string
+          stripe_session_id: string | null
+          unit_price_cents: number
+        }
+        Insert: {
+          buyer_id: string
+          checkout_url?: string | null
+          cohort_id: string
+          course_id: string
+          course_title: string
+          created_at?: string
+          currency: string
+          id?: string
+          paid_at?: string | null
+          quantity: number
+          request_id: string
+          status?: string
+          stripe_session_id?: string | null
+          unit_price_cents: number
+        }
+        Update: {
+          buyer_id?: string
+          checkout_url?: string | null
+          cohort_id?: string
+          course_id?: string
+          course_title?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          paid_at?: string | null
+          quantity?: number
+          request_id?: string
+          status?: string
+          stripe_session_id?: string | null
+          unit_price_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_license_orders_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_license_orders_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_license_seat_events: {
+        Row: {
+          actor_id: string
+          created_at: string
+          enabled: boolean
+          id: string
+          reason: string
+          seat_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          enabled: boolean
+          id?: string
+          reason: string
+          seat_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          reason?: string
+          seat_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_license_seat_events_seat_id_fkey"
+            columns: ["seat_id"]
+            isOneToOne: false
+            referencedRelation: "course_license_seats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_license_seats: {
+        Row: {
+          allocated_at: string
+          allocated_by: string
+          enabled: boolean
+          id: string
+          note: string
+          order_id: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          allocated_at?: string
+          allocated_by: string
+          enabled?: boolean
+          id?: string
+          note?: string
+          order_id: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          allocated_at?: string
+          allocated_by?: string
+          enabled?: boolean
+          id?: string
+          note?: string
+          order_id?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_license_seats_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "course_license_orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       creator_applications: {
         Row: {
@@ -1488,6 +1938,79 @@ export type Database = {
         }
         Relationships: []
       }
+      forum_replies: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          thread_id: string
+          user_id?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_replies_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "forum_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forum_threads: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          last_activity_at: string
+          locked: boolean
+          pinned: boolean
+          title: string
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          last_activity_at?: string
+          locked?: boolean
+          pinned?: boolean
+          title: string
+          user_id?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          last_activity_at?: string
+          locked?: boolean
+          pinned?: boolean
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_threads_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       learner_competency_evidence: {
         Row: {
           achieved: boolean
@@ -1537,6 +2060,74 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      learning_program_versions: {
+        Row: {
+          description: string
+          id: string
+          program_id: string
+          published_at: string
+          stages: Json
+          title: string
+          version: number
+        }
+        Insert: {
+          description: string
+          id?: string
+          program_id: string
+          published_at?: string
+          stages: Json
+          title: string
+          version: number
+        }
+        Update: {
+          description?: string
+          id?: string
+          program_id?: string
+          published_at?: string
+          stages?: Json
+          title?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_program_versions_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "learning_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_programs: {
+        Row: {
+          created_at: string
+          description: string
+          draft_version: number
+          id: string
+          owner_id: string
+          stages: Json
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          draft_version?: number
+          id: string
+          owner_id: string
+          stages?: Json
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          draft_version?: number
+          id?: string
+          owner_id?: string
+          stages?: Json
+          title?: string
+        }
+        Relationships: []
       }
       ledger_settings: {
         Row: {
@@ -1653,6 +2244,91 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      lti_launch_states: {
+        Row: {
+          created_at: string
+          nonce: string
+          platform_id: string
+          state: string
+          target_link_uri: string | null
+        }
+        Insert: {
+          created_at?: string
+          nonce: string
+          platform_id: string
+          state: string
+          target_link_uri?: string | null
+        }
+        Update: {
+          created_at?: string
+          nonce?: string
+          platform_id?: string
+          state?: string
+          target_link_uri?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lti_launch_states_platform_id_fkey"
+            columns: ["platform_id"]
+            isOneToOne: false
+            referencedRelation: "lti_platforms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lti_platforms: {
+        Row: {
+          auth_login_url: string
+          auth_token_url: string
+          client_id: string
+          created_at: string
+          created_by: string
+          default_course_id: string | null
+          deployment_id: string
+          enabled: boolean
+          id: string
+          issuer: string
+          key_set_url: string
+          name: string
+        }
+        Insert: {
+          auth_login_url: string
+          auth_token_url: string
+          client_id: string
+          created_at?: string
+          created_by?: string
+          default_course_id?: string | null
+          deployment_id: string
+          enabled?: boolean
+          id?: string
+          issuer: string
+          key_set_url: string
+          name: string
+        }
+        Update: {
+          auth_login_url?: string
+          auth_token_url?: string
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          default_course_id?: string | null
+          deployment_id?: string
+          enabled?: boolean
+          id?: string
+          issuer?: string
+          key_set_url?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lti_platforms_default_course_id_fkey"
+            columns: ["default_course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       moodle_courses: {
         Row: {
@@ -1789,6 +2465,480 @@ export type Database = {
         }
         Relationships: []
       }
+      organization_automation_health: {
+        Row: {
+          id: boolean
+          last_run: string
+        }
+        Insert: {
+          id?: boolean
+          last_run: string
+        }
+        Update: {
+          id?: boolean
+          last_run?: string
+        }
+        Relationships: []
+      }
+      organization_certificate_settings: {
+        Row: {
+          footer: string
+          heading: string
+          organization_id: string
+          signatory_name: string
+          signatory_title: string
+          version: number
+        }
+        Insert: {
+          footer?: string
+          heading?: string
+          organization_id: string
+          signatory_name?: string
+          signatory_title?: string
+          version?: number
+        }
+        Update: {
+          footer?: string
+          heading?: string
+          organization_id?: string
+          signatory_name?: string
+          signatory_title?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_certificate_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_cohorts: {
+        Row: {
+          cohort_id: string
+          organization_id: string
+        }
+        Insert: {
+          cohort_id: string
+          organization_id: string
+        }
+        Update: {
+          cohort_id?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_cohorts_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: true
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_cohorts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_courses: {
+        Row: {
+          course_id: string
+          organization_id: string
+        }
+        Insert: {
+          course_id: string
+          organization_id: string
+        }
+        Update: {
+          course_id?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_courses_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: true
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_courses_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_departments: {
+        Row: {
+          id: string
+          name: string
+          organization_id: string
+          parent_id: string | null
+          version: number
+        }
+        Insert: {
+          id: string
+          name: string
+          organization_id: string
+          parent_id?: string | null
+          version?: number
+        }
+        Update: {
+          id?: string
+          name?: string
+          organization_id?: string
+          parent_id?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_departments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_departments_organization_id_parent_id_fkey"
+            columns: ["organization_id", "parent_id"]
+            isOneToOne: false
+            referencedRelation: "organization_departments"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      organization_members: {
+        Row: {
+          department_id: string | null
+          job_title: string
+          joined_at: string
+          manager_id: string | null
+          organization_id: string
+          role: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          department_id?: string | null
+          job_title?: string
+          joined_at?: string
+          manager_id?: string | null
+          organization_id: string
+          role: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          department_id?: string | null
+          job_title?: string
+          joined_at?: string
+          manager_id?: string | null
+          organization_id?: string
+          role?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_organization_id_department_id_fkey"
+            columns: ["organization_id", "department_id"]
+            isOneToOne: false
+            referencedRelation: "organization_departments"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_notification_rule_runs: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          preview_hash: string | null
+          request_id: string
+          result: Json
+          rule_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          preview_hash?: string | null
+          request_id: string
+          result: Json
+          rule_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          preview_hash?: string | null
+          request_id?: string
+          result?: Json
+          rule_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_notification_rule_runs_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "organization_notification_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_notification_rule_sent: {
+        Row: {
+          rule_id: string
+          sent_at: string
+          user_id: string
+        }
+        Insert: {
+          rule_id: string
+          sent_at?: string
+          user_id: string
+        }
+        Update: {
+          rule_id?: string
+          sent_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_notification_rule_sent_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "organization_notification_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_notification_rules: {
+        Row: {
+          body: string
+          changed_by: string
+          department_id: string | null
+          enabled: boolean
+          id: string
+          include_descendants: boolean
+          interval_minutes: number
+          job_contains: string | null
+          last_run: string | null
+          last_sent: number
+          last_status: string | null
+          next_run: string
+          organization_id: string
+          role_filter: string
+          title: string
+          version: number
+        }
+        Insert: {
+          body?: string
+          changed_by: string
+          department_id?: string | null
+          enabled?: boolean
+          id?: string
+          include_descendants?: boolean
+          interval_minutes?: number
+          job_contains?: string | null
+          last_run?: string | null
+          last_sent?: number
+          last_status?: string | null
+          next_run?: string
+          organization_id: string
+          role_filter?: string
+          title: string
+          version?: number
+        }
+        Update: {
+          body?: string
+          changed_by?: string
+          department_id?: string | null
+          enabled?: boolean
+          id?: string
+          include_descendants?: boolean
+          interval_minutes?: number
+          job_contains?: string | null
+          last_run?: string | null
+          last_sent?: number
+          last_status?: string | null
+          next_run?: string
+          organization_id?: string
+          role_filter?: string
+          title?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_notification_rules_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "organization_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_notification_rules_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_notifications: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          organization_id: string
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_notifications_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_portals: {
+        Row: {
+          agriculture_only: boolean
+          enabled: boolean
+          organization_id: string
+          public_message: string
+          slug: string
+          version: number
+        }
+        Insert: {
+          agriculture_only?: boolean
+          enabled?: boolean
+          organization_id: string
+          public_message?: string
+          slug: string
+          version?: number
+        }
+        Update: {
+          agriculture_only?: boolean
+          enabled?: boolean
+          organization_id?: string
+          public_message?: string
+          slug?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_portals_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_programs: {
+        Row: {
+          organization_id: string
+          program_id: string
+        }
+        Insert: {
+          organization_id: string
+          program_id: string
+        }
+        Update: {
+          organization_id?: string
+          program_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_programs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_programs_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: true
+            referencedRelation: "learning_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          brand_color: string
+          id: string
+          logo_url: string | null
+          name: string
+          owner_id: string
+          parent_id: string | null
+          version: number
+          welcome: string
+        }
+        Insert: {
+          brand_color?: string
+          id: string
+          logo_url?: string | null
+          name: string
+          owner_id: string
+          parent_id?: string | null
+          version?: number
+          welcome?: string
+        }
+        Update: {
+          brand_color?: string
+          id?: string
+          logo_url?: string | null
+          name?: string
+          owner_id?: string
+          parent_id?: string | null
+          version?: number
+          welcome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizations_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_events: {
         Row: {
           action: string | null
@@ -1828,6 +2978,165 @@ export type Database = {
         }
         Relationships: []
       }
+      peer_assignments: {
+        Row: {
+          author_id: string
+          course_id: string
+          created_at: string
+          id: string
+          instructions: string
+          reviews_required: number
+          rubric: Json
+          title: string
+        }
+        Insert: {
+          author_id?: string
+          course_id: string
+          created_at?: string
+          id?: string
+          instructions?: string
+          reviews_required?: number
+          rubric: Json
+          title: string
+        }
+        Update: {
+          author_id?: string
+          course_id?: string
+          created_at?: string
+          id?: string
+          instructions?: string
+          reviews_required?: number
+          rubric?: Json
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "peer_assignments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      peer_review_assignments: {
+        Row: {
+          created_at: string
+          id: string
+          peer_assignment_id: string
+          reviewer_id: string
+          status: string
+          submission_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          peer_assignment_id: string
+          reviewer_id: string
+          status?: string
+          submission_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          peer_assignment_id?: string
+          reviewer_id?: string
+          status?: string
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "peer_review_assignments_peer_assignment_id_fkey"
+            columns: ["peer_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "peer_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "peer_review_assignments_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "peer_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      peer_reviews: {
+        Row: {
+          comment: string
+          id: string
+          marks: Json
+          max_points: number
+          review_assignment_id: string
+          score: number
+          submitted_at: string
+        }
+        Insert: {
+          comment?: string
+          id?: string
+          marks: Json
+          max_points: number
+          review_assignment_id: string
+          score: number
+          submitted_at?: string
+        }
+        Update: {
+          comment?: string
+          id?: string
+          marks?: Json
+          max_points?: number
+          review_assignment_id?: string
+          score?: number
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "peer_reviews_review_assignment_id_fkey"
+            columns: ["review_assignment_id"]
+            isOneToOne: true
+            referencedRelation: "peer_review_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      peer_submissions: {
+        Row: {
+          assignment_id: string
+          body: string
+          calibrated_score: number | null
+          id: string
+          review_count: number
+          submitted_at: string
+          user_id: string
+        }
+        Insert: {
+          assignment_id: string
+          body: string
+          calibrated_score?: number | null
+          id?: string
+          review_count?: number
+          submitted_at?: string
+          user_id?: string
+        }
+        Update: {
+          assignment_id?: string
+          body?: string
+          calibrated_score?: number | null
+          id?: string
+          review_count?: number
+          submitted_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "peer_submissions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "peer_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1864,6 +3173,100 @@ export type Database = {
         }
         Relationships: []
       }
+      program_awards: {
+        Row: {
+          evidence: Json
+          evidence_digest: string
+          expires_at: string | null
+          id: string
+          issued_at: string
+          title: string
+          user_id: string
+          version_id: string
+        }
+        Insert: {
+          evidence: Json
+          evidence_digest: string
+          expires_at?: string | null
+          id?: string
+          issued_at?: string
+          title: string
+          user_id: string
+          version_id: string
+        }
+        Update: {
+          evidence?: Json
+          evidence_digest?: string
+          expires_at?: string | null
+          id?: string
+          issued_at?: string
+          title?: string
+          user_id?: string
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_awards_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "learning_program_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      question_libraries: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+        }
+        Relationships: []
+      }
+      question_library_members: {
+        Row: {
+          granted_at: string
+          library_id: string
+          member_email: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          granted_at?: string
+          library_id: string
+          member_email: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          granted_at?: string
+          library_id?: string
+          member_email?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_library_members_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "question_libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quiz_attempts: {
         Row: {
           course_id: string
@@ -1894,13 +3297,130 @@ export type Database = {
         }
         Relationships: []
       }
+      quiz_exam_sessions: {
+        Row: {
+          abandoned_at: string | null
+          answers: Json
+          course_id: string
+          created_at: string
+          draft_responses: Json
+          draft_version: number
+          duration_minutes: number
+          expires_at: string
+          grading_started_at: string | null
+          id: string
+          lease: string | null
+          lease_until: string | null
+          lesson_id: string
+          pass_mark: number
+          policy_version: number | null
+          questions: Json
+          result: Json | null
+          state: string
+          user_id: string
+        }
+        Insert: {
+          abandoned_at?: string | null
+          answers: Json
+          course_id: string
+          created_at?: string
+          draft_responses?: Json
+          draft_version?: number
+          duration_minutes?: number
+          expires_at?: string
+          grading_started_at?: string | null
+          id?: string
+          lease?: string | null
+          lease_until?: string | null
+          lesson_id: string
+          pass_mark: number
+          policy_version?: number | null
+          questions: Json
+          result?: Json | null
+          state?: string
+          user_id: string
+        }
+        Update: {
+          abandoned_at?: string | null
+          answers?: Json
+          course_id?: string
+          created_at?: string
+          draft_responses?: Json
+          draft_version?: number
+          duration_minutes?: number
+          expires_at?: string
+          grading_started_at?: string | null
+          id?: string
+          lease?: string | null
+          lease_until?: string | null
+          lesson_id?: string
+          pass_mark?: number
+          policy_version?: number | null
+          questions?: Json
+          result?: Json | null
+          state?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_exam_sessions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_exam_sessions_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "studio_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_exam_start_requests: {
+        Row: {
+          lesson_id: string
+          request_id: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          lesson_id: string
+          request_id: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          lesson_id?: string
+          request_id?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_exam_start_requests_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "studio_lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_exam_start_requests_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_exam_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quiz_question_bank: {
         Row: {
-          library_id: string | null
           answer: Json
           category: string
           created_at: string
           id: string
+          library_id: string | null
           owner_id: string
           question: Json
           updated_at: string
@@ -1911,6 +3431,7 @@ export type Database = {
           category: string
           created_at?: string
           id?: string
+          library_id?: string | null
           owner_id?: string
           question: Json
           updated_at?: string
@@ -1921,12 +3442,21 @@ export type Database = {
           category?: string
           created_at?: string
           id?: string
+          library_id?: string | null
           owner_id?: string
           question?: Json
           updated_at?: string
           version?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "quiz_question_bank_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "question_libraries"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       scorm_attempts: {
         Row: {
@@ -2228,6 +3758,30 @@ export type Database = {
           },
         ]
       }
+      studio_exam_banks: {
+        Row: {
+          answers: Json
+          created_at: string
+          id: string
+          owner_id: string
+          questions: Json
+        }
+        Insert: {
+          answers: Json
+          created_at?: string
+          id?: string
+          owner_id: string
+          questions: Json
+        }
+        Update: {
+          answers?: Json
+          created_at?: string
+          id?: string
+          owner_id?: string
+          questions?: Json
+        }
+        Relationships: []
+      }
       studio_learning_activities: {
         Row: {
           activity_key: string
@@ -2456,6 +4010,48 @@ export type Database = {
           },
         ]
       }
+      studio_quiz_policies: {
+        Row: {
+          course_id: string
+          duration_minutes: number
+          lesson_id: string
+          max_attempts: number | null
+          retry_minutes: number
+          version: number
+        }
+        Insert: {
+          course_id: string
+          duration_minutes?: number
+          lesson_id: string
+          max_attempts?: number | null
+          retry_minutes?: number
+          version?: number
+        }
+        Update: {
+          course_id?: string
+          duration_minutes?: number
+          lesson_id?: string
+          max_attempts?: number | null
+          retry_minutes?: number
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_quiz_policies_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "studio_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_quiz_policies_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: true
+            referencedRelation: "studio_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       studio_review_approvals: {
         Row: {
           approved_at: string
@@ -2523,131 +4119,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      save_quiz_exam_policy: { Args: { _lesson: string; _max: number | null; _duration: number; _retry: number; _expected: number }; Returns: number }
-      remove_quiz_exam_policy: { Args: { _lesson: string; _expected: number }; Returns: undefined }
-      save_quiz_exam_answers: { Args: { _session: string; _user: string; _responses: Json; _expected: number }; Returns: number }
-      my_quiz_exam_status: { Args: { _lesson: string }; Returns: Json }
-      learning_shell_brand: { Args: { _course?: string | null; _organization?: string | null }; Returns: Json }
-      save_organization_portal: { Args: { _organization: string; _slug: string; _enabled: boolean; _message: string; _expected: number; _agriculture_only?: boolean }; Returns: number }
-      public_portal_courses: { Args: { _slug: string; _query?: string; _offset?: number; _limit?: number }; Returns: Json }
-      organization_portal: { Args: { _slug: string }; Returns: Json }
-      portal_course_report: { Args: { _slug: string; _learning?: boolean; _query?: string; _offset?: number; _limit?: number }; Returns: Json }
-      portal_learning_brand: { Args: { _slug: string; _course?: string | null }; Returns: Json }
-      studio_save_private_quiz: { Args: { _lesson: string; _title: string; _pass_mark: number; _questions: Json; _answers: Json; _sample_size: number }; Returns: string }
-      save_cohort_report_schedule: { Args: { _cohort: string; _enabled: boolean; _interval: number; _expected: number }; Returns: number }
-      generate_cohort_report_snapshot: { Args: { _cohort: string; _request: string }; Returns: string }
-      company_cohort_report_history: { Args: { _cohort: string }; Returns: { id: string; created_at: string; scheduled: boolean; schedule_version: number | null; rows: number }[] }
-      company_cohort_report_snapshot: { Args: { _report: string }; Returns: Json }
-      company_report_scheduler_status: { Args: { _organization: string }; Returns: Json }
-      run_due_company_cohort_reports: { Args: { _organization?: string | null; _limit?: number }; Returns: Json }
-      save_cohort_assignment_rule: { Args: { _cohort: string; _department: string | null; _descendants: boolean; _job: string | null; _role: string; _add_only: boolean; _enabled: boolean; _interval: number; _expected: number }; Returns: number }
-      preview_cohort_assignment_rule: { Args: { _cohort: string; _expected: number }; Returns: Json }
-      run_cohort_assignment_rule: { Args: { _cohort: string; _expected: number; _hash: string; _request: string }; Returns: Json }
-      set_cohort_assignment_schedule: { Args: { _cohort: string; _expected: number; _enabled: boolean; _hash?: string | null }; Returns: number }
-      allow_cohort_rule_member: { Args: { _cohort: string; _user: string }; Returns: undefined }
-      cohort_rule_excluded_people: { Args: { _cohort: string }; Returns: { user_id: string; full_name: string; excluded_at: string }[] }
-      cohort_assignment_rule_history: { Args: { _cohort: string }; Returns: { request_id: string; created_at: string; actor_name: string; result: Json }[] }
-      cohort_assignment_rule_changes: { Args: { _request: string }; Returns: Json }
-      organization_automation_status: { Args: { _organization: string }; Returns: Json }
-      run_due_organization_assignment_rules: { Args: { _organization?: string | null; _limit?: number }; Returns: Json }
-      cohort_billing_management: { Args: { _cohort: string }; Returns: Json }
-      set_cohort_billing_manager: { Args: { _cohort: string; _user: string; _allow: boolean; _expected: number; _reason: string }; Returns: undefined }
-      save_organization_program: { Args: { _organization: string; _program: string; _title: string; _description: string; _stages: Json; _expected: number }; Returns: number }
-      assign_organization_program: { Args: { _cohort: string; _version: string; _due: string | null; _active: boolean; _expected: number }; Returns: undefined }
-      organization_program_drafts: { Args: { _organization: string }; Returns: Database["public"]["Tables"]["learning_programs"]["Row"][] }
-      organization_program_versions: { Args: { _organization: string }; Returns: Database["public"]["Tables"]["learning_program_versions"]["Row"][] }
-      organization_program_assignments: { Args: { _organization: string }; Returns: Database["public"]["Tables"]["cohort_program_assignments"]["Row"][] }
-      organization_assignable_courses: { Args: { _organization: string }; Returns: { id: string; title: string }[] }
-      cohort_billing_destination: { Args: { _cohort: string }; Returns: string | null }
-      create_organization_cohort: { Args: { _organization: string; _cohort: string; _name: string }; Returns: string }
-      save_organization_cohort: { Args: { _cohort: string; _name: string; _seats: number | null; _auto_free: boolean; _expected: number }; Returns: number }
-      set_organization_cohort_member: { Args: { _cohort: string; _user: string; _include: boolean }; Returns: undefined }
-      set_organization_cohort_course: { Args: { _cohort: string; _course: string; _include: boolean; _due: string | null }; Returns: undefined }
-      organization_training_cohorts: { Args: { _organization: string }; Returns: { id: string; name: string; seat_limit: number | null; auto_enrol_free: boolean; policy_version: number; member_count: number; can_bill: boolean }[] }
-      organization_cohort_people: { Args: { _cohort: string }; Returns: { user_id: string; full_name: string }[] }
-      organization_cohort_courses: { Args: { _cohort: string }; Returns: { course_id: string; title: string; published: boolean; price_cents: number; currency: string; due_at: string | null }[] }
-      organization_learning_summary: { Args: { _organization: string }; Returns: Json }
-      set_course_organization: { Args: { _course: string; _organization: string | null; _expected: string | null }; Returns: undefined }
-      bind_organization_cohort: { Args: { _cohort: string; _organization: string; _expected: string | null }; Returns: undefined }
-      my_organizations: { Args: Record<string, never>; Returns: { id: string; name: string; welcome: string; brand_color: string; logo_url: string | null; version: number; can_manage: boolean }[] }
-      admin_list_organizations: { Args: Record<string, never>; Returns: { id: string; name: string; parent_id: string | null }[] }
-      save_organization_notification_rule: { Args: { _id: string | null; _organization: string; _title: string; _body: string; _department: string | null; _descendants: boolean; _job: string | null; _role: string; _interval: number; _expected: number }; Returns: string }
-      preview_organization_notification_rule: { Args: { _rule: string; _expected: number }; Returns: Json }
-      run_organization_notification_rule: { Args: { _rule: string; _hash: string | null; _request: string }; Returns: Json }
-      set_organization_notification_rule_schedule: { Args: { _rule: string; _expected: number; _enabled: boolean }; Returns: number }
-      my_organization_notifications: { Args: Record<string, never>; Returns: { id: string; organization_name: string; title: string; body: string; created_at: string; read_at: string | null }[] }
-      organization_notification_rule_history: { Args: { _rule: string }; Returns: { request_id: string; created_at: string; actor_name: string; result: Json }[] }
-      admin_set_organization_parent: { Args: { _organization: string; _parent: string | null }; Returns: undefined }
-      organization_people: { Args: { _organization: string }; Returns: { user_id: string; full_name: string; email: string; role: string; department_id: string | null; manager_id: string | null; job_title: string; manager_name: string; is_owner: boolean; version: number }[] }
-      save_organization: { Args: { _organization: string; _name: string; _welcome: string; _color: string; _logo: string | null; _expected: number }; Returns: number }
-      save_organization_department: { Args: { _organization: string; _department: string; _name: string; _parent: string | null; _expected: number }; Returns: number }
-      set_organization_member: { Args: { _organization: string; _email: string; _role: string; _department: string | null; _manager: string | null; _job: string; _expected: number }; Returns: string }
-      remove_organization_member: { Args: { _organization: string; _user: string; _expected: number }; Returns: undefined }
-      export_course_archive: { Args: { _course: string }; Returns: Json }
-      restore_course_archive: { Args: { _request: string; _archive: Json }; Returns: string }
-      cohort_program_versions: { Args: { _cohort: string }; Returns: { id: string; title: string; version: number; active: boolean; due_at: string | null }[] }
-      save_learning_program: { Args: { _program: string; _title: string; _description: string; _stages: Json; _expected: number }; Returns: number }
-      publish_learning_program: { Args: { _program: string; _expected: number }; Returns: string }
-      assign_cohort_program: { Args: { _cohort: string; _version: string; _due: string | null; _active: boolean; _expected: number }; Returns: undefined }
-      my_learning_programs: { Args: Record<string, never>; Returns: { id: string; title: string; version: number; due_at: string | null }[] }
-      my_program_progress: { Args: { _version: string }; Returns: Json }
-      claim_program_award: { Args: { _version: string }; Returns: string }
-      cohort_program_progress: { Args: { _cohort: string; _version: string }; Returns: { user_id: string; full_name: string; complete: boolean; completed_stages: number; total_stages: number }[] }
-      server_certificate_records: { Args: Record<string, never>; Returns: { id: string; user_id: string; source: string; course_ref: string; title: string; issued_at: string; revoked_at: string | null; expires_at: string | null; current_valid: boolean }[] }
-      my_certificate_lifecycle: { Args: { _certificate: string }; Returns: Json }
-      course_certificate_policy: { Args: { _course: string }; Returns: Json }
-      set_course_certificate_policy: { Args: { _course: string; _days: number | null; _window: number; _version: number; _reason: string }; Returns: undefined }
-      start_certificate_renewal: { Args: { _certificate: string }; Returns: string }
-      set_certificate_sharing: { Args: { _certificate: string; _enabled: boolean }; Returns: string | null }
-      verify_certificate: { Args: { _token: string }; Returns: Json }
-      my_certificate_records: { Args: Record<string, never>; Returns: { id: string; title: string; source: string; course_ref: string; issued_at: string; course_version: number | null; validated_at: string | null; revoked_at: string | null; revocation_reason: string | null; expires_at: string | null }[] }
-      course_license_order_report: { Args: { _order: string }; Returns: Json }
-      create_course_license_order: { Args: { _cohort: string; _course: string; _quantity: number; _request: string }; Returns: Json }
-      bind_course_license_checkout: { Args: { _order: string; _session: string; _url: string }; Returns: undefined }
-      apply_cohort_license_payment: { Args: { _event: Json }; Returns: string }
-      allocate_course_licenses: { Args: { _order: string; _learners: string[] }; Returns: number }
-      set_course_license_enabled: { Args: { _seat: string; _enabled: boolean; _reason: string; _expected_version: number }; Returns: undefined }
-      my_course_paid_access: { Args: { _course: string }; Returns: boolean }
-      course_license_candidates: { Args: { _cohort: string; _course: string }; Returns: { user_id: string; full_name: string; personal_access: boolean; cohort_access: boolean }[] }
-      course_license_allocations: { Args: { _order: string }; Returns: { id: string; user_id: string; full_name: string; enabled: boolean; version: number; note: string; allocated_at: string; current_member: boolean }[] }
-      studio_save_quiz_pool: { Args: { _lesson_id: string; _title: string; _pass_mark: number; _questions: Json; _answers: Json; _sample_size: number | null }; Returns: undefined }
-      start_quiz_exam: { Args: { _user: string; _lesson: string; _expected_body: string; _expected_quiz: Json; _expected_answers: Json; _selection: number[]; _fresh?: boolean; _request?: string }; Returns: Json }
-      reserve_quiz_exam: { Args: { _session: string; _user: string; _lesson: string; _responses?: Json; _expected_version?: number }; Returns: Json }
-      release_quiz_exam: { Args: { _session: string; _lease: string }; Returns: undefined }
-      finish_quiz_exam: { Args: { _session: string; _user: string; _lease: string; _correct: Json; _feedback: Json }; Returns: Json }
-      my_question_libraries: { Args: never; Returns: { id: string; name: string; can_edit: boolean; owner: boolean }[] }
-      create_question_library: { Args: { _name: string }; Returns: string }
-      grant_question_library_access: { Args: { _library: string; _email: string; _role: string }; Returns: undefined }
-      remove_question_library_access: { Args: { _library: string; _user: string }; Returns: undefined }
-      save_library_question: { Args: { _library: string; _id: string | null; _category: string; _question: Json; _answer: Json; _expected_version: number }; Returns: string }
-      import_bank_questions: { Args: { _library: string | null; _entries: Json }; Returns: number }
-      export_bank_questions: { Args: { _library?: string | null }; Returns: Json }
-      enqueue_cohort_reminders: { Args: { _cohort?: string | null }; Returns: number }
-      claim_cohort_reminders: { Args: { _limit?: number; _cohort?: string | null }; Returns: Json }
-      authorize_cohort_reminder: { Args: { _id: string; _lease: string }; Returns: boolean }
-      finish_cohort_reminder: { Args: { _id: string; _lease: string; _provider_id: string | null; _error: string | null }; Returns: undefined }
-      cohort_reminder_summary: { Args: { _cohort: string }; Returns: Json }
-      save_cohort_policy: { Args: { _cohort: string; _seats: number | null; _auto_free: boolean; _reminders: boolean; _expected_version: number }; Returns: number }
-      my_reporting_cohorts: { Args: never; Returns: { id: string; name: string }[] }
-      set_learner_deadline: { Args: { _course: string; _learner: string; _due_at: string | null; _reason: string; _expected_version: number }; Returns: number }
-      set_cohort_report_manager: { Args: { _cohort: string; _user: string; _allow: boolean }; Returns: undefined }
-      cohort_report_access: { Args: { _cohort: string }; Returns: boolean }
-      cohort_progress_report: { Args: { _cohort: string; _offset?: number; _limit?: number }; Returns: Json }
-      cohort_progress_export: { Args: { _cohort: string }; Returns: Json }
-      grade_moderation_queue: { Args: { _offset?: number }; Returns: Json }
-      save_course_grading: { Args: { _course: string; _categories: Json; _expected_version: number }; Returns: number }
-      propose_course_grade: { Args: { _course: string; _learner: string; _score: number; _reason: string; _expected_version: number; _previous_decision: string | null }; Returns: string }
-      review_course_grade: { Args: { _decision: string; _approve: boolean; _note: string }; Returns: undefined }
-      course_gradebook_export: { Args: { _course: string }; Returns: Json }
-      issue_studio_certificate: { Args: { _user: string; _course: string; _expected_version: number; _expected_lessons: Json; _photo_tasks: Json; _portal_slug?: string | null }; Returns: Json }
-      save_organization_certificate_settings: { Args: { _organization: string; _heading: string; _signatory_name: string; _signatory_title: string; _footer: string; _expected: number }; Returns: number }
-      my_certificate_brand: { Args: { _certificate: string }; Returns: Json }
-      portal_certificate_report: { Args: { _slug: string; _offset?: number; _limit?: number }; Returns: Json }
-      portal_learning_programs: { Args: { _slug: string; _offset?: number; _limit?: number }; Returns: Json }
-      portal_program_progress: { Args: { _slug: string; _version: string }; Returns: Json }
-      claim_portal_program_award: { Args: { _slug: string; _version: string }; Returns: string }
-      revoke_studio_certificate: { Args: { _certificate: string; _reason: string }; Returns: undefined }
-      course_certificates: { Args: { _course: string; _offset?: number; _limit?: number }; Returns: Json }
       add_course_competency: {
         Args: {
           _code: string
@@ -2656,6 +4127,14 @@ export type Database = {
           _title: string
         }
         Returns: string
+      }
+      admin_list_organizations: {
+        Args: never
+        Returns: {
+          id: string
+          name: string
+          parent_id: string
+        }[]
       }
       admin_platform_analytics: { Args: never; Returns: Json }
       admin_revoke_api_key: {
@@ -2683,6 +4162,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      admin_set_organization_parent: {
+        Args: { _organization: string; _parent: string }
+        Returns: undefined
       }
       admin_set_user_role: {
         Args: {
@@ -2718,7 +4201,35 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      allocate_course_licenses: {
+        Args: { _learners: string[]; _order: string }
+        Returns: number
+      }
+      allow_cohort_rule_member: {
+        Args: { _cohort: string; _user: string }
+        Returns: undefined
+      }
+      apply_cohort_assignment_rule: {
+        Args: {
+          _expected: number
+          _hash: string
+          _request: string
+          _rule: string
+          _scheduled: boolean
+        }
+        Returns: Json
+      }
+      apply_cohort_license_payment: { Args: { _event: Json }; Returns: string }
       apply_learning_payment_event: { Args: { _event: Json }; Returns: string }
+      apply_organization_notification_rule: {
+        Args: {
+          _hash: string
+          _request: string
+          _rule: string
+          _scheduled: boolean
+        }
+        Returns: Json
+      }
       assess_competency_rubric: {
         Args: {
           _competency: string
@@ -2732,6 +4243,131 @@ export type Database = {
       assess_competency_submission: {
         Args: { _marks: Json; _notes: string; _submission: string }
         Returns: string
+      }
+      assign_cohort_program: {
+        Args: {
+          _active: boolean
+          _cohort: string
+          _due: string
+          _expected: number
+          _version: string
+        }
+        Returns: undefined
+      }
+      assign_organization_program: {
+        Args: {
+          _active: boolean
+          _cohort: string
+          _due: string
+          _expected: number
+          _version: string
+        }
+        Returns: undefined
+      }
+      authorize_cohort_reminder: {
+        Args: { _id: string; _lease: string }
+        Returns: boolean
+      }
+      bind_course_license_checkout: {
+        Args: { _order: string; _session: string; _url: string }
+        Returns: undefined
+      }
+      bind_organization_cohort: {
+        Args: { _cohort: string; _expected: string; _organization: string }
+        Returns: undefined
+      }
+      build_company_cohort_report: { Args: { _cohort: string }; Returns: Json }
+      capture_certificate_brand: {
+        Args: { _certificate: string; _organization: string }
+        Returns: undefined
+      }
+      capture_company_cohort_report: {
+        Args: { _cohort: string; _request: string; _scheduled: boolean }
+        Returns: string
+      }
+      certificate_effective_expiry: {
+        Args: { _certificate: string }
+        Returns: string
+      }
+      certificate_is_current: {
+        Args: { _certificate: string }
+        Returns: boolean
+      }
+      claim_cohort_reminders: {
+        Args: { _cohort?: string; _limit?: number }
+        Returns: Json
+      }
+      claim_portal_program_award: {
+        Args: { _slug: string; _version: string }
+        Returns: string
+      }
+      claim_program_award: { Args: { _version: string }; Returns: string }
+      cohort_assignment_rule_changes: {
+        Args: { _request: string }
+        Returns: Json
+      }
+      cohort_assignment_rule_history: {
+        Args: { _cohort: string }
+        Returns: {
+          actor_name: string
+          created_at: string
+          request_id: string
+          result: Json
+        }[]
+      }
+      cohort_assignment_rule_plan: { Args: { _rule: string }; Returns: Json }
+      cohort_auto_enrol: { Args: { _cohort: string }; Returns: undefined }
+      cohort_billing_authorized: { Args: { _cohort: string }; Returns: boolean }
+      cohort_billing_destination: { Args: { _cohort: string }; Returns: string }
+      cohort_billing_management: { Args: { _cohort: string }; Returns: Json }
+      cohort_program_progress: {
+        Args: { _cohort: string; _version: string }
+        Returns: {
+          complete: boolean
+          completed_stages: number
+          full_name: string
+          total_stages: number
+          user_id: string
+        }[]
+      }
+      cohort_program_versions: {
+        Args: { _cohort: string }
+        Returns: {
+          active: boolean
+          due_at: string
+          id: string
+          title: string
+          version: number
+        }[]
+      }
+      cohort_progress_export: { Args: { _cohort: string }; Returns: Json }
+      cohort_progress_report: {
+        Args: { _cohort: string; _limit?: number; _offset?: number }
+        Returns: Json
+      }
+      cohort_reminder_eligible: {
+        Args: {
+          _job: Database["public"]["Tables"]["cohort_reminder_outbox"]["Row"]
+        }
+        Returns: boolean
+      }
+      cohort_reminder_summary: { Args: { _cohort: string }; Returns: Json }
+      cohort_report_access: { Args: { _cohort: string }; Returns: boolean }
+      cohort_roster_scope: {
+        Args: { _cohort: string; _user: string }
+        Returns: boolean
+      }
+      cohort_rule_excluded_people: {
+        Args: { _cohort: string }
+        Returns: {
+          excluded_at: string
+          full_name: string
+          user_id: string
+        }[]
+      }
+      cohort_scope_access: {
+        Args: { _cohort: string; _manage: boolean }
+        Returns: boolean
       }
       cohort_visible: { Args: { _cohort: string }; Returns: boolean }
       community_join: {
@@ -2748,6 +4384,14 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      community_member_authorized: {
+        Args: { _course: string; _user: string }
+        Returns: boolean
+      }
+      community_member_visible: {
+        Args: { _course: string; _user: string }
+        Returns: boolean
+      }
       community_roster: {
         Args: { _course_id: string }
         Returns: {
@@ -2756,86 +4400,23 @@ export type Database = {
           user_id: string
         }[]
       }
-      forum_delete_thread: {
-        Args: { _thread_id: string }
-        Returns: undefined
-      }
-      forum_delete_reply: {
-        Args: { _reply_id: string }
-        Returns: undefined
-      }
-      forum_set_thread_state: {
-        Args: { _thread_id: string; _pinned: boolean; _locked: boolean }
-        Returns: undefined
-      }
-      peer_assign_reviewers: {
-        Args: { _assignment_id: string }
-        Returns: number
-      }
-      my_peer_review_queue: {
-        Args: Record<PropertyKey, never>
+      company_cohort_report_history: {
+        Args: { _cohort: string }
         Returns: {
-          review_assignment_id: string
-          assignment_id: string
-          assignment_title: string
-          rubric: Json
-          submission_id: string
-          submission_body: string
-          status: string
+          created_at: string
+          id: string
+          rows: number
+          schedule_version: number
+          scheduled: boolean
         }[]
       }
-      lti_list_platforms: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          id: string
-          name: string
-          issuer: string
-          client_id: string
-          deployment_id: string
-          auth_login_url: string
-          auth_token_url: string
-          key_set_url: string
-          default_course_id: string | null
-          enabled: boolean
-          created_by: string
-          created_at: string
-        }[]
+      company_cohort_report_snapshot: {
+        Args: { _report: string }
+        Returns: Json
       }
-      lti_save_platform: {
-        Args: {
-          _id: string | null
-          _name: string
-          _issuer: string
-          _client_id: string
-          _deployment_id: string
-          _auth_login_url: string
-          _auth_token_url: string
-          _key_set_url: string
-          _default_course_id: string | null
-          _enabled: boolean
-        }
-        Returns: {
-          id: string
-          name: string
-          issuer: string
-          client_id: string
-          deployment_id: string
-          auth_login_url: string
-          auth_token_url: string
-          key_set_url: string
-          default_course_id: string | null
-          enabled: boolean
-          created_by: string
-          created_at: string
-        }
-      }
-      lti_delete_platform: {
-        Args: { _id: string }
-        Returns: undefined
-      }
-      lti_user_id_by_email: {
-        Args: { _email: string }
-        Returns: string
+      company_report_scheduler_status: {
+        Args: { _organization: string }
+        Returns: Json
       }
       course_assessment_learners: {
         Args: { _course: string }
@@ -2844,11 +4425,67 @@ export type Database = {
           user_id: string
         }[]
       }
+      course_catalog_visible: { Args: { _course: string }; Returns: boolean }
+      course_certificate_policy: { Args: { _course: string }; Returns: Json }
+      course_certificates: {
+        Args: { _course: string; _limit?: number; _offset?: number }
+        Returns: Json
+      }
       course_factory_reserve_ai_request: { Args: never; Returns: number }
       course_gradebook: {
         Args: { _course: string; _limit?: number; _offset?: number }
         Returns: Json
       }
+      course_gradebook_base: {
+        Args: { _course: string; _limit?: number; _offset?: number }
+        Returns: Json
+      }
+      course_gradebook_export: { Args: { _course: string }; Returns: Json }
+      course_license_allocations: {
+        Args: { _order: string }
+        Returns: {
+          allocated_at: string
+          current_member: boolean
+          enabled: boolean
+          full_name: string
+          id: string
+          note: string
+          user_id: string
+          version: number
+        }[]
+      }
+      course_license_candidates: {
+        Args: { _cohort: string; _course: string }
+        Returns: {
+          cohort_access: boolean
+          full_name: string
+          personal_access: boolean
+          user_id: string
+        }[]
+      }
+      course_license_order_report: { Args: { _order: string }; Returns: Json }
+      course_organization_access: {
+        Args: { _course: string; _user: string }
+        Returns: boolean
+      }
+      course_paid_entitled: {
+        Args: { _course: string; _user: string }
+        Returns: boolean
+      }
+      create_course_license_order: {
+        Args: {
+          _cohort: string
+          _course: string
+          _quantity: number
+          _request: string
+        }
+        Returns: Json
+      }
+      create_organization_cohort: {
+        Args: { _cohort: string; _name: string; _organization: string }
+        Returns: string
+      }
+      create_question_library: { Args: { _name: string }; Returns: string }
       creator_review_application: {
         Args: { _approve: boolean; _notes?: string; _user_id: string }
         Returns: undefined
@@ -2871,17 +4508,89 @@ export type Database = {
           unread: boolean
         }[]
       }
+      effective_course_deadline: {
+        Args: { _course: string; _user: string }
+        Returns: string
+      }
+      enqueue_cohort_reminders: { Args: { _cohort?: string }; Returns: number }
+      export_bank_questions: { Args: { _library?: string }; Returns: Json }
+      export_course_archive: { Args: { _course: string }; Returns: Json }
       external_item_in_visible_course: {
         Args: { _item: string }
         Returns: boolean
       }
       external_library_reader: { Args: never; Returns: boolean }
+      finish_cohort_reminder: {
+        Args: {
+          _error: string
+          _id: string
+          _lease: string
+          _provider_id: string
+        }
+        Returns: undefined
+      }
+      finish_quiz_exam: {
+        Args: {
+          _correct: Json
+          _feedback: Json
+          _lease: string
+          _session: string
+          _user: string
+        }
+        Returns: Json
+      }
+      forum_delete_reply: { Args: { _reply_id: string }; Returns: undefined }
+      forum_delete_thread: { Args: { _thread_id: string }; Returns: undefined }
+      forum_set_thread_state: {
+        Args: { _locked: boolean; _pinned: boolean; _thread_id: string }
+        Returns: undefined
+      }
+      generate_cohort_report_snapshot: {
+        Args: { _cohort: string; _request: string }
+        Returns: string
+      }
+      grade_moderation_queue: { Args: { _offset?: number }; Returns: Json }
+      grant_question_library_access: {
+        Args: { _email: string; _library: string; _role: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      import_bank_questions: {
+        Args: { _entries: Json; _library: string }
+        Returns: number
+      }
+      is_agriculture_category: { Args: { _category: string }; Returns: boolean }
+      issue_studio_certificate:
+        | {
+            Args: {
+              _course: string
+              _expected_lessons: Json
+              _expected_version: number
+              _photo_tasks: Json
+              _user: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _course: string
+              _expected_lessons: Json
+              _expected_version: number
+              _photo_tasks: Json
+              _portal_slug: string
+              _user: string
+            }
+            Returns: Json
+          }
+      learning_shell_brand: {
+        Args: { _course?: string; _organization?: string }
+        Returns: Json
       }
       lesson_photo_course_owned: { Args: { _lesson: string }; Returns: boolean }
       lesson_photo_review: {
@@ -2927,6 +4636,69 @@ export type Database = {
         }
       }
       lesson_tutor_reserve_request: { Args: never; Returns: number }
+      lock_course_license_access: {
+        Args: { _course: string; _user: string }
+        Returns: undefined
+      }
+      lti_delete_platform: { Args: { _id: string }; Returns: undefined }
+      lti_list_platforms: {
+        Args: never
+        Returns: {
+          auth_login_url: string
+          auth_token_url: string
+          client_id: string
+          created_at: string
+          created_by: string
+          default_course_id: string | null
+          deployment_id: string
+          enabled: boolean
+          id: string
+          issuer: string
+          key_set_url: string
+          name: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "lti_platforms"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      lti_save_platform: {
+        Args: {
+          _auth_login_url: string
+          _auth_token_url: string
+          _client_id: string
+          _default_course_id: string
+          _deployment_id: string
+          _enabled: boolean
+          _id: string
+          _issuer: string
+          _key_set_url: string
+          _name: string
+        }
+        Returns: {
+          auth_login_url: string
+          auth_token_url: string
+          client_id: string
+          created_at: string
+          created_by: string
+          default_course_id: string | null
+          deployment_id: string
+          enabled: boolean
+          id: string
+          issuer: string
+          key_set_url: string
+          name: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "lti_platforms"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      lti_user_id_by_email: { Args: { _email: string }; Returns: string }
       my_ai_usage: {
         Args: never
         Returns: {
@@ -2935,13 +4707,337 @@ export type Database = {
           usage_day: string
         }[]
       }
+      my_certificate_brand: { Args: { _certificate: string }; Returns: Json }
+      my_certificate_lifecycle: {
+        Args: { _certificate: string }
+        Returns: Json
+      }
+      my_certificate_records: {
+        Args: never
+        Returns: {
+          course_ref: string
+          course_version: number
+          expires_at: string
+          id: string
+          issued_at: string
+          revocation_reason: string
+          revoked_at: string
+          source: string
+          title: string
+          validated_at: string
+        }[]
+      }
+      my_cohort_billing_access: { Args: { _cohort: string }; Returns: boolean }
+      my_community_access: { Args: { _course: string }; Returns: boolean }
+      my_course_paid_access: { Args: { _course: string }; Returns: boolean }
       my_course_submission_deadline: {
         Args: { _course: string }
+        Returns: string
+      }
+      my_learning_programs: {
+        Args: never
+        Returns: {
+          due_at: string
+          id: string
+          title: string
+          version: number
+        }[]
+      }
+      my_organization_notifications: {
+        Args: never
+        Returns: {
+          body: string
+          created_at: string
+          id: string
+          organization_name: string
+          read_at: string
+          title: string
+        }[]
+      }
+      my_organizations: {
+        Args: never
+        Returns: {
+          brand_color: string
+          can_manage: boolean
+          id: string
+          logo_url: string
+          name: string
+          version: number
+          welcome: string
+        }[]
+      }
+      my_peer_review_queue: {
+        Args: never
+        Returns: {
+          assignment_id: string
+          assignment_title: string
+          review_assignment_id: string
+          rubric: Json
+          status: string
+          submission_body: string
+          submission_id: string
+        }[]
+      }
+      my_program_progress: { Args: { _version: string }; Returns: Json }
+      my_question_libraries: {
+        Args: never
+        Returns: {
+          can_edit: boolean
+          id: string
+          name: string
+          owner: boolean
+        }[]
+      }
+      my_quiz_exam_status: { Args: { _lesson: string }; Returns: Json }
+      my_reporting_cohorts: {
+        Args: never
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
+      organization_access: { Args: { _organization: string }; Returns: boolean }
+      organization_ancestor_manager: {
+        Args: { _organization: string }
+        Returns: boolean
+      }
+      organization_assignable_courses: {
+        Args: { _organization: string }
+        Returns: {
+          id: string
+          title: string
+        }[]
+      }
+      organization_automation_status: {
+        Args: { _organization: string }
+        Returns: Json
+      }
+      organization_cohort_courses: {
+        Args: { _cohort: string }
+        Returns: {
+          course_id: string
+          currency: string
+          due_at: string
+          price_cents: number
+          published: boolean
+          title: string
+        }[]
+      }
+      organization_cohort_manage: { Args: { _cohort: string }; Returns: string }
+      organization_cohort_people: {
+        Args: { _cohort: string }
+        Returns: {
+          full_name: string
+          user_id: string
+        }[]
+      }
+      organization_learning_summary: {
+        Args: { _organization: string }
+        Returns: Json
+      }
+      organization_manage: { Args: { _organization: string }; Returns: boolean }
+      organization_notification_rule_history: {
+        Args: { _rule: string }
+        Returns: {
+          actor_name: string
+          created_at: string
+          request_id: string
+          result: Json
+        }[]
+      }
+      organization_notification_rule_plan: {
+        Args: { _rule: string }
+        Returns: Json
+      }
+      organization_people: {
+        Args: { _organization: string }
+        Returns: {
+          department_id: string
+          email: string
+          full_name: string
+          is_owner: boolean
+          job_title: string
+          manager_id: string
+          manager_name: string
+          role: string
+          user_id: string
+          version: number
+        }[]
+      }
+      organization_portal: { Args: { _slug: string }; Returns: Json }
+      organization_program_assignments: {
+        Args: { _organization: string }
+        Returns: {
+          active: boolean
+          cohort_id: string
+          due_at: string | null
+          id: string
+          version: number
+          version_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "cohort_program_assignments"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      organization_program_drafts: {
+        Args: { _organization: string }
+        Returns: {
+          created_at: string
+          description: string
+          draft_version: number
+          id: string
+          owner_id: string
+          stages: Json
+          title: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "learning_programs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      organization_program_versions: {
+        Args: { _organization: string }
+        Returns: {
+          description: string
+          id: string
+          program_id: string
+          published_at: string
+          stages: Json
+          title: string
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "learning_program_versions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      organization_training_cohorts: {
+        Args: { _organization: string }
+        Returns: {
+          auto_enrol_free: boolean
+          can_bill: boolean
+          id: string
+          member_count: number
+          name: string
+          policy_version: number
+          seat_limit: number
+        }[]
+      }
+      organization_user_access: {
+        Args: { _organization: string; _user: string }
+        Returns: boolean
+      }
+      peer_assign_reviewers: {
+        Args: { _assignment_id: string }
+        Returns: number
+      }
+      peer_course_member: { Args: { _course_id: string }; Returns: boolean }
+      portal_certificate_report: {
+        Args: { _limit?: number; _offset?: number; _slug: string }
+        Returns: Json
+      }
+      portal_course_inventory: {
+        Args: { _organization: string }
+        Returns: string[]
+      }
+      portal_course_report: {
+        Args: {
+          _learning?: boolean
+          _limit?: number
+          _offset?: number
+          _query?: string
+          _slug: string
+        }
+        Returns: Json
+      }
+      portal_learning_brand: {
+        Args: { _course?: string; _slug: string }
+        Returns: Json
+      }
+      portal_learning_programs: {
+        Args: { _limit?: number; _offset?: number; _slug: string }
+        Returns: Json
+      }
+      portal_program_available: {
+        Args: { _slug: string; _version: string }
+        Returns: boolean
+      }
+      portal_program_progress: {
+        Args: { _slug: string; _version: string }
+        Returns: Json
+      }
+      preview_cohort_assignment_rule: {
+        Args: { _cohort: string; _expected: number }
+        Returns: Json
+      }
+      preview_organization_notification_rule: {
+        Args: { _expected: number; _rule: string }
+        Returns: Json
+      }
+      private_quiz_bank_id: { Args: { _body: string }; Returns: string }
+      program_company_boundary: { Args: { _program: string }; Returns: boolean }
+      program_management_access: {
+        Args: { _program: string }
+        Returns: boolean
+      }
+      program_progress: {
+        Args: { _user: string; _version: string }
+        Returns: Json
+      }
+      program_version_visible: { Args: { _version: string }; Returns: boolean }
+      propose_course_grade: {
+        Args: {
+          _course: string
+          _expected_version: number
+          _learner: string
+          _previous_decision: string
+          _reason: string
+          _score: number
+        }
+        Returns: string
+      }
+      public_portal_courses: {
+        Args: {
+          _limit?: number
+          _offset?: number
+          _query?: string
+          _slug: string
+        }
+        Returns: Json
+      }
+      publish_learning_program: {
+        Args: { _expected: number; _program: string }
         Returns: string
       }
       question_bank_valid: {
         Args: { _answer: Json; _question: Json }
         Returns: boolean
+      }
+      question_library_access: {
+        Args: { _edit?: boolean; _library: string }
+        Returns: boolean
+      }
+      quiz_exam_epoch: {
+        Args: { _course: string; _user: string }
+        Returns: string
+      }
+      quiz_exam_snapshot_start: {
+        Args: {
+          _expected_answers: Json
+          _expected_body: string
+          _expected_quiz: Json
+          _lesson: string
+          _selection: number[]
+          _user: string
+        }
+        Returns: Json
       }
       record_audit_event: {
         Args: {
@@ -2962,9 +5058,77 @@ export type Database = {
         }
         Returns: string
       }
+      release_quiz_exam: {
+        Args: { _lease: string; _session: string }
+        Returns: undefined
+      }
+      remove_organization_member: {
+        Args: { _expected: number; _organization: string; _user: string }
+        Returns: undefined
+      }
+      remove_question_library_access: {
+        Args: { _library: string; _user: string }
+        Returns: undefined
+      }
+      remove_quiz_exam_policy: {
+        Args: { _expected: number; _lesson: string }
+        Returns: undefined
+      }
       reserve_api_key_request: {
         Args: { _key_id: string; _scope: string }
         Returns: boolean
+      }
+      reserve_quiz_exam:
+        | {
+            Args: { _lesson: string; _session: string; _user: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _expected_version: number
+              _lesson: string
+              _responses: Json
+              _session: string
+              _user: string
+            }
+            Returns: Json
+          }
+      restore_course_archive: {
+        Args: { _archive: Json; _request: string }
+        Returns: string
+      }
+      review_course_grade: {
+        Args: { _approve: boolean; _decision: string; _note: string }
+        Returns: undefined
+      }
+      revoke_studio_certificate: {
+        Args: { _certificate: string; _reason: string }
+        Returns: undefined
+      }
+      run_cohort_assignment_rule: {
+        Args: {
+          _cohort: string
+          _expected: number
+          _hash: string
+          _request: string
+        }
+        Returns: Json
+      }
+      run_due_company_cohort_reports: {
+        Args: { _limit?: number; _organization?: string }
+        Returns: Json
+      }
+      run_due_organization_assignment_rules: {
+        Args: { _limit?: number; _organization?: string }
+        Returns: Json
+      }
+      run_due_organization_notification_rules: {
+        Args: { _limit?: number }
+        Returns: Json
+      }
+      run_organization_notification_rule: {
+        Args: { _hash: string; _request: string; _rule: string }
+        Returns: Json
       }
       save_bank_question: {
         Args: {
@@ -2976,12 +5140,179 @@ export type Database = {
         }
         Returns: string
       }
+      save_cohort_assignment_rule: {
+        Args: {
+          _add_only: boolean
+          _cohort: string
+          _department: string
+          _descendants: boolean
+          _enabled: boolean
+          _expected: number
+          _interval: number
+          _job: string
+          _role: string
+        }
+        Returns: number
+      }
+      save_cohort_policy: {
+        Args: {
+          _auto_free: boolean
+          _cohort: string
+          _expected_version: number
+          _reminders: boolean
+          _seats: number
+        }
+        Returns: number
+      }
+      save_cohort_report_schedule: {
+        Args: {
+          _cohort: string
+          _enabled: boolean
+          _expected: number
+          _interval: number
+        }
+        Returns: number
+      }
       save_competency_rubric: {
         Args: {
           _competency: string
           _criteria: Json
           _expected_version: number
           _pass_mark: number
+        }
+        Returns: number
+      }
+      save_course_grading: {
+        Args: { _categories: Json; _course: string; _expected_version: number }
+        Returns: number
+      }
+      save_learning_program: {
+        Args: {
+          _description: string
+          _expected: number
+          _program: string
+          _stages: Json
+          _title: string
+        }
+        Returns: number
+      }
+      save_library_question: {
+        Args: {
+          _answer: Json
+          _category: string
+          _expected_version: number
+          _id: string
+          _library: string
+          _question: Json
+        }
+        Returns: string
+      }
+      save_organization: {
+        Args: {
+          _color: string
+          _expected: number
+          _logo: string
+          _name: string
+          _organization: string
+          _welcome: string
+        }
+        Returns: number
+      }
+      save_organization_certificate_settings: {
+        Args: {
+          _expected: number
+          _footer: string
+          _heading: string
+          _organization: string
+          _signatory_name: string
+          _signatory_title: string
+        }
+        Returns: number
+      }
+      save_organization_cohort: {
+        Args: {
+          _auto_free: boolean
+          _cohort: string
+          _expected: number
+          _name: string
+          _seats: number
+        }
+        Returns: number
+      }
+      save_organization_department: {
+        Args: {
+          _department: string
+          _expected: number
+          _name: string
+          _organization: string
+          _parent: string
+        }
+        Returns: number
+      }
+      save_organization_notification_rule: {
+        Args: {
+          _body: string
+          _department: string
+          _descendants: boolean
+          _expected: number
+          _id: string
+          _interval: number
+          _job: string
+          _organization: string
+          _role: string
+          _title: string
+        }
+        Returns: string
+      }
+      save_organization_portal:
+        | {
+            Args: {
+              _enabled: boolean
+              _expected: number
+              _message: string
+              _organization: string
+              _slug: string
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              _agriculture_only: boolean
+              _enabled: boolean
+              _expected: number
+              _message: string
+              _organization: string
+              _slug: string
+            }
+            Returns: number
+          }
+      save_organization_program: {
+        Args: {
+          _description: string
+          _expected: number
+          _organization: string
+          _program: string
+          _stages: Json
+          _title: string
+        }
+        Returns: number
+      }
+      save_quiz_exam_answers: {
+        Args: {
+          _expected: number
+          _responses: Json
+          _session: string
+          _user: string
+        }
+        Returns: number
+      }
+      save_quiz_exam_policy: {
+        Args: {
+          _duration: number
+          _expected: number
+          _lesson: string
+          _max: number
+          _retry: number
         }
         Returns: number
       }
@@ -3003,6 +5334,47 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      server_certificate_records: {
+        Args: never
+        Returns: {
+          course_ref: string
+          current_valid: boolean
+          expires_at: string
+          id: string
+          issued_at: string
+          revoked_at: string
+          source: string
+          title: string
+          user_id: string
+        }[]
+      }
+      set_certificate_sharing: {
+        Args: { _certificate: string; _enabled: boolean }
+        Returns: string
+      }
+      set_cohort_assignment_schedule: {
+        Args: {
+          _cohort: string
+          _enabled: boolean
+          _expected: number
+          _hash?: string
+        }
+        Returns: number
+      }
+      set_cohort_billing_manager: {
+        Args: {
+          _allow: boolean
+          _cohort: string
+          _expected: number
+          _reason: string
+          _user: string
+        }
+        Returns: undefined
+      }
+      set_cohort_report_manager: {
+        Args: { _allow: boolean; _cohort: string; _user: string }
+        Returns: undefined
+      }
       set_competency_late_policy: {
         Args: {
           _allow_late: boolean
@@ -3011,7 +5383,98 @@ export type Database = {
         }
         Returns: boolean
       }
+      set_course_certificate_policy: {
+        Args: {
+          _course: string
+          _days: number
+          _reason: string
+          _version: number
+          _window: number
+        }
+        Returns: undefined
+      }
+      set_course_license_enabled: {
+        Args: {
+          _enabled: boolean
+          _expected_version: number
+          _reason: string
+          _seat: string
+        }
+        Returns: undefined
+      }
+      set_course_organization: {
+        Args: { _course: string; _expected: string; _organization: string }
+        Returns: undefined
+      }
+      set_learner_deadline: {
+        Args: {
+          _course: string
+          _due_at: string
+          _expected_version: number
+          _learner: string
+          _reason: string
+        }
+        Returns: number
+      }
+      set_organization_cohort_course: {
+        Args: {
+          _cohort: string
+          _course: string
+          _due: string
+          _include: boolean
+        }
+        Returns: undefined
+      }
+      set_organization_cohort_member: {
+        Args: { _cohort: string; _include: boolean; _user: string }
+        Returns: undefined
+      }
+      set_organization_member: {
+        Args: {
+          _department: string
+          _email: string
+          _expected: number
+          _job: string
+          _manager: string
+          _organization: string
+          _role: string
+        }
+        Returns: string
+      }
+      set_organization_notification_rule_schedule: {
+        Args: { _enabled: boolean; _expected: number; _rule: string }
+        Returns: number
+      }
       shares_community: { Args: { _a: string; _b: string }; Returns: boolean }
+      start_certificate_renewal: {
+        Args: { _certificate: string }
+        Returns: string
+      }
+      start_quiz_exam:
+        | {
+            Args: {
+              _expected_answers: Json
+              _expected_body: string
+              _expected_quiz: Json
+              _lesson: string
+              _selection: number[]
+              _user: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _expected_answers: Json
+              _expected_body: string
+              _expected_quiz: Json
+              _fresh: boolean
+              _lesson: string
+              _request: string
+              _selection: number[]
+              _user: string
+            }
+            Returns: Json
+          }
       studio_approve_review: {
         Args: { _course_id: string }
         Returns: undefined
@@ -3048,12 +5511,34 @@ export type Database = {
         }
         Returns: string
       }
+      studio_save_private_quiz: {
+        Args: {
+          _answers: Json
+          _lesson: string
+          _pass_mark: number
+          _questions: Json
+          _sample_size: number
+          _title: string
+        }
+        Returns: string
+      }
       studio_save_quiz: {
         Args: {
           _answers: Json
           _lesson_id: string
           _pass_mark: number
           _questions: Json
+          _title: string
+        }
+        Returns: undefined
+      }
+      studio_save_quiz_pool: {
+        Args: {
+          _answers: Json
+          _lesson_id: string
+          _pass_mark: number
+          _questions: Json
+          _sample_size: number
           _title: string
         }
         Returns: undefined
@@ -3088,6 +5573,12 @@ export type Database = {
         Args: { _course: string; _lesson: string }
         Returns: boolean
       }
+      validate_program_company_scope: {
+        Args: { _program: string; _stages: Json }
+        Returns: undefined
+      }
+      validate_program_stages: { Args: { _stages: Json }; Returns: undefined }
+      verify_certificate: { Args: { _token: string }; Returns: Json }
       written_quiz_reserve_request: {
         Args: { _user_id: string }
         Returns: number

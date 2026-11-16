@@ -1,3 +1,4 @@
+import { rpcArgs } from "@/lib/rpc-args";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -81,9 +82,9 @@ export function QuestionLibraryTools({
     if (busy || disabled) return;
     setBusy(true);
     try {
-      const { data, error } = await supabase.rpc("export_bank_questions", {
+      const { data, error } = await supabase.rpc("export_bank_questions", rpcArgs("export_bank_questions", {
         _library: scope || null,
-      });
+      }));
       if (error) throw error;
       const json = JSON.stringify(data, null, 2);
       const entries = parseQuestionBankFile(json);
@@ -123,10 +124,10 @@ export function QuestionLibraryTools({
         }))
       )
         return;
-      const { data, error } = await supabase.rpc("import_bank_questions", {
+      const { data, error } = await supabase.rpc("import_bank_questions", rpcArgs("import_bank_questions", {
         _library: scope || null,
         _entries: entries,
-      });
+      }));
       if (error) throw error;
       await qc.invalidateQueries({ queryKey: ["question-bank"] });
       toast.success(`${data} questions imported.`);
