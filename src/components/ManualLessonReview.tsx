@@ -286,8 +286,8 @@ export function ManualLessonReview(props: Props) {
                   key={method.id}
                   title={method.detail}
                   className="flex shrink-0 items-center gap-1"
-                  draggable={draggableFormat}
-                  onDragStart={draggableFormat ? event => {
+                  draggable={draggableFormat && isSelected}
+                  onDragStart={draggableFormat && isSelected ? event => {
                     event.dataTransfer.setData("application/json", JSON.stringify({ source: "method", id: method.id }));
                     event.dataTransfer.effectAllowed = "copy";
                   } : undefined}
@@ -297,7 +297,8 @@ export function ManualLessonReview(props: Props) {
                     size="sm"
                     variant={isSelected ? "secondary" : "outline"}
                     aria-pressed={isSelected}
-                    className={draggableFormat ? "cursor-grab active:cursor-grabbing" : undefined}
+                    title={draggableFormat ? (isSelected ? "Drag onto a slide" : "Switch on to drag onto a slide") : undefined}
+                    className={draggableFormat && isSelected ? "cursor-grab active:cursor-grabbing" : undefined}
                     onClick={() => props.onMethods(index, isSelected ? selected.filter(value => value !== method.id) : [...selected, method.id])}
                   >
                     {method.icon && <method.icon className="h-3.5 w-3.5" />}
@@ -325,17 +326,31 @@ export function ManualLessonReview(props: Props) {
             const renderDeliveryChip = (item: (typeof DELIVERY_FORMAT_ITEMS)[number]) => {
               const aiChosen = aiMethods[index] ?? selected;
               const wantsAi = aiChosen.includes(item.id);
+              const enabledFormats = lesson.enabledFormats ?? [];
+              const isScorm = item.id === "scorm";
+              // Attaching a package switches SCORM on by itself; other delivery mediums toggle like any other option.
+              const isSelected = isScorm ? !!lesson.scormFile : enabledFormats.includes(item.id);
+              const toggle = () => {
+                if (isScorm) { promptScormUpload(); return; }
+                props.onEdit(index, {
+                  ...lesson,
+                  enabledFormats: isSelected ? enabledFormats.filter(id => id !== item.id) : [...enabledFormats, item.id],
+                });
+              };
               return (
                 <div key={item.id} className="flex items-center gap-1">
                   <div
-                    draggable
-                    onDragStart={event => { event.dataTransfer.setData("application/json", JSON.stringify({ source: "delivery", id: item.id })); event.dataTransfer.effectAllowed = "copy"; }}
-                    onClick={item.id === "scorm" && !props.readOnly && !props.busy ? promptScormUpload : undefined}
-                    title={item.id === "scorm" ? (lesson.scormFile ? `Attached: ${lesson.scormFile.name}` : "Click to upload a SCORM package") : undefined}
-                    className={`flex h-8 items-center gap-1 rounded-md border px-3 text-xs font-medium active:cursor-grabbing ${item.id === "scorm" ? "cursor-pointer" : "cursor-grab"} ${item.id === "scorm" && lesson.scormFile ? "border-primary bg-primary/10" : "border-border bg-background"}`}
+                    role="button"
+                    tabIndex={0}
+                    draggable={isSelected}
+                    onDragStart={isSelected ? event => { event.dataTransfer.setData("application/json", JSON.stringify({ source: "delivery", id: item.id })); event.dataTransfer.effectAllowed = "copy"; } : undefined}
+                    onClick={!props.readOnly && !props.busy ? toggle : undefined}
+                    onKeyDown={!props.readOnly && !props.busy ? event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggle(); } } : undefined}
+                    title={isScorm ? (lesson.scormFile ? `Attached: ${lesson.scormFile.name}` : "Click to upload a SCORM package") : isSelected ? "Drag onto a slide" : "Switch on to drag onto a slide"}
+                    className={`flex h-8 items-center gap-1 rounded-md border px-3 text-xs font-medium ${isSelected ? "cursor-grab active:cursor-grabbing border-primary bg-primary/10" : "cursor-pointer border-border bg-background"}`}
                   >
                     <item.icon className="h-3.5 w-3.5" />{item.label}
-                    {item.id === "scorm" && lesson.scormFile && <Check className="h-3 w-3 text-primary" />}
+                    {isScorm && lesson.scormFile && <Check className="h-3 w-3 text-primary" />}
                   </div>
                   <Button
                     type="button"
@@ -343,6 +358,7 @@ export function ManualLessonReview(props: Props) {
                     variant="ghost"
                     className="h-8 w-8"
                     aria-pressed={wantsAi}
+                    disabled={!isSelected}
                     title="Generate this with AI"
                     aria-label={`Generate ${item.label} with AI`}
                     onClick={() => setAiMethods(p => ({
@@ -350,7 +366,7 @@ export function ManualLessonReview(props: Props) {
                       [index]: wantsAi ? aiChosen.filter(m => m !== item.id) : [...aiChosen, item.id],
                     }))}
                   >
-                    <Wand2 className={`h-4 w-4 ${wantsAi ? "text-primary" : "text-muted-foreground"}`} />
+                    <Wand2 className={`h-4 w-4 ${isSelected && wantsAi ? "text-primary" : "text-muted-foreground"}`} />
                   </Button>
                 </div>
               );
@@ -490,13 +506,14 @@ export function ManualLessonReview(props: Props) {
                 <div className="flex flex-wrap items-center gap-2">
                 <Button
                   size="sm"
-                  variant="outline"
                   aria-expanded={expanded === index}
                   disabled={props.readOnly || props.suggestLoading !== null || lesson.body.length < 100}
                   onClick={() => {
-                    const opening = expanded !== index;
-                    setExpanded(opening ? index : null);
-                    if (opening && !aiMethods[index]) setAiMethods((p) => ({ ...p, [index]: selected }));
+                    setExpanded(index);
+                    const aiChosen = aiMethods[index] ?? selected;
+                    if (!aiMethods[index]) setAiMethods((p) => ({ ...p, [index]: selected }));
+                    const methodsToGenerate = aiChosen.filter((id) => props.methods.some((m) => m.id === id));
+                    if (methodsToGenerate.length) props.onSuggest(index, lesson, methodsToGenerate);
                   }}
                 >
                   <Sparkles className="h-4 w-4" />
@@ -558,27 +575,10 @@ export function ManualLessonReview(props: Props) {
                 The <Wand2 className="inline h-3 w-3 align-text-bottom" /> toggle on each option above picks what the AI generates; the rest you write yourself.
               </p>
             )}
-            <Button
-              size="sm"
-              disabled={props.readOnly || props.suggestLoading !== null || !(aiMethods[index] ?? selected).length}
-              onClick={() => props.onSuggest(index, lesson, aiMethods[index] ?? selected)}
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              {props.suggestLoading === index ? "Generating…" : "Generate"}
-            </Button>
             <div className="space-y-3">
-              {props.methods.map((method) => {
+              {props.methods.filter((method) => selected.includes(method.id)).map((method) => {
                 const s = props.suggestions[index];
-                const isSelected = selected.includes(method.id);
                 const wantsAi = (aiMethods[index] ?? selected).includes(method.id);
-                if (!isSelected) {
-                  return (
-                    <div key={method.id} className="space-y-1 rounded-md border border-dashed border-border p-2">
-                      <p className="text-xs font-medium text-muted-foreground">{method.label}</p>
-                      <p className="text-xs text-muted-foreground">Not selected — tick it above for an AI suggestion, or write this yourself.</p>
-                    </div>
-                  );
-                }
                 if (!wantsAi) {
                   return (
                     <div key={method.id} className="space-y-1 rounded-md border border-dashed border-border p-2">

@@ -20,6 +20,8 @@ export type DraftLesson = {
   slideKinds?: { source: "delivery" | "method"; id: string }[][];
   /** A trainer-uploaded SCORM package to use as this lesson's content (review stage only — not yet carried through to the published lesson). */
   scormFile?: { url: string; name: string } | null;
+  /** Delivery-medium ids (e.g. "reading") the trainer has switched on for this lesson; only an enabled format can be dragged onto a slide. */
+  enabledFormats?: string[];
 };
 export type DraftCourse = {
   title: string;
