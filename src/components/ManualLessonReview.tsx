@@ -42,6 +42,37 @@ const DELIVERY_KINDS: { kind: NonNullable<DraftLesson["kind"]>; label: string; i
   { kind: "video", label: "Video", icon: Video },
   { kind: "scorm", label: "SCORM", icon: Package },
 ];
+type SlideSubKind = NonNullable<DraftLesson["slideKinds"]>[number];
+const SLIDE_SUB_KINDS: { kind: SlideSubKind; label: string; icon: LucideIcon }[] = [
+  { kind: "reading", label: "Reading", icon: FileText },
+  { kind: "video", label: "Video", icon: Video },
+  { kind: "scorm", label: "SCORM", icon: Package },
+];
+function resizeSlideKinds(current: SlideSubKind[], count: number): SlideSubKind[] {
+  const next = Math.max(1, Math.min(20, count));
+  const copy = current.slice(0, next);
+  while (copy.length < next) copy.push("reading");
+  return copy;
+}
+const SOURCE_WORD = /[a-z0-9]{4,}/g;
+/** Share of the generated suggestion's own words that also appear in the lesson's source text —
+ * a measured overlap, not an AI self-rating, so it can't be inflated by the model's own confidence. */
+function groundingConfidence(suggestion: MethodSuggestions | undefined, sourceText: string): number | null {
+  if (!suggestion) return null;
+  const parts: string[] = [];
+  if (suggestion.illustrated) parts.push(suggestion.illustrated);
+  if (suggestion.visual) parts.push(suggestion.visual);
+  if (suggestion.videoQueries) parts.push(...suggestion.videoQueries);
+  if (suggestion.steps) parts.push(...suggestion.steps);
+  if (suggestion.scenarios) parts.push(...suggestion.scenarios);
+  if (suggestion.quiz) parts.push(suggestion.quiz.question, ...suggestion.quiz.options, suggestion.quiz.sourceQuote);
+  if (suggestion.activities) parts.push(suggestion.activities);
+  const generatedWords = parts.join(" ").toLowerCase().match(SOURCE_WORD) ?? [];
+  if (!generatedWords.length) return null;
+  const sourceWords = new Set(sourceText.toLowerCase().match(SOURCE_WORD) ?? []);
+  const matched = generatedWords.filter(word => sourceWords.has(word)).length;
+  return Math.round((matched / generatedWords.length) * 100);
+}
 
 /** Preview-only media picker for a draft lesson: click/drop an image or video, uploaded to a
  * public bucket under the trainer's own folder. Not yet carried through to the published lesson —
@@ -229,6 +260,8 @@ export function ManualLessonReview(props: Props) {
             };
             const trainingFormatMethods = props.methods.filter(m => TRAINING_FORMAT_METHOD_IDS.includes(m.id));
             const testLearningMethods = props.methods.filter(m => !TRAINING_FORMAT_METHOD_IDS.includes(m.id));
+            const deliveryKind = lesson.kind ?? "slide";
+            const slideKinds = lesson.slideKinds ?? ["reading", "reading", "reading"];
             return (
               <>
                 <fieldset disabled={props.readOnly || props.busy} className="mt-4 space-y-2">
@@ -239,8 +272,8 @@ export function ManualLessonReview(props: Props) {
                         key={kind}
                         type="button"
                         size="sm"
-                        variant={(lesson.kind ?? "reading") === kind ? "secondary" : "outline"}
-                        aria-pressed={(lesson.kind ?? "reading") === kind}
+                        variant={deliveryKind === kind ? "secondary" : "outline"}
+                        aria-pressed={deliveryKind === kind}
                         onClick={() => props.onEdit(index, { ...lesson, kind })}
                       >
                         <Icon className="h-3.5 w-3.5" />
@@ -249,6 +282,50 @@ export function ManualLessonReview(props: Props) {
                     ))}
                     {trainingFormatMethods.map(renderMethodToggle)}
                   </div>
+                  {deliveryKind === "slide" && (
+                    <div className="space-y-2 rounded-md border border-border bg-muted/30 p-2">
+                      <label className="flex items-center gap-2 text-xs font-medium">
+                        Number of slides
+                        <Input
+                          type="number"
+                          min={1}
+                          max={20}
+                          value={slideKinds.length}
+                          disabled={props.readOnly || props.busy}
+                          onChange={event => props.onEdit(index, { ...lesson, kind: "slide", slideKinds: resizeSlideKinds(slideKinds, Number(event.target.value) || 1) })}
+                          className="h-7 w-16 text-xs"
+                        />
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {slideKinds.map((sub, si) => {
+                          const Icon = SLIDE_SUB_KINDS.find(s => s.kind === sub)?.icon ?? FileText;
+                          return (
+                            <div key={si} className="flex w-20 flex-col items-center gap-1 rounded-md border border-border bg-background p-2">
+                              <span className="text-[10px] text-muted-foreground">Slide {si + 1}</span>
+                              <Icon className="h-5 w-5 text-primary" />
+                              <select
+                                aria-label={`Slide ${si + 1} medium`}
+                                value={sub}
+                                disabled={props.readOnly || props.busy}
+                                onChange={event =>
+                                  props.onEdit(index, {
+                                    ...lesson,
+                                    kind: "slide",
+                                    slideKinds: slideKinds.map((s, i) => (i === si ? (event.target.value as SlideSubKind) : s)),
+                                  })
+                                }
+                                className="w-full rounded border border-input bg-background px-1 py-0.5 text-[10px]"
+                              >
+                                {SLIDE_SUB_KINDS.map(({ kind, label }) => (
+                                  <option key={kind} value={kind}>{label}</option>
+                                ))}
+                              </select>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </fieldset>
                 <fieldset disabled={props.readOnly || props.busy} className="mt-4 space-y-2 border-t border-border pt-3">
                   <legend className="text-xs font-semibold text-muted-foreground">Knowledge check</legend>
@@ -261,8 +338,15 @@ export function ManualLessonReview(props: Props) {
             const needsGeneration = (aiMethods[index] ?? selected).length > 0;
             const generated = !!props.suggestions[index];
             const readyToReview = !needsGeneration || generated;
+            const confidence = generated ? groundingConfidence(props.suggestions[index], lesson.body) : null;
             return (
-              <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-border pt-3">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+                {confidence != null ? (
+                  <p className="text-xs text-muted-foreground" title="Share of the generated content's own words that were found in this lesson's source text">
+                    {confidence}% grounded in source
+                  </p>
+                ) : <span />}
+                <div className="flex flex-wrap items-center gap-2">
                 <Button
                   size="sm"
                   variant="outline"
@@ -283,6 +367,7 @@ export function ManualLessonReview(props: Props) {
                     <Button size="sm" variant={props.approved[index] ? "secondary" : "outline"} disabled={props.readOnly || props.busy || !selected.length || !lesson.title.trim()} onClick={() => props.onApprove(index, lesson)}><Check className="h-4 w-4" />{props.approved[index] ? "Reopen" : "Approve"}</Button>
                   </>
                 )}
+                </div>
               </div>
             );
           })()}

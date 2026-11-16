@@ -14,8 +14,10 @@ export type DraftLesson = {
   /** Trainer-uploaded preview media (review stage only — not yet carried through to the published lesson). */
   mediaUrl?: string | null;
   mediaKind?: "image" | "video" | null;
-  /** Training format this lesson imports as; defaults to "reading" when unset. */
+  /** Training format this lesson imports as; defaults to "slide" when unset. */
   kind?: "reading" | "slide" | "video" | "scorm";
+  /** When kind is "slide", the medium of each slide in order; defaults to three Reading slides when unset. */
+  slideKinds?: ("reading" | "video" | "scorm")[];
 };
 export type DraftCourse = {
   title: string;

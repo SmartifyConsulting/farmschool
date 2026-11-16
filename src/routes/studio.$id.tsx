@@ -489,7 +489,7 @@ function Editor() {
   const [sourceName, setSourceName] = useState("Training manual");
   const [draft, setDraft] = useState<DraftCourse | null>(null);
   const [importing, setImporting] = useState(false);
-  const [manualFormat, setManualFormat] = useState<"reading" | "slide">("reading");
+  const [manualFormat, setManualFormat] = useState<"reading" | "slide">("slide");
   const [readingFile, setReadingFile] = useState(false);
   const [localOcr, setLocalOcr] = useState(false);
   const [extractionProgress, setExtractionProgress] = useState("");
