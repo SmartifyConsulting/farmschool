@@ -1003,7 +1003,7 @@ function Editor() {
     },
     {
       id: "visual",
-      label: "Visual identification",
+      label: "Identify",
       detail: "Identify equipment, crops, symptoms or animals",
       icon: Eye,
     },
@@ -2574,7 +2574,6 @@ function Editor() {
             {screen === "import" && designTab === "auto" && (
               <div className="min-w-0 space-y-6">
                 <section className="space-y-3 border-b border-border pb-6">
-                  <h2 className="font-semibold">Build from a manual</h2>
                   <nav aria-label="Course Factory steps" className="flex flex-wrap gap-2">
                     {["Upload", "Review & approve", "Generate & import"].map((label, i) => {
                       const reachable = i === 0 || (i === 1 && !!sourceText.trim()) || (i === 2 && !!draft);
@@ -2656,6 +2655,7 @@ function Editor() {
                       <div className="flex flex-wrap items-center gap-2">
                         <Button
                           type="button"
+                          size="sm"
                           variant="outline"
                           onClick={() => {
                             previewSource();
@@ -2667,6 +2667,7 @@ function Editor() {
                         </Button>
                         <Button
                           type="button"
+                          size="sm"
                           variant="outline"
                           onClick={generateOutlineWithAI}
                           disabled={!sourceText.trim() || aiOutlineLoading}
@@ -2782,43 +2783,46 @@ function Editor() {
                   {factoryStep === 1 &&
                     (draft ? (
                       <div className="space-y-5">
-                        <div className="flex flex-wrap items-end gap-3 border-b border-border pb-4">
-                          <label className="space-y-1 text-xs font-medium">
-                            <span className="block">First content page</span>
-                            <Input
-                              type="number"
-                              min={1}
-                              max={sourcePages?.at(-1)?.page ?? 500}
-                              value={firstContentPage}
-                              aria-label="First content page"
-                              className="w-24"
-                              disabled={course.published}
-                              onChange={(event) =>
-                                setFirstContentPage(Math.max(1, Number(event.target.value) || 1))
-                              }
-                            />
-                          </label>
-                          <Button
-                            variant="outline"
-                            disabled={course.published || !sourceText.trim()}
-                            onClick={async () => {
-                              if (
-                                await confirm({
-                                  title: "Rebuild the outline?",
-                                  description:
-                                    "This replaces your outline edits and approvals. Your original source and saved course lessons stay unchanged.",
-                                  confirmLabel: "Rebuild outline",
-                                })
-                              )
-                                previewSource();
-                            }}
-                          >
-                            Rebuild outline
-                          </Button>
-                        </div>
                         <ManualLessonReview
                           draft={draft}
                           illustrationGuide={form.illustration_guide}
+                          extraControls={
+                            <div className="flex flex-wrap items-end gap-3 border-b border-border pb-4">
+                              <label className="space-y-1 text-xs font-medium">
+                                <span className="block">First content page</span>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  max={sourcePages?.at(-1)?.page ?? 500}
+                                  value={firstContentPage}
+                                  aria-label="First content page"
+                                  className="w-24"
+                                  disabled={course.published}
+                                  onChange={(event) =>
+                                    setFirstContentPage(Math.max(1, Number(event.target.value) || 1))
+                                  }
+                                />
+                              </label>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={course.published || !sourceText.trim()}
+                                onClick={async () => {
+                                  if (
+                                    await confirm({
+                                      title: "Rebuild the outline?",
+                                      description:
+                                        "This replaces your outline edits and approvals. Your original source and saved course lessons stay unchanged.",
+                                      confirmLabel: "Rebuild outline",
+                                    })
+                                  )
+                                    previewSource();
+                                }}
+                              >
+                                Rebuild outline
+                              </Button>
+                            </div>
+                          }
                           readOnly={course.published}
                           busy={
                             designSyncing || designLoading !== null || batchRunning || aiLoading

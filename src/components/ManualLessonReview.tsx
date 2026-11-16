@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowDownToLine, Scissors, Trash2, Check, Wand2, Sparkles, FolderOpen, FileText, LayoutGrid, Video, Package, Image as ImageIcon, Loader2, Plus, X, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -151,6 +151,8 @@ type Props = {
   focusToken?: number;
   /** The course-level illustration style/characters, decided once in Course details — shown here for reference only; edit it there to keep every lesson's illustrations consistent. */
   illustrationGuide: IllustrationGuide;
+  /** Extra controls (e.g. "First content page" / "Rebuild outline") rendered just under the summary line. */
+  extraControls?: ReactNode;
 };
 
 export function ManualLessonReview(props: Props) {
@@ -188,6 +190,7 @@ export function ManualLessonReview(props: Props) {
       <h3 className="font-semibold">Detected outline</h3>
       <p className="text-xs text-muted-foreground">{moduleCount ? `${moduleCount} modules · ` : ""}{props.draft.lessons.length} lessons · {pageCount} source pages · {Object.values(props.approved).filter(Boolean).length} approved</p>
     </div>
+    {props.extraControls}
     {props.draft.warnings.length > 0 && <details className="border-l-2 border-border pl-3 text-xs text-muted-foreground"><summary className="cursor-pointer">Source notes ({props.draft.warnings.length})</summary>{props.draft.warnings.map((warning, index) => <p key={index} className="mt-2">{warning}</p>)}</details>}
     <div className="min-w-0 flex-1 space-y-4">
     {groups.length > 1 && <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
@@ -267,12 +270,6 @@ export function ManualLessonReview(props: Props) {
                       <Wand2 className={`h-4 w-4 ${isSelected && wantsAi ? "text-primary" : "text-muted-foreground"}`} />
                     </Button>
                   )}
-                  {method.id === "illustrated" && isSelected && (
-                    <span className="text-xs text-muted-foreground" title="Set once in Course details so every lesson's illustrations stay consistent">
-                      Course style: {props.illustrationGuide.style}
-                      {props.illustrationGuide.characters.length > 0 && ` · Characters: ${props.illustrationGuide.characters.map(c => c.name).join(", ")}`}
-                    </span>
-                  )}
                 </div>
               );
             };
@@ -317,7 +314,7 @@ export function ManualLessonReview(props: Props) {
                             updateSlides(slides.map((f, i) => (i === si ? (f.some(x => x.source === ref.source && x.id === ref.id) ? f : [...f, ref]) : f)));
                           } catch { /* ignore a non-format drop */ }
                         }}
-                        className="relative flex h-28 w-24 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border bg-background p-2"
+                        className="relative flex min-h-28 w-24 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border bg-background p-2 pt-5"
                       >
                         <span className="absolute left-1.5 top-1 text-[10px] text-muted-foreground">Slide {si + 1}</span>
                         {!props.readOnly && !props.busy && (
@@ -326,16 +323,18 @@ export function ManualLessonReview(props: Props) {
                           </button>
                         )}
                         {formats.length ? (
-                          <div className="mt-3 flex flex-wrap items-center justify-center gap-1">
+                          <div className="mt-3 flex w-full flex-col items-stretch gap-1 px-1">
                             {formats.map(ref => {
                               const meta = formatMeta(ref);
                               const Icon = meta?.icon ?? FileText;
+                              const label = meta?.label ?? ref.id;
                               return (
-                                <span key={`${ref.source}:${ref.id}`} title={meta?.label ?? ref.id} className="flex items-center gap-0.5 rounded bg-secondary px-1 py-0.5">
-                                  <Icon className="h-4 w-4 text-secondary-foreground" />
+                                <span key={`${ref.source}:${ref.id}`} className="flex items-center gap-1 rounded bg-secondary px-1 py-0.5">
+                                  <Icon className="h-3.5 w-3.5 shrink-0 text-secondary-foreground" />
+                                  <span className="flex-1 truncate text-left text-[10px] text-secondary-foreground">{label}</span>
                                   {!props.readOnly && !props.busy && (
-                                    <button type="button" aria-label={`Remove ${meta?.label ?? ref.id} from slide ${si + 1}`} onClick={() => updateSlides(slides.map((f, i) => (i === si ? f.filter(x => !(x.source === ref.source && x.id === ref.id)) : f)))}>
-                                      <X className="h-2.5 w-2.5 text-secondary-foreground" />
+                                    <button type="button" aria-label={`Remove ${label} from slide ${si + 1}`} onClick={() => updateSlides(slides.map((f, i) => (i === si ? f.filter(x => !(x.source === ref.source && x.id === ref.id)) : f)))}>
+                                      <X className="h-2.5 w-2.5 shrink-0 text-secondary-foreground" />
                                     </button>
                                   )}
                                 </span>
@@ -355,6 +354,12 @@ export function ManualLessonReview(props: Props) {
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground">Drag a format below onto a slide — a slide can hold more than one.</p>
+                  {selected.includes("illustrated") && (
+                    <p className="text-xs text-muted-foreground" title="Set once in Course details so every lesson's illustrations stay consistent">
+                      Illustrated explanation uses the course style: {props.illustrationGuide.style}
+                      {props.illustrationGuide.characters.length > 0 && ` · Characters: ${props.illustrationGuide.characters.map(c => c.name).join(", ")}`}
+                    </p>
+                  )}
                   <div className="flex flex-wrap items-center gap-2">
                     {DELIVERY_FORMAT_ITEMS.filter(d => d.position === "before").map(({ id, label, icon: Icon }) => (
                       <div
