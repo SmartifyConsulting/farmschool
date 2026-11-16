@@ -169,7 +169,6 @@ function splitIntoSlides(text: string, count: number): string[] {
 }
 
 export function ManualLessonReview(props: Props) {
-  const [expanded, setExpanded] = useState<number | null>(null);
   const [splitting, setSplitting] = useState<number | null>(null);
   const [splitAt, setSplitAt] = useState<number | null>(null);
   const [slideEdits, setSlideEdits] = useState<Record<number, string[]>>({});
@@ -178,6 +177,8 @@ export function ManualLessonReview(props: Props) {
   const [activeGroup, setActiveGroup] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
   const [collapsedLessons, setCollapsedLessons] = useState<Set<number>>(() => new Set());
+  const [approvedSlides, setApprovedSlides] = useState<Record<number, Set<number>>>({});
+  const [previewingSlides, setPreviewingSlides] = useState<Record<number, Set<number>>>({});
   const moduleCount = new Set(props.draft.lessons.map(lesson => lesson.module).filter(Boolean)).size;
   const pageCount = new Set(props.draft.lessons.flatMap(lesson => lesson.sourceRefs.map(ref => `${ref.sourceId}:${ref.page}`))).size;
   const groups: { label: string; start: number; end: number }[] = [];
@@ -542,10 +543,8 @@ export function ManualLessonReview(props: Props) {
                 <div className="flex flex-wrap items-center gap-2">
                 <Button
                   size="sm"
-                  aria-expanded={expanded === index}
                   disabled={props.readOnly || props.suggestLoading !== null || lesson.body.length < 100}
                   onClick={() => {
-                    setExpanded(index);
                     const aiChosen = aiMethods[index] ?? selected;
                     if (!aiMethods[index]) setAiMethods((p) => ({ ...p, [index]: selected }));
                     const methodsToGenerate = aiChosen.filter((id) => props.methods.some((m) => m.id === id));
@@ -571,26 +570,48 @@ export function ManualLessonReview(props: Props) {
             const slideTexts = slideEdits[index] ?? splitIntoSlides(preview.lessonSummary, slides.length);
             return <div className="mt-4 space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
               <p className="text-xs font-semibold text-primary">AI-generated page preview — adjust each slide, then commit it to the course</p>
-              {lesson.mediaUrl && (
-                <div className="max-w-xs overflow-hidden rounded bg-muted">
-                  {lesson.mediaKind === "video" ? <video src={lesson.mediaUrl} className="h-24 w-full object-cover" muted /> : <img src={lesson.mediaUrl} alt="" className="h-24 w-full object-cover" />}
+              {selected.includes("illustrated") && (
+                <div className="max-w-xs space-y-1">
+                  {lesson.mediaUrl && (
+                    <div className="overflow-hidden rounded bg-muted">
+                      {lesson.mediaKind === "video" ? <video src={lesson.mediaUrl} className="h-24 w-full object-cover" muted /> : <img src={lesson.mediaUrl} alt="" className="h-24 w-full object-cover" />}
+                    </div>
+                  )}
+                  <MediaPicker lesson={lesson} disabled={props.readOnly || props.busy} onChange={(mediaUrl, mediaKind) => props.onEdit(index, { ...lesson, mediaUrl, mediaKind })} />
                 </div>
               )}
               {lesson.kind === "slide" ? (
                 <div className="space-y-3">
-                  {slideTexts.map((text, si) => (
-                    <div key={si} className="space-y-1 rounded-md border border-border bg-background p-3">
-                      <p className="text-xs font-semibold text-muted-foreground">Slide {si + 1}</p>
-                      <Textarea
-                        aria-label={`Slide ${si + 1} content`}
-                        value={text}
-                        rows={autoRows(text, 2)}
-                        disabled={props.readOnly || props.busy}
-                        onChange={event => setSlideEdits(p => ({ ...p, [index]: slideTexts.map((t, i) => (i === si ? event.target.value : t)) }))}
-                        className="resize-none text-sm"
-                      />
-                    </div>
-                  ))}
+                  {slideTexts.map((text, si) => {
+                    const slideApproved = approvedSlides[index]?.has(si) ?? false;
+                    const slidePreviewing = previewingSlides[index]?.has(si) ?? false;
+                    const toggleSet = (setter: typeof setApprovedSlides) => setter(p => {
+                      const next = new Set(p[index] ?? []);
+                      if (next.has(si)) next.delete(si); else next.add(si);
+                      return { ...p, [index]: next };
+                    });
+                    return (
+                      <div key={si} className="space-y-2 rounded-md border border-border bg-background p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-xs font-semibold text-muted-foreground">Slide {si + 1}{slideApproved && " · Approved"}</p>
+                          <div className="flex items-center gap-1">
+                            <Button size="sm" variant="ghost" disabled={props.readOnly || props.busy} onClick={() => toggleSet(setPreviewingSlides)}>{slidePreviewing ? "Edit" : "Preview"}</Button>
+                            <Button size="sm" variant={slideApproved ? "secondary" : "outline"} disabled={props.readOnly || props.busy} onClick={() => toggleSet(setApprovedSlides)}><Check className="h-3.5 w-3.5" />{slideApproved ? "Reopen" : "Approve"}</Button>
+                          </div>
+                        </div>
+                        {slidePreviewing ? <FormattedLesson content={text} /> : (
+                          <Textarea
+                            aria-label={`Slide ${si + 1} content`}
+                            value={text}
+                            rows={autoRows(text, 2)}
+                            disabled={props.readOnly || props.busy}
+                            onChange={event => setSlideEdits(p => ({ ...p, [index]: slideTexts.map((t, i) => (i === si ? event.target.value : t)) }))}
+                            className="resize-none text-sm"
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : <FormattedLesson content={preview.lessonSummary} />}
               {preview.questions.map((q, i) => (
@@ -608,7 +629,14 @@ export function ManualLessonReview(props: Props) {
               <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-3">
                 <Button size="sm" variant="outline" onClick={() => void exportLessonScorm()}><Package className="h-4 w-4" />Export SCORM</Button>
                 <Button size="sm" variant="outline" onClick={() => void saveLessonToLibrary()}><Library className="h-4 w-4" />Save to Content Library</Button>
-                <Button size="sm" disabled={props.readOnly || props.busy} onClick={() => props.onCommit(index, lesson, slideTexts, preview)}><Check className="h-4 w-4" />Commit to course</Button>
+                <Button
+                  size="sm"
+                  disabled={props.readOnly || props.busy || (lesson.kind === "slide" && !slideTexts.every((_, si) => approvedSlides[index]?.has(si)))}
+                  title={lesson.kind === "slide" ? "Approve every slide above first" : undefined}
+                  onClick={() => props.onCommit(index, lesson, slideTexts, preview)}
+                >
+                  <Check className="h-4 w-4" />Commit to course
+                </Button>
               </div>
             </div>;
           })()}
@@ -624,92 +652,6 @@ export function ManualLessonReview(props: Props) {
                   : <button type="button" onClick={() => { setSplitAt(pi); setSplitTitle(paragraph.length <= 90 && !/[.!?]$/.test(paragraph) ? paragraph : `${lesson.title.slice(0, 105)} — part 2`); }} className="group my-1 flex w-full items-center gap-2 text-xs text-muted-foreground hover:text-primary"><span className="h-px flex-1 bg-border group-hover:bg-primary" /><Scissors className="h-3 w-3" />Split here<span className="h-px flex-1 bg-border group-hover:bg-primary" /></button>)}
                 <p className="whitespace-pre-line text-sm leading-relaxed">{paragraph}</p>
               </div>)}
-            </div>
-          </div>}
-          {expanded === index && <div className="mt-4 space-y-3 border-t border-border pt-4">
-            {props.rationale[index] && <p className="text-xs text-muted-foreground">{props.rationale[index]}</p>}
-            {!!selected.length && (
-              <p className="text-xs text-muted-foreground">
-                The <Wand2 className="inline h-3 w-3 align-text-bottom" /> toggle on each option above picks what the AI generates; the rest you write yourself.
-              </p>
-            )}
-            <div className="space-y-3">
-              {props.methods.filter((method) => selected.includes(method.id)).map((method) => {
-                const s = props.suggestions[index];
-                const wantsAi = (aiMethods[index] ?? selected).includes(method.id);
-                if (!wantsAi) {
-                  return (
-                    <div key={method.id} className="space-y-1 rounded-md border border-dashed border-border p-2">
-                      <p className="text-xs font-medium text-muted-foreground">{method.label}</p>
-                      <p className="text-xs text-muted-foreground">You've chosen to write this one yourself.</p>
-                    </div>
-                  );
-                }
-                if (props.suggestLoading === index || !s) {
-                  return (
-                    <div key={method.id} className="space-y-1">
-                      <p className="text-xs font-medium">{method.label}</p>
-                      <p className="text-xs text-muted-foreground">{props.suggestLoading === index ? "Generating…" : "Click \"Generate\" above."}</p>
-                    </div>
-                  );
-                }
-                if (method.id === "illustrated" || method.id === "visual") {
-                  const caption = method.id === "illustrated" ? s.illustrated : s.visual;
-                  return (
-                    <div key={method.id} className="max-w-xs space-y-1">
-                      <p className="text-xs font-medium">{method.label}</p>
-                      {caption && <p className="text-xs text-muted-foreground">{caption}</p>}
-                      <MediaPicker lesson={lesson} disabled={props.readOnly || props.busy} onChange={(mediaUrl, mediaKind) => props.onEdit(index, { ...lesson, mediaUrl, mediaKind })} />
-                    </div>
-                  );
-                }
-                if (method.id === "video") {
-                  return (
-                    <div key={method.id} className="space-y-1">
-                      <p className="text-xs font-medium">{method.label} — suggested searches</p>
-                      {s.videoQueries?.length ? (
-                        <ul className="list-disc space-y-0.5 pl-4 text-xs">
-                          {s.videoQueries.map((q, i) => <li key={i}><a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`} target="_blank" rel="noreferrer" className="text-primary underline">{q}</a></li>)}
-                        </ul>
-                      ) : <p className="text-xs text-muted-foreground">No suggestions returned.</p>}
-                    </div>
-                  );
-                }
-                if (method.id === "steps") {
-                  return (
-                    <div key={method.id} className="space-y-1">
-                      <p className="text-xs font-medium">{method.label}</p>
-                      {s.steps?.length ? <ol className="list-decimal space-y-0.5 pl-4 text-xs text-muted-foreground">{s.steps.map((step, i) => <li key={i}>{step}</li>)}</ol> : <p className="text-xs text-muted-foreground">No suggestions returned.</p>}
-                    </div>
-                  );
-                }
-                if (method.id === "scenario") {
-                  return (
-                    <div key={method.id} className="space-y-1">
-                      <p className="text-xs font-medium">{method.label}</p>
-                      {s.scenarios?.length ? s.scenarios.map((sc, i) => <p key={i} className="text-xs text-muted-foreground">{sc}</p>) : <p className="text-xs text-muted-foreground">No suggestions returned.</p>}
-                    </div>
-                  );
-                }
-                if (method.id === "quiz") {
-                  return (
-                    <div key={method.id} className="space-y-1">
-                      <p className="text-xs font-medium">{method.label}</p>
-                      {s.quiz ? <>
-                        <p className="text-xs">{s.quiz.question}</p>
-                        {s.quiz.options.map((option, j) => <p key={j} className="text-xs text-muted-foreground">{j === s.quiz!.correctIndex ? "✓ " : "○ "}{option}</p>)}
-                        <p className="text-xs italic text-muted-foreground">Source quote: {s.quiz.sourceQuote}</p>
-                      </> : <p className="text-xs text-muted-foreground">No suggestion returned.</p>}
-                    </div>
-                  );
-                }
-                return (
-                  <div key={method.id} className="space-y-1">
-                    <p className="text-xs font-medium">{method.label}</p>
-                    {s.activities ? <p className="text-xs text-muted-foreground">{s.activities}</p> : <p className="text-xs text-muted-foreground">No suggestion returned.</p>}
-                  </div>
-                );
-              })}
             </div>
           </div>}
           </>}
