@@ -973,7 +973,7 @@ function Editor() {
   const learningMethods = [
     {
       id: "illustrated",
-      label: "Illustrated explanation",
+      label: "Illustration",
       detail: "Explain key ideas with diagrams and examples",
       icon: Image,
     },

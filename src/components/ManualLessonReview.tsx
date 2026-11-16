@@ -342,27 +342,27 @@ export function ManualLessonReview(props: Props) {
                             updateSlides(slides.map((f, i) => (i === si ? (f.some(x => x.source === ref.source && x.id === ref.id) ? f : [...f, ref]) : f)));
                           } catch { /* ignore a non-format drop */ }
                         }}
-                        className="relative flex min-h-28 w-24 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border bg-background p-2 pt-5"
+                        className="relative flex min-h-32 w-36 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border bg-background p-2 pt-6"
                       >
-                        <span className="absolute left-1.5 top-1 text-[10px] text-muted-foreground">Slide {si + 1}</span>
+                        <span className="absolute left-2 top-1.5 text-xs text-muted-foreground">Slide {si + 1}</span>
                         {!props.readOnly && !props.busy && (
-                          <button type="button" aria-label={`Delete slide ${si + 1}`} onClick={() => updateSlides(slides.filter((_, i) => i !== si))} className="absolute right-1 top-1 text-muted-foreground hover:text-destructive">
-                            <X className="h-3 w-3" />
+                          <button type="button" aria-label={`Delete slide ${si + 1}`} onClick={() => updateSlides(slides.filter((_, i) => i !== si))} className="absolute right-1.5 top-1.5 text-muted-foreground hover:text-destructive">
+                            <X className="h-3.5 w-3.5" />
                           </button>
                         )}
                         {formats.length ? (
-                          <div className="mt-3 flex w-full flex-col items-stretch gap-1 px-1">
+                          <div className="mt-3 flex w-full flex-col items-stretch gap-1.5 px-1">
                             {formats.map(ref => {
                               const meta = formatMeta(ref);
                               const Icon = meta?.icon ?? FileText;
                               const label = meta?.label ?? ref.id;
                               return (
-                                <span key={`${ref.source}:${ref.id}`} className="flex items-center gap-1 rounded bg-secondary px-1 py-0.5">
-                                  <Icon className="h-3.5 w-3.5 shrink-0 text-secondary-foreground" />
-                                  <span className="flex-1 truncate text-left text-[10px] text-secondary-foreground">{label}</span>
+                                <span key={`${ref.source}:${ref.id}`} className="flex items-center gap-1.5 rounded bg-secondary px-1.5 py-1">
+                                  <Icon className="h-5 w-5 shrink-0 text-secondary-foreground" />
+                                  <span className="flex-1 truncate text-left text-xs text-secondary-foreground">{label}</span>
                                   {!props.readOnly && !props.busy && (
                                     <button type="button" aria-label={`Remove ${label} from slide ${si + 1}`} onClick={() => updateSlides(slides.map((f, i) => (i === si ? f.filter(x => !(x.source === ref.source && x.id === ref.id)) : f)))}>
-                                      <X className="h-2.5 w-2.5 shrink-0 text-secondary-foreground" />
+                                      <X className="h-3 w-3 shrink-0 text-secondary-foreground" />
                                     </button>
                                   )}
                                 </span>
@@ -370,14 +370,14 @@ export function ManualLessonReview(props: Props) {
                             })}
                           </div>
                         ) : (
-                          <FileText className="mt-3 h-5 w-5 text-muted-foreground" />
+                          <FileText className="mt-3 h-7 w-7 text-muted-foreground" />
                         )}
                       </div>
                     ))}
                     {!props.readOnly && !props.busy && slides.length < MAX_SLIDES && (
-                      <button type="button" onClick={() => updateSlides([...slides, []])} className="flex h-28 w-24 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary">
-                        <Plus className="h-5 w-5" />
-                        <span className="text-[10px]">Add slide</span>
+                      <button type="button" onClick={() => updateSlides([...slides, []])} className="flex min-h-32 w-36 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary">
+                        <Plus className="h-7 w-7" />
+                        <span className="text-xs">Add slide</span>
                       </button>
                     )}
                   </div>
