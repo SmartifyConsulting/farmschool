@@ -233,7 +233,7 @@ export function ManualLessonReview(props: Props) {
               <>
                 <fieldset disabled={props.readOnly || props.busy} className="mt-4 space-y-2">
                   <legend className="text-xs font-semibold text-muted-foreground">Training format</legend>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap items-center gap-2">
                     {DELIVERY_KINDS.map(({ kind, label, icon: Icon }) => (
                       <Button
                         key={kind}
@@ -247,8 +247,8 @@ export function ManualLessonReview(props: Props) {
                         {label}
                       </Button>
                     ))}
+                    {trainingFormatMethods.map(renderMethodToggle)}
                   </div>
-                  <div className="flex flex-wrap gap-2">{trainingFormatMethods.map(renderMethodToggle)}</div>
                 </fieldset>
                 <fieldset disabled={props.readOnly || props.busy} className="mt-4 space-y-2 border-t border-border pt-3">
                   <legend className="text-xs font-semibold text-muted-foreground">Knowledge check</legend>
