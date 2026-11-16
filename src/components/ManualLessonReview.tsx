@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ArrowDownToLine, Scissors, Trash2, ChevronDown, Check, Wand2, Sparkles, FolderOpen, Image as ImageIcon, Loader2, X } from "lucide-react";
+import { ArrowDownToLine, Scissors, Trash2, ChevronDown, Check, Wand2, Sparkles, FolderOpen, Image as ImageIcon, Loader2, X, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,7 +86,7 @@ type Props = {
   draft: DraftCourse;
   readOnly: boolean;
   busy: boolean;
-  methods: { id: string; label: string; detail: string }[];
+  methods: { id: string; label: string; detail: string; icon?: LucideIcon }[];
   choices: (index: number, title: string, body: string) => string[];
   approved: Record<number, boolean>;
   rationale: Record<number, string>;
@@ -179,7 +179,7 @@ export function ManualLessonReview(props: Props) {
             <Button size="sm" variant="outline" disabled={props.readOnly || props.busy} onClick={() => props.onEdit(index, { ...lesson, body: reflowText(lesson.body) })}><Wand2 className="h-4 w-4" />Polish</Button>
           </div>
           <fieldset disabled={props.readOnly || props.busy} className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
-            {props.methods.map(method => <label key={method.id} title={method.detail} className="flex items-center gap-2 text-xs"><input type="checkbox" checked={selected.includes(method.id)} onChange={event => props.onMethods(index, event.target.checked ? [...selected, method.id] : selected.filter(value => value !== method.id))} />{method.label}</label>)}
+            {props.methods.map(method => <label key={method.id} title={method.detail} className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={selected.includes(method.id)} onChange={event => props.onMethods(index, event.target.checked ? [...selected, method.id] : selected.filter(value => value !== method.id))} />{method.icon && <method.icon className="h-3.5 w-3.5 text-muted-foreground" />}{method.label}</label>)}
           </fieldset>
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
             <Button size="sm" variant="ghost" disabled={props.readOnly || props.busy || paragraphs.length < 2} onClick={() => { setSplitting(splitting === index ? null : index); setSplitAt(null); }}><Scissors className="h-4 w-4" />Split</Button>
@@ -245,11 +245,12 @@ export function ManualLessonReview(props: Props) {
               <div className="flex flex-wrap gap-x-4 gap-y-2">
                 {props.methods.filter((m) => selected.includes(m.id)).map((method) => {
                   const chosen = aiMethods[index] ?? selected;
-                  return <label key={method.id} className="flex items-center gap-2 text-xs">
+                  return <label key={method.id} className="flex items-center gap-1.5 text-xs">
                     <input type="checkbox" checked={chosen.includes(method.id)} onChange={(event) => setAiMethods((p) => ({
                       ...p,
                       [index]: event.target.checked ? [...chosen, method.id] : chosen.filter((m) => m !== method.id),
                     }))} />
+                    {method.icon && <method.icon className="h-3.5 w-3.5 text-muted-foreground" />}
                     {method.label}
                   </label>;
                 })}

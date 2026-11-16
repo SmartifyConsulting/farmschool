@@ -23,6 +23,10 @@ import {
   Package,
   FolderOpen,
   Pencil,
+  Image,
+  ListChecks,
+  Puzzle,
+  Activity,
 } from "lucide-react";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -955,36 +959,43 @@ function Editor() {
       id: "illustrated",
       label: "Illustrated explanation",
       detail: "Explain key ideas with diagrams and examples",
+      icon: Image,
     },
     {
       id: "video",
       label: "Video",
       detail: "Suggest a demonstration; trainer supplies or verifies the video",
+      icon: Video,
     },
     {
       id: "steps",
       label: "Step-by-step practice",
       detail: "Turn a procedure into an actionable checklist",
+      icon: ListChecks,
     },
     {
       id: "scenario",
       label: "Scenario exercise",
       detail: "Apply knowledge to a realistic farming decision",
+      icon: Puzzle,
     },
     {
       id: "quiz",
       label: "Knowledge check",
       detail: "Assess comprehension with source-grounded questions",
+      icon: HelpCircle,
     },
     {
       id: "visual",
       label: "Visual identification",
       detail: "Identify equipment, crops, symptoms or animals",
+      icon: Eye,
     },
     {
       id: "activities",
       label: "Activities",
       detail: "A hands-on practical activity learners can do",
+      icon: Activity,
     },
   ];
   const recommendMethods = (title: string, body: string) => {
@@ -2044,53 +2055,6 @@ function Editor() {
                 </div>
               ))}
             </div>
-            <div className="mt-4 flex flex-wrap gap-1">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={course.published}
-                onClick={() => addLesson("reading")}
-              >
-                <Plus className="h-3 w-3" />
-                Reading
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={course.published}
-                onClick={() => addLesson("slide")}
-              >
-                <LayoutGrid className="h-3 w-3" />
-                Slides
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={course.published}
-                onClick={() => addLesson("video")}
-              >
-                <Video className="h-3 w-3" />
-                Video
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={course.published}
-                onClick={() => addLesson("quiz")}
-              >
-                <HelpCircle className="h-3 w-3" />
-                Quiz
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={course.published}
-                onClick={() => addLesson("scorm")}
-              >
-                <Package className="h-3 w-3" />
-                SCORM
-              </Button>
-            </div>
             </>}
           </aside>
           <main className="min-w-0 space-y-6">
@@ -2473,28 +2437,52 @@ function Editor() {
                   {studioModules?.length ? (
                     <ul className="space-y-2">
                       {studioModules.map((m) => (
-                        <li key={m.id} className="flex items-center gap-2">
-                          <Input
-                            key={m.id + m.title}
-                            defaultValue={m.title}
-                            onBlur={(e) => {
-                              if (e.target.value.trim() && e.target.value !== m.title)
-                                void renameModule(m.id, e.target.value);
-                            }}
-                            className="h-8"
-                            aria-label="Module title"
-                          />
-                          <span className="shrink-0 text-xs text-muted-foreground">
-                            {modules.find((g) => g.moduleId === m.id)?.lessons.length ?? 0} lessons
-                          </span>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            aria-label="Delete module"
-                            onClick={() => deleteModule(m.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                        <li key={m.id} className="space-y-2 rounded-lg border border-border p-2">
+                          <div className="flex items-center gap-2">
+                            <Input
+                              key={m.id + m.title}
+                              defaultValue={m.title}
+                              onBlur={(e) => {
+                                if (e.target.value.trim() && e.target.value !== m.title)
+                                  void renameModule(m.id, e.target.value);
+                              }}
+                              className="h-8"
+                              aria-label="Module title"
+                            />
+                            <span className="shrink-0 text-xs text-muted-foreground">
+                              {modules.find((g) => g.moduleId === m.id)?.lessons.length ?? 0} lessons
+                            </span>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              aria-label="Delete module"
+                              onClick={() => deleteModule(m.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="flex flex-wrap gap-1 pl-1">
+                            <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("reading", m.id)}>
+                              <FileText className="h-3 w-3" />
+                              Reading
+                            </Button>
+                            <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("slide", m.id)}>
+                              <LayoutGrid className="h-3 w-3" />
+                              Slides
+                            </Button>
+                            <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("video", m.id)}>
+                              <Video className="h-3 w-3" />
+                              Video
+                            </Button>
+                            <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("quiz", m.id)}>
+                              <HelpCircle className="h-3 w-3" />
+                              Quiz
+                            </Button>
+                            <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("scorm", m.id)}>
+                              <Package className="h-3 w-3" />
+                              SCORM
+                            </Button>
+                          </div>
                         </li>
                       ))}
                     </ul>
@@ -2756,6 +2744,7 @@ function Editor() {
                                         )
                                       }
                                     />
+                                    <method.icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                                     <span>{method.label}</span>
                                   </label>
                                 ))}
@@ -3370,6 +3359,7 @@ function Editor() {
                                             )
                                           }
                                         />
+                                        <method.icon className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
                                         <span>
                                           <span className="font-medium">{method.label}</span>
                                           <span className="block text-xs text-muted-foreground">
