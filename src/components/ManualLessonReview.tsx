@@ -110,16 +110,53 @@ export function ManualLessonReview(props: Props) {
   const [splitAt, setSplitAt] = useState<number | null>(null);
   const [splitTitle, setSplitTitle] = useState("");
   const [aiMethods, setAiMethods] = useState<Record<number, string[]>>({});
+  const [activeGroup, setActiveGroup] = useState(0);
   const moduleCount = new Set(props.draft.lessons.map(lesson => lesson.module).filter(Boolean)).size;
   const pageCount = new Set(props.draft.lessons.flatMap(lesson => lesson.sourceRefs.map(ref => `${ref.sourceId}:${ref.page}`))).size;
+  const groups: { label: string; start: number; end: number }[] = [];
+  props.draft.lessons.forEach((lesson, index) => {
+    const label = lesson.module || "Other lessons";
+    const last = groups.at(-1);
+    if (last && last.label === label && lesson.module === props.draft.lessons[index - 1]?.module) {
+      last.end = index + 1;
+    } else {
+      groups.push({ label, start: index, end: index + 1 });
+    }
+  });
+  const safeActiveGroup = Math.min(activeGroup, Math.max(groups.length - 1, 0));
+  const visible = groups[safeActiveGroup] ?? { start: 0, end: props.draft.lessons.length };
   return <section aria-label="Detected lessons" className="min-w-0 space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h3 className="font-semibold">Detected outline</h3>
       <p className="text-xs text-muted-foreground">{moduleCount ? `${moduleCount} modules · ` : ""}{props.draft.lessons.length} lessons · {pageCount} source pages · {Object.values(props.approved).filter(Boolean).length} approved</p>
     </div>
     {props.draft.warnings.length > 0 && <details className="border-l-2 border-border pl-3 text-xs text-muted-foreground"><summary className="cursor-pointer">Source notes ({props.draft.warnings.length})</summary>{props.draft.warnings.map((warning, index) => <p key={index} className="mt-2">{warning}</p>)}</details>}
+    <div className={groups.length > 1 ? "flex flex-col gap-4 lg:flex-row lg:items-start" : undefined}>
+    {groups.length > 1 && <nav aria-label="Modules" className="flex shrink-0 gap-2 overflow-x-auto pb-1 lg:w-60 lg:flex-col lg:overflow-visible lg:pb-0">
+      {groups.map((group, gi) => {
+        const count = group.end - group.start;
+        const approvedCount = Array.from({ length: count }, (_, i) => group.start + i).filter(i => props.approved[i]).length;
+        return <button
+          key={gi}
+          type="button"
+          onClick={() => setActiveGroup(gi)}
+          aria-current={gi === safeActiveGroup ? "step" : undefined}
+          className={`shrink-0 rounded-md border px-3 py-2 text-left text-xs lg:shrink lg:w-full ${gi === safeActiveGroup ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"}`}
+        >
+          <span className="block max-w-[14rem] truncate font-medium">{gi + 1}. {group.label}</span>
+          <span className="block text-muted-foreground">{count} lesson{count === 1 ? "" : "s"} · {approvedCount}/{count} approved</span>
+        </button>;
+      })}
+    </nav>}
+    <div className="min-w-0 flex-1 space-y-4">
+    {groups.length > 1 && <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
+      <Button size="sm" variant="ghost" disabled={safeActiveGroup === 0} onClick={() => setActiveGroup(g => g - 1)}>Previous module</Button>
+      <p className="text-xs text-muted-foreground">Module {safeActiveGroup + 1} of {groups.length}</p>
+      <Button size="sm" variant="ghost" disabled={safeActiveGroup === groups.length - 1} onClick={() => setActiveGroup(g => g + 1)}>Next module</Button>
+    </div>}
     <ol className="space-y-4">
-      {props.draft.lessons.map((lesson, index) => {
+      {props.draft.lessons.slice(visible.start, visible.end).map((lesson, offset) => {
+        const index = visible.start + offset;
         const pages = lesson.sourceRefs.map(ref => ref.page);
         const selected = props.choices(index, lesson.title, lesson.body);
         const paragraphs = lesson.body.split(/\n{2,}/);
@@ -318,5 +355,7 @@ export function ManualLessonReview(props: Props) {
         </li>;
       })}
     </ol>
+    </div>
+    </div>
   </section>;
 }
