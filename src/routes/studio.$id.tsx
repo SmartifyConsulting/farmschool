@@ -22,7 +22,6 @@ import {
   ArrowDown,
   Package,
   FolderOpen,
-  Pencil,
   Image,
   ListChecks,
   Puzzle,
@@ -447,6 +446,7 @@ function Editor() {
   const [factoryStep, setFactoryStep] = useState(0);
   const [outlineOpen, setOutlineOpen] = useState(true);
   const [collapsedOutlineModules, setCollapsedOutlineModules] = useState<Set<string>>(new Set());
+  const [outlineFocus, setOutlineFocus] = useState<{ index: number; token: number } | null>(null);
   const [showExtractedText, setShowExtractedText] = useState(false);
   const [firstContentPage, setFirstContentPage] = useState(1);
   const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
@@ -1898,11 +1898,7 @@ function Editor() {
                             const goToLesson = (index: number) => {
                               setScreen("import");
                               setFactoryStep(1);
-                              requestAnimationFrame(() =>
-                                document
-                                  .getElementById(`outline-lesson-${index}`)
-                                  ?.scrollIntoView({ behavior: "smooth", block: "start" }),
-                              );
+                              setOutlineFocus({ index, token: Date.now() });
                             };
                             const lessonList = (
                               <div className="space-y-0.5 border-l border-border pl-2">
@@ -1976,16 +1972,6 @@ function Editor() {
             {screen !== "publish" && <>
             <div className="mt-5 flex items-center justify-between">
               <h3 className="text-sm font-semibold">Curriculum</h3>
-              <Button
-                size="icon"
-                variant="ghost"
-                title="Add module"
-                aria-label="Add module"
-                disabled={course.published}
-                onClick={createModule}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
             </div>
             <div className="mt-2 max-h-72 space-y-4 overflow-y-auto lg:max-h-[65vh]">
               {modules.map((mod) => (
@@ -1999,33 +1985,6 @@ function Editor() {
                       <span className="min-w-0 flex-1 truncate">{mod.title}</span>
                       <span className="ml-auto shrink-0 pl-2 text-muted-foreground">{mod.lessons.length}</span>
                     </Button>
-                    {mod.moduleId && !course.published && (
-                      <>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 shrink-0"
-                          title="Rename module"
-                          aria-label={`Rename ${mod.title}`}
-                          onClick={() => {
-                            const title = window.prompt("Module title", mod.title)?.trim();
-                            if (title && title !== mod.title) void renameModule(mod.moduleId!, title);
-                          }}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 shrink-0"
-                          title="Delete module"
-                          aria-label={`Delete ${mod.title}`}
-                          onClick={() => void deleteModule(mod.moduleId!)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </>
-                    )}
                   </div>
                   <div className="space-y-0.5 border-l border-border pl-2">
                     {mod.lessons.map((lesson) => {
@@ -2154,7 +2113,7 @@ function Editor() {
               <fieldset disabled={course.published} className="min-w-0 space-y-6">
                 <section className="space-y-4 border-b border-border pb-6">
                   <h2 className="font-semibold">Course details</h2>
-                  <div className="grid gap-4 rounded-lg border border-border p-3 sm:grid-cols-[1fr_15rem]">
+                  <div className="grid gap-4 rounded-lg border border-border p-3 sm:grid-cols-[1fr_19.5rem]">
                     <div className="space-y-2">
                       <Input
                         value={form.title}
@@ -2178,6 +2137,36 @@ function Editor() {
                         text={form.description}
                         onText={(t) => setForm((f) => ({ ...f, description: t }))}
                       />
+                      <label className="block space-y-1 text-xs font-medium">
+                        Target Audience
+                        <Textarea
+                          value={form.target_audience}
+                          onChange={(e) => setForm({ ...form, target_audience: e.target.value })}
+                          placeholder="Ideal audience & market profile"
+                          rows={2}
+                          maxLength={2000}
+                        />
+                      </label>
+                      <label className="block space-y-1 text-xs font-medium">
+                        Value Proposition
+                        <Textarea
+                          value={form.value_proposition}
+                          onChange={(e) => setForm({ ...form, value_proposition: e.target.value })}
+                          placeholder="Value of certification / qualification"
+                          rows={2}
+                          maxLength={2000}
+                        />
+                      </label>
+                      <label className="block space-y-1 text-xs font-medium">
+                        Outcomes & Timeline
+                        <Textarea
+                          value={form.outcomes_timeline}
+                          onChange={(e) => setForm({ ...form, outcomes_timeline: e.target.value })}
+                          placeholder="Key learning outcomes & program duration"
+                          rows={2}
+                          maxLength={2000}
+                        />
+                      </label>
                     </div>
                     <div className="min-w-0">
                       <label className="block text-xs font-medium">Cover image</label>
@@ -2333,36 +2322,6 @@ function Editor() {
                         ))}
                       </select>
                     </div>
-                    <label className="block space-y-1 text-xs font-medium">
-                      Target Audience
-                      <Textarea
-                        value={form.target_audience}
-                        onChange={(e) => setForm({ ...form, target_audience: e.target.value })}
-                        placeholder="Ideal audience & market profile"
-                        rows={4}
-                        maxLength={2000}
-                      />
-                    </label>
-                    <label className="block space-y-1 text-xs font-medium">
-                      Value Proposition
-                      <Textarea
-                        value={form.value_proposition}
-                        onChange={(e) => setForm({ ...form, value_proposition: e.target.value })}
-                        placeholder="Value of certification / qualification"
-                        rows={4}
-                        maxLength={2000}
-                      />
-                    </label>
-                    <label className="block space-y-1 text-xs font-medium">
-                      Outcomes & Timeline
-                      <Textarea
-                        value={form.outcomes_timeline}
-                        onChange={(e) => setForm({ ...form, outcomes_timeline: e.target.value })}
-                        placeholder="Key learning outcomes & program duration"
-                        rows={4}
-                        maxLength={2000}
-                      />
-                    </label>
                   </div>
                   <Button onClick={saveDetails} className="mt-auto w-full">
                     Save details
@@ -2895,6 +2854,8 @@ function Editor() {
                           suggestions={methodSuggestions}
                           suggestLoading={suggestLoading}
                           onSuggest={(index, lesson, methods) => void suggestMethodContent(index, lesson, methods)}
+                          focusIndex={outlineFocus?.index}
+                          focusToken={outlineFocus?.token}
                         />
                         <div className="flex flex-wrap justify-between gap-2 border-t border-border pt-4">
                           <Button variant="outline" onClick={() => setFactoryStep(0)}>

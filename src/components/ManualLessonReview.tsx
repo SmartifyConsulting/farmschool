@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowDownToLine, Scissors, Trash2, ChevronDown, Check, Wand2, Sparkles, FolderOpen, Image as ImageIcon, Loader2, X, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -102,6 +102,9 @@ type Props = {
   suggestions: Record<number, MethodSuggestions>;
   suggestLoading: number | null;
   onSuggest: (index: number, lesson: DraftLesson, methods: string[]) => void;
+  /** Bump focusToken (any changing value) alongside focusIndex to jump the stepper to that lesson's module, even if focusIndex repeats. */
+  focusIndex?: number | null;
+  focusToken?: number;
 };
 
 export function ManualLessonReview(props: Props) {
@@ -125,6 +128,15 @@ export function ManualLessonReview(props: Props) {
   });
   const safeActiveGroup = Math.min(activeGroup, Math.max(groups.length - 1, 0));
   const visible = groups[safeActiveGroup] ?? { label: "", start: 0, end: props.draft.lessons.length };
+  useEffect(() => {
+    if (props.focusIndex == null) return;
+    const gi = groups.findIndex(g => props.focusIndex! >= g.start && props.focusIndex! < g.end);
+    if (gi !== -1) setActiveGroup(gi);
+    requestAnimationFrame(() =>
+      document.getElementById(`outline-lesson-${props.focusIndex}`)?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.focusToken]);
   return <section aria-label="Detected lessons" className="min-w-0 space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h3 className="font-semibold">Detected outline</h3>

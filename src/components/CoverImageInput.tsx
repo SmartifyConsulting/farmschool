@@ -50,7 +50,7 @@ export function CoverImageInput({ value, onChange }: { value: string; onChange: 
       >
         {value ? (
           <div className="relative w-full">
-            <img src={value} alt="Cover preview" className="mx-auto aspect-video w-full max-w-xs rounded-md object-cover" />
+            <img src={value} alt="Cover preview" className="mx-auto aspect-video w-full max-w-[26rem] rounded-md object-cover" />
             <button type="button" onClick={(e) => { e.stopPropagation(); onChange(""); }} className="absolute -right-2 -top-2 rounded-full bg-background p-1 shadow" aria-label="Remove cover image">
               <X className="h-3.5 w-3.5" />
             </button>
