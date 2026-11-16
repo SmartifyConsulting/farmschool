@@ -2,7 +2,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { generateCourseOutlineWithAI, generateMethodSuggestions } from "@/lib/studio-ai.functions";
+import { generateCourseOutlineWithAI, generateMethodSuggestions, TONE_OPTIONS, type PolishTone } from "@/lib/studio-ai.functions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -1036,14 +1036,21 @@ function Editor() {
     value_proposition: "",
     outcomes_timeline: "",
   });
+  const [contentTone, setContentTone] = useState<PolishTone>("professional");
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => {
-    const el = descriptionRef.current;
+  const targetAudienceRef = useRef<HTMLTextAreaElement>(null);
+  const valuePropositionRef = useRef<HTMLTextAreaElement>(null);
+  const outcomesTimelineRef = useRef<HTMLTextAreaElement>(null);
+  const autoGrow = (el: HTMLTextAreaElement | null) => {
     if (el) {
       el.style.height = "auto";
       el.style.height = `${el.scrollHeight}px`;
     }
-  }, [form.description]);
+  };
+  useEffect(() => autoGrow(descriptionRef.current), [form.description]);
+  useEffect(() => autoGrow(targetAudienceRef.current), [form.target_audience]);
+  useEffect(() => autoGrow(valuePropositionRef.current), [form.value_proposition]);
+  useEffect(() => autoGrow(outcomesTimelineRef.current), [form.outcomes_timeline]);
   useEffect(() => {
     if (course)
       setForm({
@@ -1969,60 +1976,6 @@ function Editor() {
                 ),
               )}
             </nav>
-            {screen !== "publish" && <>
-            <div className="mt-5 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Curriculum</h3>
-            </div>
-            <div className="mt-2 max-h-72 space-y-4 overflow-y-auto lg:max-h-[65vh]">
-              {modules.map((mod) => (
-                <div key={mod.key} className="space-y-0.5">
-                  <div className="flex items-center gap-0.5">
-                    <Button
-                      variant={screen === mod.key ? "secondary" : "ghost"}
-                      className="h-auto min-w-0 flex-1 justify-start whitespace-normal text-left text-xs font-bold"
-                      onClick={() => setScreen(mod.key)}
-                    >
-                      <span className="min-w-0 flex-1 truncate">{mod.title}</span>
-                      <span className="ml-auto shrink-0 pl-2 text-muted-foreground">{mod.lessons.length}</span>
-                    </Button>
-                  </div>
-                  <div className="space-y-0.5 border-l border-border pl-2">
-                    {mod.lessons.map((lesson) => {
-                      const Icon =
-                        lesson.kind === "quiz"
-                          ? HelpCircle
-                          : lesson.kind === "video"
-                            ? Video
-                            : lesson.kind === "scorm"
-                              ? Package
-                              : FileText;
-                      return (
-                        <Button
-                          key={lesson.id}
-                          variant={
-                            screen === "lesson" && selectedLesson === lesson.id
-                              ? "secondary"
-                              : "ghost"
-                          }
-                          className="h-auto min-h-10 w-full justify-start whitespace-normal text-left text-xs"
-                          onClick={() => {
-                            setSelectedLesson(lesson.id);
-                            setScreen("lesson");
-                          }}
-                        >
-                          <Icon className="h-4 w-4 shrink-0" />
-                          <span className="min-w-0 flex-1 break-words">{lesson.title}</span>
-                          {lessonIsComplete(lesson) && (
-                            <Check className="h-3 w-3 shrink-0 text-primary" />
-                          )}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-            </>}
           </aside>
           <main className="min-w-0 space-y-6">
             {course.published && (
@@ -2112,7 +2065,24 @@ function Editor() {
             {screen === "overview" && (
               <fieldset disabled={course.published} className="min-w-0 space-y-6">
                 <section className="space-y-4 border-b border-border pb-6">
-                  <h2 className="font-semibold">Course details</h2>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h2 className="font-semibold">Course details</h2>
+                    <label className="flex items-center gap-2 text-xs font-medium">
+                      Content style
+                      <select
+                        aria-label="Content style"
+                        value={contentTone}
+                        onChange={(e) => setContentTone(e.target.value as PolishTone)}
+                        className="rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+                      >
+                        {TONE_OPTIONS.map((t) => (
+                          <option key={t.value} value={t.value}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
                   <div className="grid gap-4 rounded-lg border border-border p-3 sm:grid-cols-[1fr_19.5rem]">
                     <div className="space-y-2">
                       <Input
@@ -2122,64 +2092,98 @@ function Editor() {
                         maxLength={120}
                         placeholder="Title"
                       />
-                      <Textarea
-                        ref={descriptionRef}
-                        value={form.description}
-                        onChange={(e) => setForm({ ...form, description: e.target.value })}
-                        placeholder="What will learners gain from this course?"
-                        rows={3}
-                        maxLength={4000}
-                        className="resize-none overflow-hidden"
-                      />
-                      <PolishButton
-                        courseId={id}
-                        title={form.title}
-                        text={form.description}
-                        onText={(t) => setForm((f) => ({ ...f, description: t }))}
-                      />
+                      <div className="flex items-start gap-1">
+                        <Textarea
+                          ref={descriptionRef}
+                          value={form.description}
+                          onChange={(e) => setForm({ ...form, description: e.target.value })}
+                          placeholder="What will learners gain from this course?"
+                          rows={3}
+                          maxLength={4000}
+                          className="resize-none overflow-hidden"
+                        />
+                        <PolishButton
+                          courseId={id}
+                          title={form.title}
+                          text={form.description}
+                          onText={(t) => setForm((f) => ({ ...f, description: t }))}
+                          tone={contentTone}
+                        />
+                      </div>
                       <label className="block space-y-1 text-xs font-medium">
                         Target Audience
-                        <Textarea
-                          value={form.target_audience}
-                          onChange={(e) => setForm({ ...form, target_audience: e.target.value })}
-                          placeholder="Ideal audience & market profile"
-                          rows={2}
-                          maxLength={2000}
-                        />
+                        <div className="flex items-start gap-1">
+                          <Textarea
+                            ref={targetAudienceRef}
+                            value={form.target_audience}
+                            onChange={(e) => setForm({ ...form, target_audience: e.target.value })}
+                            placeholder="Ideal audience & market profile"
+                            rows={2}
+                            maxLength={2000}
+                            className="resize-none overflow-hidden"
+                          />
+                          <PolishButton
+                            courseId={id}
+                            title={form.title}
+                            text={form.target_audience}
+                            onText={(t) => setForm((f) => ({ ...f, target_audience: t }))}
+                            tone={contentTone}
+                          />
+                        </div>
                       </label>
                       <label className="block space-y-1 text-xs font-medium">
                         Value Proposition
-                        <Textarea
-                          value={form.value_proposition}
-                          onChange={(e) => setForm({ ...form, value_proposition: e.target.value })}
-                          placeholder="Value of certification / qualification"
-                          rows={2}
-                          maxLength={2000}
-                        />
+                        <div className="flex items-start gap-1">
+                          <Textarea
+                            ref={valuePropositionRef}
+                            value={form.value_proposition}
+                            onChange={(e) => setForm({ ...form, value_proposition: e.target.value })}
+                            placeholder="Value of certification / qualification"
+                            rows={2}
+                            maxLength={2000}
+                            className="resize-none overflow-hidden"
+                          />
+                          <PolishButton
+                            courseId={id}
+                            title={form.title}
+                            text={form.value_proposition}
+                            onText={(t) => setForm((f) => ({ ...f, value_proposition: t }))}
+                            tone={contentTone}
+                          />
+                        </div>
                       </label>
                       <label className="block space-y-1 text-xs font-medium">
                         Outcomes & Timeline
-                        <Textarea
-                          value={form.outcomes_timeline}
-                          onChange={(e) => setForm({ ...form, outcomes_timeline: e.target.value })}
-                          placeholder="Key learning outcomes & program duration"
-                          rows={2}
-                          maxLength={2000}
-                        />
+                        <div className="flex items-start gap-1">
+                          <Textarea
+                            ref={outcomesTimelineRef}
+                            value={form.outcomes_timeline}
+                            onChange={(e) => setForm({ ...form, outcomes_timeline: e.target.value })}
+                            placeholder="Key learning outcomes & program duration"
+                            rows={2}
+                            maxLength={2000}
+                            className="resize-none overflow-hidden"
+                          />
+                          <PolishButton
+                            courseId={id}
+                            title={form.title}
+                            text={form.outcomes_timeline}
+                            onText={(t) => setForm((f) => ({ ...f, outcomes_timeline: t }))}
+                            tone={contentTone}
+                          />
+                        </div>
                       </label>
                     </div>
-                    <div className="min-w-0">
-                      <label className="block text-xs font-medium">Cover image</label>
-                      <div className="mt-1">
-                        <CoverImageInput
-                          value={form.cover_url}
-                          onChange={(url) => setForm({ ...form, cover_url: url })}
-                        />
+                    <div className="min-w-0 space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium">Cover image</label>
+                        <div className="mt-1">
+                          <CoverImageInput
+                            value={form.cover_url}
+                            onChange={(url) => setForm({ ...form, cover_url: url })}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-3">
                       <div>
                         <label className="block text-xs font-medium">Industry</label>
                         <select
@@ -2195,7 +2199,7 @@ function Editor() {
                             });
                             setNewTopic("");
                           }}
-                          className="mt-1 w-full rounded-md border border-input bg-background px-2 py-2 text-sm"
+                          className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
                           aria-label="Industry"
                         >
                           {INDUSTRIES.map((name) => (
@@ -2212,7 +2216,7 @@ function Editor() {
                             <select
                               value={STUDIO_CATEGORIES.includes(form.category) ? form.category : ""}
                               onChange={(e) => setForm({ ...form, category: e.target.value })}
-                              className="mt-1 w-full rounded-md border border-input bg-background px-2 py-2 text-sm"
+                              className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
                               aria-label="Topic"
                             >
                               {!STUDIO_CATEGORIES.includes(form.category) && (
@@ -2235,7 +2239,7 @@ function Editor() {
                               aria-label="Topic"
                               placeholder="e.g. Patient care, Retail operations"
                               maxLength={100}
-                              className="mt-1"
+                              className="mt-1 h-8 text-xs"
                             />
                           )}
                         </div>
@@ -2244,7 +2248,7 @@ function Editor() {
                           <select
                             value={form.level}
                             onChange={(e) => setForm({ ...form, level: e.target.value })}
-                            className="mt-1 w-full rounded-md border border-input bg-background px-2 py-2 text-sm"
+                            className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
                             aria-label="Level"
                           >
                             {["Beginner", "Intermediate", "Advanced"].map((c) => (
@@ -2253,12 +2257,10 @@ function Editor() {
                           </select>
                         </div>
                       </div>
-                    </div>
-                    <div className="space-y-3">
                       <div>
                         <label className="block text-xs font-medium">Theme</label>
                         <div
-                          className="mt-1 flex flex-wrap gap-2"
+                          className="mt-1 flex flex-wrap gap-1.5"
                           role="radiogroup"
                           aria-label="Course theme"
                         >
@@ -2270,12 +2272,12 @@ function Editor() {
                               aria-checked={form.theme === name}
                               aria-label={COURSE_THEMES[name].label}
                               onClick={() => setForm({ ...form, theme: name })}
-                              className={`flex h-8 w-8 items-center justify-center rounded-full border-2 ${form.theme === name ? "border-foreground" : "border-transparent"}`}
+                              className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${form.theme === name ? "border-foreground" : "border-transparent"}`}
                               style={{ backgroundColor: COURSE_THEMES[name].primary }}
                             >
                               {form.theme === name && (
                                 <Check
-                                  className="h-4 w-4"
+                                  className="h-3 w-3"
                                   style={{ color: COURSE_THEMES[name].primaryForeground }}
                                 />
                               )}
@@ -2291,11 +2293,11 @@ function Editor() {
                           step="0.01"
                           value={form.price}
                           onChange={(e) => setForm({ ...form, price: e.target.value })}
-                          className="mt-1"
+                          className="mt-1 h-8 text-xs"
                           aria-label="Price in US dollars"
                         />
                         <p className="mt-1 text-xs text-muted-foreground">
-                          0 is free. Buyers pay this once to enrol via Stripe Checkout.
+                          0 is free. Buyers pay once via Stripe Checkout.
                         </p>
                       </div>
                     </div>
@@ -2362,45 +2364,8 @@ function Editor() {
                 ))}
               </div>
             )}
-            {screen === "import" && designTab === "manual" && (
-              <fieldset disabled={course.published} className="min-w-0 space-y-6">
-                {modules.length === 0 && (
-                  <section className="space-y-3 rounded-2xl border border-dashed border-border p-4">
-                    <h2 className="font-semibold">Add your first lesson</h2>
-                    <p className="text-xs text-muted-foreground"></p>
-                    <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="outline" onClick={() => addLesson("video")}>
-                        <Video className="h-4 w-4" />
-                        Video
-                      </Button>
-                      <VideoLibraryPicker
-                        courseId={id}
-                        position={lessons?.length ?? 0}
-                        usedItemIds={videoLinks.map((v) => v.item_id)}
-                        onAdded={() => {
-                          refresh();
-                          void refetchLinks();
-                        }}
-                      />
-                      <Button size="sm" variant="outline" onClick={() => addLesson("reading")}>
-                        <FileText className="h-4 w-4" />
-                        Reading
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => addLesson("slide")}>
-                        <LayoutGrid className="h-4 w-4" />
-                        Slides
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => addLesson("quiz")}>
-                        <HelpCircle className="h-4 w-4" />
-                        Quiz
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => addLesson("scorm")}>
-                        <Package className="h-4 w-4" />
-                        SCORM
-                      </Button>
-                    </div>
-                  </section>
-                )}
+            {screen === "import" && (
+              <fieldset disabled={course.published} className="min-w-0">
                 <section className="space-y-3 border-b border-border pb-6">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h2 className="font-semibold">Modules</h2>
@@ -2467,6 +2432,47 @@ function Editor() {
                     </p>
                   )}
                 </section>
+              </fieldset>
+            )}
+            {screen === "import" && designTab === "manual" && (
+              <fieldset disabled={course.published} className="min-w-0 space-y-6">
+                {modules.length === 0 && (
+                  <section className="space-y-3 rounded-2xl border border-dashed border-border p-4">
+                    <h2 className="font-semibold">Add your first lesson</h2>
+                    <p className="text-xs text-muted-foreground"></p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="outline" onClick={() => addLesson("video")}>
+                        <Video className="h-4 w-4" />
+                        Video
+                      </Button>
+                      <VideoLibraryPicker
+                        courseId={id}
+                        position={lessons?.length ?? 0}
+                        usedItemIds={videoLinks.map((v) => v.item_id)}
+                        onAdded={() => {
+                          refresh();
+                          void refetchLinks();
+                        }}
+                      />
+                      <Button size="sm" variant="outline" onClick={() => addLesson("reading")}>
+                        <FileText className="h-4 w-4" />
+                        Reading
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => addLesson("slide")}>
+                        <LayoutGrid className="h-4 w-4" />
+                        Slides
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => addLesson("quiz")}>
+                        <HelpCircle className="h-4 w-4" />
+                        Quiz
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => addLesson("scorm")}>
+                        <Package className="h-4 w-4" />
+                        SCORM
+                      </Button>
+                    </div>
+                  </section>
+                )}
                 <section className="space-y-3 border-b border-border pb-6">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h2 className="font-semibold">Manage lessons</h2>

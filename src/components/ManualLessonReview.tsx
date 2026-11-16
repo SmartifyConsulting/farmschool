@@ -171,7 +171,7 @@ export function ManualLessonReview(props: Props) {
             <Textarea aria-label={`Lesson ${index + 1} source`} rows={5} value={lesson.body} disabled={props.readOnly || props.busy} onChange={event => props.onEdit(index, { ...lesson, body: event.target.value })} className="text-sm leading-relaxed text-foreground" />
           </label>
           <div className="flex justify-end">
-            <Button size="sm" variant="outline" disabled={props.readOnly || props.busy} onClick={() => props.onEdit(index, { ...lesson, body: reflowText(lesson.body) })}><Wand2 className="h-4 w-4" />Polish</Button>
+            <Button size="sm" variant="ghost" disabled={props.readOnly || props.busy} onClick={() => props.onEdit(index, { ...lesson, body: reflowText(lesson.body) })}><Wand2 className="h-4 w-4" />Polish</Button>
           </div>
           <fieldset disabled={props.readOnly || props.busy} className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
             {props.methods.map(method => <label key={method.id} title={method.detail} className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={selected.includes(method.id)} onChange={event => props.onMethods(index, event.target.checked ? [...selected, method.id] : selected.filter(value => value !== method.id))} />{method.icon && <method.icon className="h-3.5 w-3.5 text-muted-foreground" />}{method.label}</label>)}
