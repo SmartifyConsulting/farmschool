@@ -177,6 +177,7 @@ export function ManualLessonReview(props: Props) {
   const [aiMethods, setAiMethods] = useState<Record<number, string[]>>({});
   const [activeGroup, setActiveGroup] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
+  const [collapsedLessons, setCollapsedLessons] = useState<Set<number>>(() => new Set());
   const moduleCount = new Set(props.draft.lessons.map(lesson => lesson.module).filter(Boolean)).size;
   const pageCount = new Set(props.draft.lessons.flatMap(lesson => lesson.sourceRefs.map(ref => `${ref.sourceId}:${ref.page}`))).size;
   const groups: { label: string; start: number; end: number }[] = [];
@@ -286,7 +287,21 @@ export function ManualLessonReview(props: Props) {
               <Input aria-label={`Lesson ${index + 1} title`} value={lesson.title} maxLength={120} disabled={props.readOnly || props.busy} onChange={event => props.onEdit(index, { ...lesson, title: event.target.value })} className="font-semibold" />
               <p className="mt-2 text-xs text-muted-foreground">{pages.length ? `Source pages ${Math.min(...pages)}–${Math.max(...pages)}` : "Pasted source"}{props.approved[index] ? " · Approved" : " · Needs review"}</p>
             </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label={collapsedLessons.has(index) ? `Expand lesson ${index + 1}` : `Collapse lesson ${index + 1}`}
+              aria-expanded={!collapsedLessons.has(index)}
+              onClick={() => setCollapsedLessons(prev => {
+                const next = new Set(prev);
+                if (next.has(index)) next.delete(index); else next.add(index);
+                return next;
+              })}
+            >
+              {collapsedLessons.has(index) ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+            </Button>
           </div>
+          {!collapsedLessons.has(index) && <>
           <label className="mt-3 block space-y-1 text-xs font-medium text-muted-foreground">
             <span>Source</span>
             <Textarea aria-label={`Lesson ${index + 1} source`} rows={autoRows(lesson.body, 5)} value={lesson.body} disabled={props.readOnly || props.busy} onChange={event => props.onEdit(index, { ...lesson, body: event.target.value })} className="resize-none text-sm leading-relaxed text-foreground" />
@@ -697,6 +712,7 @@ export function ManualLessonReview(props: Props) {
               })}
             </div>
           </div>}
+          </>}
           </div>
         </li>;
       })}
