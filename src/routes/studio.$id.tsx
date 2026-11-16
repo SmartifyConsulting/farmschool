@@ -46,6 +46,7 @@ import {
   ILLUSTRATED_STYLES,
   DEFAULT_ILLUSTRATION_GUIDE,
   type DraftCourse,
+  type DraftLesson,
   type SourcePage,
   type IllustrationGuide,
 } from "@/lib/course-factory";
@@ -78,7 +79,7 @@ import {
   type QuizDraftQuestion,
 } from "@/lib/studio-quiz";
 import { formatManualAsSlides, parseLessonSlides, splitLessonSource } from "@/lib/lesson-slides";
-import { ManualLessonReview } from "@/components/ManualLessonReview";
+import { ManualLessonReview, type LessonPagePreview } from "@/components/ManualLessonReview";
 import { StudioVersions } from "@/components/StudioVersions";
 import { StudioCourseActions } from "@/components/StudioCourseActions";
 import { CourseOrganizationButton } from "@/components/LearningOrganizationControls";
@@ -1230,6 +1231,62 @@ function Editor() {
     setDesignRationale({});
     setAiDraft(null);
     setBatchDrafts([]);
+  };
+  /** Inserts one reviewed outline lesson into the course right now, as a real slide lesson — the
+   * per-slide text is whatever the trainer previewed and adjusted, not re-generated here. */
+  const commitLessonToCourse = async (lessonIndex: number, lesson: DraftLesson, slideTexts: string[], preview: LessonPagePreview) => {
+    if (!draft || course?.published) return;
+    try {
+      let moduleId: string | null = null;
+      if (lesson.module) {
+        const existing = studioModules?.find((m) => m.title === lesson.module);
+        if (existing) {
+          moduleId = existing.id;
+        } else {
+          const base = studioModules?.length ?? 0;
+          const { data, error } = await supabase
+            .from("studio_modules" as never)
+            .insert({ course_id: id, title: lesson.module, position: base } as never)
+            .select("id")
+            .single();
+          if (error || !data) throw error ?? new Error("Could not create the module.");
+          moduleId = (data as unknown as { id: string }).id;
+          qc.invalidateQueries({ queryKey: ["studio-modules", id] });
+        }
+      }
+      const slidesBody = slideTexts.map((text, i) => `## Slide ${i + 1}\n\n${text}`).join("\n\n");
+      const knowledgeCheck = preview.questions.length
+        ? "\n\n## Knowledge check\n\n" +
+          preview.questions
+            .map((q, i) => `${i + 1}. ${q.question}\n` + q.options.map((o, j) => `${j === q.correctIndex ? "- [x]" : "- [ ]"} ${o}`).join("\n"))
+            .join("\n\n")
+        : "";
+      const body =
+        slidesBody +
+        knowledgeCheck +
+        "\n\nSource: " +
+        lesson.sourceRefs.map((ref) => ref.sourceId + ", page " + ref.page).join("; ") +
+        "\nReview required before publishing.";
+      if (body.length > 20000) {
+        toast.error("This lesson exceeds the 20,000-character limit. Split it into smaller lessons first.");
+        return;
+      }
+      const start = lessons?.length ?? 0;
+      const { error } = await supabase.from("studio_lessons").insert({
+        course_id: id,
+        kind: "slide",
+        position: start,
+        title: lesson.title,
+        module_id: moduleId,
+        body,
+      });
+      if (error) throw error;
+      toast.success(`Committed "${lesson.title}" to the course.`);
+      reviseOutline(draft.lessons.filter((_, i) => i !== lessonIndex));
+      refresh();
+    } catch (error) {
+      toast.error(friendlyError(error, "Could not commit this lesson to the course."));
+    }
   };
   const importDraft = async () => {
     if (!draft?.lessons.length || importing || course?.published) return;
@@ -2786,6 +2843,7 @@ function Editor() {
                         <ManualLessonReview
                           draft={draft}
                           courseId={id}
+                          onCommit={(lessonIndex, lesson, slideTexts, preview) => void commitLessonToCourse(lessonIndex, lesson, slideTexts, preview)}
                           illustrationGuide={form.illustration_guide}
                           extraControls={
                             <div className="flex flex-wrap items-end gap-3 border-b border-border pb-4">

@@ -156,12 +156,23 @@ type Props = {
   extraControls?: ReactNode;
   /** The course these lessons belong to — needed to save a SCORM export into its Content Library. */
   courseId: string;
+  /** Inserts this one lesson into the course now, as a real studio_lesson, using the (possibly trainer-edited) per-slide text and the generated knowledge-check questions. */
+  onCommit: (index: number, lesson: DraftLesson, slideTexts: string[], preview: LessonPagePreview) => void;
 };
+
+/** Splits generated lesson text into `count` contiguous, paragraph-sized chunks — one per slide. */
+function splitIntoSlides(text: string, count: number): string[] {
+  const paragraphs = text.split(/\n{2,}/).filter(p => p.trim());
+  if (!paragraphs.length) return Array.from({ length: count }, () => "");
+  const perSlide = Math.max(1, Math.ceil(paragraphs.length / count));
+  return Array.from({ length: count }, (_, i) => paragraphs.slice(i * perSlide, (i + 1) * perSlide).join("\n\n"));
+}
 
 export function ManualLessonReview(props: Props) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [splitting, setSplitting] = useState<number | null>(null);
   const [splitAt, setSplitAt] = useState<number | null>(null);
+  const [slideEdits, setSlideEdits] = useState<Record<number, string[]>>({});
   const [splitTitle, setSplitTitle] = useState("");
   const [aiMethods, setAiMethods] = useState<Record<number, string[]>>({});
   const [activeGroup, setActiveGroup] = useState(0);
@@ -529,31 +540,53 @@ export function ManualLessonReview(props: Props) {
               </div>
             );
           })()}
-          {props.previews[index] && <div className="mt-4 space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
-            <p className="text-xs font-semibold text-primary">AI-generated page preview — for your checked methods; review before publishing</p>
-            {lesson.mediaUrl && (
-              <div className="max-w-xs overflow-hidden rounded bg-muted">
-                {lesson.mediaKind === "video" ? <video src={lesson.mediaUrl} className="h-24 w-full object-cover" muted /> : <img src={lesson.mediaUrl} alt="" className="h-24 w-full object-cover" />}
+          {props.previews[index] && (() => {
+            const preview = props.previews[index]!;
+            const slides = lesson.slideKinds ?? defaultSlides();
+            const slideTexts = slideEdits[index] ?? splitIntoSlides(preview.lessonSummary, slides.length);
+            return <div className="mt-4 space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
+              <p className="text-xs font-semibold text-primary">AI-generated page preview — adjust each slide, then commit it to the course</p>
+              {lesson.mediaUrl && (
+                <div className="max-w-xs overflow-hidden rounded bg-muted">
+                  {lesson.mediaKind === "video" ? <video src={lesson.mediaUrl} className="h-24 w-full object-cover" muted /> : <img src={lesson.mediaUrl} alt="" className="h-24 w-full object-cover" />}
+                </div>
+              )}
+              {lesson.kind === "slide" ? (
+                <div className="space-y-3">
+                  {slideTexts.map((text, si) => (
+                    <div key={si} className="space-y-1 rounded-md border border-border bg-background p-3">
+                      <p className="text-xs font-semibold text-muted-foreground">Slide {si + 1}</p>
+                      <Textarea
+                        aria-label={`Slide ${si + 1} content`}
+                        value={text}
+                        rows={autoRows(text, 2)}
+                        disabled={props.readOnly || props.busy}
+                        onChange={event => setSlideEdits(p => ({ ...p, [index]: slideTexts.map((t, i) => (i === si ? event.target.value : t)) }))}
+                        className="resize-none text-sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : <FormattedLesson content={preview.lessonSummary} />}
+              {preview.questions.map((q, i) => (
+                <div key={i} className="space-y-1 border-t border-border pt-2 text-sm">
+                  <p className="font-medium">{i + 1}. {q.question}</p>
+                  {q.options.map((option, j) => (
+                    <p key={j} className="text-sm">{j === q.correctIndex ? "✓ " : "○ "}{option}</p>
+                  ))}
+                  <p className="text-xs italic text-muted-foreground">Source quote: {q.sourceQuote}</p>
+                </div>
+              ))}
+              {!!preview.droppedUnsupportedQuestions && (
+                <p className="text-xs text-muted-foreground">{preview.droppedUnsupportedQuestions} question(s) removed — their source quotes weren't found in the text.</p>
+              )}
+              <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-3">
+                <Button size="sm" variant="outline" onClick={() => void exportLessonScorm()}><Package className="h-4 w-4" />Export SCORM</Button>
+                <Button size="sm" variant="outline" onClick={() => void saveLessonToLibrary()}><Library className="h-4 w-4" />Save to Content Library</Button>
+                <Button size="sm" disabled={props.readOnly || props.busy} onClick={() => props.onCommit(index, lesson, slideTexts, preview)}><Check className="h-4 w-4" />Commit to course</Button>
               </div>
-            )}
-            <FormattedLesson content={props.previews[index].lessonSummary} />
-            {props.previews[index].questions.map((q, i) => (
-              <div key={i} className="space-y-1 border-t border-border pt-2 text-sm">
-                <p className="font-medium">{i + 1}. {q.question}</p>
-                {q.options.map((option, j) => (
-                  <p key={j} className="text-sm">{j === q.correctIndex ? "✓ " : "○ "}{option}</p>
-                ))}
-                <p className="text-xs italic text-muted-foreground">Source quote: {q.sourceQuote}</p>
-              </div>
-            ))}
-            {!!props.previews[index].droppedUnsupportedQuestions && (
-              <p className="text-xs text-muted-foreground">{props.previews[index].droppedUnsupportedQuestions} question(s) removed — their source quotes weren't found in the text.</p>
-            )}
-            <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-3">
-              <Button size="sm" variant="outline" onClick={() => void exportLessonScorm()}><Package className="h-4 w-4" />Export SCORM</Button>
-              <Button size="sm" variant="outline" onClick={() => void saveLessonToLibrary()}><Library className="h-4 w-4" />Save to Content Library</Button>
-            </div>
-          </div>}
+            </div>;
+          })()}
           {splitting === index && <div className="mt-4 space-y-2 border-t border-border pt-3">
             <h4 className="text-sm font-medium">Click “Split here” where the next lesson should start</h4>
             <div className="max-h-[28rem] space-y-1 overflow-y-auto rounded-md border border-border p-3">
