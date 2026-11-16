@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowDownToLine, Scissors, Trash2, Check, Wand2, Sparkles, FolderOpen, FileText, LayoutGrid, Video, Package, Library, Image as ImageIcon, Loader2, Plus, X, type LucideIcon } from "lucide-react";
+import { ArrowDownToLine, Scissors, Trash2, Check, Wand2, Sparkles, FolderOpen, FileText, LayoutGrid, Video, Package, Library, Image as ImageIcon, Loader2, Plus, X, ChevronDown, ChevronUp, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -176,6 +176,7 @@ export function ManualLessonReview(props: Props) {
   const [splitTitle, setSplitTitle] = useState("");
   const [aiMethods, setAiMethods] = useState<Record<number, string[]>>({});
   const [activeGroup, setActiveGroup] = useState(0);
+  const [collapsed, setCollapsed] = useState(false);
   const moduleCount = new Set(props.draft.lessons.map(lesson => lesson.module).filter(Boolean)).size;
   const pageCount = new Set(props.draft.lessons.flatMap(lesson => lesson.sourceRefs.map(ref => `${ref.sourceId}:${ref.page}`))).size;
   const groups: { label: string; start: number; end: number }[] = [];
@@ -194,6 +195,7 @@ export function ManualLessonReview(props: Props) {
     if (props.focusIndex == null) return;
     const gi = groups.findIndex(g => props.focusIndex! >= g.start && props.focusIndex! < g.end);
     if (gi !== -1) setActiveGroup(gi);
+    setCollapsed(false);
     requestAnimationFrame(() =>
       document.getElementById(`outline-lesson-${props.focusIndex}`)?.scrollIntoView({ behavior: "smooth", block: "start" }),
     );
@@ -209,10 +211,18 @@ export function ManualLessonReview(props: Props) {
     <div className="min-w-0 flex-1 space-y-4">
     {groups.length > 1 && <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
       <Button size="sm" variant="ghost" disabled={safeActiveGroup === 0} onClick={() => setActiveGroup(g => g - 1)}>Previous module</Button>
-      <p className="text-xs text-muted-foreground">Module {safeActiveGroup + 1} of {groups.length} · {visible.label}</p>
+      <button
+        type="button"
+        onClick={() => setCollapsed(c => !c)}
+        aria-expanded={!collapsed}
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+      >
+        {collapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+        Module {safeActiveGroup + 1} of {groups.length} · {visible.label}
+      </button>
       <Button size="sm" variant="ghost" disabled={safeActiveGroup === groups.length - 1} onClick={() => setActiveGroup(g => g + 1)}>Next module</Button>
     </div>}
-    <ol className="space-y-4">
+    {!collapsed && <ol className="space-y-4">
       {props.draft.lessons.slice(visible.start, visible.end).map((lesson, offset) => {
         const index = visible.start + offset;
         const pages = lesson.sourceRefs.map(ref => ref.page);
@@ -690,7 +700,7 @@ export function ManualLessonReview(props: Props) {
           </div>
         </li>;
       })}
-    </ol>
+    </ol>}
     </div>
   </section>;
 }
