@@ -38,7 +38,7 @@ export function PolishButton({
       <Button
         type="button"
         size="sm"
-        variant="outline"
+        variant="ghost"
         disabled={busy || !text.trim()}
         onClick={async () => {
           setBusy(true);

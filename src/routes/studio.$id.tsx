@@ -1036,6 +1036,14 @@ function Editor() {
     value_proposition: "",
     outcomes_timeline: "",
   });
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = descriptionRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    }
+  }, [form.description]);
   useEffect(() => {
     if (course)
       setForm({
@@ -2156,11 +2164,13 @@ function Editor() {
                         placeholder="Title"
                       />
                       <Textarea
+                        ref={descriptionRef}
                         value={form.description}
                         onChange={(e) => setForm({ ...form, description: e.target.value })}
                         placeholder="What will learners gain from this course?"
                         rows={3}
                         maxLength={4000}
+                        className="resize-none overflow-hidden"
                       />
                       <PolishButton
                         courseId={id}
