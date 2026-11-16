@@ -234,7 +234,7 @@ export function ManualLessonReview(props: Props) {
                 <div
                   key={method.id}
                   title={method.detail}
-                  className="flex items-center gap-1"
+                  className="flex shrink-0 items-center gap-1"
                   draggable={draggableFormat}
                   onDragStart={draggableFormat ? event => {
                     event.dataTransfer.setData("application/json", JSON.stringify({ source: "method", id: method.id }));
@@ -252,24 +252,52 @@ export function ManualLessonReview(props: Props) {
                     {method.icon && <method.icon className="h-3.5 w-3.5" />}
                     {method.label}
                   </Button>
-                  {method.id !== "illustrated" && (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8"
-                      aria-pressed={wantsAi}
-                      disabled={!isSelected}
-                      title="Generate this with AI"
-                      aria-label={`Generate ${method.label} with AI`}
-                      onClick={() => setAiMethods(p => ({
-                        ...p,
-                        [index]: wantsAi ? aiChosen.filter(m => m !== method.id) : [...aiChosen, method.id],
-                      }))}
-                    >
-                      <Wand2 className={`h-4 w-4 ${isSelected && wantsAi ? "text-primary" : "text-muted-foreground"}`} />
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    aria-pressed={wantsAi}
+                    disabled={!isSelected}
+                    title="Generate this with AI"
+                    aria-label={`Generate ${method.label} with AI`}
+                    onClick={() => setAiMethods(p => ({
+                      ...p,
+                      [index]: wantsAi ? aiChosen.filter(m => m !== method.id) : [...aiChosen, method.id],
+                    }))}
+                  >
+                    <Wand2 className={`h-4 w-4 ${isSelected && wantsAi ? "text-primary" : "text-muted-foreground"}`} />
+                  </Button>
+                </div>
+              );
+            };
+            const renderDeliveryChip = (item: (typeof DELIVERY_FORMAT_ITEMS)[number]) => {
+              const aiChosen = aiMethods[index] ?? selected;
+              const wantsAi = aiChosen.includes(item.id);
+              return (
+                <div key={item.id} className="flex items-center gap-1">
+                  <div
+                    draggable
+                    onDragStart={event => { event.dataTransfer.setData("application/json", JSON.stringify({ source: "delivery", id: item.id })); event.dataTransfer.effectAllowed = "copy"; }}
+                    className="flex h-8 cursor-grab items-center gap-1 rounded-md border border-border bg-background px-3 text-xs font-medium active:cursor-grabbing"
+                  >
+                    <item.icon className="h-3.5 w-3.5" />{item.label}
+                  </div>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    aria-pressed={wantsAi}
+                    title="Generate this with AI"
+                    aria-label={`Generate ${item.label} with AI`}
+                    onClick={() => setAiMethods(p => ({
+                      ...p,
+                      [index]: wantsAi ? aiChosen.filter(m => m !== item.id) : [...aiChosen, item.id],
+                    }))}
+                  >
+                    <Wand2 className={`h-4 w-4 ${wantsAi ? "text-primary" : "text-muted-foreground"}`} />
+                  </Button>
                 </div>
               );
             };
@@ -361,32 +389,14 @@ export function ManualLessonReview(props: Props) {
                     </p>
                   )}
                   <div className="flex flex-wrap items-center gap-2">
-                    {DELIVERY_FORMAT_ITEMS.filter(d => d.position === "before").map(({ id, label, icon: Icon }) => (
-                      <div
-                        key={id}
-                        draggable
-                        onDragStart={event => { event.dataTransfer.setData("application/json", JSON.stringify({ source: "delivery", id })); event.dataTransfer.effectAllowed = "copy"; }}
-                        className="flex h-8 cursor-grab items-center gap-1 rounded-md border border-border bg-background px-3 text-xs font-medium active:cursor-grabbing"
-                      >
-                        <Icon className="h-3.5 w-3.5" />{label}
-                      </div>
-                    ))}
+                    {DELIVERY_FORMAT_ITEMS.filter(d => d.position === "before").map(renderDeliveryChip)}
                     {trainingFormatMethods.map(method => renderMethodToggle(method, true))}
-                    {DELIVERY_FORMAT_ITEMS.filter(d => d.position === "after").map(({ id, label, icon: Icon }) => (
-                      <div
-                        key={id}
-                        draggable
-                        onDragStart={event => { event.dataTransfer.setData("application/json", JSON.stringify({ source: "delivery", id })); event.dataTransfer.effectAllowed = "copy"; }}
-                        className="flex h-8 cursor-grab items-center gap-1 rounded-md border border-border bg-background px-3 text-xs font-medium active:cursor-grabbing"
-                      >
-                        <Icon className="h-3.5 w-3.5" />{label}
-                      </div>
-                    ))}
+                    {DELIVERY_FORMAT_ITEMS.filter(d => d.position === "after").map(renderDeliveryChip)}
                   </div>
                 </fieldset>
                 <fieldset disabled={props.readOnly || props.busy} className="mt-4 space-y-2 border-t border-border pt-3">
                   <legend className="text-xs font-semibold text-muted-foreground">Knowledge check</legend>
-                  <div className="flex flex-wrap gap-2">{testLearningMethods.map(method => renderMethodToggle(method))}</div>
+                  <div className="flex flex-nowrap items-center gap-2 overflow-x-auto">{testLearningMethods.map(method => renderMethodToggle(method))}</div>
                 </fieldset>
               </>
             );

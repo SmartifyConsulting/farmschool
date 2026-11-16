@@ -991,7 +991,7 @@ function Editor() {
     },
     {
       id: "scenario",
-      label: "Scenario exercise",
+      label: "Scenarios",
       detail: "Apply knowledge to a realistic farming decision",
       icon: Puzzle,
     },
@@ -1210,7 +1210,7 @@ function Editor() {
         })),
       );
       if (!lessons.length) { toast.error("The AI assistant didn't return any lessons."); return; }
-      setDraft({ title: form.title || course?.title || "Course", lessons, status: "draft", warnings: result.truncated ? ["Only the first part of the manual was used — it was too long for one AI pass."] : [] });
+      setDraft({ title: form.title || course?.title || "Course", lessons, status: "draft", warnings: result.truncated ? ["Part of the manual could not be processed (it exceeded the AI pass limit, or one pass failed) — check the outline covers everything, and rebuild if a section is missing."] : [] });
       setDesignChoices({});
       setDesignApproved({});
       setDesignRationale({});

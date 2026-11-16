@@ -301,49 +301,66 @@ export const generateCourseOutlineWithAI = createServerFn({ method: "POST" })
       throw new Error(quotaError?.message.includes("Daily AI generation limit") ? "Your daily AI allowance is used up. Try again tomorrow." : "Your AI allowance could not be checked. Please try later.");
     }
     // Mark each page's text with its own page number so the model can cite real pages back.
-    let excerpt = "";
-    let truncated = false;
+    // Split the whole manual into sequential excerpts (not just the first one) so a long manual
+    // is fully covered across several AI calls instead of silently dropping everything past the
+    // first ~100,000 characters.
+    const CHUNK_CHARS = 100_000;
+    const MAX_CHUNKS = 12;
+    const chunks: string[] = [];
+    let current = "";
     for (const page of data.pages) {
       const marked = `--- p.${page.page} ---\n${page.text}\n\n`;
-      if (excerpt.length + marked.length > 18000) { truncated = true; break; }
-      excerpt += marked;
+      if (current.length + marked.length > CHUNK_CHARS) {
+        if (current.trim()) chunks.push(current);
+        current = "";
+      }
+      current += marked;
     }
-    if (!excerpt.trim()) throw new Error("Upload a manual first.");
+    if (current.trim()) chunks.push(current);
+    if (!chunks.length) throw new Error("Upload a manual first.");
+    const truncated = chunks.length > MAX_CHUNKS;
+    const usedChunks = chunks.slice(0, MAX_CHUNKS);
     const { createOpenAI } = await import("@ai-sdk/openai");
     const { generateText, Output } = await import("ai");
-    try {
-      const { output } = await generateText({
-        model: createOpenAI({ apiKey }).responses("gpt-6-luna"), maxRetries: 1,
-        system: `${SAFETY} Organise this training manual excerpt into a course outline: 2 to 8 modules, each with 2 to 6 lessons. For each lesson write a title and a body that teaches the learner directly, in the voice of an online self-paced course — e.g. "Bees communicate through..." — never add facts, numbers, steps or examples the excerpt does not contain. The excerpt is marked "--- p.N ---" before each page; for each lesson give the real page numbers (N) its content comes from.`,
-        prompt: JSON.stringify({ title: data.title, manual: excerpt }),
-        output: Output.object({
-          schema: z.object({
-            modules: z
+    const model = createOpenAI({ apiKey }).responses("gpt-6-luna");
+    const schema = z.object({
+      modules: z
+        .array(
+          z.object({
+            title: z.string().min(1).max(120),
+            lessons: z
               .array(
                 z.object({
                   title: z.string().min(1).max(120),
-                  lessons: z
-                    .array(
-                      z.object({
-                        title: z.string().min(1).max(120),
-                        body: z.string().min(1).max(8000),
-                        sourcePages: z.array(z.number().int().min(1)).max(50),
-                      }),
-                    )
-                    .min(1)
-                    .max(6),
+                  body: z.string().min(1).max(8000),
+                  sourcePages: z.array(z.number().int().min(1)).max(50),
                 }),
               )
               .min(1)
-              .max(8),
+              .max(6),
           }),
-        }),
-      });
-      return { ...output, truncated };
-    } catch (e) {
-      console.error("generateCourseOutlineWithAI failed", e);
-      throw new Error("The AI assistant couldn't finish. Please try again.");
+        )
+        .min(1)
+        .max(8),
+    });
+    const modules: z.infer<typeof schema>["modules"] = [];
+    let chunksFailed = 0;
+    for (const [i, excerpt] of usedChunks.entries()) {
+      try {
+        const { output } = await generateText({
+          model, maxRetries: 1,
+          system: `${SAFETY} Organise this excerpt from part ${i + 1} of ${usedChunks.length} of a training manual into a course outline: 2 to 8 modules, each with 2 to 6 lessons. For each lesson write a title and a body that teaches the learner directly, in the voice of an online self-paced course — e.g. "Bees communicate through..." — never add facts, numbers, steps or examples the excerpt does not contain. The excerpt is marked "--- p.N ---" before each page; for each lesson give the real page numbers (N) its content comes from.`,
+          prompt: JSON.stringify({ title: data.title, manual: excerpt }),
+          output: Output.object({ schema }),
+        });
+        modules.push(...output.modules);
+      } catch (e) {
+        console.error(`generateCourseOutlineWithAI failed on chunk ${i + 1}/${usedChunks.length}`, e);
+        chunksFailed++;
+      }
     }
+    if (!modules.length) throw new Error("The AI assistant couldn't finish. Please try again.");
+    return { modules, truncated: truncated || chunksFailed > 0 };
   });
 
 /** Drafts a course description from the uploaded manual (when given) or the course's lessons. Nothing is saved here. */
