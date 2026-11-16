@@ -43,8 +43,11 @@ import {
   buildCourseDraft,
   splitDraftLessonAt,
   mergeDraftLessons,
+  ILLUSTRATED_STYLES,
+  DEFAULT_ILLUSTRATION_GUIDE,
   type DraftCourse,
   type SourcePage,
+  type IllustrationGuide,
 } from "@/lib/course-factory";
 import { extractDocument } from "@/lib/document-extraction";
 import { suggestReviewQuestions } from "@/lib/course-quiz-suggestions";
@@ -1048,6 +1051,7 @@ function Editor() {
     target_audience: "",
     value_proposition: "",
     outcomes_timeline: "",
+    illustration_guide: DEFAULT_ILLUSTRATION_GUIDE as IllustrationGuide,
   });
   const [contentTone, setContentTone] = useState<PolishTone>("professional");
   const [topicLoading, setTopicLoading] = useState(false);
@@ -1086,6 +1090,10 @@ function Editor() {
         target_audience: course.target_audience ?? "",
         value_proposition: course.value_proposition ?? "",
         outcomes_timeline: course.outcomes_timeline ?? "",
+        illustration_guide: {
+          style: (course.illustration_guide as Partial<IllustrationGuide> | null)?.style || DEFAULT_ILLUSTRATION_GUIDE.style,
+          characters: (course.illustration_guide as Partial<IllustrationGuide> | null)?.characters ?? [],
+        },
       });
   }, [course]);
   const { data: prereqOptions = [] } = useQuery({
@@ -2096,6 +2104,94 @@ function Editor() {
               })()}
             {screen === "overview" && (
               <fieldset disabled={course.published} className="min-w-0 space-y-6">
+                <section className="space-y-3 border-b border-border pb-6">
+                  <div>
+                    <h2 className="font-semibold">Illustration guide</h2>
+                    <p className="text-xs text-muted-foreground">
+                      Decide the visual style and any recurring characters once, before designing lessons, so every illustrated explanation stays consistent — no continuity errors.
+                    </p>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs font-medium">
+                    Style
+                    <select
+                      aria-label="Illustration style"
+                      value={form.illustration_guide.style}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, illustration_guide: { ...f.illustration_guide, style: e.target.value } }))
+                      }
+                      className="rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+                    >
+                      {ILLUSTRATED_STYLES.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium">Recurring characters (optional)</p>
+                    {form.illustration_guide.characters.map((c, i) => (
+                      <div key={i} className="flex flex-wrap items-center gap-2">
+                        <Input
+                          aria-label={`Character ${i + 1} name`}
+                          value={c.name}
+                          placeholder="Name"
+                          maxLength={60}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              illustration_guide: {
+                                ...f.illustration_guide,
+                                characters: f.illustration_guide.characters.map((x, xi) => (xi === i ? { ...x, name: e.target.value } : x)),
+                              },
+                            }))
+                          }
+                          className="h-8 w-32"
+                        />
+                        <Input
+                          aria-label={`Character ${i + 1} description`}
+                          value={c.description}
+                          placeholder="Role / appearance, for consistency"
+                          maxLength={200}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              illustration_guide: {
+                                ...f.illustration_guide,
+                                characters: f.illustration_guide.characters.map((x, xi) => (xi === i ? { ...x, description: e.target.value } : x)),
+                              },
+                            }))
+                          }
+                          className="h-8 min-w-[12rem] flex-1"
+                        />
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label={`Remove character ${i + 1}`}
+                          onClick={() =>
+                            setForm((f) => ({
+                              ...f,
+                              illustration_guide: { ...f.illustration_guide, characters: f.illustration_guide.characters.filter((_, xi) => xi !== i) },
+                            }))
+                          }
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setForm((f) => ({
+                          ...f,
+                          illustration_guide: { ...f.illustration_guide, characters: [...f.illustration_guide.characters, { name: "", description: "" }] },
+                        }))
+                      }
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add character
+                    </Button>
+                  </div>
+                </section>
                 <section className="space-y-4 border-b border-border pb-6">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h2 className="font-semibold">Course details</h2>
@@ -2823,6 +2919,7 @@ function Editor() {
                         </div>
                         <ManualLessonReview
                           draft={draft}
+                          illustrationGuide={form.illustration_guide}
                           readOnly={course.published}
                           busy={
                             designSyncing || designLoading !== null || batchRunning || aiLoading

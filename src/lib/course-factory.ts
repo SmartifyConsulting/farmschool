@@ -18,8 +18,6 @@ export type DraftLesson = {
   kind?: "reading" | "slide" | "video" | "scorm";
   /** When kind is "slide": each slide's own list of assigned formats (delivery mediums and/or training methods), in drop order; defaults to three empty slides when unset. */
   slideKinds?: { source: "delivery" | "method"; id: string }[][];
-  /** When the "illustrated" method is selected: the kind of visual to use (photo, diagram, etc). */
-  illustratedStyle?: string;
 };
 export type DraftCourse = {
   title: string;
@@ -27,6 +25,15 @@ export type DraftCourse = {
   status: "draft";
   warnings: string[];
 };
+
+/** Visual styles a course's illustrated explanations can use. */
+export const ILLUSTRATED_STYLES = ["Photography", "Illustration", "Diagram", "Animation", "Infographic", "Screenshot"];
+/** A course-level narrator/character, kept consistent across every lesson's illustrations. */
+export type IllustrationCharacter = { name: string; description: string };
+/** Decided once at the start of course design (not per lesson), so illustrated explanations
+ * stay visually and narratively consistent across the whole course — no continuity errors. */
+export type IllustrationGuide = { style: string; characters: IllustrationCharacter[] };
+export const DEFAULT_ILLUSTRATION_GUIDE: IllustrationGuide = { style: ILLUSTRATED_STYLES[0]!, characters: [] };
 
 const MAX_PAGES = 500;
 const MAX_CHARS = 1_000_000;

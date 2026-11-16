@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { FormattedLesson } from "@/components/FormattedLesson";
-import { reflowText, type DraftCourse, type DraftLesson } from "@/lib/course-factory";
+import { reflowText, type DraftCourse, type DraftLesson, type IllustrationGuide } from "@/lib/course-factory";
 
 export type LessonPagePreview = {
   lessonTitle: string;
@@ -43,7 +43,6 @@ const DELIVERY_FORMAT_ITEMS: { id: string; label: string; icon: LucideIcon; posi
   { id: "scorm", label: "SCORM", icon: Package, position: "after" },
 ];
 const MAX_SLIDES = 20;
-const ILLUSTRATED_STYLES = ["Photography", "Illustration", "Diagram", "Animation", "Infographic", "Screenshot"];
 function defaultSlides(): FormatRef[][] {
   return [[], [], []];
 }
@@ -150,6 +149,8 @@ type Props = {
   /** Bump focusToken (any changing value) alongside focusIndex to jump the stepper to that lesson's module, even if focusIndex repeats. */
   focusIndex?: number | null;
   focusToken?: number;
+  /** The course-level illustration style/characters, decided once in Course details — shown here for reference only; edit it there to keep every lesson's illustrations consistent. */
+  illustrationGuide: IllustrationGuide;
 };
 
 export function ManualLessonReview(props: Props) {
@@ -265,17 +266,10 @@ export function ManualLessonReview(props: Props) {
                     <Wand2 className={`h-4 w-4 ${isSelected && wantsAi ? "text-primary" : "text-muted-foreground"}`} />
                   </Button>
                   {method.id === "illustrated" && isSelected && (
-                    <select
-                      aria-label="Illustrated explanation style"
-                      value={lesson.illustratedStyle ?? ILLUSTRATED_STYLES[0]}
-                      disabled={props.readOnly || props.busy}
-                      onChange={event => props.onEdit(index, { ...lesson, illustratedStyle: event.target.value })}
-                      className="h-8 rounded border border-input bg-background px-1 text-xs"
-                    >
-                      {ILLUSTRATED_STYLES.map(style => (
-                        <option key={style} value={style}>{style}</option>
-                      ))}
-                    </select>
+                    <span className="text-xs text-muted-foreground" title="Set once in Course details so every lesson's illustrations stay consistent">
+                      Course style: {props.illustrationGuide.style}
+                      {props.illustrationGuide.characters.length > 0 && ` · Characters: ${props.illustrationGuide.characters.map(c => c.name).join(", ")}`}
+                    </span>
                   )}
                 </div>
               );

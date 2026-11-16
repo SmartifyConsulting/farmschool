@@ -3678,6 +3678,7 @@ export type Database = {
           currency: string
           description: string
           id: string
+          illustration_guide: Json
           level: string
           moodle_id: number | null
           outcomes_timeline: string
@@ -3702,6 +3703,7 @@ export type Database = {
           currency?: string
           description?: string
           id?: string
+          illustration_guide?: Json
           level?: string
           moodle_id?: number | null
           outcomes_timeline?: string
@@ -3726,6 +3728,7 @@ export type Database = {
           currency?: string
           description?: string
           id?: string
+          illustration_guide?: Json
           level?: string
           moodle_id?: number | null
           outcomes_timeline?: string
