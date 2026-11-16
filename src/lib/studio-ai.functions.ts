@@ -65,7 +65,7 @@ export const analyzeContentFile = createServerFn({ method: "POST" })
     const { generateText, Output } = await import("ai");
     try {
       const { output } = await generateText({
-        model: createOpenAI({ apiKey }).responses("gpt-6-luna"),
+        model: createOpenAI({ apiKey }).responses("gpt-4.1"),
         maxRetries: 1,
         system: `${SAFETY} Read this excerpt of an uploaded training file and suggest a short, descriptive, human-readable file name (no extension, 3-8 words, title case, spaces or hyphens only — never copy the original file name) based on its actual subject matter. Also write a one-sentence description, a short classification label (e.g. "Lesson reading", "Reference guide", "Worksheet", "Slide deck"), up to 6 keywords, and — only if one of the given module titles is clearly the best fit — that exact module title, else null. If the excerpt is too thin, generic or unclear to name confidently, return null for suggestedFileName and suggestedModuleTitle rather than guessing.`,
         prompt: JSON.stringify({
@@ -112,7 +112,7 @@ export const assistLesson = createServerFn({ method: "POST" })
     if (data.action === "custom" && !data.instruction?.trim()) throw new Error("Tell the assistant what to change.");
     const { createOpenAI } = await import("@ai-sdk/openai");
     const { generateText, Output } = await import("ai");
-    const model = createOpenAI({ apiKey }).responses("gpt-6-luna");
+    const model = createOpenAI({ apiKey }).responses("gpt-4.1");
     try {
       if (data.action === "quiz") {
         if (data.text.trim().length < 80) throw new Error("Add more lesson text before generating questions.");
@@ -199,7 +199,7 @@ export const polishText = createServerFn({ method: "POST" })
     const { generateText, Output } = await import("ai");
     try {
       const { output } = await generateText({
-        model: createOpenAI({ apiKey }).responses("gpt-6-luna"), maxRetries: 1,
+        model: createOpenAI({ apiKey }).responses("gpt-4.1"), maxRetries: 1,
         system: `${SAFETY} ${TONE_PROMPTS[data.tone]} Keep the same facts and meaning — do not add or remove information. Return only the rewritten text.`,
         prompt: JSON.stringify({ title: data.title, text: data.text }),
         output: Output.object({ schema: z.object({ text: z.string().min(1).max(20000) }) }),
@@ -229,7 +229,7 @@ export const generateCourseDetails = createServerFn({ method: "POST" })
     const { generateText, Output } = await import("ai");
     try {
       const { output } = await generateText({
-        model: createOpenAI({ apiKey }).responses("gpt-6-luna"), maxRetries: 1,
+        model: createOpenAI({ apiKey }).responses("gpt-4.1"), maxRetries: 1,
         system: `${SAFETY} From this training manual, write: (1) description — a 2 to 4 sentence catalogue summary of what the course covers and who it helps, written as flowing prose (no mid-sentence cutoffs); (2) targetAudience — one or two sentences on who this course is for; (3) valueProposition — one or two sentences on why it is worth taking; (4) outcomesTimeline — one or two sentences on what learners will be able to do and roughly how long the material takes to complete. Use only what the manual supports; do not invent numbers, durations, or a delivery format (e.g. do not say "facilitator-led", "instructor-led", "self-paced" or similar) unless the manual itself states it.`,
         prompt: JSON.stringify({ title: data.title, manual: data.sourceText.slice(0, 15000) }),
         output: Output.object({
@@ -264,7 +264,7 @@ export const generateCourseTopic = createServerFn({ method: "POST" })
     const { generateText, Output } = await import("ai");
     try {
       const { output } = await generateText({
-        model: createOpenAI({ apiKey }).responses("gpt-6-luna"), maxRetries: 1,
+        model: createOpenAI({ apiKey }).responses("gpt-4.1"), maxRetries: 1,
         system: `${SAFETY} Suggest a short topic/specialisation label (2 to 6 words) for this course within its industry, based only on its title and description. Do not invent facts the title/description don't support.`,
         prompt: JSON.stringify({ title: data.title, description: data.description, industry: data.industry }),
         output: Output.object({ schema: z.object({ topic: z.string().min(2).max(100) }) }),
@@ -322,7 +322,7 @@ export const generateCourseOutlineWithAI = createServerFn({ method: "POST" })
     const usedChunks = chunks.slice(0, MAX_CHUNKS);
     const { createOpenAI } = await import("@ai-sdk/openai");
     const { generateText, Output } = await import("ai");
-    const model = createOpenAI({ apiKey }).responses("gpt-6-luna");
+    const model = createOpenAI({ apiKey }).responses("gpt-4.1");
     const schema = z.object({
       modules: z
         .array(
@@ -383,7 +383,7 @@ export const generateCourseDescription = createServerFn({ method: "POST" })
     const { generateText, Output } = await import("ai");
     try {
       const { output } = await generateText({
-        model: createOpenAI({ apiKey }).responses("gpt-6-luna"), maxRetries: 1,
+        model: createOpenAI({ apiKey }).responses("gpt-4.1"), maxRetries: 1,
         system: `${SAFETY} Write a course catalogue description: 2 short paragraphs (about 90 to 140 words total) saying who it is for and what learners will be able to do, then 3 to 5 bullet points starting with "- " listing practical outcomes. Use only topics present in the manual or lesson outline.`,
         prompt: JSON.stringify({ title: data.title, manual: manual || undefined, lessons: outline }),
         output: Output.object({ schema: z.object({ text: z.string().min(40).max(4000) }) }),
@@ -423,7 +423,7 @@ export const generateMethodSuggestions = createServerFn({ method: "POST" })
     const { generateText, Output } = await import("ai");
     try {
       const { output } = await generateText({
-        model: createOpenAI({ apiKey }).responses("gpt-6-luna"), maxRetries: 1,
+        model: createOpenAI({ apiKey }).responses("gpt-4.1"), maxRetries: 1,
         system: `${SAFETY} Only fill in the fields for these requested methods: ${data.methods.join(", ")}. Leave every other field out.
 - illustrated: one sentence captioning what a diagram or photo for this lesson should show. Do not claim an image exists.
 - visual: one sentence captioning what a visual-identification image should show (equipment, crop, symptom, etc). Do not claim an image exists.
