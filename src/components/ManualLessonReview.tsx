@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowDownToLine, Scissors, Trash2, Check, Wand2, Sparkles, FolderOpen, FileText, LayoutGrid, Video, Package, Image as ImageIcon, Loader2, X, type LucideIcon } from "lucide-react";
+import { ArrowDownToLine, Scissors, Trash2, Check, Wand2, Sparkles, FolderOpen, FileText, LayoutGrid, Video, Package, Image as ImageIcon, Loader2, Plus, X, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,22 +36,21 @@ function autoRows(text: string, min: number) {
   const wrappedLines = Math.ceil(text.length / 80);
   return Math.max(min, explicitLines, wrappedLines) + 1;
 }
-const DELIVERY_KINDS: { kind: NonNullable<DraftLesson["kind"]>; label: string; icon: LucideIcon }[] = [
-  { kind: "reading", label: "Reading", icon: FileText },
-  { kind: "slide", label: "Slides", icon: LayoutGrid },
-  { kind: "video", label: "Video", icon: Video },
-  { kind: "scorm", label: "SCORM", icon: Package },
+type FormatRef = { source: "delivery" | "method"; id: string };
+/** Delivery-medium chips that flank the training-method toggles in drop order: Reading first, SCORM last. */
+const DELIVERY_FORMAT_ITEMS: { id: string; label: string; icon: LucideIcon; position: "before" | "after" }[] = [
+  { id: "reading", label: "Reading", icon: FileText, position: "before" },
+  { id: "scorm", label: "SCORM", icon: Package, position: "after" },
 ];
-type SlideSubKind = NonNullable<DraftLesson["slideKinds"]>[number];
-const SLIDE_SUB_KINDS: { kind: SlideSubKind; label: string; icon: LucideIcon }[] = [
-  { kind: "reading", label: "Reading", icon: FileText },
-  { kind: "video", label: "Video", icon: Video },
-  { kind: "scorm", label: "SCORM", icon: Package },
-];
-function resizeSlideKinds(current: SlideSubKind[], count: number): SlideSubKind[] {
-  const next = Math.max(1, Math.min(20, count));
+const MAX_SLIDES = 20;
+const ILLUSTRATED_STYLES = ["Photography", "Illustration", "Diagram", "Animation", "Infographic", "Screenshot"];
+function defaultSlides(): FormatRef[][] {
+  return [[], [], []];
+}
+function resizeSlides(current: FormatRef[][], count: number): FormatRef[][] {
+  const next = Math.max(1, Math.min(MAX_SLIDES, count));
   const copy = current.slice(0, next);
-  while (copy.length < next) copy.push("reading");
+  while (copy.length < next) copy.push([]);
   return copy;
 }
 const SOURCE_WORD = /[a-z0-9]{4,}/g;
@@ -223,17 +222,27 @@ export function ManualLessonReview(props: Props) {
             <Button size="icon" variant="ghost" title="Remove lesson from outline" aria-label={`Remove lesson ${index + 1}`} disabled={props.readOnly || props.busy} onClick={() => props.onDelete(index)}><Trash2 className="h-4 w-4" /></Button>
           </div>
           {(() => {
-            const renderMethodToggle = (method: Props["methods"][number]) => {
+            const renderMethodToggle = (method: Props["methods"][number], draggableFormat?: boolean) => {
               const isSelected = selected.includes(method.id);
               const aiChosen = aiMethods[index] ?? selected;
               const wantsAi = aiChosen.includes(method.id);
               return (
-                <div key={method.id} title={method.detail} className="flex items-center gap-1">
+                <div
+                  key={method.id}
+                  title={method.detail}
+                  className="flex items-center gap-1"
+                  draggable={draggableFormat}
+                  onDragStart={draggableFormat ? event => {
+                    event.dataTransfer.setData("application/json", JSON.stringify({ source: "method", id: method.id }));
+                    event.dataTransfer.effectAllowed = "copy";
+                  } : undefined}
+                >
                   <Button
                     type="button"
                     size="sm"
                     variant={isSelected ? "secondary" : "outline"}
                     aria-pressed={isSelected}
+                    className={draggableFormat ? "cursor-grab active:cursor-grabbing" : undefined}
                     onClick={() => props.onMethods(index, isSelected ? selected.filter(value => value !== method.id) : [...selected, method.id])}
                   >
                     {method.icon && <method.icon className="h-3.5 w-3.5" />}
@@ -255,81 +264,128 @@ export function ManualLessonReview(props: Props) {
                   >
                     <Wand2 className={`h-4 w-4 ${isSelected && wantsAi ? "text-primary" : "text-muted-foreground"}`} />
                   </Button>
+                  {method.id === "illustrated" && isSelected && (
+                    <select
+                      aria-label="Illustrated explanation style"
+                      value={lesson.illustratedStyle ?? ILLUSTRATED_STYLES[0]}
+                      disabled={props.readOnly || props.busy}
+                      onChange={event => props.onEdit(index, { ...lesson, illustratedStyle: event.target.value })}
+                      className="h-8 rounded border border-input bg-background px-1 text-xs"
+                    >
+                      {ILLUSTRATED_STYLES.map(style => (
+                        <option key={style} value={style}>{style}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               );
             };
             const trainingFormatMethods = props.methods.filter(m => TRAINING_FORMAT_METHOD_IDS.includes(m.id));
             const testLearningMethods = props.methods.filter(m => !TRAINING_FORMAT_METHOD_IDS.includes(m.id));
-            const deliveryKind = lesson.kind ?? "slide";
-            const slideKinds = lesson.slideKinds ?? ["reading", "reading", "reading"];
+            const slides = lesson.slideKinds ?? defaultSlides();
+            const formatMeta = (ref: FormatRef) =>
+              ref.source === "delivery"
+                ? DELIVERY_FORMAT_ITEMS.find(d => d.id === ref.id)
+                : props.methods.find(m => m.id === ref.id);
+            const updateSlides = (next: FormatRef[][]) => props.onEdit(index, { ...lesson, kind: "slide", slideKinds: next });
             return (
               <>
-                <fieldset disabled={props.readOnly || props.busy} className="mt-4 space-y-2">
+                <fieldset disabled={props.readOnly || props.busy} className="mt-4 space-y-3">
                   <legend className="text-xs font-semibold text-muted-foreground">Training format</legend>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {DELIVERY_KINDS.map(({ kind, label, icon: Icon }) => (
-                      <Button
-                        key={kind}
-                        type="button"
-                        size="sm"
-                        variant={deliveryKind === kind ? "secondary" : "outline"}
-                        aria-pressed={deliveryKind === kind}
-                        onClick={() => props.onEdit(index, { ...lesson, kind })}
-                      >
-                        <Icon className="h-3.5 w-3.5" />
-                        {label}
-                      </Button>
-                    ))}
-                    {trainingFormatMethods.map(renderMethodToggle)}
+                  <div className="flex items-center gap-2">
+                    <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-sm font-medium">Slides</span>
+                    <select
+                      aria-label="Number of slides"
+                      value={slides.length}
+                      disabled={props.readOnly || props.busy}
+                      onChange={event => updateSlides(resizeSlides(slides, Number(event.target.value) || 1))}
+                      className="h-7 rounded border border-input bg-background px-1 text-xs"
+                    >
+                      {Array.from({ length: MAX_SLIDES }, (_, i) => i + 1).map(n => (
+                        <option key={n} value={n}>{n} slide{n === 1 ? "" : "s"}</option>
+                      ))}
+                    </select>
                   </div>
-                  {deliveryKind === "slide" && (
-                    <div className="space-y-2 rounded-md border border-border bg-muted/30 p-2">
-                      <label className="flex items-center gap-2 text-xs font-medium">
-                        Number of slides
-                        <Input
-                          type="number"
-                          min={1}
-                          max={20}
-                          value={slideKinds.length}
-                          disabled={props.readOnly || props.busy}
-                          onChange={event => props.onEdit(index, { ...lesson, kind: "slide", slideKinds: resizeSlideKinds(slideKinds, Number(event.target.value) || 1) })}
-                          className="h-7 w-16 text-xs"
-                        />
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {slideKinds.map((sub, si) => {
-                          const Icon = SLIDE_SUB_KINDS.find(s => s.kind === sub)?.icon ?? FileText;
-                          return (
-                            <div key={si} className="flex w-20 flex-col items-center gap-1 rounded-md border border-border bg-background p-2">
-                              <span className="text-[10px] text-muted-foreground">Slide {si + 1}</span>
-                              <Icon className="h-5 w-5 text-primary" />
-                              <select
-                                aria-label={`Slide ${si + 1} medium`}
-                                value={sub}
-                                disabled={props.readOnly || props.busy}
-                                onChange={event =>
-                                  props.onEdit(index, {
-                                    ...lesson,
-                                    kind: "slide",
-                                    slideKinds: slideKinds.map((s, i) => (i === si ? (event.target.value as SlideSubKind) : s)),
-                                  })
-                                }
-                                className="w-full rounded border border-input bg-background px-1 py-0.5 text-[10px]"
-                              >
-                                {SLIDE_SUB_KINDS.map(({ kind, label }) => (
-                                  <option key={kind} value={kind}>{label}</option>
-                                ))}
-                              </select>
-                            </div>
-                          );
-                        })}
+                  <div className="flex flex-wrap gap-2">
+                    {slides.map((formats, si) => (
+                      <div
+                        key={si}
+                        onDragOver={event => event.preventDefault()}
+                        onDrop={event => {
+                          event.preventDefault();
+                          const raw = event.dataTransfer.getData("application/json");
+                          if (!raw) return;
+                          try {
+                            const ref = JSON.parse(raw) as FormatRef;
+                            updateSlides(slides.map((f, i) => (i === si ? (f.some(x => x.source === ref.source && x.id === ref.id) ? f : [...f, ref]) : f)));
+                          } catch { /* ignore a non-format drop */ }
+                        }}
+                        className="relative flex h-28 w-24 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border bg-background p-2"
+                      >
+                        <span className="absolute left-1.5 top-1 text-[10px] text-muted-foreground">Slide {si + 1}</span>
+                        {!props.readOnly && !props.busy && (
+                          <button type="button" aria-label={`Delete slide ${si + 1}`} onClick={() => updateSlides(slides.filter((_, i) => i !== si))} className="absolute right-1 top-1 text-muted-foreground hover:text-destructive">
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                        {formats.length ? (
+                          <div className="mt-3 flex flex-wrap items-center justify-center gap-1">
+                            {formats.map(ref => {
+                              const meta = formatMeta(ref);
+                              const Icon = meta?.icon ?? FileText;
+                              return (
+                                <span key={`${ref.source}:${ref.id}`} title={meta?.label ?? ref.id} className="flex items-center gap-0.5 rounded bg-secondary px-1 py-0.5">
+                                  <Icon className="h-4 w-4 text-secondary-foreground" />
+                                  {!props.readOnly && !props.busy && (
+                                    <button type="button" aria-label={`Remove ${meta?.label ?? ref.id} from slide ${si + 1}`} onClick={() => updateSlides(slides.map((f, i) => (i === si ? f.filter(x => !(x.source === ref.source && x.id === ref.id)) : f)))}>
+                                      <X className="h-2.5 w-2.5 text-secondary-foreground" />
+                                    </button>
+                                  )}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <FileText className="mt-3 h-5 w-5 text-muted-foreground" />
+                        )}
                       </div>
-                    </div>
-                  )}
+                    ))}
+                    {!props.readOnly && !props.busy && slides.length < MAX_SLIDES && (
+                      <button type="button" onClick={() => updateSlides([...slides, []])} className="flex h-28 w-24 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary">
+                        <Plus className="h-5 w-5" />
+                        <span className="text-[10px]">Add slide</span>
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Drag a format below onto a slide — a slide can hold more than one.</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {DELIVERY_FORMAT_ITEMS.filter(d => d.position === "before").map(({ id, label, icon: Icon }) => (
+                      <div
+                        key={id}
+                        draggable
+                        onDragStart={event => { event.dataTransfer.setData("application/json", JSON.stringify({ source: "delivery", id })); event.dataTransfer.effectAllowed = "copy"; }}
+                        className="flex cursor-grab items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm active:cursor-grabbing"
+                      >
+                        <Icon className="h-3.5 w-3.5" />{label}
+                      </div>
+                    ))}
+                    {trainingFormatMethods.map(method => renderMethodToggle(method, true))}
+                    {DELIVERY_FORMAT_ITEMS.filter(d => d.position === "after").map(({ id, label, icon: Icon }) => (
+                      <div
+                        key={id}
+                        draggable
+                        onDragStart={event => { event.dataTransfer.setData("application/json", JSON.stringify({ source: "delivery", id })); event.dataTransfer.effectAllowed = "copy"; }}
+                        className="flex cursor-grab items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm active:cursor-grabbing"
+                      >
+                        <Icon className="h-3.5 w-3.5" />{label}
+                      </div>
+                    ))}
+                  </div>
                 </fieldset>
                 <fieldset disabled={props.readOnly || props.busy} className="mt-4 space-y-2 border-t border-border pt-3">
                   <legend className="text-xs font-semibold text-muted-foreground">Knowledge check</legend>
-                  <div className="flex flex-wrap gap-2">{testLearningMethods.map(renderMethodToggle)}</div>
+                  <div className="flex flex-wrap gap-2">{testLearningMethods.map(method => renderMethodToggle(method))}</div>
                 </fieldset>
               </>
             );

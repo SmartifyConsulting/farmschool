@@ -2459,13 +2459,6 @@ function Editor() {
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
-                          <div className="pl-1">
-                            <LessonTypeAdder
-                              disabled={course.published}
-                              onAdd={(kind) => void addLesson(kind, m.id)}
-                              onAddSlides={(subKinds) => void addSlideSet(subKinds, m.id)}
-                            />
-                          </div>
                         </li>
                       ))}
                     </ul>

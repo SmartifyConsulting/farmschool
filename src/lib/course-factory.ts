@@ -16,8 +16,10 @@ export type DraftLesson = {
   mediaKind?: "image" | "video" | null;
   /** Training format this lesson imports as; defaults to "slide" when unset. */
   kind?: "reading" | "slide" | "video" | "scorm";
-  /** When kind is "slide", the medium of each slide in order; defaults to three Reading slides when unset. */
-  slideKinds?: ("reading" | "video" | "scorm")[];
+  /** When kind is "slide": each slide's own list of assigned formats (delivery mediums and/or training methods), in drop order; defaults to three empty slides when unset. */
+  slideKinds?: { source: "delivery" | "method"; id: string }[][];
+  /** When the "illustrated" method is selected: the kind of visual to use (photo, diagram, etc). */
+  illustratedStyle?: string;
 };
 export type DraftCourse = {
   title: string;
