@@ -2785,6 +2785,7 @@ function Editor() {
                       <div className="space-y-5">
                         <ManualLessonReview
                           draft={draft}
+                          courseId={id}
                           illustrationGuide={form.illustration_guide}
                           extraControls={
                             <div className="flex flex-wrap items-end gap-3 border-b border-border pb-4">

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowDownToLine, Scissors, Trash2, Check, Wand2, Sparkles, FolderOpen, FileText, LayoutGrid, Video, Package, Image as ImageIcon, Loader2, Plus, X, type LucideIcon } from "lucide-react";
+import { ArrowDownToLine, Scissors, Trash2, Check, Wand2, Sparkles, FolderOpen, FileText, LayoutGrid, Video, Package, Library, Image as ImageIcon, Loader2, Plus, X, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { FormattedLesson } from "@/components/FormattedLesson";
 import { reflowText, type DraftCourse, type DraftLesson, type IllustrationGuide } from "@/lib/course-factory";
+import { buildLessonScormZip } from "@/lib/scorm-export";
 
 export type LessonPagePreview = {
   lessonTitle: string;
@@ -153,6 +154,8 @@ type Props = {
   illustrationGuide: IllustrationGuide;
   /** Extra controls (e.g. "First content page" / "Rebuild outline") rendered just under the summary line. */
   extraControls?: ReactNode;
+  /** The course these lessons belong to — needed to save a SCORM export into its Content Library. */
+  courseId: string;
 };
 
 export function ManualLessonReview(props: Props) {
@@ -205,6 +208,54 @@ export function ManualLessonReview(props: Props) {
         const selected = props.choices(index, lesson.title, lesson.body);
         const paragraphs = lesson.body.split(/\n{2,}/);
         const newModule = lesson.module && lesson.module !== props.draft.lessons[index - 1]?.module;
+        const exportLessonScorm = async () => {
+          const preview = props.previews[index];
+          if (!preview) return;
+          try {
+            const bytes = await buildLessonScormZip(props.draft.title, preview, crypto.randomUUID());
+            const blob = new Blob([bytes as Uint8Array<ArrayBuffer>], { type: "application/zip" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${(lesson.title || "lesson").replace(/\s+/g, "-")}-scorm.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+          } catch {
+            toast.error("Could not export this lesson as SCORM.");
+          }
+        };
+        const saveLessonToLibrary = async () => {
+          const preview = props.previews[index];
+          if (!preview) return;
+          const { data: auth } = await supabase.auth.getUser();
+          if (!auth.user) { toast.error("Please sign in to save."); return; }
+          try {
+            const bytes = await buildLessonScormZip(props.draft.title, preview, crypto.randomUUID());
+            const fileName = `${lesson.title || "Lesson"} (SCORM).zip`;
+            const path = `${auth.user.id}/${props.courseId}/${crypto.randomUUID()}-${fileName}`.replace(/\s+/g, "-");
+            const { error: uploadError } = await supabase.storage
+              .from("studio-content")
+              .upload(path, new Blob([bytes as Uint8Array<ArrayBuffer>], { type: "application/zip" }), { contentType: "application/zip" });
+            if (uploadError) throw uploadError;
+            const { error: insertError } = await supabase.from("studio_content_files").insert({
+              course_id: props.courseId,
+              module_id: null,
+              file_name: fileName,
+              original_file_name: fileName,
+              file_type: "scorm",
+              storage_path: path,
+              size_bytes: bytes.byteLength,
+              description: `SCORM export of "${lesson.title}"`,
+              classification: "SCORM package",
+              keywords: [],
+              file_hash: null,
+            });
+            if (insertError) throw insertError;
+            toast.success("Saved to your Content Library.");
+          } catch {
+            toast.error("Could not save to the Content Library.");
+          }
+        };
         return <li key={index} id={`outline-lesson-${index}`} className="min-w-0 scroll-mt-4 space-y-3">
           {newModule && <h4 className="flex items-center gap-2 pt-2 text-sm font-semibold text-primary"><FolderOpen className="h-4 w-4" />Module: {lesson.module}</h4>}
           <div className={`min-w-0 rounded-lg border border-border bg-background p-4 sm:p-5 ${lesson.module ? "sm:ml-4" : ""}`}>
@@ -279,9 +330,12 @@ export function ManualLessonReview(props: Props) {
                   <div
                     draggable
                     onDragStart={event => { event.dataTransfer.setData("application/json", JSON.stringify({ source: "delivery", id: item.id })); event.dataTransfer.effectAllowed = "copy"; }}
-                    className="flex h-8 cursor-grab items-center gap-1 rounded-md border border-border bg-background px-3 text-xs font-medium active:cursor-grabbing"
+                    onClick={item.id === "scorm" && !props.readOnly && !props.busy ? promptScormUpload : undefined}
+                    title={item.id === "scorm" ? (lesson.scormFile ? `Attached: ${lesson.scormFile.name}` : "Click to upload a SCORM package") : undefined}
+                    className={`flex h-8 items-center gap-1 rounded-md border px-3 text-xs font-medium active:cursor-grabbing ${item.id === "scorm" ? "cursor-pointer" : "cursor-grab"} ${item.id === "scorm" && lesson.scormFile ? "border-primary bg-primary/10" : "border-border bg-background"}`}
                   >
                     <item.icon className="h-3.5 w-3.5" />{item.label}
+                    {item.id === "scorm" && lesson.scormFile && <Check className="h-3 w-3 text-primary" />}
                   </div>
                   <Button
                     type="button"
@@ -309,6 +363,26 @@ export function ManualLessonReview(props: Props) {
                 ? DELIVERY_FORMAT_ITEMS.find(d => d.id === ref.id)
                 : props.methods.find(m => m.id === ref.id);
             const updateSlides = (next: FormatRef[][]) => props.onEdit(index, { ...lesson, kind: "slide", slideKinds: next });
+            const promptScormUpload = () => {
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept = ".zip,application/zip,application/x-zip-compressed";
+              input.onchange = async () => {
+                const file = input.files?.[0];
+                if (!file) return;
+                if (!/\.zip$/i.test(file.name)) { toast.error("Choose a SCORM .zip package."); return; }
+                if (file.size > MAX_MEDIA_BYTES) { toast.error("File must be smaller than 25MB."); return; }
+                const { data: auth } = await supabase.auth.getUser();
+                if (!auth.user) { toast.error("Please sign in to upload."); return; }
+                const path = `${auth.user.id}/${crypto.randomUUID()}-${file.name}`.replace(/\s+/g, "-");
+                const { error } = await supabase.storage.from(ILLUSTRATION_BUCKET).upload(path, file, { contentType: "application/zip" });
+                if (error) { toast.error("Could not upload the SCORM package."); return; }
+                const { data } = supabase.storage.from(ILLUSTRATION_BUCKET).getPublicUrl(path);
+                props.onEdit(index, { ...lesson, scormFile: { url: data.publicUrl, name: file.name } });
+                toast.success(`Attached "${file.name}".`);
+              };
+              input.click();
+            };
             return (
               <>
                 <fieldset disabled={props.readOnly || props.busy} className="mt-4 space-y-3">
@@ -458,6 +532,10 @@ export function ManualLessonReview(props: Props) {
             {!!props.previews[index].droppedUnsupportedQuestions && (
               <p className="text-xs text-muted-foreground">{props.previews[index].droppedUnsupportedQuestions} question(s) removed — their source quotes weren't found in the text.</p>
             )}
+            <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-3">
+              <Button size="sm" variant="outline" onClick={() => void exportLessonScorm()}><Package className="h-4 w-4" />Export SCORM</Button>
+              <Button size="sm" variant="outline" onClick={() => void saveLessonToLibrary()}><Library className="h-4 w-4" />Save to Content Library</Button>
+            </div>
           </div>}
           {splitting === index && <div className="mt-4 space-y-2 border-t border-border pt-3">
             <h4 className="text-sm font-medium">Click “Split here” where the next lesson should start</h4>

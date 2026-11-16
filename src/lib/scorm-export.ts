@@ -450,10 +450,9 @@ export function portablePlayer() {
   });
 }
 
-export async function buildScormZip(archive: CourseArchive) {
-  const course = portableCourse(archive);
+async function packageScormZip(course: PortableCourse, manifestId: string, readme: string) {
   const zip = new JSZip();
-  zip.file("imsmanifest.xml", scormManifest(course.title, archive.snapshot.course.id));
+  zip.file("imsmanifest.xml", scormManifest(course.title, manifestId));
   zip.file(
     "index.html",
     '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src \'self\'; script-src \'self\'; style-src \'self\'; object-src \'none\'; base-uri \'none\'"><title>' +
@@ -474,9 +473,46 @@ export async function buildScormZip(archive: CourseArchive) {
     "style.css",
     "body{font:18px/1.6 system-ui,sans-serif;max-width:900px;margin:2rem auto;padding:1rem;color:#172b40}button,select,input{font:inherit;margin:.5rem;padding:.6rem}button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #164f9c;outline-offset:3px}fieldset{margin:1rem 0}label{display:block}.content{white-space:pre-wrap}nav{display:flex;flex-wrap:wrap;gap:.5rem}#status{padding:1rem;border:1px solid #777}",
   );
-  zip.file(
-    "README.txt",
-    "Plusticity native SCORM 1.2 export. Launch from a SCORM LMS. Quiz keys are part of this package. The destination LMS manages identity, access and certificates. Video links need internet. Slides are rendered as readable text; Plusticity widgets, purchases, deadlines, quotas, certificates and server moderation are not transferred. Test import, bookmarking, retakes, completion and resume in the destination LMS before assigning learners.\n",
-  );
+  zip.file("README.txt", readme);
   return zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
+}
+
+const COURSE_README =
+  "Plusticity native SCORM 1.2 export. Launch from a SCORM LMS. Quiz keys are part of this package. The destination LMS manages identity, access and certificates. Video links need internet. Slides are rendered as readable text; Plusticity widgets, purchases, deadlines, quotas, certificates and server moderation are not transferred. Test import, bookmarking, retakes, completion and resume in the destination LMS before assigning learners.\n";
+
+export async function buildScormZip(archive: CourseArchive) {
+  const course = portableCourse(archive);
+  return packageScormZip(course, archive.snapshot.course.id, COURSE_README);
+}
+
+/**
+ * A standalone SCORM 1.2 package for one not-yet-saved lesson preview, built straight from its
+ * AI-generated summary and questions \u2014 for reviewing/sharing a single module before it's imported
+ * into the course, without needing a full saved course archive.
+ */
+export async function buildLessonScormZip(
+  courseTitle: string,
+  preview: { lessonTitle: string; lessonSummary: string; questions: { question: string; options: string[]; correctIndex: number }[] },
+  manifestId: string,
+) {
+  const course: PortableCourse = {
+    title: courseTitle,
+    description: "",
+    lessons: [
+      {
+        title: preview.lessonTitle,
+        body: preview.lessonSummary,
+        video_url: null,
+        kind: "reading",
+        questions: preview.questions.map((q) => ({ kind: "choice" as const, q: q.question, options: q.options })),
+        answers: preview.questions.map((q) => q.correctIndex),
+        passMark: 70,
+      },
+    ],
+  };
+  return packageScormZip(
+    course,
+    manifestId,
+    "Plusticity native SCORM 1.2 export of a single lesson preview, not yet published in the course. Launch from a SCORM LMS. The destination LMS manages identity, access and certificates. Test import, bookmarking, completion and resume in the destination LMS before assigning learners.\n",
+  );
 }

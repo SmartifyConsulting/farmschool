@@ -18,6 +18,8 @@ export type DraftLesson = {
   kind?: "reading" | "slide" | "video" | "scorm";
   /** When kind is "slide": each slide's own list of assigned formats (delivery mediums and/or training methods), in drop order; defaults to three empty slides when unset. */
   slideKinds?: { source: "delivery" | "method"; id: string }[][];
+  /** A trainer-uploaded SCORM package to use as this lesson's content (review stage only — not yet carried through to the published lesson). */
+  scormFile?: { url: string; name: string } | null;
 };
 export type DraftCourse = {
   title: string;
