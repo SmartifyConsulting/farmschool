@@ -26,6 +26,7 @@ import {
   ListChecks,
   Puzzle,
   Activity,
+  RefreshCw,
 } from "lucide-react";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
