@@ -76,6 +76,7 @@ import { formatManualAsSlides, parseLessonSlides, splitLessonSource } from "@/li
 import { ManualLessonReview } from "@/components/ManualLessonReview";
 import { StudioVersions } from "@/components/StudioVersions";
 import { StudioCourseActions } from "@/components/StudioCourseActions";
+import { CourseOrganizationButton } from "@/components/LearningOrganizationControls";
 import { useAuth } from "@/hooks/useLearning";
 import { ScormPicker } from "@/components/ScormPicker";
 import { scormLessonRef } from "@/lib/scorm";
@@ -1840,14 +1841,6 @@ function Editor() {
               <ArrowLeft className="h-3 w-3" />
               All my courses
             </Link>
-            <Link
-              to="/class/$id"
-              params={{ id }}
-              className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs"
-            >
-              <Eye className="h-3 w-3" />
-              Preview
-            </Link>
             {course.published && (
               <Link
                 to="/learning-activities/$courseId"
@@ -1871,7 +1864,7 @@ function Editor() {
                   : "Draft"}
             </p>
           </div>
-          <StudioCourseActions course={course} onChanged={refresh} />
+          <StudioCourseActions course={course} onChanged={refresh} hidePrivacy />
         </div>
         <div className="grid min-w-0 gap-6 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
           <aside className="min-w-0 border-b border-border pb-4 lg:border-b-0 lg:border-r lg:pr-5">
@@ -2341,6 +2334,12 @@ function Editor() {
                           0 is free. Buyers pay once via Stripe Checkout.
                         </p>
                       </div>
+                      <div>
+                        <label className="block text-xs font-medium">Privacy</label>
+                        <div className="mt-1">
+                          <CourseOrganizationButton course={course} />
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <Button onClick={saveDetails} className="mt-auto w-full">
@@ -2357,29 +2356,39 @@ function Editor() {
               />
             )}
             {screen === "import" && (
-              <div
-                className="flex gap-1 rounded-full border border-border p-1 w-fit"
-                role="tablist"
-                aria-label="Design method"
-              >
-                {(
-                  [
-                    { key: "auto", label: "Auto Design" },
-                    { key: "manual", label: "Manual Design" },
-                  ] as const
-                ).map((t) => (
-                  <Button
-                    key={t.key}
-                    role="tab"
-                    aria-selected={designTab === t.key}
-                    size="sm"
-                    variant={designTab === t.key ? "default" : "ghost"}
-                    className="rounded-full"
-                    onClick={() => setDesignTab(t.key)}
-                  >
-                    {t.label}
-                  </Button>
-                ))}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div
+                  className="flex gap-1 rounded-full border border-border p-1 w-fit"
+                  role="tablist"
+                  aria-label="Design method"
+                >
+                  {(
+                    [
+                      { key: "auto", label: "Auto Design" },
+                      { key: "manual", label: "Manual Design" },
+                    ] as const
+                  ).map((t) => (
+                    <Button
+                      key={t.key}
+                      role="tab"
+                      aria-selected={designTab === t.key}
+                      size="sm"
+                      variant={designTab === t.key ? "default" : "ghost"}
+                      className="rounded-full"
+                      onClick={() => setDesignTab(t.key)}
+                    >
+                      {t.label}
+                    </Button>
+                  ))}
+                </div>
+                <Link
+                  to="/class/$id"
+                  params={{ id }}
+                  className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs"
+                >
+                  <Eye className="h-3 w-3" />
+                  Preview
+                </Link>
               </div>
             )}
             {screen === "import" && (

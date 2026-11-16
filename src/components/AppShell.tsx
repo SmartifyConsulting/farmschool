@@ -164,7 +164,12 @@ function AvatarMenu({
   });
   if (!ready || !user) return null;
   const name = prof?.full_name ?? user.email?.split("@")[0] ?? "Account";
-  const initials = name.slice(0, 2).toUpperCase();
+  const nameParts = name.trim().split(/\s+/).filter(Boolean);
+  const initials = (
+    nameParts.length > 1
+      ? (nameParts[0]![0] ?? "") + (nameParts.at(-1)![0] ?? "")
+      : name.slice(0, 2)
+  ).toUpperCase();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
