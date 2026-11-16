@@ -76,7 +76,6 @@ import { StudioCourseActions } from "@/components/StudioCourseActions";
 import { useAuth } from "@/hooks/useLearning";
 import { ScormPicker } from "@/components/ScormPicker";
 import { scormLessonRef } from "@/lib/scorm";
-import { DescriptionAssistant } from "@/components/DescriptionAssistant";
 
 type VideoLink = {
   id: string;
@@ -2196,14 +2195,8 @@ function Editor() {
                         value={form.description}
                         onChange={(e) => setForm({ ...form, description: e.target.value })}
                         placeholder="What will learners gain from this course?"
-                        rows={4}
+                        rows={3}
                         maxLength={4000}
-                      />
-                      <DescriptionAssistant
-                        courseId={id}
-                        title={form.title}
-                        sourceText={sourceText}
-                        onText={(t) => setForm((f) => ({ ...f, description: t }))}
                       />
                       <PolishButton
                         courseId={id}
