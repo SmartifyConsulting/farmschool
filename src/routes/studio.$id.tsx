@@ -2144,10 +2144,10 @@ function Editor() {
               })()}
             {screen === "overview" && (
               <fieldset disabled={course.published} className="min-w-0 space-y-6">
-                <section className="flex h-full flex-col space-y-3 border-b border-border pb-6">
+                <section className="space-y-4 border-b border-border pb-6">
                   <h2 className="font-semibold">Course details</h2>
-                  <div className="grid flex-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-3">
+                  <div className="grid gap-4 rounded-lg border border-border p-3 sm:grid-cols-[1fr_15rem]">
+                    <div className="space-y-2">
                       <Input
                         value={form.title}
                         onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -2168,6 +2168,19 @@ function Editor() {
                         text={form.description}
                         onText={(t) => setForm((f) => ({ ...f, description: t }))}
                       />
+                    </div>
+                    <div className="min-w-0">
+                      <label className="block text-xs font-medium">Cover image</label>
+                      <div className="mt-1">
+                        <CoverImageInput
+                          value={form.cover_url}
+                          onChange={(url) => setForm({ ...form, cover_url: url })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-3">
                       <div>
                         <label className="block text-xs font-medium">Industry</label>
                         <select
@@ -2242,57 +2255,50 @@ function Editor() {
                         </div>
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium">Cover image</label>
-                      <div className="mt-1">
-                        <CoverImageInput
-                          value={form.cover_url}
-                          onChange={(url) => setForm({ ...form, cover_url: url })}
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium">Theme</label>
+                        <div
+                          className="mt-1 flex flex-wrap gap-2"
+                          role="radiogroup"
+                          aria-label="Course theme"
+                        >
+                          {COURSE_THEME_NAMES.map((name) => (
+                            <button
+                              key={name}
+                              type="button"
+                              role="radio"
+                              aria-checked={form.theme === name}
+                              aria-label={COURSE_THEMES[name].label}
+                              onClick={() => setForm({ ...form, theme: name })}
+                              className={`flex h-8 w-8 items-center justify-center rounded-full border-2 ${form.theme === name ? "border-foreground" : "border-transparent"}`}
+                              style={{ backgroundColor: COURSE_THEMES[name].primary }}
+                            >
+                              {form.theme === name && (
+                                <Check
+                                  className="h-4 w-4"
+                                  style={{ color: COURSE_THEMES[name].primaryForeground }}
+                                />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium">Price (USD)</label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={form.price}
+                          onChange={(e) => setForm({ ...form, price: e.target.value })}
+                          className="mt-1"
+                          aria-label="Price in US dollars"
                         />
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          0 is free. Buyers pay this once to enrol via Stripe Checkout.
+                        </p>
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium">Theme</label>
-                      <div
-                        className="mt-1 flex flex-wrap gap-2"
-                        role="radiogroup"
-                        aria-label="Course theme"
-                      >
-                        {COURSE_THEME_NAMES.map((name) => (
-                          <button
-                            key={name}
-                            type="button"
-                            role="radio"
-                            aria-checked={form.theme === name}
-                            aria-label={COURSE_THEMES[name].label}
-                            onClick={() => setForm({ ...form, theme: name })}
-                            className={`flex h-8 w-8 items-center justify-center rounded-full border-2 ${form.theme === name ? "border-foreground" : "border-transparent"}`}
-                            style={{ backgroundColor: COURSE_THEMES[name].primary }}
-                          >
-                            {form.theme === name && (
-                              <Check
-                                className="h-4 w-4"
-                                style={{ color: COURSE_THEMES[name].primaryForeground }}
-                              />
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium">Price (USD)</label>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={form.price}
-                        onChange={(e) => setForm({ ...form, price: e.target.value })}
-                        className="mt-1"
-                        aria-label="Price in US dollars"
-                      />
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        0 is free. Buyers pay this once to enrol via Stripe Checkout.
-                      </p>
                     </div>
                   </div>
                   <div className="space-y-3 border-t border-border pt-4">
