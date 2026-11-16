@@ -79,6 +79,7 @@ import { ManualLessonReview } from "@/components/ManualLessonReview";
 import { StudioVersions } from "@/components/StudioVersions";
 import { StudioCourseActions } from "@/components/StudioCourseActions";
 import { CourseOrganizationButton } from "@/components/LearningOrganizationControls";
+import { LessonTypeAdder, type SlideSubKind } from "@/components/LessonTypeAdder";
 import { useAuth } from "@/hooks/useLearning";
 import { ScormPicker } from "@/components/ScormPicker";
 import { scormLessonRef } from "@/lib/scorm";
@@ -1551,6 +1552,26 @@ function Editor() {
       setScreen("lesson");
     }
   };
+  /** "Slides" is a count of individual lessons, each delivered as Reading, Video or SCORM. */
+  const addSlideSet = async (subKinds: SlideSubKind[], moduleId?: string | null) => {
+    if (!subKinds.length) return;
+    const start = (lessons?.at(-1)?.position ?? -1) + 1;
+    const rows = subKinds.map((kind, i) => ({
+      course_id: id,
+      kind,
+      position: start + i,
+      title: `${lessonKindDefaultTitle(kind)} ${i + 1}`,
+      module_id: moduleId ?? null,
+    }));
+    const { data, error } = await supabase.from("studio_lessons").insert(rows).select("id");
+    if (error || !data?.length) {
+      toast.error("Could not add the slides.");
+      return;
+    }
+    refresh();
+    setSelectedLesson(data[0]!.id);
+    setScreen("lesson");
+  };
   const createModule = async () => {
     const { data, error } = await supabase
       .from("studio_modules" as never)
@@ -2439,27 +2460,12 @@ function Editor() {
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
-                          <div className="flex flex-wrap gap-1 pl-1">
-                            <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("reading", m.id)}>
-                              <FileText className="h-3 w-3" />
-                              Reading
-                            </Button>
-                            <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("slide", m.id)}>
-                              <LayoutGrid className="h-3 w-3" />
-                              Slides
-                            </Button>
-                            <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("video", m.id)}>
-                              <Video className="h-3 w-3" />
-                              Video
-                            </Button>
-                            <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("quiz", m.id)}>
-                              <HelpCircle className="h-3 w-3" />
-                              Quiz
-                            </Button>
-                            <Button size="sm" variant="outline" disabled={course.published} onClick={() => addLesson("scorm", m.id)}>
-                              <Package className="h-3 w-3" />
-                              SCORM
-                            </Button>
+                          <div className="pl-1">
+                            <LessonTypeAdder
+                              disabled={course.published}
+                              onAdd={(kind) => void addLesson(kind, m.id)}
+                              onAddSlides={(subKinds) => void addSlideSet(subKinds, m.id)}
+                            />
                           </div>
                         </li>
                       ))}
@@ -2477,38 +2483,19 @@ function Editor() {
                 {modules.length === 0 && (
                   <section className="space-y-3 rounded-2xl border border-dashed border-border p-4">
                     <h2 className="font-semibold">Add your first lesson</h2>
-                    <p className="text-xs text-muted-foreground"></p>
-                    <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="outline" onClick={() => addLesson("video")}>
-                        <Video className="h-4 w-4" />
-                        Video
-                      </Button>
-                      <VideoLibraryPicker
-                        courseId={id}
-                        position={lessons?.length ?? 0}
-                        usedItemIds={videoLinks.map((v) => v.item_id)}
-                        onAdded={() => {
-                          refresh();
-                          void refetchLinks();
-                        }}
-                      />
-                      <Button size="sm" variant="outline" onClick={() => addLesson("reading")}>
-                        <FileText className="h-4 w-4" />
-                        Reading
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => addLesson("slide")}>
-                        <LayoutGrid className="h-4 w-4" />
-                        Slides
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => addLesson("quiz")}>
-                        <HelpCircle className="h-4 w-4" />
-                        Quiz
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => addLesson("scorm")}>
-                        <Package className="h-4 w-4" />
-                        SCORM
-                      </Button>
-                    </div>
+                    <LessonTypeAdder
+                      onAdd={(kind) => void addLesson(kind)}
+                      onAddSlides={(subKinds) => void addSlideSet(subKinds)}
+                    />
+                    <VideoLibraryPicker
+                      courseId={id}
+                      position={lessons?.length ?? 0}
+                      usedItemIds={videoLinks.map((v) => v.item_id)}
+                      onAdded={() => {
+                        refresh();
+                        void refetchLinks();
+                      }}
+                    />
                   </section>
                 )}
                 <section className="space-y-3 border-b border-border pb-6">
