@@ -1,3 +1,4 @@
+import { rpcArgs } from "@/lib/rpc-args";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -85,13 +86,13 @@ function PolicyEditor({ lessonId, body, readOnly, policy }: Props & { policy: Po
         setDuration(240);
         setSpacing(0);
       } else if (valid.success) {
-        const { data, error } = await supabase.rpc("save_quiz_exam_policy", {
+        const { data, error } = await supabase.rpc("save_quiz_exam_policy", rpcArgs("save_quiz_exam_policy", {
           _lesson: lessonId,
           _max: valid.data.maxAttempts,
           _duration: valid.data.durationMinutes,
           _retry: valid.data.startSpacingMinutes,
           _expected: version,
-        });
+        }));
         if (error) throw error;
         setVersion(data);
       }

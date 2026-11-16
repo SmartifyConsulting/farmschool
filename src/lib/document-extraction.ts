@@ -42,7 +42,8 @@ export function orderPageTextForReading(items: unknown[], pageWidth: number): st
   const rows: PositionedItem[][] = [];
   for (const item of sorted) {
     const row = rows.at(-1);
-    if (row && Math.abs(item.y - row[0].y) <= 3) row.push(item);
+    const first = row?.[0];
+    if (row && first && Math.abs(item.y - first.y) <= 3) row.push(item);
     else rows.push([item]);
   }
   for (const row of rows) row.sort((a, b) => a.x - b.x);
@@ -94,7 +95,9 @@ export function orderPageTextForReading(items: unknown[], pageWidth: number): st
       out.push(rowText(row));
       continue;
     }
-    const onRight = row[0].x >= gutter;
+    const first = row[0];
+    if (!first) continue;
+    const onRight = first.x >= gutter;
     (onRight ? right : left).push(rowText(row));
   }
   flushColumns();

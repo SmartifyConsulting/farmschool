@@ -1,3 +1,4 @@
+import { rpcArgs } from "@/lib/rpc-args";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -77,7 +78,7 @@ export function OrganizationNotificationRules({ organizationId }: { organization
     if (draft.title.trim().length < 1 || busy) return;
     setBusy(true);
     try {
-      const { error } = await supabase.rpc("save_organization_notification_rule", {
+      const { error } = await supabase.rpc("save_organization_notification_rule", rpcArgs("save_organization_notification_rule", {
         _id: null,
         _organization: organizationId,
         _title: draft.title.trim(),
@@ -88,7 +89,7 @@ export function OrganizationNotificationRules({ organizationId }: { organization
         _role: draft.role,
         _interval: draft.interval,
         _expected: 0,
-      });
+      }));
       if (error) throw error;
       toast.success("Notification rule created, paused.");
       setCreating(false);

@@ -1,3 +1,4 @@
+import { rpcArgs } from "@/lib/rpc-args";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -79,13 +80,13 @@ export function CohortPolicies({
     }
     setBusy(true);
     try {
-      const { error } = await supabase.rpc("save_cohort_policy", {
+      const { error } = await supabase.rpc("save_cohort_policy", rpcArgs("save_cohort_policy", {
         _cohort: cohortId,
         _seats: seats ? Number(seats) : null,
         _auto_free: autoFree,
         _reminders: reminders,
         _expected_version: policy.data.policy_version,
-      });
+      }));
       if (error) throw error;
       await qc.invalidateQueries({ queryKey: ["cohort-policy", cohortId] });
       toast.success("Cohort policies saved.");

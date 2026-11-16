@@ -1,3 +1,4 @@
+import { rpcArgs } from "@/lib/rpc-args";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -568,7 +569,16 @@ function Editor() {
       const result = await runGenerateMethodSuggestions({
         data: { title: lesson.title, sourceText: lesson.body.slice(0, 12000), methods },
       });
-      setMethodSuggestions((p) => ({ ...p, [index]: result }));
+      const suggestions: MethodSuggestions = {
+        ...(result.illustrated !== undefined ? { illustrated: result.illustrated } : {}),
+        ...(result.visual !== undefined ? { visual: result.visual } : {}),
+        ...(result.videoQueries !== undefined ? { videoQueries: result.videoQueries } : {}),
+        ...(result.steps !== undefined ? { steps: result.steps } : {}),
+        ...(result.scenarios !== undefined ? { scenarios: result.scenarios } : {}),
+        ...(result.quiz !== undefined ? { quiz: result.quiz } : {}),
+        ...(result.activities !== undefined ? { activities: result.activities } : {}),
+      };
+      setMethodSuggestions((p) => ({ ...p, [index]: suggestions }));
     } catch (error) {
       toast.error(friendlyError(error, "Could not generate suggestions."));
     } finally {
@@ -2879,8 +2889,8 @@ function Editor() {
                           suggestions={methodSuggestions}
                           suggestLoading={suggestLoading}
                           onSuggest={(index, lesson, methods) => void suggestMethodContent(index, lesson, methods)}
-                          focusIndex={outlineFocus?.index}
-                          focusToken={outlineFocus?.token}
+                          focusIndex={outlineFocus?.index ?? null}
+                          focusToken={outlineFocus?.token ?? 0}
                         />
                         <div className="flex flex-wrap justify-between gap-2 border-t border-border pt-4">
                           <Button variant="outline" onClick={() => setFactoryStep(0)}>
@@ -3759,14 +3769,14 @@ function LessonEditor({
         if (privateExam) {
           if (sampleSize === null) { if (!silent) toast.error("Choose a sample size for the private exam."); return; }
           ({ error } = await supabase.rpc("studio_save_private_quiz", { _lesson: lesson.id, _title: title, _pass_mark: passMark, _questions: quiz.questions, _answers: quiz.keys, _sample_size: sampleSize }));
-        } else ({ error } = await supabase.rpc("studio_save_quiz_pool", {
+        } else ({ error } = await supabase.rpc("studio_save_quiz_pool", rpcArgs("studio_save_quiz_pool", {
           _lesson_id: lesson.id,
           _title: title,
           _pass_mark: passMark,
           _questions: quiz.questions,
           _answers: quiz.keys,
           _sample_size: sampleSize,
-        }));
+        })));
       } else {
         ({ error } = await supabase
           .from("studio_lessons")

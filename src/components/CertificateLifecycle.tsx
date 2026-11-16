@@ -1,3 +1,4 @@
+import { rpcArgs } from "@/lib/rpc-args";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -236,13 +237,13 @@ export function CourseCertificatePolicy({ courseId }: { courseId: string }) {
       return;
     setBusy(true);
     try {
-      const { error } = await supabase.rpc("set_course_certificate_policy", {
+      const { error } = await supabase.rpc("set_course_certificate_policy", rpcArgs("set_course_certificate_policy", {
         _course: courseId,
         _days: validity,
         _window: window,
         _version: policy.data.version,
         _reason: reason.trim(),
-      });
+      }));
       if (error) throw error;
       await qc.invalidateQueries({ queryKey: ["certificate-policy", courseId] });
       setReason("");

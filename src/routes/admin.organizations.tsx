@@ -1,3 +1,4 @@
+import { rpcArgs } from "@/lib/rpc-args";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -33,10 +34,10 @@ function AdminOrganizations() {
 
   const setParent = async (orgId: string, parentId: string) => {
     try {
-      const { error } = await supabase.rpc("admin_set_organization_parent", {
+      const { error } = await supabase.rpc("admin_set_organization_parent", rpcArgs("admin_set_organization_parent", {
         _organization: orgId,
         _parent: parentId || null,
-      });
+      }));
       if (error) throw error;
       toast.success("Updated.");
       qc.invalidateQueries({ queryKey: ["admin-organizations"] });

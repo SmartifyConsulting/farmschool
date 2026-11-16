@@ -1,3 +1,4 @@
+import { rpcArgs } from "@/lib/rpc-args";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -108,7 +109,7 @@ function LtiPlatforms() {
     }
     setBusy(true);
     try {
-      const { error } = await supabase.rpc("lti_save_platform", {
+      const { error } = await supabase.rpc("lti_save_platform", rpcArgs("lti_save_platform", {
         _id: id,
         _name: draft.name.trim(),
         _issuer: draft.issuer.trim(),
@@ -119,7 +120,7 @@ function LtiPlatforms() {
         _key_set_url: draft.key_set_url.trim(),
         _default_course_id: draft.default_course_id.trim() || null,
         _enabled: draft.enabled,
-      });
+      }));
       if (error) throw error;
       toast.success(id ? "Platform updated." : "Platform registered.");
       setCreating(null);

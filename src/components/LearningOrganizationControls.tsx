@@ -1,3 +1,4 @@
+import { rpcArgs } from "@/lib/rpc-args";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -17,7 +18,7 @@ function useOrganizations(enabled: boolean) {
     queryFn: async () =>
       (
         await readAllPages(
-          supabase.rpc("my_organizations", {}, { count: "exact" }).order("name").order("id"),
+          supabase.rpc("my_organizations", undefined, { count: "exact" }).order("name").order("id"),
         )
       ).data,
   });
@@ -65,11 +66,11 @@ export function CourseOrganizationButton({
       return;
     setBusy(true);
     try {
-      const { error } = await supabase.rpc("set_course_organization", {
+      const { error } = await supabase.rpc("set_course_organization", rpcArgs("set_course_organization", {
         _course: course.id,
         _organization: selected || null,
         _expected: scope.data,
-      });
+      }));
       if (error) throw error;
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["course-organization", course.id] }),
@@ -178,11 +179,11 @@ export function CohortOrganizationBinding({ cohortId }: { cohortId: string }) {
       return;
     setBusy(true);
     try {
-      const { error } = await supabase.rpc("bind_organization_cohort", {
+      const { error } = await supabase.rpc("bind_organization_cohort", rpcArgs("bind_organization_cohort", {
         _cohort: cohortId,
         _organization: selected,
         _expected: scope.data,
-      });
+      }));
       if (error) throw error;
       await qc.invalidateQueries({ queryKey: ["cohort-organization", cohortId] });
       toast.success("Cohort bound to the organization.");

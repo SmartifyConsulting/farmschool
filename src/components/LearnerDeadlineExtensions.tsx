@@ -1,3 +1,4 @@
+import { rpcArgs } from "@/lib/rpc-args";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -53,13 +54,13 @@ export function LearnerDeadlineExtensions({
       return;
     setBusy(true);
     try {
-      const { error } = await supabase.rpc("set_learner_deadline", {
+      const { error } = await supabase.rpc("set_learner_deadline", rpcArgs("set_learner_deadline", {
         _course: courseId,
         _learner: learner,
         _due_at: clear ? null : new Date(due).toISOString(),
         _reason: reason.trim(),
         _expected_version: extension.data?.version ?? 0,
-      });
+      }));
       if (error) throw error;
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["deadline-extension", courseId] }),

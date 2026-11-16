@@ -13,7 +13,7 @@ export function LearningPrograms() {
     queryFn: async () =>
       (
         await readAllPages(
-          supabase.rpc("my_learning_programs", {}, { count: "exact" }).order("title").order("id"),
+          supabase.rpc("my_learning_programs", undefined, { count: "exact" }).order("title").order("id"),
         )
       ).data,
   });

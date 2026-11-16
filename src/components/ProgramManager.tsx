@@ -1,3 +1,4 @@
+import { rpcArgs } from "@/lib/rpc-args";
 import { ProgramRoster } from "@/components/ProgramRoster";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -203,13 +204,13 @@ export function ProgramManager({ organizationId }: { organizationId?: string }) 
     try {
       const { error } = await supabase.rpc(
         organizationId ? "assign_organization_program" : "assign_cohort_program",
-        {
+        rpcArgs("assign_cohort_program", {
           _cohort: cohortId,
           _version: versionId,
           _active: active,
           _expected: expected,
           _due: deadline,
-        },
+        }),
       );
       if (error) throw error;
       await refresh();

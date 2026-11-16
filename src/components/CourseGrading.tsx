@@ -1,3 +1,4 @@
+import { rpcArgs } from "@/lib/rpc-args";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -81,14 +82,14 @@ export function CourseGrading({ report }: { report: Gradebook }) {
     }
     setBusy(true);
     try {
-      const { error } = await supabase.rpc("propose_course_grade", {
+      const { error } = await supabase.rpc("propose_course_grade", rpcArgs("propose_course_grade", {
         _course: report.course.id,
         _learner: learner.userId,
         _score: Number(score),
         _reason: reason.trim(),
         _expected_version: report.grading?.version ?? 0,
         _previous_decision: learner.finalGrade?.headId ?? null,
-      });
+      }));
       if (error) throw error;
       setReason("");
       setScore("");
