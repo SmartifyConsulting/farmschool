@@ -35,6 +35,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { STUDIO_CATEGORIES, PASS_MARKS, parsePassMark } from "@/lib/studio";
 import { lessonKindIcon, lessonKindDefaultTitle } from "@/lib/lesson-kinds";
 import { INDUSTRIES, courseIndustry } from "@/lib/industries";
@@ -576,13 +577,13 @@ function Editor() {
         data: { title: lesson.title, sourceText: lesson.body.slice(0, 12000), methods },
       });
       const suggestions: MethodSuggestions = {
-        ...(result.illustrated !== undefined ? { illustrated: result.illustrated } : {}),
-        ...(result.visual !== undefined ? { visual: result.visual } : {}),
-        ...(result.videoQueries !== undefined ? { videoQueries: result.videoQueries } : {}),
-        ...(result.steps !== undefined ? { steps: result.steps } : {}),
-        ...(result.scenarios !== undefined ? { scenarios: result.scenarios } : {}),
-        ...(result.quiz !== undefined ? { quiz: result.quiz } : {}),
-        ...(result.activities !== undefined ? { activities: result.activities } : {}),
+        ...(result.illustrated != null ? { illustrated: result.illustrated } : {}),
+        ...(result.visual != null ? { visual: result.visual } : {}),
+        ...(result.videoQueries != null ? { videoQueries: result.videoQueries } : {}),
+        ...(result.steps != null ? { steps: result.steps } : {}),
+        ...(result.scenarios != null ? { scenarios: result.scenarios } : {}),
+        ...(result.quiz != null ? { quiz: result.quiz } : {}),
+        ...(result.activities != null ? { activities: result.activities } : {}),
       };
       setMethodSuggestions((p) => ({ ...p, [index]: suggestions }));
     } catch (error) {
@@ -1078,7 +1079,9 @@ function Editor() {
     }
   };
   useEffect(() => {
-    if (course)
+    if (course) {
+      // Older generated schemas omit this optional course-design metadata.
+      const designCourse = course as typeof course & { illustration_guide?: Partial<IllustrationGuide> | null };
       setForm({
         title: course.title,
         description: course.description,
@@ -1092,10 +1095,11 @@ function Editor() {
         value_proposition: course.value_proposition ?? "",
         outcomes_timeline: course.outcomes_timeline ?? "",
         illustration_guide: {
-          style: (course.illustration_guide as Partial<IllustrationGuide> | null)?.style || DEFAULT_ILLUSTRATION_GUIDE.style,
-          characters: (course.illustration_guide as Partial<IllustrationGuide> | null)?.characters ?? [],
+          style: designCourse.illustration_guide?.style || DEFAULT_ILLUSTRATION_GUIDE.style,
+          characters: designCourse.illustration_guide?.characters ?? [],
         },
       });
+    }
   }, [course]);
   const { data: prereqOptions = [] } = useQuery({
     queryKey: ["prerequisite-options", id],
@@ -1576,7 +1580,7 @@ function Editor() {
         cover_url: form.cover_url || null,
         prerequisite_course_id: form.prerequisite_course_id || null,
         price_cents: Math.round(price * 100),
-      })
+      } as Database["public"]["Tables"]["studio_courses"]["Update"])
       .eq("id", id);
     if (error) toast.error("Could not save — check the title is 3–120 letters.");
     else {
