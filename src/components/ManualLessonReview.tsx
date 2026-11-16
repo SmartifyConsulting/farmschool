@@ -173,8 +173,42 @@ export function ManualLessonReview(props: Props) {
           <div className="flex justify-end">
             <Button size="sm" variant="ghost" disabled={props.readOnly || props.busy} onClick={() => props.onEdit(index, { ...lesson, body: reflowText(lesson.body) })}><Wand2 className="h-4 w-4" />Polish</Button>
           </div>
-          <fieldset disabled={props.readOnly || props.busy} className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
-            {props.methods.map(method => <label key={method.id} title={method.detail} className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={selected.includes(method.id)} onChange={event => props.onMethods(index, event.target.checked ? [...selected, method.id] : selected.filter(value => value !== method.id))} />{method.icon && <method.icon className="h-3.5 w-3.5 text-muted-foreground" />}{method.label}</label>)}
+          <fieldset disabled={props.readOnly || props.busy} className="mt-4 flex flex-wrap gap-2">
+            {props.methods.map(method => {
+              const isSelected = selected.includes(method.id);
+              const aiChosen = aiMethods[index] ?? selected;
+              const wantsAi = aiChosen.includes(method.id);
+              return (
+                <div key={method.id} title={method.detail} className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={isSelected ? "secondary" : "outline"}
+                    aria-pressed={isSelected}
+                    onClick={() => props.onMethods(index, isSelected ? selected.filter(value => value !== method.id) : [...selected, method.id])}
+                  >
+                    {method.icon && <method.icon className="h-3.5 w-3.5" />}
+                    {method.label}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    aria-pressed={wantsAi}
+                    disabled={!isSelected}
+                    title="Generate this with AI"
+                    aria-label={`Generate ${method.label} with AI`}
+                    onClick={() => setAiMethods(p => ({
+                      ...p,
+                      [index]: wantsAi ? aiChosen.filter(m => m !== method.id) : [...aiChosen, method.id],
+                    }))}
+                  >
+                    <Wand2 className={`h-4 w-4 ${isSelected && wantsAi ? "text-primary" : "text-muted-foreground"}`} />
+                  </Button>
+                </div>
+              );
+            })}
           </fieldset>
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
             <Button size="sm" variant="ghost" disabled={props.readOnly || props.busy || paragraphs.length < 2} onClick={() => { setSplitting(splitting === index ? null : index); setSplitAt(null); }}><Scissors className="h-4 w-4" />Split</Button>
@@ -235,30 +269,19 @@ export function ManualLessonReview(props: Props) {
           </div>}
           {expanded === index && <div className="mt-4 space-y-3 border-t border-border pt-4">
             {props.rationale[index] && <p className="text-xs text-muted-foreground">{props.rationale[index]}</p>}
-            {!!selected.length && <fieldset disabled={props.readOnly || props.suggestLoading !== null} className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
-              <legend className="px-1 text-xs font-medium">Get AI help with:</legend>
-              <div className="flex flex-wrap gap-x-4 gap-y-2">
-                {props.methods.filter((m) => selected.includes(m.id)).map((method) => {
-                  const chosen = aiMethods[index] ?? selected;
-                  return <label key={method.id} className="flex items-center gap-1.5 text-xs">
-                    <input type="checkbox" checked={chosen.includes(method.id)} onChange={(event) => setAiMethods((p) => ({
-                      ...p,
-                      [index]: event.target.checked ? [...chosen, method.id] : chosen.filter((m) => m !== method.id),
-                    }))} />
-                    {method.icon && <method.icon className="h-3.5 w-3.5 text-muted-foreground" />}
-                    {method.label}
-                  </label>;
-                })}
-              </div>
-              <Button
-                size="sm"
-                disabled={!(aiMethods[index] ?? selected).length}
-                onClick={() => props.onSuggest(index, lesson, aiMethods[index] ?? selected)}
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                {props.suggestLoading === index ? "Generating…" : "Generate"}
-              </Button>
-            </fieldset>}
+            {!!selected.length && (
+              <p className="text-xs text-muted-foreground">
+                The <Wand2 className="inline h-3 w-3 align-text-bottom" /> toggle on each option above picks what the AI generates; the rest you write yourself.
+              </p>
+            )}
+            <Button
+              size="sm"
+              disabled={props.readOnly || props.suggestLoading !== null || !(aiMethods[index] ?? selected).length}
+              onClick={() => props.onSuggest(index, lesson, aiMethods[index] ?? selected)}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {props.suggestLoading === index ? "Generating…" : "Generate"}
+            </Button>
             <div className="space-y-3">
               {props.methods.map((method) => {
                 const s = props.suggestions[index];

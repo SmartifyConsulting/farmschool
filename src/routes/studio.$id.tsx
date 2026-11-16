@@ -2,7 +2,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { generateCourseOutlineWithAI, generateMethodSuggestions, TONE_OPTIONS, type PolishTone } from "@/lib/studio-ai.functions";
+import { generateCourseOutlineWithAI, generateMethodSuggestions, generateCourseTopic, TONE_OPTIONS, type PolishTone } from "@/lib/studio-ai.functions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -1037,20 +1037,28 @@ function Editor() {
     outcomes_timeline: "",
   });
   const [contentTone, setContentTone] = useState<PolishTone>("professional");
-  const descriptionRef = useRef<HTMLTextAreaElement>(null);
-  const targetAudienceRef = useRef<HTMLTextAreaElement>(null);
-  const valuePropositionRef = useRef<HTMLTextAreaElement>(null);
-  const outcomesTimelineRef = useRef<HTMLTextAreaElement>(null);
-  const autoGrow = (el: HTMLTextAreaElement | null) => {
-    if (el) {
-      el.style.height = "auto";
-      el.style.height = `${el.scrollHeight}px`;
+  const [topicLoading, setTopicLoading] = useState(false);
+  const runGenerateTopic = useServerFn(generateCourseTopic);
+  /** Rough estimate of wrapped lines so the textarea's `rows` always fits its text — no scrollbar. */
+  const autoRows = (text: string, min: number) => {
+    const explicitLines = text.split("\n").length;
+    const wrappedLines = Math.ceil(text.length / 60);
+    return Math.max(min, explicitLines, wrappedLines) + 1;
+  };
+  const generateTopic = async () => {
+    setTopicLoading(true);
+    try {
+      const r = await runGenerateTopic({
+        data: { title: form.title, description: form.description, industry: courseIndustry(form.category) },
+      });
+      setNewTopic(r.topic);
+      setForm((f) => ({ ...f, category: courseIndustry(f.category) + " / " + r.topic }));
+    } catch (e) {
+      toast.error(friendlyError(e, "Could not suggest a topic."));
+    } finally {
+      setTopicLoading(false);
     }
   };
-  useEffect(() => autoGrow(descriptionRef.current), [form.description]);
-  useEffect(() => autoGrow(targetAudienceRef.current), [form.target_audience]);
-  useEffect(() => autoGrow(valuePropositionRef.current), [form.value_proposition]);
-  useEffect(() => autoGrow(outcomesTimelineRef.current), [form.outcomes_timeline]);
   useEffect(() => {
     if (course)
       setForm({
@@ -2094,13 +2102,12 @@ function Editor() {
                       />
                       <div className="flex items-start gap-1">
                         <Textarea
-                          ref={descriptionRef}
                           value={form.description}
                           onChange={(e) => setForm({ ...form, description: e.target.value })}
                           placeholder="What will learners gain from this course?"
-                          rows={3}
+                          rows={autoRows(form.description, 3)}
                           maxLength={4000}
-                          className="resize-none overflow-hidden"
+                          className="resize-none"
                         />
                         <PolishButton
                           courseId={id}
@@ -2110,17 +2117,37 @@ function Editor() {
                           tone={contentTone}
                         />
                       </div>
+                      <div>
+                        <label className="block text-xs font-medium">Prerequisites</label>
+                        <p className="text-xs text-muted-foreground">
+                          Require a learner to finish another published course first.
+                        </p>
+                        <select
+                          value={form.prerequisite_course_id}
+                          onChange={(e) =>
+                            setForm({ ...form, prerequisite_course_id: e.target.value })
+                          }
+                          className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+                          aria-label="Prerequisite course"
+                        >
+                          <option value="">None</option>
+                          {prereqOptions.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                       <label className="block space-y-1 text-xs font-medium">
                         Target Audience
                         <div className="flex items-start gap-1">
                           <Textarea
-                            ref={targetAudienceRef}
                             value={form.target_audience}
                             onChange={(e) => setForm({ ...form, target_audience: e.target.value })}
                             placeholder="Ideal audience & market profile"
-                            rows={2}
+                            rows={autoRows(form.target_audience, 2)}
                             maxLength={2000}
-                            className="resize-none overflow-hidden"
+                            className="resize-none"
                           />
                           <PolishButton
                             courseId={id}
@@ -2135,13 +2162,12 @@ function Editor() {
                         Value Proposition
                         <div className="flex items-start gap-1">
                           <Textarea
-                            ref={valuePropositionRef}
                             value={form.value_proposition}
                             onChange={(e) => setForm({ ...form, value_proposition: e.target.value })}
                             placeholder="Value of certification / qualification"
-                            rows={2}
+                            rows={autoRows(form.value_proposition, 2)}
                             maxLength={2000}
-                            className="resize-none overflow-hidden"
+                            className="resize-none"
                           />
                           <PolishButton
                             courseId={id}
@@ -2156,13 +2182,12 @@ function Editor() {
                         Outcomes & Timeline
                         <div className="flex items-start gap-1">
                           <Textarea
-                            ref={outcomesTimelineRef}
                             value={form.outcomes_timeline}
                             onChange={(e) => setForm({ ...form, outcomes_timeline: e.target.value })}
                             placeholder="Key learning outcomes & program duration"
-                            rows={2}
+                            rows={autoRows(form.outcomes_timeline, 2)}
                             maxLength={2000}
-                            className="resize-none overflow-hidden"
+                            className="resize-none"
                           />
                           <PolishButton
                             courseId={id}
@@ -2211,7 +2236,23 @@ function Editor() {
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-xs font-medium">Topic</label>
+                          <div className="flex items-center justify-between gap-1">
+                            <label className="block text-xs font-medium">Topic</label>
+                            {courseIndustry(form.category) !== "Agriculture" && (
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="h-5 w-5"
+                                title="Suggest with AI"
+                                aria-label="Suggest topic with AI"
+                                disabled={topicLoading || !form.title.trim()}
+                                onClick={() => void generateTopic()}
+                              >
+                                <RefreshCw className={`h-3 w-3 ${topicLoading ? "animate-spin" : ""}`} />
+                              </Button>
+                            )}
+                          </div>
                           {courseIndustry(form.category) === "Agriculture" ? (
                             <select
                               value={STUDIO_CATEGORIES.includes(form.category) ? form.category : ""}
@@ -2300,29 +2341,6 @@ function Editor() {
                           0 is free. Buyers pay once via Stripe Checkout.
                         </p>
                       </div>
-                    </div>
-                  </div>
-                  <div className="space-y-3 border-t border-border pt-4">
-                    <div>
-                      <label className="block text-xs font-medium">Prerequisites</label>
-                      <p className="text-xs text-muted-foreground">
-                        Require a learner to finish another published course first.
-                      </p>
-                      <select
-                        value={form.prerequisite_course_id}
-                        onChange={(e) =>
-                          setForm({ ...form, prerequisite_course_id: e.target.value })
-                        }
-                        className="mt-1 w-full rounded-md border border-input bg-background px-2 py-2 text-sm"
-                        aria-label="Prerequisite course"
-                      >
-                        <option value="">None</option>
-                        {prereqOptions.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.title}
-                          </option>
-                        ))}
-                      </select>
                     </div>
                   </div>
                   <Button onClick={saveDetails} className="mt-auto w-full">
@@ -2702,33 +2720,33 @@ function Editor() {
                                 {index + 1}. {item.lesson_title} ·{" "}
                                 {item.review_status === "approved" ? "✓ Approved" : "Needs review"}
                               </summary>
-                              <div className="mt-2 space-y-2">
-                                <p className="font-medium">Teaching and assessment methods</p>
-                                {learningMethods.map((method) => (
-                                  <label
-                                    key={method.id}
-                                    className="flex cursor-pointer items-start gap-2"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      className="mt-0.5"
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <p className="w-full font-medium">Teaching and assessment methods</p>
+                                {learningMethods.map((method) => {
+                                  const methodSelected = item.proposed_methods.includes(method.id);
+                                  return (
+                                    <Button
+                                      key={method.id}
+                                      type="button"
+                                      size="sm"
+                                      variant={methodSelected ? "secondary" : "outline"}
+                                      title={method.detail}
+                                      aria-pressed={methodSelected}
                                       disabled={designSyncing || course?.published}
-                                      checked={item.proposed_methods.includes(method.id)}
-                                      onChange={(event) =>
+                                      onClick={() =>
                                         void updateSavedMethods(
                                           item.lesson_key,
-                                          event.target.checked
-                                            ? [...item.proposed_methods, method.id]
-                                            : item.proposed_methods.filter(
-                                                (value) => value !== method.id,
-                                              ),
+                                          methodSelected
+                                            ? item.proposed_methods.filter((value) => value !== method.id)
+                                            : [...item.proposed_methods, method.id],
                                         )
                                       }
-                                    />
-                                    <method.icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                                    <span>{method.label}</span>
-                                  </label>
-                                ))}
+                                    >
+                                      <method.icon className="h-3.5 w-3.5" />
+                                      {method.label}
+                                    </Button>
+                                  );
+                                })}
                               </div>
                               {item.ai_rationale && (
                                 <p className="mt-2 whitespace-pre-wrap text-muted-foreground">
@@ -3314,43 +3332,42 @@ function Editor() {
                                         <strong>AI rationale:</strong> {designRationale[i]}
                                       </p>
                                     )}
-                                    {learningMethods.map((method) => (
-                                      <label
-                                        key={method.id}
-                                        className="flex items-start gap-2 text-sm"
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          className="mt-1"
-                                          checked={choicesFor(
-                                            i,
-                                            lesson.title,
-                                            lesson.body,
-                                          ).includes(method.id)}
-                                          disabled={designSyncing}
-                                          onChange={(e) =>
-                                            void saveDesignSelection(
-                                              i,
-                                              e.target.checked
-                                                ? [
-                                                    ...choicesFor(i, lesson.title, lesson.body),
-                                                    method.id,
-                                                  ]
-                                                : choicesFor(i, lesson.title, lesson.body).filter(
-                                                    (x) => x !== method.id,
-                                                  ),
-                                            )
-                                          }
-                                        />
-                                        <method.icon className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
-                                        <span>
-                                          <span className="font-medium">{method.label}</span>
-                                          <span className="block text-xs text-muted-foreground">
-                                            {method.detail}
-                                          </span>
-                                        </span>
-                                      </label>
-                                    ))}
+                                    <div className="flex flex-wrap gap-2">
+                                      {learningMethods.map((method) => {
+                                        const methodSelected = choicesFor(
+                                          i,
+                                          lesson.title,
+                                          lesson.body,
+                                        ).includes(method.id);
+                                        return (
+                                          <Button
+                                            key={method.id}
+                                            type="button"
+                                            size="sm"
+                                            variant={methodSelected ? "secondary" : "outline"}
+                                            title={method.detail}
+                                            aria-pressed={methodSelected}
+                                            disabled={designSyncing}
+                                            onClick={() =>
+                                              void saveDesignSelection(
+                                                i,
+                                                methodSelected
+                                                  ? choicesFor(i, lesson.title, lesson.body).filter(
+                                                      (x) => x !== method.id,
+                                                    )
+                                                  : [
+                                                      ...choicesFor(i, lesson.title, lesson.body),
+                                                      method.id,
+                                                    ],
+                                              )
+                                            }
+                                          >
+                                            <method.icon className="h-3.5 w-3.5" />
+                                            {method.label}
+                                          </Button>
+                                        );
+                                      })}
+                                    </div>
                                     <Button
                                       type="button"
                                       size="sm"

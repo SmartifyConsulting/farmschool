@@ -248,6 +248,34 @@ export const generateCourseDetails = createServerFn({ method: "POST" })
     }
   });
 
+export const generateCourseTopic = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({ title: z.string().max(120), description: z.string().max(4000), industry: z.string().max(100) }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const apiKey = process.env["OPENAI_API_KEY"];
+    if (!apiKey) throw new Error("The AI connection is not configured yet.");
+    const { data: count, error: quotaError } = await context.supabase.rpc("course_factory_reserve_ai_request" as never);
+    if (quotaError || typeof count !== "number") {
+      throw new Error(quotaError?.message.includes("Daily AI generation limit") ? "Your daily AI allowance is used up. Try again tomorrow." : "Your AI allowance could not be checked. Please try later.");
+    }
+    const { createOpenAI } = await import("@ai-sdk/openai");
+    const { generateText, Output } = await import("ai");
+    try {
+      const { output } = await generateText({
+        model: createOpenAI({ apiKey }).responses("gpt-6-luna"), maxRetries: 1,
+        system: `${SAFETY} Suggest a short topic/specialisation label (2 to 6 words) for this course within its industry, based only on its title and description. Do not invent facts the title/description don't support.`,
+        prompt: JSON.stringify({ title: data.title, description: data.description, industry: data.industry }),
+        output: Output.object({ schema: z.object({ topic: z.string().min(2).max(100) }) }),
+      });
+      return output;
+    } catch (e) {
+      console.error("generateCourseTopic failed", e);
+      throw new Error("The AI assistant couldn't finish. Please try again.");
+    }
+  });
+
 /**
  * Proposes a module/lesson outline from a manual excerpt, grounded in that excerpt — an
  * alternative to the deterministic heading-based splitter in course-factory.ts for manuals whose
