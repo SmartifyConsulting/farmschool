@@ -994,7 +994,7 @@ function Editor() {
     },
     {
       id: "quiz",
-      label: "Knowledge check",
+      label: "Q&A",
       detail: "Assess comprehension with source-grounded questions",
       icon: HelpCircle,
     },
@@ -1226,7 +1226,8 @@ function Editor() {
   const importDraft = async () => {
     if (!draft?.lessons.length || importing || course?.published) return;
     const bodies = draft.lessons.map((lesson) => {
-      const body = manualFormat === "slide" ? formatManualAsSlides(lesson.body) : lesson.body;
+      const kind = lesson.kind ?? manualFormat;
+      const body = kind === "slide" ? formatManualAsSlides(lesson.body) : lesson.body;
       return (
         body +
         "\n\nSource: " +
@@ -1259,7 +1260,7 @@ function Editor() {
       }
       const rows = draft.lessons.map((lesson, index) => ({
         course_id: id,
-        kind: manualFormat,
+        kind: lesson.kind ?? manualFormat,
         position: start + index,
         title: lesson.title,
         module_id: lesson.module ? (moduleIds.get(lesson.module) ?? null) : null,
@@ -1267,9 +1268,7 @@ function Editor() {
       }));
       const { error } = await supabase.from("studio_lessons").insert(rows);
       if (error) throw error;
-      toast.success(
-        `Imported ${rows.length} ${manualFormat === "slide" ? "slide" : "reading"} lessons for review.`,
-      );
+      toast.success(`Imported ${rows.length} lesson${rows.length === 1 ? "" : "s"} for review.`);
       setDraft(null);
       setSourceText("");
       refresh();

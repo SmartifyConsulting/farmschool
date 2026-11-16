@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowDownToLine, Scissors, Trash2, ChevronDown, Check, Wand2, Sparkles, FolderOpen, Image as ImageIcon, Loader2, X, type LucideIcon } from "lucide-react";
+import { ArrowDownToLine, Scissors, Trash2, Check, Wand2, Sparkles, FolderOpen, FileText, LayoutGrid, Video, Package, Image as ImageIcon, Loader2, X, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,21 @@ export type MethodSuggestions = {
 
 const ILLUSTRATION_BUCKET = "lesson-illustrations";
 const MAX_MEDIA_BYTES = 25 * 1024 * 1024;
+
+/** These method ids present as "how the content is delivered", grouped with the delivery-kind toggle below; the rest are "how it's tested". */
+const TRAINING_FORMAT_METHOD_IDS = ["illustrated", "video"];
+/** Rough estimate of wrapped lines so a textarea's `rows` always fits its text — no inner scrollbar. */
+function autoRows(text: string, min: number) {
+  const explicitLines = text.split("\n").length;
+  const wrappedLines = Math.ceil(text.length / 80);
+  return Math.max(min, explicitLines, wrappedLines) + 1;
+}
+const DELIVERY_KINDS: { kind: NonNullable<DraftLesson["kind"]>; label: string; icon: LucideIcon }[] = [
+  { kind: "reading", label: "Reading", icon: FileText },
+  { kind: "slide", label: "Slides", icon: LayoutGrid },
+  { kind: "video", label: "Video", icon: Video },
+  { kind: "scorm", label: "SCORM", icon: Package },
+];
 
 /** Preview-only media picker for a draft lesson: click/drop an image or video, uploaded to a
  * public bucket under the trainer's own folder. Not yet carried through to the published lesson —
@@ -168,13 +183,16 @@ export function ManualLessonReview(props: Props) {
           </div>
           <label className="mt-3 block space-y-1 text-xs font-medium text-muted-foreground">
             <span>Source</span>
-            <Textarea aria-label={`Lesson ${index + 1} source`} rows={5} value={lesson.body} disabled={props.readOnly || props.busy} onChange={event => props.onEdit(index, { ...lesson, body: event.target.value })} className="text-sm leading-relaxed text-foreground" />
+            <Textarea aria-label={`Lesson ${index + 1} source`} rows={autoRows(lesson.body, 5)} value={lesson.body} disabled={props.readOnly || props.busy} onChange={event => props.onEdit(index, { ...lesson, body: event.target.value })} className="resize-none text-sm leading-relaxed text-foreground" />
           </label>
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button size="sm" variant="ghost" disabled={props.readOnly || props.busy || paragraphs.length < 2} onClick={() => { setSplitting(splitting === index ? null : index); setSplitAt(null); }}><Scissors className="h-4 w-4" />Split</Button>
+            <Button size="sm" variant="ghost" disabled={props.readOnly || props.busy || index === props.draft.lessons.length - 1} onClick={() => props.onMerge(index)}><ArrowDownToLine className="h-4 w-4" />Merge next</Button>
             <Button size="sm" variant="ghost" disabled={props.readOnly || props.busy} onClick={() => props.onEdit(index, { ...lesson, body: reflowText(lesson.body) })}><Wand2 className="h-4 w-4" />Polish</Button>
+            <Button size="icon" variant="ghost" title="Remove lesson from outline" aria-label={`Remove lesson ${index + 1}`} disabled={props.readOnly || props.busy} onClick={() => props.onDelete(index)}><Trash2 className="h-4 w-4" /></Button>
           </div>
-          <fieldset disabled={props.readOnly || props.busy} className="mt-4 flex flex-wrap gap-2">
-            {props.methods.map(method => {
+          {(() => {
+            const renderMethodToggle = (method: Props["methods"][number]) => {
               const isSelected = selected.includes(method.id);
               const aiChosen = aiMethods[index] ?? selected;
               const wantsAi = aiChosen.includes(method.id);
@@ -208,30 +226,66 @@ export function ManualLessonReview(props: Props) {
                   </Button>
                 </div>
               );
-            })}
-          </fieldset>
-          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-            <Button size="sm" variant="ghost" disabled={props.readOnly || props.busy || paragraphs.length < 2} onClick={() => { setSplitting(splitting === index ? null : index); setSplitAt(null); }}><Scissors className="h-4 w-4" />Split</Button>
-            <Button size="sm" variant="ghost" disabled={props.readOnly || props.busy || index === props.draft.lessons.length - 1} onClick={() => props.onMerge(index)}><ArrowDownToLine className="h-4 w-4" />Merge next</Button>
-            <Button size="icon" variant="ghost" title="Remove lesson from outline" aria-label={`Remove lesson ${index + 1}`} disabled={props.readOnly || props.busy} onClick={() => props.onDelete(index)}><Trash2 className="h-4 w-4" /></Button>
-            <Button
-              size="sm"
-              variant="outline"
-              aria-expanded={expanded === index}
-              disabled={props.readOnly || props.suggestLoading !== null || lesson.body.length < 100}
-              onClick={() => {
-                const opening = expanded !== index;
-                setExpanded(opening ? index : null);
-                if (opening && !aiMethods[index]) setAiMethods((p) => ({ ...p, [index]: selected }));
-              }}
-            >
-              <ChevronDown className={`h-4 w-4 transition-transform ${expanded === index ? "" : "-rotate-90"}`} />
-              <Sparkles className="h-4 w-4" />
-              {props.suggestLoading === index ? "Generating…" : "Generate"}
-            </Button>
-            <Button size="sm" variant="secondary" disabled={props.readOnly || props.previewLoading !== null || lesson.body.length < 100 || !selected.length} onClick={() => props.onPreview(index, lesson)}>{props.previewLoading === index ? "Generating…" : "Preview"}</Button>
-            <Button size="sm" variant={props.approved[index] ? "secondary" : "outline"} disabled={props.readOnly || props.busy || !selected.length || !lesson.title.trim()} onClick={() => props.onApprove(index, lesson)}><Check className="h-4 w-4" />{props.approved[index] ? "Reopen" : "Approve"}</Button>
-          </div>
+            };
+            const trainingFormatMethods = props.methods.filter(m => TRAINING_FORMAT_METHOD_IDS.includes(m.id));
+            const testLearningMethods = props.methods.filter(m => !TRAINING_FORMAT_METHOD_IDS.includes(m.id));
+            return (
+              <>
+                <fieldset disabled={props.readOnly || props.busy} className="mt-4 space-y-2">
+                  <legend className="text-xs font-semibold text-muted-foreground">Training format</legend>
+                  <div className="flex flex-wrap gap-1">
+                    {DELIVERY_KINDS.map(({ kind, label, icon: Icon }) => (
+                      <Button
+                        key={kind}
+                        type="button"
+                        size="sm"
+                        variant={(lesson.kind ?? "reading") === kind ? "secondary" : "outline"}
+                        aria-pressed={(lesson.kind ?? "reading") === kind}
+                        onClick={() => props.onEdit(index, { ...lesson, kind })}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-2">{trainingFormatMethods.map(renderMethodToggle)}</div>
+                </fieldset>
+                <fieldset disabled={props.readOnly || props.busy} className="mt-4 space-y-2 border-t border-border pt-3">
+                  <legend className="text-xs font-semibold text-muted-foreground">Knowledge check</legend>
+                  <div className="flex flex-wrap gap-2">{testLearningMethods.map(renderMethodToggle)}</div>
+                </fieldset>
+              </>
+            );
+          })()}
+          {(() => {
+            const needsGeneration = (aiMethods[index] ?? selected).length > 0;
+            const generated = !!props.suggestions[index];
+            const readyToReview = !needsGeneration || generated;
+            return (
+              <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-border pt-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-expanded={expanded === index}
+                  disabled={props.readOnly || props.suggestLoading !== null || lesson.body.length < 100}
+                  onClick={() => {
+                    const opening = expanded !== index;
+                    setExpanded(opening ? index : null);
+                    if (opening && !aiMethods[index]) setAiMethods((p) => ({ ...p, [index]: selected }));
+                  }}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  {props.suggestLoading === index ? "Generating…" : "Generate"}
+                </Button>
+                {readyToReview && (
+                  <>
+                    <Button size="sm" variant="secondary" disabled={props.readOnly || props.previewLoading !== null || lesson.body.length < 100 || !selected.length} onClick={() => props.onPreview(index, lesson)}>{props.previewLoading === index ? "Generating…" : "Preview"}</Button>
+                    <Button size="sm" variant={props.approved[index] ? "secondary" : "outline"} disabled={props.readOnly || props.busy || !selected.length || !lesson.title.trim()} onClick={() => props.onApprove(index, lesson)}><Check className="h-4 w-4" />{props.approved[index] ? "Reopen" : "Approve"}</Button>
+                  </>
+                )}
+              </div>
+            );
+          })()}
           {props.previews[index] && <div className="mt-4 space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
             <p className="text-xs font-semibold text-primary">AI-generated page preview — for your checked methods; review before publishing</p>
             {lesson.mediaUrl && (
