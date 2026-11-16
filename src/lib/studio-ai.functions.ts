@@ -445,3 +445,30 @@ export const generateMethodSuggestions = createServerFn({ method: "POST" })
       throw new Error("The AI assistant couldn't finish. Please try again.");
     }
   });
+
+/** Generates an actual illustration/diagram image from a caption (e.g. the "illustrated" or
+ * "visual" method's suggested caption), instead of leaving the trainer to source one manually. */
+export const generateLessonImage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ caption: z.string().min(1).max(600) }).parse(i))
+  .handler(async ({ data, context }) => {
+    const apiKey = process.env["OPENAI_API_KEY"];
+    if (!apiKey) throw new Error("The AI connection is not configured yet.");
+    const { data: count, error: quotaError } = await context.supabase.rpc("course_factory_reserve_ai_request" as never);
+    if (quotaError || typeof count !== "number") {
+      throw new Error(quotaError?.message.includes("Daily AI generation limit") ? "Your daily AI allowance is used up. Try again tomorrow." : "Your AI allowance could not be checked. Please try later.");
+    }
+    const { createOpenAI } = await import("@ai-sdk/openai");
+    const { generateImage } = await import("ai");
+    try {
+      const { image } = await generateImage({
+        model: createOpenAI({ apiKey }).image("gpt-image-1"),
+        prompt: `Clear, simple educational illustration for a farming/agriculture training course. ${data.caption} Plain background, labelled parts only where natural, no watermarks, no surrounding text.`,
+        size: "1024x1024",
+      });
+      return { base64: image.base64 };
+    } catch (e) {
+      console.error("generateLessonImage failed", e);
+      throw new Error("The AI assistant couldn't create an image. Please try again.");
+    }
+  });

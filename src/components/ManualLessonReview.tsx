@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { ArrowDownToLine, Scissors, Trash2, Check, Wand2, Sparkles, FolderOpen, FileText, LayoutGrid, Video, Package, Library, Image as ImageIcon, Loader2, Plus, X, ChevronDown, ChevronUp, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { FormattedLesson } from "@/components/FormattedLesson";
 import { reflowText, type DraftCourse, type DraftLesson, type IllustrationGuide } from "@/lib/course-factory";
 import { buildLessonScormZip } from "@/lib/scorm-export";
+import { generateLessonImage } from "@/lib/studio-ai.functions";
 
 export type LessonPagePreview = {
   lessonTitle: string;
@@ -178,6 +180,8 @@ export function ManualLessonReview(props: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [collapsedLessons, setCollapsedLessons] = useState<Set<number>>(() => new Set());
   const [approvedSlides, setApprovedSlides] = useState<Record<number, Set<number>>>({});
+  const [generatingImageFor, setGeneratingImageFor] = useState<string | null>(null);
+  const runGenerateImage = useServerFn(generateLessonImage);
   const [previewingSlides, setPreviewingSlides] = useState<Record<number, Set<number>>>({});
   const moduleCount = new Set(props.draft.lessons.map(lesson => lesson.module).filter(Boolean)).size;
   const pageCount = new Set(props.draft.lessons.flatMap(lesson => lesson.sourceRefs.map(ref => `${ref.sourceId}:${ref.page}`))).size;
@@ -231,6 +235,27 @@ export function ManualLessonReview(props: Props) {
         const selected = props.choices(index, lesson.title, lesson.body);
         const paragraphs = lesson.body.split(/\n{2,}/);
         const newModule = lesson.module && lesson.module !== props.draft.lessons[index - 1]?.module;
+        const generateImageForMethod = async (methodId: "illustrated" | "visual", caption: string) => {
+          const key = `${index}:${methodId}`;
+          setGeneratingImageFor(key);
+          try {
+            const result = await runGenerateImage({ data: { caption } });
+            const bytes = Uint8Array.from(atob(result.base64), c => c.charCodeAt(0));
+            const blob = new Blob([bytes], { type: "image/png" });
+            const { data: auth } = await supabase.auth.getUser();
+            if (!auth.user) { toast.error("Please sign in to upload."); return; }
+            const path = `${auth.user.id}/${crypto.randomUUID()}-ai-illustration.png`;
+            const { error } = await supabase.storage.from(ILLUSTRATION_BUCKET).upload(path, blob, { contentType: "image/png" });
+            if (error) { toast.error("Could not save the generated image."); return; }
+            const { data: pub } = supabase.storage.from(ILLUSTRATION_BUCKET).getPublicUrl(path);
+            props.onEdit(index, { ...lesson, mediaUrl: pub.publicUrl, mediaKind: "image" });
+            toast.success("Image generated.");
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Could not generate an image.");
+          } finally {
+            setGeneratingImageFor(null);
+          }
+        };
         const exportLessonScorm = async () => {
           const preview = props.previews[index];
           if (!preview) return;
@@ -570,16 +595,28 @@ export function ManualLessonReview(props: Props) {
             const slideTexts = slideEdits[index] ?? splitIntoSlides(preview.lessonSummary, slides.length);
             return <div className="mt-4 space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
               <p className="text-xs font-semibold text-primary">AI-generated page preview — adjust each slide, then commit it to the course</p>
-              {selected.includes("illustrated") && (
-                <div className="max-w-xs space-y-1">
-                  {lesson.mediaUrl && (
-                    <div className="overflow-hidden rounded bg-muted">
-                      {lesson.mediaKind === "video" ? <video src={lesson.mediaUrl} className="h-24 w-full object-cover" muted /> : <img src={lesson.mediaUrl} alt="" className="h-24 w-full object-cover" />}
+              {(["illustrated", "visual"] as const).filter(methodId => selected.includes(methodId)).map(methodId => {
+                const caption = methodId === "illustrated" ? props.suggestions[index]?.illustrated : props.suggestions[index]?.visual;
+                const key = `${index}:${methodId}`;
+                const generating = generatingImageFor === key;
+                return (
+                  <div key={methodId} className="max-w-xs space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">{methodId === "illustrated" ? "Illustration" : "Identify"}</p>
+                    {caption && <p className="text-xs text-muted-foreground">{caption}</p>}
+                    {lesson.mediaUrl && (
+                      <div className="overflow-hidden rounded bg-muted">
+                        {lesson.mediaKind === "video" ? <video src={lesson.mediaUrl} className="h-24 w-full object-cover" muted /> : <img src={lesson.mediaUrl} alt="" className="h-24 w-full object-cover" />}
+                      </div>
+                    )}
+                    <div className="flex flex-wrap items-center gap-1">
+                      <Button size="sm" variant="outline" disabled={props.readOnly || props.busy || generating || !caption} onClick={() => void generateImageForMethod(methodId, caption!)}>
+                        <Sparkles className="h-3.5 w-3.5" />{generating ? "Generating…" : "Generate image with AI"}
+                      </Button>
                     </div>
-                  )}
-                  <MediaPicker lesson={lesson} disabled={props.readOnly || props.busy} onChange={(mediaUrl, mediaKind) => props.onEdit(index, { ...lesson, mediaUrl, mediaKind })} />
-                </div>
-              )}
+                    <MediaPicker lesson={lesson} disabled={props.readOnly || props.busy} onChange={(mediaUrl, mediaKind) => props.onEdit(index, { ...lesson, mediaUrl, mediaKind })} />
+                  </div>
+                );
+              })}
               {lesson.kind === "slide" ? (
                 <div className="space-y-3">
                   {slideTexts.map((text, si) => {
