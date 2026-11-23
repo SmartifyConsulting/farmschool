@@ -58,7 +58,7 @@ export function StudioCourseActions({ course, onChanged, revisionOnly = false, h
   };
   if (revisionOnly) return <Button size="sm" disabled={busy} onClick={() => copy(true)}><PenSquare className="h-4 w-4" />{busy ? "Preparing…" : "Create draft revision"}</Button>;
   return <>{!hidePrivacy && <CourseOrganizationButton course={course} />}<DropdownMenu><DropdownMenuTrigger asChild><Button size="icon" variant="outline" disabled={busy} aria-label={`Actions for ${course.title}`}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">
-    <DropdownMenuItem asChild><Link to="/studio/$id" params={{ id: course.id }}><PenSquare className="h-4 w-4" />Open course</Link></DropdownMenuItem>
+    <DropdownMenuItem asChild><Link to="/studio/$id" params={{ id: course.id }}><PenSquare className="h-4 w-4" />Edit course</Link></DropdownMenuItem>
     {course.published && <DropdownMenuItem onClick={() => copy(true)}><PenSquare className="h-4 w-4" />Create draft revision</DropdownMenuItem>}
     <DropdownMenuItem onClick={() => copy(false)}><Copy className="h-4 w-4" />Duplicate as draft</DropdownMenuItem>
     <DropdownMenuItem onClick={exportArchive}>Export content archive</DropdownMenuItem>
