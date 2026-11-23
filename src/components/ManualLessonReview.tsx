@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowDownToLine, Scissors, Trash2, Check, Wand2, Sparkles, FolderOpen, FileText, LayoutGrid, Video, Package, Library, Image as ImageIcon, Loader2, Plus, X, ChevronDown, ChevronUp, type LucideIcon } from "lucide-react";
+import { ArrowDownToLine, Scissors, Trash2, Check, Wand2, Sparkles, FolderOpen, FileText, LayoutGrid, Video, Package, Library, Image as ImageIcon, Loader2, Plus, X, ChevronDown, ChevronUp, GripVertical, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +54,17 @@ function resizeSlides(current: FormatRef[][], count: number): FormatRef[][] {
   const copy = current.slice(0, next);
   while (copy.length < next) copy.push([]);
   return copy;
+}
+/** Places a newly-selected format onto the first slide that doesn't already hold it, adding a slide if every one is full. */
+function placeFormatOnSlide(ref: FormatRef, slides: FormatRef[][]): FormatRef[][] {
+  const emptyIndex = slides.findIndex(f => f.length === 0);
+  if (emptyIndex !== -1) return slides.map((f, i) => (i === emptyIndex ? [...f, ref] : f));
+  if (slides.length < MAX_SLIDES) return [...slides, [ref]];
+  const lastIndex = slides.length - 1;
+  return slides.map((f, i) => (i === lastIndex ? [...f, ref] : f));
+}
+function removeFormatFromSlides(ref: FormatRef, slides: FormatRef[][]): FormatRef[][] {
+  return slides.map(f => f.filter(x => !(x.source === ref.source && x.id === ref.id)));
 }
 const SOURCE_WORD = /[a-z0-9]{4,}/g;
 /** Share of the generated suggestion's own words that also appear in the lesson's source text —
@@ -175,7 +186,6 @@ export function ManualLessonReview(props: Props) {
   const [splitAt, setSplitAt] = useState<number | null>(null);
   const [slideEdits, setSlideEdits] = useState<Record<number, string[]>>({});
   const [splitTitle, setSplitTitle] = useState("");
-  const [aiMethods, setAiMethods] = useState<Record<number, string[]>>({});
   const [activeGroup, setActiveGroup] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
   const [collapsedLessons, setCollapsedLessons] = useState<Set<number>>(() => new Set());
@@ -341,8 +351,11 @@ export function ManualLessonReview(props: Props) {
           {(() => {
             const renderMethodToggle = (method: Props["methods"][number], draggableFormat?: boolean) => {
               const isSelected = selected.includes(method.id);
-              const aiChosen = aiMethods[index] ?? selected;
-              const wantsAi = aiChosen.includes(method.id);
+              const ref: FormatRef = { source: "method", id: method.id };
+              const toggle = () => {
+                props.onMethods(index, isSelected ? selected.filter(value => value !== method.id) : [...selected, method.id]);
+                if (draggableFormat) updateSlides(isSelected ? removeFormatFromSlides(ref, slides) : placeFormatOnSlide(ref, slides));
+              };
               return (
                 <div
                   key={method.id}
@@ -359,77 +372,46 @@ export function ManualLessonReview(props: Props) {
                     size="sm"
                     variant={isSelected ? "secondary" : "outline"}
                     aria-pressed={isSelected}
-                    title={draggableFormat ? (isSelected ? "Drag onto a slide" : "Switch on to drag onto a slide") : undefined}
+                    title={draggableFormat ? (isSelected ? "Selected — drag to move it to another slide" : "Select to add it to a slide") : undefined}
                     className={draggableFormat && isSelected ? "cursor-grab active:cursor-grabbing" : undefined}
-                    onClick={() => props.onMethods(index, isSelected ? selected.filter(value => value !== method.id) : [...selected, method.id])}
+                    onClick={toggle}
                   >
                     {method.icon && <method.icon className="h-3.5 w-3.5" />}
                     {method.label}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8"
-                    aria-pressed={wantsAi}
-                    disabled={!isSelected}
-                    title="Generate this with AI"
-                    aria-label={`Generate ${method.label} with AI`}
-                    onClick={() => setAiMethods(p => ({
-                      ...p,
-                      [index]: wantsAi ? aiChosen.filter(m => m !== method.id) : [...aiChosen, method.id],
-                    }))}
-                  >
-                    <Wand2 className={`h-4 w-4 ${isSelected && wantsAi ? "text-primary" : "text-muted-foreground"}`} />
                   </Button>
                 </div>
               );
             };
             const renderDeliveryChip = (item: (typeof DELIVERY_FORMAT_ITEMS)[number]) => {
-              const aiChosen = aiMethods[index] ?? selected;
-              const wantsAi = aiChosen.includes(item.id);
               const enabledFormats = lesson.enabledFormats ?? [];
               const isScorm = item.id === "scorm";
               // Attaching a package switches SCORM on by itself; other delivery mediums toggle like any other option.
               const isSelected = isScorm ? !!lesson.scormFile : enabledFormats.includes(item.id);
+              const ref: FormatRef = { source: "delivery", id: item.id };
               const toggle = () => {
                 if (isScorm) { promptScormUpload(); return; }
+                const nextSlides = isSelected ? removeFormatFromSlides(ref, slides) : placeFormatOnSlide(ref, slides);
                 props.onEdit(index, {
                   ...lesson,
                   enabledFormats: isSelected ? enabledFormats.filter(id => id !== item.id) : [...enabledFormats, item.id],
+                  kind: "slide",
+                  slideKinds: nextSlides,
                 });
               };
               return (
-                <div key={item.id} className="flex items-center gap-1">
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    draggable={isSelected}
-                    onDragStart={isSelected ? event => { event.dataTransfer.setData("application/json", JSON.stringify({ source: "delivery", id: item.id })); event.dataTransfer.effectAllowed = "copy"; } : undefined}
-                    onClick={!props.readOnly && !props.busy ? toggle : undefined}
-                    onKeyDown={!props.readOnly && !props.busy ? event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggle(); } } : undefined}
-                    title={isScorm ? (lesson.scormFile ? `Attached: ${lesson.scormFile.name}` : "Click to upload a SCORM package") : isSelected ? "Drag onto a slide" : "Switch on to drag onto a slide"}
-                    className={`flex h-8 items-center gap-1 rounded-md border px-3 text-xs font-medium ${isSelected ? "cursor-grab active:cursor-grabbing border-primary bg-primary/10" : "cursor-pointer border-border bg-background"}`}
-                  >
-                    <item.icon className="h-3.5 w-3.5" />{item.label}
-                    {isScorm && lesson.scormFile && <Check className="h-3 w-3 text-primary" />}
-                  </div>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8"
-                    aria-pressed={wantsAi}
-                    disabled={!isSelected}
-                    title="Generate this with AI"
-                    aria-label={`Generate ${item.label} with AI`}
-                    onClick={() => setAiMethods(p => ({
-                      ...p,
-                      [index]: wantsAi ? aiChosen.filter(m => m !== item.id) : [...aiChosen, item.id],
-                    }))}
-                  >
-                    <Wand2 className={`h-4 w-4 ${isSelected && wantsAi ? "text-primary" : "text-muted-foreground"}`} />
-                  </Button>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  key={item.id}
+                  draggable={isSelected}
+                  onDragStart={isSelected ? event => { event.dataTransfer.setData("application/json", JSON.stringify({ source: "delivery", id: item.id })); event.dataTransfer.effectAllowed = "copy"; } : undefined}
+                  onClick={!props.readOnly && !props.busy ? toggle : undefined}
+                  onKeyDown={!props.readOnly && !props.busy ? event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggle(); } } : undefined}
+                  title={isScorm ? (lesson.scormFile ? `Attached: ${lesson.scormFile.name}` : "Click to upload a SCORM package") : isSelected ? "Selected — drag to move it to another slide" : "Select to add it to a slide"}
+                  className={`flex h-8 items-center gap-1 rounded-md border px-3 text-xs font-medium ${isSelected ? "cursor-grab active:cursor-grabbing border-primary bg-primary/10" : "cursor-pointer border-border bg-background"}`}
+                >
+                  <item.icon className="h-3.5 w-3.5" />{item.label}
+                  {isScorm && lesson.scormFile && <Check className="h-3 w-3 text-primary" />}
                 </div>
               );
             };
@@ -456,7 +438,12 @@ export function ManualLessonReview(props: Props) {
                 const { error } = await supabase.storage.from(ILLUSTRATION_BUCKET).upload(path, file, { contentType: "application/zip" });
                 if (error) { toast.error("Could not upload the SCORM package."); return; }
                 const { data } = supabase.storage.from(ILLUSTRATION_BUCKET).getPublicUrl(path);
-                props.onEdit(index, { ...lesson, scormFile: { url: data.publicUrl, name: file.name } });
+                props.onEdit(index, {
+                  ...lesson,
+                  scormFile: { url: data.publicUrl, name: file.name },
+                  kind: "slide",
+                  slideKinds: placeFormatOnSlide({ source: "delivery", id: "scorm" }, slides),
+                });
                 toast.success(`Attached "${file.name}".`);
               };
               input.click();
@@ -490,13 +477,38 @@ export function ManualLessonReview(props: Props) {
                           const raw = event.dataTransfer.getData("application/json");
                           if (!raw) return;
                           try {
-                            const ref = JSON.parse(raw) as FormatRef;
+                            const dropped = JSON.parse(raw) as FormatRef | { source: "slide"; index: number };
+                            if (dropped.source === "slide") {
+                              const from = dropped.index;
+                              if (from === si) return;
+                              const reordered = [...slides];
+                              const moved = reordered.splice(from, 1)[0];
+                              if (!moved) return;
+                              reordered.splice(si, 0, moved);
+                              updateSlides(reordered);
+                              return;
+                            }
+                            const ref = dropped;
                             updateSlides(slides.map((f, i) => (i === si ? (f.some(x => x.source === ref.source && x.id === ref.id) ? f : [...f, ref]) : f)));
                           } catch { /* ignore a non-format drop */ }
                         }}
                         className="relative flex min-h-32 w-36 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border bg-background p-2 pt-6"
                       >
-                        <span className="absolute left-2 top-1.5 text-xs text-muted-foreground">Slide {si + 1}</span>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Drag to reorder slide ${si + 1}`}
+                          title="Drag to reorder"
+                          draggable={!props.readOnly && !props.busy}
+                          onDragStart={event => {
+                            event.dataTransfer.setData("application/json", JSON.stringify({ source: "slide", index: si }));
+                            event.dataTransfer.effectAllowed = "move";
+                          }}
+                          className="absolute left-1 top-1 flex cursor-grab items-center text-muted-foreground active:cursor-grabbing"
+                        >
+                          <GripVertical className="h-3.5 w-3.5" />
+                        </span>
+                        <span className="absolute left-6 top-1.5 text-xs text-muted-foreground">Slide {si + 1}</span>
                         {!props.readOnly && !props.busy && (
                           <button type="button" aria-label={`Delete slide ${si + 1}`} onClick={() => updateSlides(slides.filter((_, i) => i !== si))} className="absolute right-1.5 top-1.5 text-muted-foreground hover:text-destructive">
                             <X className="h-3.5 w-3.5" />
@@ -533,7 +545,7 @@ export function ManualLessonReview(props: Props) {
                       </button>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">Drag a format below onto a slide — a slide can hold more than one.</p>
+                  <p className="text-xs text-muted-foreground">Selecting a format below adds it to a slide automatically — drag it to move it to another slide, and drag a slide's grip to reorder slides.</p>
                   {selected.includes("illustrated") && (
                     <p className="text-xs text-muted-foreground" title="Set once in Course details so every lesson's illustrations stay consistent">
                       Illustrated explanation uses the course style: {props.illustrationGuide.style}
@@ -554,7 +566,7 @@ export function ManualLessonReview(props: Props) {
             );
           })()}
           {(() => {
-            const needsGeneration = (aiMethods[index] ?? selected).length > 0;
+            const needsGeneration = selected.length > 0;
             const generated = !!props.suggestions[index];
             const readyToReview = !needsGeneration || generated;
             const confidence = generated ? groundingConfidence(props.suggestions[index], lesson.body) : null;
@@ -570,9 +582,7 @@ export function ManualLessonReview(props: Props) {
                   size="sm"
                   disabled={props.readOnly || props.suggestLoading !== null || lesson.body.length < 100}
                   onClick={() => {
-                    const aiChosen = aiMethods[index] ?? selected;
-                    if (!aiMethods[index]) setAiMethods((p) => ({ ...p, [index]: selected }));
-                    const methodsToGenerate = aiChosen.filter((id) => props.methods.some((m) => m.id === id));
+                    const methodsToGenerate = selected.filter((id) => props.methods.some((m) => m.id === id));
                     if (methodsToGenerate.length) props.onSuggest(index, lesson, methodsToGenerate);
                   }}
                 >
