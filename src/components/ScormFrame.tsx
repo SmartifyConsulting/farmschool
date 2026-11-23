@@ -18,7 +18,7 @@ function parseEntryUrl(entryUrl: string): { authorId: string; packageId: string 
 
 export function ScormFrame({ pkg, userId, learnerName, onResult, className }: { pkg: Pkg; userId: string; learnerName: string; onResult?: (r: ScormResult) => void; className?: string }) {
   const [ready, setReady] = useState(false);
-  const [sessionError, setSessionError] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
     const w = window as unknown as Record<string, unknown>;
@@ -28,14 +28,20 @@ export function ScormFrame({ pkg, userId, learnerName, onResult, className }: { 
       if (ids) {
         const { data: auth } = await supabase.auth.getSession();
         const accessToken = auth.session?.access_token;
-        if (!accessToken) { setSessionError(true); return; }
+        if (!accessToken) { setSessionError("Not signed in."); return; }
         const res = await fetch("/api/scorm-session", {
           method: "POST",
+          credentials: "same-origin",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
           body: JSON.stringify(ids),
         });
         if (cancelled) return;
-        if (!res.ok) { setSessionError(true); return; }
+        if (!res.ok) { setSessionError(`Access check failed (${res.status} from /api/scorm-session): ${await res.text().catch(() => "")}`); return; }
+        // Confirm the actual entry file is reachable with the session cookie before mounting the iframe,
+        // so a failure surfaces as a readable message instead of the raw response rendered inside the frame.
+        const fileCheck = await fetch(pkg.entry_url, { credentials: "same-origin" });
+        if (cancelled) return;
+        if (!fileCheck.ok) { setSessionError(`Couldn't load the course file (${fileCheck.status} from ${pkg.entry_url}): ${await fileCheck.text().catch(() => "")}`); return; }
       }
       const { data: prev } = await supabase.from("scorm_attempts").select("lesson_status, score_raw, score_max, suspend_data, lesson_location").eq("package_id", pkg.id).eq("user_id", userId).maybeSingle();
       if (cancelled) return;
@@ -104,7 +110,7 @@ export function ScormFrame({ pkg, userId, learnerName, onResult, className }: { 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pkg.id, userId]);
 
-  if (sessionError) return <p className="p-10 text-center text-sm text-destructive">Couldn't verify access to this course. Please try again.</p>;
+  if (sessionError) return <p className="whitespace-pre-wrap break-words p-10 text-center text-sm text-destructive">Couldn't verify access to this course.{"\n"}{sessionError}</p>;
   if (!ready) return <p className="p-10 text-center text-sm text-muted-foreground">Loading course…</p>;
   return <iframe title={pkg.title} src={pkg.entry_url} className={className ?? "absolute inset-0 h-full w-full border-0"} allow="fullscreen; autoplay" allowFullScreen />;
 }
