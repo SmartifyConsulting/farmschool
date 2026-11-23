@@ -16,7 +16,7 @@ describe("lesson image provider request", () => {
     if (!call || typeof call[1].body !== "string") throw new Error("Missing image request");
     expect(call[0]).toBe("https://api.openai.com/v1/images/generations");
     const body = JSON.parse(call[1].body);
-    expect(body.model).toBe("gpt-image-2.5-sunburst");
+    expect(body.model).toBe("dall-e-3");
     expect(body.size).toBe("1024x1024");
     expect(body.prompt).toContain("Show a beehive entrance.");
     expect(body).not.toHaveProperty("response_format");
