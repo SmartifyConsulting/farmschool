@@ -491,6 +491,18 @@ export function ManualLessonReview(props: Props) {
                       ))}
                     </select>
                   </div>
+                  <p className="text-xs text-muted-foreground">Selecting a format below adds it to a slide automatically — drag it to move it to another slide, and drag a slide's grip to reorder slides.</p>
+                  {selected.includes("illustrated") && (
+                    <p className="text-xs text-muted-foreground" title="Set once in Course details so every lesson's illustrations stay consistent">
+                      Illustrated explanation uses the course style: {props.illustrationGuide.style}
+                      {props.illustrationGuide.characters.length > 0 && ` · Characters: ${props.illustrationGuide.characters.map(c => c.name).join(", ")}`}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {DELIVERY_FORMAT_ITEMS.filter(d => d.position === "before").map(renderDeliveryChip)}
+                    {trainingFormatMethods.map(method => renderMethodToggle(method, true))}
+                    {DELIVERY_FORMAT_ITEMS.filter(d => d.position === "after").map(renderDeliveryChip)}
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {slides.map((formats, si) => (
                       <div
@@ -575,18 +587,6 @@ export function ManualLessonReview(props: Props) {
                         <span className="text-xs">Add slide</span>
                       </button>
                     )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">Selecting a format below adds it to a slide automatically — drag it to move it to another slide, and drag a slide's grip to reorder slides.</p>
-                  {selected.includes("illustrated") && (
-                    <p className="text-xs text-muted-foreground" title="Set once in Course details so every lesson's illustrations stay consistent">
-                      Illustrated explanation uses the course style: {props.illustrationGuide.style}
-                      {props.illustrationGuide.characters.length > 0 && ` · Characters: ${props.illustrationGuide.characters.map(c => c.name).join(", ")}`}
-                    </p>
-                  )}
-                  <div className="flex flex-wrap items-center gap-2">
-                    {DELIVERY_FORMAT_ITEMS.filter(d => d.position === "before").map(renderDeliveryChip)}
-                    {trainingFormatMethods.map(method => renderMethodToggle(method, true))}
-                    {DELIVERY_FORMAT_ITEMS.filter(d => d.position === "after").map(renderDeliveryChip)}
                   </div>
                 </fieldset>
                 <fieldset disabled={props.readOnly || props.busy} className="mt-4 space-y-2 border-t border-border pt-3">
