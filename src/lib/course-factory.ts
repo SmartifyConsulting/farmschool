@@ -16,6 +16,8 @@ export type DraftLesson = {
   illustratedMediaKind?: "image" | "video" | null;
   visualMediaUrl?: string | null;
   visualMediaKind?: "image" | "video" | null;
+  videoMediaUrl?: string | null;
+  videoMediaKind?: "image" | "video" | null;
   /** Training format this lesson imports as; defaults to "slide" when unset. */
   kind?: "reading" | "slide" | "video" | "scorm";
   /** When kind is "slide": each slide's own list of assigned formats (delivery mediums and/or training methods), in drop order; defaults to three empty slides when unset. */

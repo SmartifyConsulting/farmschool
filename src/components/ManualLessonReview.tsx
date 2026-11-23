@@ -660,6 +660,43 @@ export function ManualLessonReview(props: Props) {
                   </div>
                 );
               })}
+              {selected.includes("video") && (() => {
+                const videoQueries = props.suggestions[index]?.videoQueries ?? [];
+                return (
+                  <div className="max-w-xs space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Video</p>
+                    {videoQueries.length ? (
+                      <ul className="space-y-1">
+                        {videoQueries.map((query, qi) => (
+                          <li key={qi}>
+                            <a
+                              href={`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs text-primary underline underline-offset-2 hover:no-underline"
+                            >
+                              {query}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Generate to get YouTube search suggestions for this lesson.</p>
+                    )}
+                    {lesson.videoMediaUrl && (
+                      <div className="overflow-hidden rounded bg-muted">
+                        {lesson.videoMediaKind === "video" ? <video src={lesson.videoMediaUrl} className="h-24 w-full object-cover" muted /> : <img src={lesson.videoMediaUrl} alt="" className="h-24 w-full object-cover" />}
+                      </div>
+                    )}
+                    <MediaPicker
+                      mediaUrl={lesson.videoMediaUrl}
+                      mediaKind={lesson.videoMediaKind}
+                      disabled={props.readOnly || props.busy}
+                      onChange={(nextUrl, nextKind) => props.onEdit(index, { ...lesson, videoMediaUrl: nextUrl, videoMediaKind: nextKind })}
+                    />
+                  </div>
+                );
+              })()}
               {lesson.kind === "slide" ? (
                 <div className="space-y-3">
                   {slideTexts.map((text, si) => {
