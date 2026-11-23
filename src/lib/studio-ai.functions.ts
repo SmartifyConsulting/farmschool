@@ -462,7 +462,7 @@ export const generateLessonImage = createServerFn({ method: "POST" })
     const { generateImage } = await import("ai");
     try {
       const { image } = await generateImage({
-        model: createOpenAI({ apiKey }).image("gpt-image-2.5-sunburst"),
+        model: createOpenAI({ apiKey }).image("gpt-image-1"),
         prompt: `Clear, simple educational illustration for a farming/agriculture training course. ${data.caption} Plain background, labelled parts only where natural, no watermarks, no surrounding text.`,
         size: "1024x1024",
       });
