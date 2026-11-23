@@ -11,9 +11,11 @@ export type DraftLesson = {
   reviewRequired: true;
   /** Heading 1 the lesson belongs to; becomes a Studio module on import. */
   module?: string;
-  /** Trainer-uploaded preview media (review stage only — not yet carried through to the published lesson). */
-  mediaUrl?: string | null;
-  mediaKind?: "image" | "video" | null;
+  /** Trainer-uploaded or AI-generated preview media, kept separately per training method so Illustration and Identify don't overwrite each other (review stage only — not yet carried through to the published lesson). */
+  illustratedMediaUrl?: string | null;
+  illustratedMediaKind?: "image" | "video" | null;
+  visualMediaUrl?: string | null;
+  visualMediaKind?: "image" | "video" | null;
   /** Training format this lesson imports as; defaults to "slide" when unset. */
   kind?: "reading" | "slide" | "video" | "scorm";
   /** When kind is "slide": each slide's own list of assigned formats (delivery mediums and/or training methods), in drop order; defaults to three empty slides when unset. */

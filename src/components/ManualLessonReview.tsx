@@ -89,7 +89,7 @@ function groundingConfidence(suggestion: MethodSuggestions | undefined, sourceTe
 /** Preview-only media picker for a draft lesson: click/drop an image or video, uploaded to a
  * public bucket under the trainer's own folder. Not yet carried through to the published lesson —
  * this is just to let the trainer see roughly how the lesson will look while reviewing the outline. */
-function MediaPicker({ lesson, disabled, onChange }: { lesson: DraftLesson; disabled: boolean; onChange: (mediaUrl: string | null, mediaKind: "image" | "video" | null) => void }) {
+function MediaPicker({ mediaUrl, mediaKind, disabled, onChange }: { mediaUrl?: string | null | undefined; mediaKind?: "image" | "video" | null | undefined; disabled: boolean; onChange: (mediaUrl: string | null, mediaKind: "image" | "video" | null) => void }) {
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const upload = async (file: File) => {
@@ -106,13 +106,13 @@ function MediaPicker({ lesson, disabled, onChange }: { lesson: DraftLesson; disa
     const { data } = supabase.storage.from(ILLUSTRATION_BUCKET).getPublicUrl(path);
     onChange(data.publicUrl, kind);
   };
-  if (lesson.mediaUrl) {
+  if (mediaUrl) {
     return (
       <div className="relative mt-1 overflow-hidden rounded bg-muted">
-        {lesson.mediaKind === "video" ? (
-          <video src={lesson.mediaUrl} className="h-16 w-full object-cover" muted />
+        {mediaKind === "video" ? (
+          <video src={mediaUrl} className="h-16 w-full object-cover" muted />
         ) : (
-          <img src={lesson.mediaUrl} alt="" className="h-16 w-full object-cover" />
+          <img src={mediaUrl} alt="" className="h-16 w-full object-cover" />
         )}
         {!disabled && (
           <button type="button" onClick={() => onChange(null, null)} className="absolute right-1 top-1 rounded-full bg-background p-0.5 shadow" aria-label="Remove media">
@@ -159,7 +159,7 @@ type Props = {
   onPreview: (index: number, lesson: DraftLesson) => void;
   suggestions: Record<number, MethodSuggestions>;
   suggestLoading: number | null;
-  onSuggest: (index: number, lesson: DraftLesson, methods: string[]) => void;
+  onSuggest: (index: number, lesson: DraftLesson, methods: string[]) => Promise<MethodSuggestions | undefined>;
   /** Bump focusToken (any changing value) alongside focusIndex to jump the stepper to that lesson's module, even if focusIndex repeats. */
   focusIndex?: number | null;
   focusToken?: number;
@@ -245,7 +245,8 @@ export function ManualLessonReview(props: Props) {
         const selected = props.choices(index, lesson.title, lesson.body);
         const paragraphs = lesson.body.split(/\n{2,}/);
         const newModule = lesson.module && lesson.module !== props.draft.lessons[index - 1]?.module;
-        const generateImageForMethod = async (methodId: "illustrated" | "visual", caption: string) => {
+        /** Generates an image and saves it onto the given lesson snapshot, returning the updated lesson so callers generating more than one image in a row can thread it through without clobbering each other's field. */
+        const generateImageForMethod = async (methodId: "illustrated" | "visual", caption: string, currentLesson: DraftLesson = lesson): Promise<DraftLesson> => {
           const key = `${index}:${methodId}`;
           setGeneratingImageFor(key);
           try {
@@ -253,15 +254,20 @@ export function ManualLessonReview(props: Props) {
             const bytes = Uint8Array.from(atob(result.base64), c => c.charCodeAt(0));
             const blob = new Blob([bytes], { type: "image/png" });
             const { data: auth } = await supabase.auth.getUser();
-            if (!auth.user) { toast.error("Please sign in to upload."); return; }
+            if (!auth.user) { toast.error("Please sign in to upload."); return currentLesson; }
             const path = `${auth.user.id}/${crypto.randomUUID()}-ai-illustration.png`;
             const { error } = await supabase.storage.from(ILLUSTRATION_BUCKET).upload(path, blob, { contentType: "image/png" });
-            if (error) { toast.error("Could not save the generated image."); return; }
+            if (error) { toast.error("Could not save the generated image."); return currentLesson; }
             const { data: pub } = supabase.storage.from(ILLUSTRATION_BUCKET).getPublicUrl(path);
-            props.onEdit(index, { ...lesson, mediaUrl: pub.publicUrl, mediaKind: "image" });
-            toast.success("Image generated.");
+            const updated: DraftLesson = methodId === "illustrated"
+              ? { ...currentLesson, illustratedMediaUrl: pub.publicUrl, illustratedMediaKind: "image" }
+              : { ...currentLesson, visualMediaUrl: pub.publicUrl, visualMediaKind: "image" };
+            props.onEdit(index, updated);
+            toast.success(`${methodId === "illustrated" ? "Illustration" : "Identify"} image generated.`);
+            return updated;
           } catch (e) {
             toast.error(e instanceof Error ? e.message : "Could not generate an image.");
+            return currentLesson;
           } finally {
             setGeneratingImageFor(null);
           }
@@ -583,7 +589,17 @@ export function ManualLessonReview(props: Props) {
                   disabled={props.readOnly || props.suggestLoading !== null || lesson.body.length < 100}
                   onClick={() => {
                     const methodsToGenerate = selected.filter((id) => props.methods.some((m) => m.id === id));
-                    if (methodsToGenerate.length) props.onSuggest(index, lesson, methodsToGenerate);
+                    if (!methodsToGenerate.length) return;
+                    void (async () => {
+                      const result = await props.onSuggest(index, lesson, methodsToGenerate);
+                      if (!result) return;
+                      let currentLesson = lesson;
+                      for (const methodId of ["illustrated", "visual"] as const) {
+                        if (!selected.includes(methodId)) continue;
+                        const caption = methodId === "illustrated" ? result.illustrated : result.visual;
+                        if (caption) currentLesson = await generateImageForMethod(methodId, caption, currentLesson);
+                      }
+                    })();
                   }}
                 >
                   <Sparkles className="h-4 w-4" />
@@ -609,21 +625,30 @@ export function ManualLessonReview(props: Props) {
                 const caption = methodId === "illustrated" ? props.suggestions[index]?.illustrated : props.suggestions[index]?.visual;
                 const key = `${index}:${methodId}`;
                 const generating = generatingImageFor === key;
+                const mediaUrl = methodId === "illustrated" ? lesson.illustratedMediaUrl : lesson.visualMediaUrl;
+                const mediaKind = methodId === "illustrated" ? lesson.illustratedMediaKind : lesson.visualMediaKind;
                 return (
                   <div key={methodId} className="max-w-xs space-y-1">
                     <p className="text-xs font-medium text-muted-foreground">{methodId === "illustrated" ? "Illustration" : "Identify"}</p>
                     {caption && <p className="text-xs text-muted-foreground">{caption}</p>}
-                    {lesson.mediaUrl && (
+                    {mediaUrl && (
                       <div className="overflow-hidden rounded bg-muted">
-                        {lesson.mediaKind === "video" ? <video src={lesson.mediaUrl} className="h-24 w-full object-cover" muted /> : <img src={lesson.mediaUrl} alt="" className="h-24 w-full object-cover" />}
+                        {mediaKind === "video" ? <video src={mediaUrl} className="h-24 w-full object-cover" muted /> : <img src={mediaUrl} alt="" className="h-24 w-full object-cover" />}
                       </div>
                     )}
                     <div className="flex flex-wrap items-center gap-1">
                       <Button size="sm" variant="outline" disabled={props.readOnly || props.busy || generating || !caption} onClick={() => void generateImageForMethod(methodId, caption!)}>
-                        <Sparkles className="h-3.5 w-3.5" />{generating ? "Generating…" : "Generate image with AI"}
+                        <Sparkles className="h-3.5 w-3.5" />{generating ? "Generating…" : mediaUrl ? "Regenerate with AI" : "Generate image with AI"}
                       </Button>
                     </div>
-                    <MediaPicker lesson={lesson} disabled={props.readOnly || props.busy} onChange={(mediaUrl, mediaKind) => props.onEdit(index, { ...lesson, mediaUrl, mediaKind })} />
+                    <MediaPicker
+                      mediaUrl={mediaUrl}
+                      mediaKind={mediaKind}
+                      disabled={props.readOnly || props.busy}
+                      onChange={(nextUrl, nextKind) => props.onEdit(index, methodId === "illustrated"
+                        ? { ...lesson, illustratedMediaUrl: nextUrl, illustratedMediaKind: nextKind }
+                        : { ...lesson, visualMediaUrl: nextUrl, visualMediaKind: nextKind })}
+                    />
                   </div>
                 );
               })}

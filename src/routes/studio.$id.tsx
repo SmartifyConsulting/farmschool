@@ -586,8 +586,10 @@ function Editor() {
         ...(result.activities != null ? { activities: result.activities } : {}),
       };
       setMethodSuggestions((p) => ({ ...p, [index]: suggestions }));
+      return suggestions;
     } catch (error) {
       toast.error(friendlyError(error, "Could not generate suggestions."));
+      return undefined;
     } finally {
       setSuggestLoading(null);
     }
@@ -2943,7 +2945,7 @@ function Editor() {
                           onApprove={(index, lesson) => void toggleDesignApproval(index, lesson)}
                           suggestions={methodSuggestions}
                           suggestLoading={suggestLoading}
-                          onSuggest={(index, lesson, methods) => void suggestMethodContent(index, lesson, methods)}
+                          onSuggest={(index, lesson, methods) => suggestMethodContent(index, lesson, methods)}
                           focusIndex={outlineFocus?.index ?? null}
                           focusToken={outlineFocus?.token ?? 0}
                         />
