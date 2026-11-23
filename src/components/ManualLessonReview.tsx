@@ -49,6 +49,22 @@ const MAX_SLIDES = 20;
 function defaultSlides(): FormatRef[][] {
   return [[], [], []];
 }
+/** Extracts the video id from a youtube.com/youtu.be URL (watch, youtu.be short link, /embed/, /shorts/), or null if it isn't a recognized YouTube link. */
+function extractYouTubeId(url: string): string | null {
+  try {
+    const parsed = new URL(url.trim());
+    const host = parsed.hostname.replace(/^www\./, "");
+    if (host === "youtu.be") return parsed.pathname.slice(1) || null;
+    if (host === "youtube.com" || host === "m.youtube.com") {
+      if (parsed.pathname === "/watch") return parsed.searchParams.get("v");
+      const match = /^\/(?:embed|shorts)\/([^/]+)/.exec(parsed.pathname);
+      if (match) return match[1] ?? null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 function resizeSlides(current: FormatRef[][], count: number): FormatRef[][] {
   const next = Math.max(1, Math.min(MAX_SLIDES, count));
   const copy = current.slice(0, next);
@@ -194,6 +210,7 @@ export function ManualLessonReview(props: Props) {
   const runGenerateImage = useServerFn(generateLessonImage);
   const [previewingSlides, setPreviewingSlides] = useState<Record<number, Set<number>>>({});
   const [justMovedSlide, setJustMovedSlide] = useState<Record<number, number>>({});
+  const [videoUrlDraft, setVideoUrlDraft] = useState<Record<number, string>>({});
   const moduleCount = new Set(props.draft.lessons.map(lesson => lesson.module).filter(Boolean)).size;
   const pageCount = new Set(props.draft.lessons.flatMap(lesson => lesson.sourceRefs.map(ref => `${ref.sourceId}:${ref.page}`))).size;
   const groups: { label: string; start: number; end: number }[] = [];
@@ -662,6 +679,16 @@ export function ManualLessonReview(props: Props) {
               })}
               {selected.includes("video") && (() => {
                 const videoQueries = props.suggestions[index]?.videoQueries ?? [];
+                const isYouTube = lesson.videoMediaKind === "youtube" && !!lesson.videoMediaUrl;
+                const youTubeId = isYouTube ? extractYouTubeId(lesson.videoMediaUrl!) : null;
+                const embedUrl = () => {
+                  const draft = videoUrlDraft[index]?.trim();
+                  if (!draft) return;
+                  const id = extractYouTubeId(draft);
+                  if (!id) { toast.error("That doesn't look like a YouTube link."); return; }
+                  props.onEdit(index, { ...lesson, videoMediaUrl: draft, videoMediaKind: "youtube" });
+                  setVideoUrlDraft(p => ({ ...p, [index]: "" }));
+                };
                 return (
                   <div className="max-w-xs space-y-1">
                     <p className="text-xs font-medium text-muted-foreground">Video</p>
@@ -683,17 +710,54 @@ export function ManualLessonReview(props: Props) {
                     ) : (
                       <p className="text-xs text-muted-foreground">Generate to get YouTube search suggestions for this lesson.</p>
                     )}
-                    {lesson.videoMediaUrl && (
-                      <div className="overflow-hidden rounded bg-muted">
-                        {lesson.videoMediaKind === "video" ? <video src={lesson.videoMediaUrl} className="h-24 w-full object-cover" muted /> : <img src={lesson.videoMediaUrl} alt="" className="h-24 w-full object-cover" />}
-                      </div>
+                    {isYouTube ? (
+                      youTubeId ? (
+                        <div className="space-y-1">
+                          <div className="aspect-video overflow-hidden rounded bg-muted">
+                            <iframe
+                              src={`https://www.youtube.com/embed/${youTubeId}`}
+                              title="Embedded video"
+                              className="h-full w-full"
+                              allowFullScreen
+                            />
+                          </div>
+                          {!props.readOnly && !props.busy && (
+                            <Button size="sm" variant="ghost" onClick={() => props.onEdit(index, { ...lesson, videoMediaUrl: null, videoMediaKind: null })}>
+                              <X className="h-3.5 w-3.5" />Remove video
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-destructive">Saved video link couldn't be parsed — remove and re-add it.</p>
+                      )
+                    ) : (
+                      <>
+                        {lesson.videoMediaUrl && (
+                          <div className="overflow-hidden rounded bg-muted">
+                            {lesson.videoMediaKind === "video" ? <video src={lesson.videoMediaUrl} className="h-24 w-full object-cover" muted /> : <img src={lesson.videoMediaUrl} alt="" className="h-24 w-full object-cover" />}
+                          </div>
+                        )}
+                        {!lesson.videoMediaUrl && !props.readOnly && !props.busy && (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              aria-label="YouTube link"
+                              placeholder="Paste a YouTube link"
+                              value={videoUrlDraft[index] ?? ""}
+                              onChange={event => setVideoUrlDraft(p => ({ ...p, [index]: event.target.value }))}
+                              onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); embedUrl(); } }}
+                              className="h-8 text-xs"
+                            />
+                            <Button size="sm" variant="outline" disabled={!videoUrlDraft[index]?.trim()} onClick={embedUrl}>Embed</Button>
+                          </div>
+                        )}
+                        <MediaPicker
+                          mediaUrl={lesson.videoMediaUrl}
+                          mediaKind={lesson.videoMediaKind === "youtube" ? null : lesson.videoMediaKind}
+                          disabled={props.readOnly || props.busy}
+                          onChange={(nextUrl, nextKind) => props.onEdit(index, { ...lesson, videoMediaUrl: nextUrl, videoMediaKind: nextKind })}
+                        />
+                      </>
                     )}
-                    <MediaPicker
-                      mediaUrl={lesson.videoMediaUrl}
-                      mediaKind={lesson.videoMediaKind}
-                      disabled={props.readOnly || props.busy}
-                      onChange={(nextUrl, nextKind) => props.onEdit(index, { ...lesson, videoMediaUrl: nextUrl, videoMediaKind: nextKind })}
-                    />
                   </div>
                 );
               })()}

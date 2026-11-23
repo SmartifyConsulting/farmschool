@@ -17,7 +17,8 @@ export type DraftLesson = {
   visualMediaUrl?: string | null;
   visualMediaKind?: "image" | "video" | null;
   videoMediaUrl?: string | null;
-  videoMediaKind?: "image" | "video" | null;
+  /** "youtube" means videoMediaUrl is a youtube.com/youtu.be URL to embed, not an uploaded file. */
+  videoMediaKind?: "image" | "video" | "youtube" | null;
   /** Training format this lesson imports as; defaults to "slide" when unset. */
   kind?: "reading" | "slide" | "video" | "scorm";
   /** When kind is "slide": each slide's own list of assigned formats (delivery mediums and/or training methods), in drop order; defaults to three empty slides when unset. */
