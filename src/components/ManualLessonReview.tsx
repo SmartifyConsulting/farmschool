@@ -193,6 +193,7 @@ export function ManualLessonReview(props: Props) {
   const [generatingImageFor, setGeneratingImageFor] = useState<string | null>(null);
   const runGenerateImage = useServerFn(generateLessonImage);
   const [previewingSlides, setPreviewingSlides] = useState<Record<number, Set<number>>>({});
+  const [justMovedSlide, setJustMovedSlide] = useState<Record<number, number>>({});
   const moduleCount = new Set(props.draft.lessons.map(lesson => lesson.module).filter(Boolean)).size;
   const pageCount = new Set(props.draft.lessons.flatMap(lesson => lesson.sourceRefs.map(ref => `${ref.sourceId}:${ref.page}`))).size;
   const groups: { label: string; start: number; end: number }[] = [];
@@ -492,13 +493,20 @@ export function ManualLessonReview(props: Props) {
                               if (!moved) return;
                               reordered.splice(si, 0, moved);
                               updateSlides(reordered);
+                              setJustMovedSlide(p => ({ ...p, [index]: si }));
+                              window.setTimeout(() => setJustMovedSlide(p => {
+                                if (p[index] !== si) return p;
+                                const next = { ...p };
+                                delete next[index];
+                                return next;
+                              }), 700);
                               return;
                             }
                             const ref = dropped;
                             updateSlides(slides.map((f, i) => (i === si ? (f.some(x => x.source === ref.source && x.id === ref.id) ? f : [...f, ref]) : f)));
                           } catch { /* ignore a non-format drop */ }
                         }}
-                        className="relative flex min-h-32 w-36 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border bg-background p-2 pt-6"
+                        className={`relative flex min-h-32 w-36 flex-col items-center justify-center gap-1 rounded-md border border-dashed bg-background p-2 pt-6 transition-all duration-300 ease-out ${justMovedSlide[index] === si ? "scale-105 border-primary border-solid bg-primary/10 shadow-md" : "border-border"}`}
                       >
                         <span
                           role="button"
