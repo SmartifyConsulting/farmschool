@@ -458,15 +458,9 @@ export const generateLessonImage = createServerFn({ method: "POST" })
     if (quotaError || typeof count !== "number") {
       throw new Error(quotaError?.message.includes("Daily AI generation limit") ? "Your daily AI allowance is used up. Try again tomorrow." : "Your AI allowance could not be checked. Please try later.");
     }
-    const { createOpenAI } = await import("@ai-sdk/openai");
-    const { generateImage } = await import("ai");
+    const { createLessonImage } = await import("@/lib/lesson-image.server");
     try {
-      const { image } = await generateImage({
-        model: createOpenAI({ apiKey }).image("gpt-image-1"),
-        prompt: `Clear, simple educational illustration for a farming/agriculture training course. ${data.caption} Plain background, labelled parts only where natural, no watermarks, no surrounding text.`,
-        size: "1024x1024",
-      });
-      return { base64: image.base64 };
+      return await createLessonImage(apiKey, data.caption);
     } catch (e) {
       console.error("generateLessonImage failed", e);
       throw new Error("The AI assistant couldn't create an image. Please try again.");
