@@ -10,13 +10,33 @@ type Pkg = { id: string; title: string; scorm_version: string; entry_url: string
  * Installs SCORM 1.2 (window.API) and 2004 (window.API_1484_11) bridges compatible with
  * Articulate Storyline/Rise, Captivate and iSpring exports.
  */
+/** Pulls {authorId, packageId} out of an entry_url shaped like /api/scorm-file/<authorId>/<packageId>/<path>. */
+function parseEntryUrl(entryUrl: string): { authorId: string; packageId: string } | null {
+  const match = /^\/api\/scorm-file\/([0-9a-f-]{36})\/([0-9a-f-]{36})\//.exec(entryUrl);
+  return match ? { authorId: match[1]!, packageId: match[2]! } : null;
+}
+
 export function ScormFrame({ pkg, userId, learnerName, onResult, className }: { pkg: Pkg; userId: string; learnerName: string; onResult?: (r: ScormResult) => void; className?: string }) {
   const [ready, setReady] = useState(false);
+  const [sessionError, setSessionError] = useState(false);
   useEffect(() => {
     let cancelled = false;
     const w = window as unknown as Record<string, unknown>;
     let cleanup = () => {};
     (async () => {
+      const ids = parseEntryUrl(pkg.entry_url);
+      if (ids) {
+        const { data: auth } = await supabase.auth.getSession();
+        const accessToken = auth.session?.access_token;
+        if (!accessToken) { setSessionError(true); return; }
+        const res = await fetch("/api/scorm-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+          body: JSON.stringify(ids),
+        });
+        if (cancelled) return;
+        if (!res.ok) { setSessionError(true); return; }
+      }
       const { data: prev } = await supabase.from("scorm_attempts").select("lesson_status, score_raw, score_max, suspend_data, lesson_location").eq("package_id", pkg.id).eq("user_id", userId).maybeSingle();
       if (cancelled) return;
       const resume = !!prev?.suspend_data || !!prev?.lesson_location;
@@ -84,6 +104,7 @@ export function ScormFrame({ pkg, userId, learnerName, onResult, className }: { 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pkg.id, userId]);
 
+  if (sessionError) return <p className="p-10 text-center text-sm text-destructive">Couldn't verify access to this course. Please try again.</p>;
   if (!ready) return <p className="p-10 text-center text-sm text-muted-foreground">Loading course…</p>;
   return <iframe title={pkg.title} src={pkg.entry_url} className={className ?? "absolute inset-0 h-full w-full border-0"} allow="fullscreen; autoplay" allowFullScreen />;
 }

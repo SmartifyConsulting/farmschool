@@ -44,6 +44,7 @@ import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as ApiCourseFactoryRouteImport } from './routes/api/course-factory'
 import { Route as ApiCourseWizardRouteImport } from './routes/api/course-wizard'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ApiScormSessionRouteImport } from './routes/api/scorm-session'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
 import { Route as ClassIdRouteImport } from './routes/class.$id'
 import { Route as CommunityCourseIdRouteImport } from './routes/community.$courseId'
@@ -249,6 +250,11 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiScormSessionRoute = ApiScormSessionRouteImport.update({
+  id: '/api/scorm-session',
+  path: '/api/scorm-session',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
   id: '/api/stripe-webhook',
   path: '/api/stripe-webhook',
@@ -432,6 +438,7 @@ export interface FileRoutesByFullPath {
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/scorm-session': typeof ApiScormSessionRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/class/$id': typeof ClassIdRoute
   '/community/$courseId': typeof CommunityCourseIdRoute
@@ -498,6 +505,7 @@ export interface FileRoutesByTo {
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/scorm-session': typeof ApiScormSessionRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/class/$id': typeof ClassIdRoute
   '/community/$courseId': typeof CommunityCourseIdRoute
@@ -565,6 +573,7 @@ export interface FileRoutesById {
   '/api/course-factory': typeof ApiCourseFactoryRoute
   '/api/course-wizard': typeof ApiCourseWizardRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/scorm-session': typeof ApiScormSessionRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/class/$id': typeof ClassIdRoute
   '/community/$courseId': typeof CommunityCourseIdRoute
@@ -633,6 +642,7 @@ export interface FileRouteTypes {
     | '/api/course-factory'
     | '/api/course-wizard'
     | '/api/health'
+    | '/api/scorm-session'
     | '/api/stripe-webhook'
     | '/class/$id'
     | '/community/$courseId'
@@ -699,6 +709,7 @@ export interface FileRouteTypes {
     | '/api/course-factory'
     | '/api/course-wizard'
     | '/api/health'
+    | '/api/scorm-session'
     | '/api/stripe-webhook'
     | '/class/$id'
     | '/community/$courseId'
@@ -765,6 +776,7 @@ export interface FileRouteTypes {
     | '/api/course-factory'
     | '/api/course-wizard'
     | '/api/health'
+    | '/api/scorm-session'
     | '/api/stripe-webhook'
     | '/class/$id'
     | '/community/$courseId'
@@ -832,6 +844,7 @@ export interface RootRouteChildren {
   ApiCourseFactoryRoute: typeof ApiCourseFactoryRoute
   ApiCourseWizardRoute: typeof ApiCourseWizardRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiScormSessionRoute: typeof ApiScormSessionRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ClassIdRoute: typeof ClassIdRoute
   CommunityCourseIdRoute: typeof CommunityCourseIdRoute
@@ -1102,6 +1115,13 @@ declare module '@tanstack/react-router' {
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/scorm-session': {
+      id: '/api/scorm-session'
+      path: '/api/scorm-session'
+      fullPath: '/api/scorm-session'
+      preLoaderRoute: typeof ApiScormSessionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/stripe-webhook': {
@@ -1408,6 +1428,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCourseFactoryRoute: ApiCourseFactoryRoute,
   ApiCourseWizardRoute: ApiCourseWizardRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ApiScormSessionRoute: ApiScormSessionRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ClassIdRoute: ClassIdRoute,
   CommunityCourseIdRoute: CommunityCourseIdRoute,
