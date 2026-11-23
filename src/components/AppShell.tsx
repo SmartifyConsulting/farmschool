@@ -173,13 +173,24 @@ function AvatarMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        {mobile || horizontal ? (
+        {mobile ? (
           <button
             type="button"
             aria-label="Account menu"
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground"
           >
             {initials}
+          </button>
+        ) : horizontal ? (
+          <button
+            type="button"
+            aria-label="Account menu"
+            className="flex max-w-[180px] shrink-0 items-center gap-2 rounded-full px-1.5 py-1 text-left hover:bg-muted"
+          >
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+              {initials}
+            </span>
+            <span className="min-w-0 truncate text-sm font-semibold text-foreground">{name}</span>
           </button>
         ) : (
           <button
