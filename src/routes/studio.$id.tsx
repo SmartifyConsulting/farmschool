@@ -1929,7 +1929,7 @@ function Editor() {
               {[
                 { key: "overview", label: "Course details" },
                 { key: "import", label: "Course Design" },
-                { key: "content", label: "Content" },
+                { key: "content", label: "Library" },
                 { key: "performance", label: "Performance" },
                 { key: "history", label: "Version history" },
                 { key: "publish", label: "Review & publish" },
