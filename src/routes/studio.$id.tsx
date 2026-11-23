@@ -2916,12 +2916,16 @@ function Editor() {
                           onMerge={(index) => {
                             const first = draft.lessons[index];
                             const second = draft.lessons[index + 1];
-                            if (first && second)
-                              reviseOutline([
-                                ...draft.lessons.slice(0, index),
-                                mergeDraftLessons(first, second),
-                                ...draft.lessons.slice(index + 2),
-                              ]);
+                            if (!first || !second) return;
+                            const previousLessons = draft.lessons;
+                            reviseOutline([
+                              ...draft.lessons.slice(0, index),
+                              mergeDraftLessons(first, second),
+                              ...draft.lessons.slice(index + 2),
+                            ]);
+                            toast.success("Lessons merged.", {
+                              action: { label: "Undo", onClick: () => reviseOutline(previousLessons) },
+                            });
                           }}
                           onDelete={async (index) => {
                             if (
