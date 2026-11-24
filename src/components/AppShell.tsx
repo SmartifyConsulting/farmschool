@@ -160,10 +160,11 @@ function AvatarMenu({
   const { data: prof } = useQuery({
     queryKey: ["avatar-profile", user?.id],
     enabled: !!user,
-    queryFn: async () => (await supabase.from("profiles").select("full_name").maybeSingle()).data,
+    queryFn: async () => (await supabase.from("profiles" as never).select("first_name, last_name, full_name" as never).maybeSingle()).data as { first_name: string; last_name: string; full_name: string } | null,
   });
   if (!ready || !user) return null;
-  const name = prof?.full_name ?? user.email?.split("@")[0] ?? "Account";
+  const firstLast = [prof?.first_name, prof?.last_name].filter(Boolean).join(" ").trim();
+  const name = firstLast || prof?.full_name || user.email?.split("@")[0] || "Account";
   const nameParts = name.trim().split(/\s+/).filter(Boolean);
   const initials = (
     nameParts.length > 1

@@ -39,13 +39,14 @@ export function AuthCard({ title, children, brand }: { title: string; children: 
 }
 
 const signupSchema = z.object({
-  fullName: z.string().trim().min(1, "Please enter your full name").max(100, "Name is too long"),
+  firstName: z.string().trim().min(1, "Please enter your first name").max(60, "Name is too long"),
+  lastName: z.string().trim().min(1, "Please enter your last name").max(60, "Name is too long"),
   region: z.string().trim().min(1, "Please enter your region or country").max(100, "Region is too long"),
   role: z.enum(ROLES, { message: "Please choose your role" }),
   email: z.string().trim().email("Please enter a valid email address").max(255),
 });
 
-type Errors = Partial<Record<"fullName" | "region" | "role" | "email" | "password" | "confirm", string>>;
+type Errors = Partial<Record<"firstName" | "lastName" | "region" | "role" | "email" | "password" | "confirm", string>>;
 const Err = ({ id, msg }: { id: string; msg?: string | undefined }) => msg ? <p id={id} className="mt-1 text-xs text-destructive">{msg}</p> : null;
 
 function AuthPage() {
@@ -54,7 +55,7 @@ function AuthPage() {
   const brand = !portal.isError ? portal.data?.brand : undefined;
   const nav = useNavigate();
   const [mode, setMode] = useState<"in" | "up">(search.mode === "signup" ? "up" : "in");
-  const [f, setF] = useState({ fullName: "", region: "", role: "", email: "", password: "", confirm: "" });
+  const [f, setF] = useState({ firstName: "", lastName: "", region: "", role: "", email: "", password: "", confirm: "" });
   const [errors, setErrors] = useState<Errors>({});
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -79,9 +80,10 @@ function AuthPage() {
     if (Object.keys(errs).length) { document.getElementById(Object.keys(errs)[0]!)?.focus(); return; }
     setBusy(true);
     const d = parsed.data!;
-    const { data, error } = await supabase.auth.signUp({ email: d.email, password: f.password, options: { emailRedirectTo: window.location.origin + (search.portal ? portalPath(search.portal) : ""), data: { full_name: d.fullName } } });
+    const fullName = `${d.firstName} ${d.lastName}`.trim();
+    const { data, error } = await supabase.auth.signUp({ email: d.email, password: f.password, options: { emailRedirectTo: window.location.origin + (search.portal ? portalPath(search.portal) : ""), data: { full_name: fullName } } });
     if (error || !data.user) { setBusy(false); return setMsg(mapAuthError(error, "signup")); }
-    const { error: pErr } = await supabase.from("profiles").upsert({ user_id: data.user.id, full_name: d.fullName, region: d.region, learner_role: d.role });
+    const { error: pErr } = await supabase.from("profiles").upsert({ user_id: data.user.id, full_name: fullName, first_name: d.firstName, last_name: d.lastName, region: d.region, learner_role: d.role } as never);
     setBusy(false);
     if (pErr) console.error(pErr);
     if (!data.session) return setMsg("Account created — please sign in.");
@@ -98,8 +100,10 @@ function AuthPage() {
       </div>
       <form onSubmit={submit} noValidate className="space-y-3">
         {mode === "up" && <>
-          <div><label className="block text-sm font-medium" htmlFor="fullName">Full name</label>
-            <input id="fullName" autoComplete="name" value={f.fullName} onChange={(e) => set("fullName")(e.target.value)} aria-invalid={!!errors.fullName} className={inputCls} /><Err id="e-name" msg={errors.fullName} /></div>
+          <div><label className="block text-sm font-medium" htmlFor="firstName">First name</label>
+            <input id="firstName" autoComplete="given-name" value={f.firstName} onChange={(e) => set("firstName")(e.target.value)} aria-invalid={!!errors.firstName} className={inputCls} /><Err id="e-first-name" msg={errors.firstName} /></div>
+          <div><label className="block text-sm font-medium" htmlFor="lastName">Last name</label>
+            <input id="lastName" autoComplete="family-name" value={f.lastName} onChange={(e) => set("lastName")(e.target.value)} aria-invalid={!!errors.lastName} className={inputCls} /><Err id="e-last-name" msg={errors.lastName} /></div>
           <div><label className="block text-sm font-medium" htmlFor="region">Region / country</label>
             <input id="region" autoComplete="country-name" value={f.region} onChange={(e) => set("region")(e.target.value)} aria-invalid={!!errors.region} className={inputCls} /><Err id="e-region" msg={errors.region} /></div>
           <div><label className="block text-sm font-medium" htmlFor="role">Role</label>

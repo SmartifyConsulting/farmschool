@@ -58,9 +58,9 @@ function Profile() {
       (
         await supabase
           .from("profiles")
-          .select("full_name, region, learner_role, bio, avatar_url")
+          .select("full_name, first_name, last_name, region, learner_role, bio, avatar_url" as never)
           .maybeSingle()
-      ).data,
+      ).data as { full_name: string; first_name: string; last_name: string; region: string; learner_role: string; bio: string; avatar_url: string | null } | null,
   });
 
   const { data: usage = [] } = useQuery({
@@ -73,19 +73,21 @@ function Profile() {
     },
   });
 
-  const [about, setAbout] = useState({ fullName: "", region: "", learnerRole: "", bio: "" });
+  const [about, setAbout] = useState({ firstName: "", lastName: "", region: "", learnerRole: "", bio: "" });
   const aboutLoaded = useRef(false);
   if (prof && !aboutLoaded.current) {
     aboutLoaded.current = true;
     setAbout({
-      fullName: prof.full_name ?? "",
+      firstName: prof.first_name ?? "",
+      lastName: prof.last_name ?? "",
       region: prof.region ?? "",
       learnerRole: prof.learner_role ?? "",
       bio: prof.bio ?? "",
     });
   }
 
-  const name = prof?.full_name ?? user?.email?.split("@")[0] ?? "Guest";
+  const firstLast = [prof?.first_name, prof?.last_name].filter(Boolean).join(" ").trim();
+  const name = firstLast || prof?.full_name || user?.email?.split("@")[0] || "Guest";
 
   const uploadAvatar = async (file: File) => {
     if (!user) return;
@@ -125,14 +127,17 @@ function Profile() {
   const saveAbout = async () => {
     if (!user) return;
     setSavingAbout(true);
+    const fullName = `${about.firstName.trim()} ${about.lastName.trim()}`.trim();
     const { error } = await supabase
       .from("profiles")
       .update({
-        full_name: about.fullName.trim(),
+        full_name: fullName,
+        first_name: about.firstName.trim(),
+        last_name: about.lastName.trim(),
         region: about.region.trim(),
         learner_role: about.learnerRole.trim(),
         bio: about.bio.trim(),
-      })
+      } as never)
       .eq("user_id", user.id);
     setSavingAbout(false);
     if (error) {
@@ -221,11 +226,19 @@ function Profile() {
           <div className="mx-auto mt-5 max-w-xl space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block space-y-1 text-xs font-medium">
-                Full name
+                First name
                 <Input
-                  value={about.fullName}
-                  onChange={(e) => setAbout({ ...about, fullName: e.target.value })}
-                  maxLength={120}
+                  value={about.firstName}
+                  onChange={(e) => setAbout({ ...about, firstName: e.target.value })}
+                  maxLength={60}
+                />
+              </label>
+              <label className="block space-y-1 text-xs font-medium">
+                Last name
+                <Input
+                  value={about.lastName}
+                  onChange={(e) => setAbout({ ...about, lastName: e.target.value })}
+                  maxLength={60}
                 />
               </label>
               <label className="block space-y-1 text-xs font-medium">
