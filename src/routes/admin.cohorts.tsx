@@ -120,7 +120,7 @@ function CohortsPage() {
   return (
     <Phone>
       <Header />
-      <Sheet>
+      <Sheet wide>
         <CanvasHeading eyebrow="Admin" title="Cohorts" />
         {!ready ? (
           <p className="py-8">Checking access…</p>

@@ -32,7 +32,7 @@ function AdminHome() {
   return (
     <Phone>
       <Header />
-      <Sheet>
+      <Sheet wide>
         <CanvasHeading eyebrow="Admin" title="Administration" />
         {!ready || (user && isLoading) ? (
           <p className="py-8 text-sm text-muted-foreground">Checking permissions…</p>

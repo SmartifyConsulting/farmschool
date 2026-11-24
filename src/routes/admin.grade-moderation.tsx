@@ -82,7 +82,7 @@ function ModerationPage() {
   return (
     <Phone>
       <Header />
-      <Sheet>
+      <Sheet wide>
         <CanvasHeading eyebrow="Administration" title="Grade moderation" />
         {!ready ? (
           <p>Checking access…</p>

@@ -5,15 +5,17 @@ function hueFromText(text: string): number {
   return hash % 360;
 }
 
-/** A title banner for a committed lesson's page preview — deterministic per-lesson colour, no image upload required. */
-export function HeroBanner({ title }: { title: string }) {
+/** A title banner for a committed lesson's page preview — deterministic per-lesson colour by
+ * default, no image upload required. A course's Colors settings can override the background and
+ * text color outright, taking precedence over the per-lesson hash. */
+export function HeroBanner({ title, bgColor, textColor }: { title: string; bgColor?: string; textColor?: string }) {
   const hue = hueFromText(title || "Lesson");
   return (
     <div
       className="flex min-h-28 items-center justify-center rounded-md px-6 py-8 text-center"
-      style={{ background: `linear-gradient(135deg, hsl(${hue} 55% 28%), hsl(${(hue + 40) % 360} 55% 18%))` }}
+      style={{ background: bgColor || `linear-gradient(135deg, hsl(${hue} 55% 28%), hsl(${(hue + 40) % 360} 55% 18%))` }}
     >
-      <h3 className="text-xl font-bold text-white sm:text-2xl">{title || "Untitled lesson"}</h3>
+      <h3 className="text-xl font-bold sm:text-2xl" style={{ color: textColor || "white" }}>{title || "Untitled lesson"}</h3>
     </div>
   );
 }

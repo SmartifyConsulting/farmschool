@@ -67,6 +67,7 @@ import {
   COURSE_THEME_NAMES,
   isCourseTheme,
   type CourseThemeName,
+  type ColorOverrides,
 } from "@/lib/course-theme";
 import { FormattedLesson } from "@/components/FormattedLesson";
 import { SlideEditor } from "@/components/SlideEditor";
@@ -1097,6 +1098,7 @@ function Editor() {
     ai_tutor_welcome: "",
     ai_tutor_icon_url: "",
     pronunciation_dictionary: [] as { term: string; replacement: string }[],
+    color_overrides: {} as ColorOverrides,
   });
   const [contentTone, setContentTone] = useState<PolishTone>("professional");
   const [topicLoading, setTopicLoading] = useState(false);
@@ -1131,6 +1133,7 @@ function Editor() {
         ai_tutor_welcome?: string | null;
         ai_tutor_icon_url?: string | null;
         pronunciation_dictionary?: { term: string; replacement: string }[] | null;
+        color_overrides?: ColorOverrides | null;
       };
       setForm({
         title: course.title,
@@ -1153,6 +1156,7 @@ function Editor() {
         ai_tutor_welcome: designCourse.ai_tutor_welcome ?? "",
         ai_tutor_icon_url: designCourse.ai_tutor_icon_url ?? "",
         pronunciation_dictionary: designCourse.pronunciation_dictionary ?? [],
+        color_overrides: designCourse.color_overrides ?? {},
       });
     }
   }, [course]);
@@ -2430,6 +2434,37 @@ function Editor() {
                         <Button type="button" size="sm" variant="outline" onClick={() => setForm({ ...form, pronunciation_dictionary: [...form.pronunciation_dictionary, { term: "", replacement: "" }] })}>
                           Add term
                         </Button>
+                      </fieldset>
+                      <fieldset className="space-y-2 rounded-md border border-border p-3">
+                        <legend className="px-1 text-xs font-semibold text-muted-foreground">Colors</legend>
+                        {([
+                          ["bodyText", "Body text color"],
+                          ["link", "Link color"],
+                          ["bannerBg", "Lesson banner color"],
+                          ["bannerText", "Lesson banner text color"],
+                          ["titleColor", "Course title color"],
+                          ["pageBg", "Page background color"],
+                          ["pageText", "Page text color"],
+                          ["headingColor", "Heading color"],
+                        ] as [keyof ColorOverrides, string][]).map(([key, label]) => (
+                          <div key={key} className="flex items-center justify-between gap-2 text-xs">
+                            <label htmlFor={`color-${key}`} className="font-medium">{label}</label>
+                            <div className="flex items-center gap-1">
+                              {form.color_overrides[key] && (
+                                <button type="button" aria-label={`Reset ${label}`} onClick={() => setForm({ ...form, color_overrides: { ...form.color_overrides, [key]: undefined } })} className="text-muted-foreground hover:text-destructive">
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                              <input
+                                id={`color-${key}`}
+                                type="color"
+                                value={form.color_overrides[key] || "#000000"}
+                                onChange={(e) => setForm({ ...form, color_overrides: { ...form.color_overrides, [key]: e.target.value } })}
+                                className="h-7 w-10 rounded border border-input bg-background"
+                              />
+                            </div>
+                          </div>
+                        ))}
                       </fieldset>
                     </div>
                     <div className="min-w-0 space-y-3">

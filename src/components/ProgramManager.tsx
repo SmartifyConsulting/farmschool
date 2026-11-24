@@ -226,7 +226,7 @@ export function ProgramManager({ organizationId }: { organizationId?: string }) 
   return (
     <Phone>
       <Header />
-      <Sheet>
+      <Sheet wide>
         <CanvasHeading title={organizationId ? "Organization programs" : "Learning programs"} />
         {organizationId ? (
           <Link

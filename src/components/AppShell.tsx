@@ -331,13 +331,13 @@ export function Header({ children, wide = false }: { children?: ReactNode; wide?
 }
 
 /** The page title block, placed in the white canvas (Sheet) rather than the gradient banner. */
-export function CanvasHeading({ eyebrow, title }: { eyebrow?: string; title: string }) {
+export function CanvasHeading({ eyebrow, title, titleColor }: { eyebrow?: string; title: string; titleColor?: string }) {
   return (
     <div className="mb-5 border-b border-border pb-4">
       {eyebrow && (
         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">{eyebrow}</p>
       )}
-      <h1 className="mt-1 font-sans text-3xl font-bold normal-case tracking-tight text-navy md:text-4xl">{title}</h1>
+      <h1 className="mt-1 font-sans text-3xl font-bold normal-case tracking-tight text-navy md:text-4xl" style={titleColor ? { color: titleColor } : undefined}>{title}</h1>
     </div>
   );
 }

@@ -22,8 +22,29 @@ export function isCourseTheme(value: string | null | undefined): value is Course
   return !!value && value in COURSE_THEMES;
 }
 
-/** CSS custom-property overrides to scope the theme to one course's pages. */
-export function courseThemeStyle(theme: string | null | undefined): Record<string, string> {
+export type ColorOverrides = {
+  bodyText?: string;
+  link?: string;
+  bannerBg?: string;
+  bannerText?: string;
+  titleColor?: string;
+  pageBg?: string;
+  pageText?: string;
+  headingColor?: string;
+};
+
+/** CSS custom-property overrides to scope the theme (and any per-course color overrides) to one
+ * course's pages. Overrides are optional per field — an unset field just inherits the site default. */
+export function courseThemeStyle(theme: string | null | undefined, overrides?: ColorOverrides | null): Record<string, string> {
   const resolved = COURSE_THEMES[isCourseTheme(theme) ? theme : "default"];
-  return { "--primary": resolved.primary, "--primary-foreground": resolved.primaryForeground };
+  const vars: Record<string, string> = { "--primary": resolved.primary, "--primary-foreground": resolved.primaryForeground };
+  if (overrides?.bodyText) vars["--course-body-text"] = overrides.bodyText;
+  if (overrides?.link) vars["--course-link"] = overrides.link;
+  if (overrides?.bannerBg) vars["--course-banner-bg"] = overrides.bannerBg;
+  if (overrides?.bannerText) vars["--course-banner-text"] = overrides.bannerText;
+  if (overrides?.titleColor) vars["--course-title"] = overrides.titleColor;
+  if (overrides?.pageBg) vars["--course-page-bg"] = overrides.pageBg;
+  if (overrides?.pageText) vars["--course-page-text"] = overrides.pageText;
+  if (overrides?.headingColor) vars["--course-heading"] = overrides.headingColor;
+  return vars;
 }

@@ -88,7 +88,7 @@ function CreatorReview() {
   return (
     <Phone>
       <Header />
-      <Sheet>
+      <Sheet wide>
         <div className="mx-auto max-w-3xl space-y-4 pb-10">
           <CanvasHeading eyebrow="Admin" title="Creator approvals" />
           {!ready || checking ? (

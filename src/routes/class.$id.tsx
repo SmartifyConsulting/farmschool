@@ -35,7 +35,7 @@ import {
   slideText,
   splitLessonSource,
 } from "@/lib/lesson-slides";
-import { courseThemeStyle } from "@/lib/course-theme";
+import { courseThemeStyle, type ColorOverrides } from "@/lib/course-theme";
 import { createCheckoutSession } from "@/lib/checkout.functions";
 import { formatPrice, hasActiveEnrollment, isPaidCourse } from "@/lib/marketplace";
 import { CourseSubmissions } from "@/components/CourseSubmissions";
@@ -80,7 +80,7 @@ function ClassPage() {
         await supabase
           .from("studio_courses")
           .select(
-            "id, title, description, category, level, cover_url, published, author_id, theme, price_cents, currency, prerequisite_course_id, ai_tutor_name, ai_tutor_instructions, ai_tutor_welcome, ai_tutor_icon_url, pronunciation_dictionary",
+            "id, title, description, category, level, cover_url, published, author_id, theme, price_cents, currency, prerequisite_course_id, ai_tutor_name, ai_tutor_instructions, ai_tutor_welcome, ai_tutor_icon_url, pronunciation_dictionary, color_overrides",
           )
           .eq("id", id)
           .maybeSingle()
@@ -91,6 +91,7 @@ function ClassPage() {
         ai_tutor_name: string | null; ai_tutor_instructions: string | null;
         ai_tutor_welcome: string | null; ai_tutor_icon_url: string | null;
         pronunciation_dictionary: { term: string; replacement: string }[] | null;
+        color_overrides: ColorOverrides | null;
       } | null,
   });
   const { data: lessons } = useQuery({
@@ -237,13 +238,27 @@ function ClassPage() {
     );
   };
 
+  const colors = course.color_overrides ?? {};
   return (
-    <div style={courseThemeStyle(course.theme) as CSSProperties}>
+    <div
+      style={{
+        ...(courseThemeStyle(course.theme, colors) as CSSProperties),
+        color: colors.pageText || undefined,
+        backgroundColor: colors.pageBg || undefined,
+      }}
+    >
+      {(colors.link || colors.headingColor) && (
+        <style>{`
+          ${colors.link ? `.course-colors a { color: ${colors.link}; }` : ""}
+          ${colors.headingColor ? `.course-colors h2, .course-colors h3, .course-colors h4 { color: ${colors.headingColor}; }` : ""}
+        `}</style>
+      )}
+      <div className="course-colors">
       <Phone>
         <Header />
         <Sheet>
           <div className="mb-4">
-            <CanvasHeading eyebrow={`${course.category} · ${course.level}`} title={course.title} />
+            <CanvasHeading eyebrow={`${course.category} · ${course.level}`} title={course.title} {...(colors.titleColor ? { titleColor: colors.titleColor } : {})} />
           </div>
           <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
             <div className="min-w-0 space-y-4">
@@ -318,7 +333,7 @@ function ClassPage() {
                       />
                     ))
                   )}
-                  {lesson.kind === "slide" ? <HeroBanner title={lesson.title} /> : <h2 className="text-lg font-semibold">{lesson.title}</h2>}
+                  {lesson.kind === "slide" ? <HeroBanner title={lesson.title} {...(colors.bannerBg ? { bgColor: colors.bannerBg } : {})} {...(colors.bannerText ? { textColor: colors.bannerText } : {})} /> : <h2 className="text-lg font-semibold">{lesson.title}</h2>}
                   {narration.trim() && (
                     <div className="flex flex-wrap gap-2">
                       <LessonNarration
@@ -351,7 +366,9 @@ function ClassPage() {
                     />
                   )}
                   {lesson.body && (lesson.kind === "reading" || lesson.kind === "video") && (
-                    <FormattedLesson content={lesson.body} />
+                    <div style={colors.bodyText ? { color: colors.bodyText } : undefined}>
+                      <FormattedLesson content={lesson.body} />
+                    </div>
                   )}
                   {lesson.kind === "quiz" ? (
                     <StudioQuiz
@@ -474,6 +491,7 @@ function ClassPage() {
           </div>
         </Sheet>
       </Phone>
+      </div>
     </div>
   );
 }

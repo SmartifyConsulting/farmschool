@@ -148,7 +148,7 @@ function LtiPlatforms() {
   return (
     <Phone>
       <Header />
-      <Sheet>
+      <Sheet wide>
         <div className="mx-auto max-w-4xl space-y-4 pb-10">
           <CanvasHeading eyebrow="Admin" title="LTI platforms" />
           {!ready ? (
