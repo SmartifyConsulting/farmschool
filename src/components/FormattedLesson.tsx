@@ -5,6 +5,7 @@ export function FormattedLesson({ content }: { content: string }) {
     if (/^###\s+/.test(line)) return <h4 key={index} className="pt-2 text-base font-semibold">{line.replace(/^###\s+/, "")}</h4>;
     if (/^##\s+/.test(line)) return <h3 key={index} className="pt-3 text-lg font-semibold">{line.replace(/^##\s+/, "")}</h3>;
     if (/^#\s+/.test(line)) return <h2 key={index} className="pt-3 text-xl font-bold">{line.replace(/^#\s+/, "")}</h2>;
+    if (/^Source: /.test(line) && line.split("\n").length === 1) return <p key={index} className="text-xs italic text-muted-foreground">{line}</p>;
     const lines = line.split("\n");
     if (lines.every(item => /^[-*]\s+/.test(item))) return <ul key={index} className="list-disc space-y-1 pl-5">{lines.map((item, i) => <li key={i}>{item.replace(/^[-*]\s+/, "")}</li>)}</ul>;
     if (lines.every(item => /^\d+[.)]\s+/.test(item))) return <ol key={index} className="list-decimal space-y-1 pl-5">{lines.map((item, i) => <li key={i}>{item.replace(/^\d+[.)]\s+/, "")}</li>)}</ol>;

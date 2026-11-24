@@ -1304,11 +1304,15 @@ function Editor() {
         }
         return null;
       };
+      const pageNumbers = lesson.sourceRefs.map((r) => r.page);
+      const slideCitation = pageNumbers.length
+        ? `\n\nSource: page ${pageNumbers.length > 1 ? `${Math.min(...pageNumbers)}–${Math.max(...pageNumbers)}` : pageNumbers[0]}`
+        : "";
       const slidesBody = slideTexts
         .map((text, i) => {
           const refs = lesson.slideKinds?.[i] ?? [];
           const media = refs.map(mediaBlockForRef).filter((b): b is string => !!b).join("\n\n");
-          return `## Slide ${i + 1}\n\n${text}${media ? `\n\n${media}` : ""}`;
+          return `## Slide ${i + 1}\n\n${text}${media ? `\n\n${media}` : ""}${slideCitation}`;
         })
         .join("\n\n");
       const knowledgeCheck = preview.questions.length
