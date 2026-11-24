@@ -567,6 +567,7 @@ function Editor() {
     index: number,
     lesson: { title: string; body: string },
     methods: string[],
+    webSearch?: boolean,
   ) => {
     if (suggestLoading !== null || course?.published) return;
     if (!methods.length) {
@@ -576,7 +577,7 @@ function Editor() {
     setSuggestLoading(index);
     try {
       const result = await runGenerateMethodSuggestions({
-        data: { title: lesson.title, sourceText: lesson.body.slice(0, 12000), methods },
+        data: { title: lesson.title, sourceText: lesson.body.slice(0, 12000), methods, ...(webSearch ? { webSearch } : {}) },
       });
       const suggestions: MethodSuggestions = {
         ...(result.illustrated != null ? { illustrated: result.illustrated } : {}),
@@ -3012,7 +3013,7 @@ function Editor() {
                           onApprove={(index, lesson) => void toggleDesignApproval(index, lesson)}
                           suggestions={methodSuggestions}
                           suggestLoading={suggestLoading}
-                          onSuggest={(index, lesson, methods) => suggestMethodContent(index, lesson, methods)}
+                          onSuggest={(index, lesson, methods, webSearch) => suggestMethodContent(index, lesson, methods, webSearch)}
                           focusIndex={outlineFocus?.index ?? null}
                           focusToken={outlineFocus?.token ?? 0}
                         />

@@ -194,7 +194,7 @@ type Props = {
   onPreview: (index: number, lesson: DraftLesson) => void;
   suggestions: Record<number, MethodSuggestions>;
   suggestLoading: number | null;
-  onSuggest: (index: number, lesson: DraftLesson, methods: string[]) => Promise<MethodSuggestions | undefined>;
+  onSuggest: (index: number, lesson: DraftLesson, methods: string[], webSearch?: boolean) => Promise<MethodSuggestions | undefined>;
   /** Bump focusToken (any changing value) alongside focusIndex to jump the stepper to that lesson's module, even if focusIndex repeats. */
   focusIndex?: number | null;
   focusToken?: number;
@@ -245,6 +245,7 @@ export function ManualLessonReview(props: Props) {
   const [videoUrlDraft, setVideoUrlDraft] = useState<Record<number, string>>({});
   const [activeSlideIndex, setActiveSlideIndex] = useState<Record<number, number>>({});
   const [notesOpenFor, setNotesOpenFor] = useState<Set<number>>(() => new Set());
+  const [allowWebSearch, setAllowWebSearch] = useState(false);
   const moduleCount = new Set(props.draft.lessons.map(lesson => lesson.module).filter(Boolean)).size;
   const pageCount = new Set(props.draft.lessons.flatMap(lesson => lesson.sourceRefs.map(ref => `${ref.sourceId}:${ref.page}`))).size;
   const groups: { label: string; start: number; end: number }[] = [];
@@ -685,6 +686,10 @@ export function ManualLessonReview(props: Props) {
                   </p>
                 ) : <span />}
                 <div className="flex flex-wrap items-center gap-2">
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground" title="Let the AI use web search for current examples/figures when generating method content">
+                  <input type="checkbox" checked={allowWebSearch} disabled={props.readOnly || props.busy} onChange={event => setAllowWebSearch(event.target.checked)} className="accent-primary" />
+                  Web search
+                </label>
                 <Button
                   size="sm"
                   disabled={props.readOnly || props.suggestLoading !== null || lesson.body.length < 100}
@@ -692,7 +697,7 @@ export function ManualLessonReview(props: Props) {
                     const methodsToGenerate = selected.filter((id) => props.methods.some((m) => m.id === id));
                     if (!methodsToGenerate.length) return;
                     void (async () => {
-                      const result = await props.onSuggest(index, lesson, methodsToGenerate);
+                      const result = await props.onSuggest(index, lesson, methodsToGenerate, allowWebSearch);
                       if (!result) return;
                       let currentLesson = lesson;
                       for (const methodId of ["illustrated", "visual"] as const) {
