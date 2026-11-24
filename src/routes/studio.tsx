@@ -69,6 +69,7 @@ function Studio() {
               "id, title, published, category, cover_url, version_number, revision_of, studio_lessons(count), studio_modules(count)",
             )
             .eq("author_id", user.id)
+            .is("deleted_at", null)
             .order("updated_at", { ascending: false })
             .limit(200)
         ).data ?? []

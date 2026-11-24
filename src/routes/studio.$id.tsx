@@ -1954,26 +1954,21 @@ function Editor() {
     });
     if (!ok) return;
     setDeleting(true);
-    const { data, error } = await supabase.rpc("studio_delete_draft", { _course_id: id });
+    // Soft delete: move to the recoverable Deleted courses view rather than removing it outright.
+    // Permanent removal still goes through the validated studio_delete_draft RPC, from that view.
+    const { error } = await supabase
+      .from("studio_courses")
+      .update({ deleted_at: new Date().toISOString() } as never)
+      .eq("id", id)
+      .eq("published", false);
     setDeleting(false);
-    const result = error ? "error" : data;
-    if (result === "deleted") {
-      toast.success(`"${course.title}" was deleted.`);
-      refresh();
-      nav({ to: "/studio" });
+    if (error) {
+      toast.error("We couldn't delete the course. Please try again.");
       return;
     }
-    toast.error(
-      result === "published"
-        ? "Unpublish this course before deleting it."
-        : result === "not_owner"
-          ? "Only the trainer who created this course can delete it."
-          : result === "not_signed_in"
-            ? "Your session has ended. Please sign in again."
-            : result === "not_found"
-              ? "This course no longer exists."
-              : "We couldn't delete the course. Please try again.",
-    );
+    toast.success(`"${course.title}" moved to Deleted courses — recoverable from there.`);
+    refresh();
+    nav({ to: "/studio" });
   };
 
   if (isLoading || !authReady)
