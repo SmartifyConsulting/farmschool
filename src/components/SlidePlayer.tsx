@@ -297,6 +297,16 @@ function Block({
       </div>
     );
   }
+  if (block.kind === "columns")
+    return (
+      <div className={`grid gap-3 ${block.columns.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+        {block.columns.map((text, ci) => (
+          <div key={ci} className="rounded-lg border border-border bg-card p-3">
+            <FormattedLesson content={text} />
+          </div>
+        ))}
+      </div>
+    );
   if (block.kind === "flip")
     return (
       <div className="space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-4">

@@ -13,7 +13,8 @@ export type SlideBlock =
   | { kind: "image"; url: string; caption: string }
   | { kind: "video"; url: string; youtube: boolean; interactions: { atSeconds: number; note: string }[] }
   | { kind: "facts"; items: { claim: string; evidence: string; image: string | null }[] }
-  | { kind: "quizcheck"; items: { question: string; options: string[]; correctIndices: number[]; hint: string | null }[] };
+  | { kind: "quizcheck"; items: { question: string; options: string[]; correctIndices: number[]; hint: string | null }[] }
+  | { kind: "columns"; columns: string[] };
 
 export type LessonSlide = { title: string; blocks: SlideBlock[] };
 
@@ -52,7 +53,7 @@ function parseBlocks(lines: string[]): SlideBlock[] {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
     const marker =
-      /^:::(tip|warning|takeaway|flip|tabs|accordion|checklist|photo|hotspot|image|video|facts|quizcheck)\s*$/.exec(line);
+      /^:::(tip|warning|takeaway|flip|tabs|accordion|checklist|photo|hotspot|image|video|facts|quizcheck|columns)\s*$/.exec(line);
     if (!marker) {
       plain.push(line);
       continue;
@@ -146,6 +147,10 @@ function parseBlocks(lines: string[]): SlideBlock[] {
         return question && options.length >= 2 && correctIndices.length ? [{ question, options, correctIndices, hint }] : [];
       });
       if (!parts[0]?.trim() && items.length) block = { kind, items };
+    }
+    if (kind === "columns") {
+      const columns = body.split(/^---col---\s*$/m).map((c) => c.trim());
+      if (columns.length >= 2 && columns.every((c) => c)) block = { kind, columns };
     }
     if (kind === "hotspot") {
       const lines = body.split("\n");

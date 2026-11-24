@@ -6,6 +6,7 @@ const SECTIONS = [
   { to: "/admin/programs", label: "Programs" },
   { to: "/admin/grade-moderation", label: "Grade Moderation" },
   { to: "/admin/creators", label: "Creator Approvals" },
+  { to: "/admin/course-upload", label: "Bulk Course Upload" },
   { to: "/admin/external-content", label: "Library" },
   { to: "/admin/api-connections", label: "API Connections" },
   { to: "/admin/lti", label: "LTI Platforms" },
@@ -20,7 +21,7 @@ export function AdminNav() {
     <div
       role="navigation"
       aria-label="Admin sections"
-      className="flex flex-wrap gap-2 border-b border-border pb-4"
+      className="flex gap-4 overflow-x-auto border-b border-border"
     >
       {SECTIONS.map((s) => {
         const active = path === s.to;
@@ -28,7 +29,8 @@ export function AdminNav() {
           <Link
             key={s.to}
             to={s.to}
-            className={`rounded-full px-4 py-2 text-sm font-semibold ${active ? "bg-primary text-primary-foreground" : "border border-border"}`}
+            aria-current={active ? "page" : undefined}
+            className={`shrink-0 whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-semibold ${active ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
             {s.label}
           </Link>

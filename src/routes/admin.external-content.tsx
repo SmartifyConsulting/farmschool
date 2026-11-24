@@ -271,11 +271,11 @@ function ExternalContentAdmin() {
           <div className="space-y-4">
             <AdminNav />
             <Tabs defaultValue="library" className="min-w-0">
-            <TabsList className="flex h-auto flex-wrap justify-start">
-              <TabsTrigger value="providers">Providers</TabsTrigger>
-              <TabsTrigger value="library">Video Library</TabsTrigger>
-              <TabsTrigger value="imports">Imports</TabsTrigger>
-              <TabsTrigger value="usage">Course Usage</TabsTrigger>
+            <TabsList className="flex h-auto flex-wrap justify-start gap-4 rounded-none border-b border-border bg-transparent p-0">
+              <TabsTrigger value="providers" className="rounded-none border-b-2 border-transparent px-1 pb-2 text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none">Providers</TabsTrigger>
+              <TabsTrigger value="library" className="rounded-none border-b-2 border-transparent px-1 pb-2 text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none">Video Library</TabsTrigger>
+              <TabsTrigger value="imports" className="rounded-none border-b-2 border-transparent px-1 pb-2 text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none">Imports</TabsTrigger>
+              <TabsTrigger value="usage" className="rounded-none border-b-2 border-transparent px-1 pb-2 text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none">Course Usage</TabsTrigger>
             </TabsList>
 
             <TabsContent value="providers" className="space-y-4">

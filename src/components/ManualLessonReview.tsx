@@ -37,7 +37,7 @@ const ILLUSTRATION_BUCKET = "lesson-illustrations";
 const MAX_MEDIA_BYTES = 25 * 1024 * 1024;
 
 /** These method ids present as "how the content is delivered", grouped with the delivery-kind toggle below; the rest are "how it's tested". */
-const TRAINING_FORMAT_METHOD_IDS = ["illustrated", "video", "facts", "hotspot"];
+const TRAINING_FORMAT_METHOD_IDS = ["illustrated", "video", "facts", "hotspot", "columns"];
 /** Rough estimate of wrapped lines so a textarea's `rows` always fits its text — no inner scrollbar. */
 function autoRows(text: string, min: number) {
   const explicitLines = text.split("\n").length;
@@ -998,6 +998,49 @@ export function ManualLessonReview(props: Props) {
                           ))}
                         </div>
                       </>
+                    )}
+                  </div>
+                );
+              })()}
+              {selected.includes("columns") && (() => {
+                const columns = lesson.columns?.length ? lesson.columns : ["", ""];
+                const updateColumns = (next: string[]) => props.onEdit(index, { ...lesson, columns: next });
+                return (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Columns</p>
+                    <div className={`grid gap-2 ${columns.length >= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+                      {columns.map((text, ci) => (
+                        <div key={ci} className="space-y-1 rounded-md border border-border bg-background p-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-medium text-muted-foreground">Column {ci + 1}</span>
+                            <div className="flex items-center gap-1">
+                              {ci > 0 && !props.readOnly && !props.busy && (
+                                <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[11px]" onClick={() => updateColumns(columns.map((c, i) => (i === ci - 1 ? `${c}\n\n${text}`.trim() : c)).filter((_, i) => i !== ci))}>
+                                  Merge left
+                                </Button>
+                              )}
+                              {columns.length > 2 && !props.readOnly && !props.busy && (
+                                <button type="button" aria-label={`Delete column ${ci + 1}`} onClick={() => updateColumns(columns.filter((_, i) => i !== ci))} className="text-muted-foreground hover:text-destructive">
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <Textarea
+                            aria-label={`Column ${ci + 1} content`}
+                            value={text}
+                            rows={4}
+                            disabled={props.readOnly || props.busy}
+                            onChange={event => updateColumns(columns.map((c, i) => (i === ci ? event.target.value : c)))}
+                            className="resize-none text-xs"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    {columns.length < 4 && !props.readOnly && !props.busy && (
+                      <Button size="sm" variant="outline" onClick={() => updateColumns([...columns, ""])}>
+                        <Plus className="h-3.5 w-3.5" />Add column
+                      </Button>
                     )}
                   </div>
                 );

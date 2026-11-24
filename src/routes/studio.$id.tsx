@@ -29,6 +29,7 @@ import {
   Activity,
   RefreshCw,
   MapPin,
+  Columns,
 } from "lucide-react";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -1045,6 +1046,12 @@ function Editor() {
       detail: "Pin labelled points onto a diagram or photo",
       icon: MapPin,
     },
+    {
+      id: "columns",
+      label: "Columns",
+      detail: "Split content side by side, 2 to 4 columns",
+      icon: Columns,
+    },
   ];
   const recommendMethods = (title: string, body: string) => {
     const content = (title + " " + body).toLowerCase();
@@ -1314,6 +1321,9 @@ function Editor() {
             .map((p) => `### ${Math.round(p.x)},${Math.round(p.y)} ${p.label}\n${p.body}`)
             .join("\n");
           return `:::hotspot\n${lesson.hotspotImage}\n${points}\n:::`;
+        }
+        if (ref.id === "columns" && lesson.columns && lesson.columns.filter((c) => c.trim()).length >= 2) {
+          return `:::columns\n${lesson.columns.filter((c) => c.trim()).join("\n---col---\n")}\n:::`;
         }
         return null;
       };
