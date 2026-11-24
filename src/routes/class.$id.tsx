@@ -80,7 +80,7 @@ function ClassPage() {
         await supabase
           .from("studio_courses")
           .select(
-            "id, title, description, category, level, cover_url, published, author_id, theme, price_cents, currency, prerequisite_course_id, ai_tutor_name, ai_tutor_instructions, ai_tutor_welcome, ai_tutor_icon_url",
+            "id, title, description, category, level, cover_url, published, author_id, theme, price_cents, currency, prerequisite_course_id, ai_tutor_name, ai_tutor_instructions, ai_tutor_welcome, ai_tutor_icon_url, pronunciation_dictionary",
           )
           .eq("id", id)
           .maybeSingle()
@@ -90,6 +90,7 @@ function ClassPage() {
         price_cents: number; currency: string; prerequisite_course_id: string | null;
         ai_tutor_name: string | null; ai_tutor_instructions: string | null;
         ai_tutor_welcome: string | null; ai_tutor_icon_url: string | null;
+        pronunciation_dictionary: { term: string; replacement: string }[] | null;
       } | null,
   });
   const { data: lessons } = useQuery({
@@ -323,6 +324,7 @@ function ClassPage() {
                       <LessonNarration
                         key={lesson.id + ":" + lessonContentKey(narration)}
                         text={narration}
+                        pronunciationDictionary={course.pronunciation_dictionary ?? []}
                       />
                     </div>
                   )}

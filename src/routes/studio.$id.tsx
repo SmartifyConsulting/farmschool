@@ -30,6 +30,7 @@ import {
   RefreshCw,
   MapPin,
   Columns,
+  X,
 } from "lucide-react";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -1095,6 +1096,7 @@ function Editor() {
     ai_tutor_instructions: "",
     ai_tutor_welcome: "",
     ai_tutor_icon_url: "",
+    pronunciation_dictionary: [] as { term: string; replacement: string }[],
   });
   const [contentTone, setContentTone] = useState<PolishTone>("professional");
   const [topicLoading, setTopicLoading] = useState(false);
@@ -1128,6 +1130,7 @@ function Editor() {
         ai_tutor_instructions?: string | null;
         ai_tutor_welcome?: string | null;
         ai_tutor_icon_url?: string | null;
+        pronunciation_dictionary?: { term: string; replacement: string }[] | null;
       };
       setForm({
         title: course.title,
@@ -1149,6 +1152,7 @@ function Editor() {
         ai_tutor_instructions: designCourse.ai_tutor_instructions ?? "",
         ai_tutor_welcome: designCourse.ai_tutor_welcome ?? "",
         ai_tutor_icon_url: designCourse.ai_tutor_icon_url ?? "",
+        pronunciation_dictionary: designCourse.pronunciation_dictionary ?? [],
       });
     }
   }, [course]);
@@ -2398,6 +2402,34 @@ function Editor() {
                             onChange={(url) => setForm({ ...form, ai_tutor_icon_url: url })}
                           />
                         </label>
+                      </fieldset>
+                      <fieldset className="space-y-2 rounded-md border border-border p-3">
+                        <legend className="px-1 text-xs font-semibold text-muted-foreground">Listen mode — custom pronunciation</legend>
+                        <p className="text-[11px] text-muted-foreground">Applied only to spoken audio, never shown to the reader — e.g. "SCORM" → "score-um".</p>
+                        {form.pronunciation_dictionary.map((entry, i) => (
+                          <div key={i} className="flex items-center gap-1">
+                            <Input
+                              aria-label={`Term ${i + 1}`}
+                              placeholder="Term"
+                              value={entry.term}
+                              onChange={(e) => setForm({ ...form, pronunciation_dictionary: form.pronunciation_dictionary.map((p, pi) => (pi === i ? { ...p, term: e.target.value } : p)) })}
+                              className="h-8 text-xs"
+                            />
+                            <Input
+                              aria-label={`Spoken as ${i + 1}`}
+                              placeholder="Spoken as"
+                              value={entry.replacement}
+                              onChange={(e) => setForm({ ...form, pronunciation_dictionary: form.pronunciation_dictionary.map((p, pi) => (pi === i ? { ...p, replacement: e.target.value } : p)) })}
+                              className="h-8 text-xs"
+                            />
+                            <button type="button" aria-label={`Remove ${entry.term || `row ${i + 1}`}`} onClick={() => setForm({ ...form, pronunciation_dictionary: form.pronunciation_dictionary.filter((_, pi) => pi !== i) })} className="text-muted-foreground hover:text-destructive">
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                        <Button type="button" size="sm" variant="outline" onClick={() => setForm({ ...form, pronunciation_dictionary: [...form.pronunciation_dictionary, { term: "", replacement: "" }] })}>
+                          Add term
+                        </Button>
                       </fieldset>
                     </div>
                     <div className="min-w-0 space-y-3">
