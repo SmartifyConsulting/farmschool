@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Check, LoaderCircle, Save, Sparkles, Square, X } from "lucide-react";
+import { BookOpen, Check, FileUp, LoaderCircle, Save, Sparkles, Square, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { supabase } from "@/integrations/supabase/client";
 import { courseWizardInput, readWizardEvents, wizardDefaults, type CourseWizardDraft, type CourseWizardInput } from "@/lib/course-wizard";
 import { saveWizardDraft } from "@/lib/course-wizard.functions";
+import { extractDocument } from "@/lib/document-extraction";
 import { PASS_MARKS } from "@/lib/studio";
 import { friendlyError } from "@/lib/friendly-error";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -26,6 +27,8 @@ export function CourseWizard() {
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
   const [reviewed, setReviewed] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const controller = useRef<AbortController | null>(null);
   const courseId = useRef<string | null>(null);
   const save = useServerFn(saveWizardDraft);
@@ -39,6 +42,20 @@ export function CourseWizard() {
     if ((busy || draft) && !await confirm({ title: "Leave this course draft?", description: "This draft has not been saved. Leaving will discard it and stop any generation in progress.", confirmLabel: "Discard draft", cancelLabel: "Keep working" })) return;
     controller.current?.abort();
     setOpen(false); setDraft(null); setReviewed(false); setError("");
+  };
+  const attachFile = async (file: File) => {
+    setExtracting(true);
+    setError("");
+    try {
+      const pages = await extractDocument(file);
+      const sourceText = pages.map(p => p.text).join("\n\n").slice(0, 60000);
+      if (!sourceText.trim()) { setError("Couldn't read any text from that file."); return; }
+      setInput(prev => ({ ...prev, sourceText, sourceName: file.name }));
+    } catch (err) {
+      setError(friendlyError(err, "Couldn't read that file. Try a PDF, DOCX, TXT or MD file."));
+    } finally {
+      setExtracting(false);
+    }
   };
   const generate = async () => {
     const parsed = courseWizardInput.safeParse({ ...input, rubricCriteria: input.rubricCriteria?.filter(c => c.criterion.trim()) });
@@ -89,6 +106,26 @@ export function CourseWizard() {
         </DialogHeader>
         {!draft && <form onSubmit={event => { event.preventDefault(); void generate(); }} className="space-y-5">
           <div className="space-y-2"><Label htmlFor="wizard-topic">What should the course teach?</Label><Textarea id="wizard-topic" value={input.topic} onChange={e => setInput({ ...input, topic: e.target.value })} placeholder="Composting for smallholder farmers: building a pile, maintaining it, and using finished compost safely" maxLength={1000} rows={4} disabled={busy} /></div>
+          <div className="space-y-2">
+            <Label>Source document (optional)</Label>
+            {input.sourceName ? (
+              <div className="flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm">
+                <FileUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="min-w-0 flex-1 truncate">{input.sourceName}</span>
+                <Button type="button" size="icon" variant="ghost" aria-label="Remove attached document" disabled={busy} onClick={() => setInput(prev => ({ ...prev, sourceText: undefined, sourceName: undefined }))}><X className="h-3.5 w-3.5" /></Button>
+              </div>
+            ) : (
+              <Button type="button" variant="outline" disabled={busy || extracting} onClick={() => fileInputRef.current?.click()}>
+                {extracting ? <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <FileUp className="h-4 w-4" />}
+                {extracting ? "Reading…" : "Upload a PDF, DOCX, TXT or MD to build the outline from"}
+              </Button>
+            )}
+            <input ref={fileInputRef} type="file" accept=".pdf,.docx,.txt,.md" className="hidden" onChange={event => {
+              const file = event.target.files?.[0];
+              if (file) void attachFile(file);
+              event.target.value = "";
+            }} />
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2"><Label htmlFor="wizard-audience">Learners</Label><Input id="wizard-audience" value={input.audience} onChange={e => setInput({ ...input, audience: e.target.value })} maxLength={200} disabled={busy} /></div>
             <div className="space-y-2"><Label htmlFor="wizard-language">Language</Label><Input id="wizard-language" value={input.language} onChange={e => setInput({ ...input, language: e.target.value })} maxLength={60} disabled={busy} /></div>

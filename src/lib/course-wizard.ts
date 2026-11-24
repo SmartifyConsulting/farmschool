@@ -22,6 +22,9 @@ export const courseWizardInput = z.object({
     criterion: z.string().trim().min(1).max(200),
     mustPass: z.boolean(),
   })).max(6).optional(),
+  /** Extracted text from an optional uploaded document — when present, the outline is grounded in it instead of written from the topic alone. */
+  sourceText: z.string().trim().max(60000).optional(),
+  sourceName: z.string().trim().max(200).optional(),
 });
 
 export const courseWizardDraft = z.object({
