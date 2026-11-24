@@ -12,7 +12,8 @@ export type SlideBlock =
     }
   | { kind: "image"; url: string; caption: string }
   | { kind: "video"; url: string; youtube: boolean; interactions: { atSeconds: number; note: string }[] }
-  | { kind: "facts"; items: { claim: string; evidence: string; image: string | null }[] };
+  | { kind: "facts"; items: { claim: string; evidence: string; image: string | null }[] }
+  | { kind: "quizcheck"; items: { question: string; options: string[]; correctIndex: number }[] };
 
 export type LessonSlide = { title: string; blocks: SlideBlock[] };
 
@@ -51,7 +52,7 @@ function parseBlocks(lines: string[]): SlideBlock[] {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
     const marker =
-      /^:::(tip|warning|takeaway|flip|tabs|accordion|checklist|photo|hotspot|image|video|facts)\s*$/.exec(line);
+      /^:::(tip|warning|takeaway|flip|tabs|accordion|checklist|photo|hotspot|image|video|facts|quizcheck)\s*$/.exec(line);
     if (!marker) {
       plain.push(line);
       continue;
@@ -122,6 +123,23 @@ function parseBlocks(lines: string[]): SlideBlock[] {
         return { claim, evidence, image };
       });
       if (!parts[0]?.trim() && items.length && items.every((item) => item.claim && item.evidence)) block = { kind, items };
+    }
+    if (kind === "quizcheck") {
+      const parts = body.split(/^###\s+/m);
+      const items = parts.slice(1).flatMap((part) => {
+        const partLines = part.split("\n");
+        const question = partLines[0]?.trim() ?? "";
+        const options: string[] = [];
+        let correctIndex = -1;
+        for (const l of partLines.slice(1)) {
+          const match = /^A(\*)?:\s*(\S.*)$/.exec(l.trim());
+          if (!match) continue;
+          if (match[1]) correctIndex = options.length;
+          options.push(match[2]!.trim());
+        }
+        return question && options.length >= 2 && correctIndex >= 0 ? [{ question, options, correctIndex }] : [];
+      });
+      if (!parts[0]?.trim() && items.length) block = { kind, items };
     }
     if (kind === "hotspot") {
       const lines = body.split("\n");

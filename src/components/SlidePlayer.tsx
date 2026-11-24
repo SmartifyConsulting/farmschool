@@ -170,6 +170,9 @@ function Block({
 }) {
   const [flipped, setFlipped] = useState(false);
   const [open, setOpen] = useState<number | null>(null);
+  const [picked, setPicked] = useState<Record<number, number>>({});
+  const pickedAnswer = (qi: number) => picked[qi];
+  const setPickedAnswer = (qi: number, oi: number) => setPicked((p) => (qi in p ? p : { ...p, [qi]: oi }));
   if (block.kind === "text") return <FormattedLesson content={block.body} />;
   if (block.kind === "photo")
     return lessonId ? (
@@ -228,6 +231,44 @@ function Block({
         ))}
       </div>
     );
+  if (block.kind === "quizcheck") {
+    return (
+      <div className="space-y-4 rounded-xl border border-primary/30 bg-primary/5 p-4">
+        <p className="text-sm font-semibold text-primary">Check your understanding</p>
+        {block.items.map((item, qi) => {
+          const picked = pickedAnswer(qi);
+          return (
+            <div key={qi} className="space-y-2">
+              <p className="text-sm font-medium">{qi + 1}. {item.question}</p>
+              <div className="space-y-1.5">
+                {item.options.map((option, oi) => {
+                  const isPicked = picked === oi;
+                  const revealed = picked != null;
+                  const isCorrect = oi === item.correctIndex;
+                  return (
+                    <button
+                      key={oi}
+                      type="button"
+                      onClick={() => setPickedAnswer(qi, oi)}
+                      disabled={revealed}
+                      className={
+                        "flex w-full items-center gap-2 rounded-lg border p-2 text-left text-sm " +
+                        (revealed && isCorrect ? "border-primary bg-primary/10"
+                          : revealed && isPicked ? "border-destructive bg-destructive/10"
+                          : "border-border bg-card")
+                      }
+                    >
+                      {option}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
   if (block.kind === "flip")
     return (
       <div className="space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-4">

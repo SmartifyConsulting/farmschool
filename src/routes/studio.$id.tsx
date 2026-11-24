@@ -1316,10 +1316,11 @@ function Editor() {
         })
         .join("\n\n");
       const knowledgeCheck = preview.questions.length
-        ? "\n\n## Knowledge check\n\n" +
+        ? "\n\n## Knowledge check\n\n:::quizcheck\n" +
           preview.questions
-            .map((q, i) => `${i + 1}. ${q.question}\n` + q.options.map((o, j) => `${j === q.correctIndex ? "- [x]" : "- [ ]"} ${o}`).join("\n"))
-            .join("\n\n")
+            .map((q) => `### ${q.question}\n` + q.options.map((o, j) => `${j === q.correctIndex ? "A*" : "A"}: ${o}`).join("\n"))
+            .join("\n") +
+          "\n:::"
         : "";
       const body =
         slidesBody +
