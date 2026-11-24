@@ -12,6 +12,7 @@ import { buildLessonScormZip } from "@/lib/scorm-export";
 import { generateLessonImage } from "@/lib/studio-ai.functions";
 import { InteractiveVideoPlayer } from "@/components/InteractiveVideoPlayer";
 import { HeroBanner } from "@/components/HeroBanner";
+import { estimateMinutes, formatMinutes } from "@/lib/duration-estimate";
 
 export type LessonPagePreview = {
   lessonTitle: string;
@@ -255,7 +256,7 @@ export function ManualLessonReview(props: Props) {
   return <section aria-label="Detected lessons" className="min-w-0 space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h3 className="font-semibold">Detected outline</h3>
-      <p className="text-xs text-muted-foreground">{moduleCount ? `${moduleCount} modules · ` : ""}{props.draft.lessons.length} lessons · {pageCount} source pages · {Object.values(props.approved).filter(Boolean).length} approved</p>
+      <p className="text-xs text-muted-foreground">{moduleCount ? `${moduleCount} modules · ` : ""}{props.draft.lessons.length} lessons · {pageCount} source pages · {Object.values(props.approved).filter(Boolean).length} approved · <span title="A rough reading-time estimate, not a measured figure">~{formatMinutes(props.draft.lessons.reduce((total, l) => total + estimateMinutes(l.body), 0))} total</span></p>
     </div>
     {props.extraControls}
     {props.draft.warnings.length > 0 && <details className="border-l-2 border-border pl-3 text-xs text-muted-foreground"><summary className="cursor-pointer">Source notes ({props.draft.warnings.length})</summary>{props.draft.warnings.map((warning, index) => <p key={index} className="mt-2">{warning}</p>)}</details>}
@@ -356,13 +357,16 @@ export function ManualLessonReview(props: Props) {
           }
         };
         return <li key={index} id={`outline-lesson-${index}`} className="min-w-0 scroll-mt-4 space-y-3">
-          {newModule && <h4 className="flex items-center gap-2 pt-2 text-sm font-semibold text-primary"><FolderOpen className="h-4 w-4" />Module: {lesson.module}</h4>}
+          {newModule && (() => {
+          const moduleMinutes = props.draft.lessons.filter(l => l.module === lesson.module).reduce((total, l) => total + estimateMinutes(l.body), 0);
+          return <h4 className="flex items-center gap-2 pt-2 text-sm font-semibold text-primary"><FolderOpen className="h-4 w-4" />Module: {lesson.module}<span className="text-xs font-normal text-muted-foreground">~{formatMinutes(moduleMinutes)}</span></h4>;
+        })()}
           <div className={`min-w-0 rounded-lg border border-border bg-background p-4 sm:p-5 ${lesson.module ? "sm:ml-4" : ""}`}>
           <div className="flex items-start gap-3">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary text-sm font-semibold text-secondary-foreground">{index + 1}</span>
             <div className="min-w-0 flex-1">
               <Input aria-label={`Lesson ${index + 1} title`} value={lesson.title} maxLength={120} disabled={props.readOnly || props.busy} onChange={event => props.onEdit(index, { ...lesson, title: event.target.value })} className="font-semibold" />
-              <p className="mt-2 text-xs text-muted-foreground">{pages.length ? `Source pages ${Math.min(...pages)}–${Math.max(...pages)}` : "Pasted source"}{props.approved[index] ? " · Approved" : " · Needs review"}</p>
+              <p className="mt-2 text-xs text-muted-foreground">{pages.length ? `Source pages ${Math.min(...pages)}–${Math.max(...pages)}` : "Pasted source"} · ~{formatMinutes(estimateMinutes(lesson.body))}{props.approved[index] ? " · Approved" : " · Needs review"}</p>
             </div>
             <Button
               size="icon"
