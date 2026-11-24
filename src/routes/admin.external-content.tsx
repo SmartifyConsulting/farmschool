@@ -277,9 +277,9 @@ function ExternalContentAdmin() {
               <TabsTrigger value="library" className="rounded-none border-b-2 border-transparent px-1 pb-2 text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none">Video Library</TabsTrigger>
               <TabsTrigger value="imports" className="rounded-none border-b-2 border-transparent px-1 pb-2 text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none">Imports</TabsTrigger>
               <TabsTrigger value="usage" className="rounded-none border-b-2 border-transparent px-1 pb-2 text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none">Course Usage</TabsTrigger>
-              <TabsTrigger value="courses" className="rounded-none border-b-2 border-transparent px-1 pb-2 text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none">Courses</TabsTrigger>
+              <TabsTrigger value="content" className="rounded-none border-b-2 border-transparent px-1 pb-2 text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none">Content</TabsTrigger>
             </TabsList>
-            <TabsContent value="courses" className="space-y-4">
+            <TabsContent value="content" className="space-y-4">
               <BulkCourseUpload />
             </TabsContent>
 

@@ -7,9 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useLearning";
 import { friendlyError } from "@/lib/friendly-error";
 import { mimeFor, parseManifest, findEntryFile } from "@/lib/scorm";
-import { extractDocument } from "@/lib/document-extraction";
-import { buildCourseDraft } from "@/lib/course-factory";
-import { STUDIO_CATEGORIES } from "@/lib/studio";
 
 const MAX_ZIP = 200 * 1024 * 1024;
 const DOCUMENT_EXTENSIONS = [".pdf", ".docx", ".txt", ".md"];
@@ -71,38 +68,24 @@ export function BulkCourseUpload() {
     return { state: "done", message: `"${meta.title}" uploaded — play it from /scorm.`, href: "/scorm" };
   };
 
+  /** Stores the file itself as a reusable content item — distinct from a complete course, which the
+   * Course Wizard builds separately. Nothing here creates a course or lessons. */
   const uploadDocument = async (file: File): Promise<Partial<FileStatus>> => {
-    const pages = await extractDocument(file);
-    const title = file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim() || "Untitled course";
-    const draft = buildCourseDraft(title, pages);
-    if (!draft.lessons.length) return { state: "error", message: "No readable lesson content was found in this file." };
-    const { data: course, error: courseError } = await supabase
-      .from("studio_courses")
-      .insert({ title: draft.title.slice(0, 120), description: "", category: STUDIO_CATEGORIES[0] ?? "Farm Management", level: "Beginner", author_id: user!.id })
-      .select("id")
-      .single();
-    if (courseError || !course) throw courseError ?? new Error("Could not create the course.");
-    const moduleIds = new Map<string, string>();
-    const moduleNames = [...new Set(draft.lessons.map((l) => l.module).filter((m): m is string => !!m))];
-    if (moduleNames.length) {
-      const { data: created, error: moduleError } = await supabase
-        .from("studio_modules" as never)
-        .insert(moduleNames.map((t, i) => ({ course_id: course.id, title: t, position: i })) as never)
-        .select("id, title");
-      if (moduleError) throw moduleError;
-      for (const m of (created ?? []) as unknown as { id: string; title: string }[]) moduleIds.set(m.title, m.id);
-    }
-    const rows = draft.lessons.map((lesson, i) => ({
-      course_id: course.id,
-      module_id: lesson.module ? (moduleIds.get(lesson.module) ?? null) : null,
-      kind: "reading",
-      position: i,
-      title: lesson.title,
-      body: `${lesson.body}\n\nSource: ${lesson.sourceRefs.map((r) => `${r.sourceId}, page ${r.page}`).join("; ")}\nReview required before publishing.`.slice(0, 20000),
-    }));
-    const { error: lessonsError } = await supabase.from("studio_lessons").insert(rows);
-    if (lessonsError) throw lessonsError;
-    return { state: "done", message: `"${draft.title}" created as an unpublished draft with ${draft.lessons.length} lesson(s) — review before publishing.`, href: `/studio/${course.id}` };
+    const path = `${user!.id}/library/${crypto.randomUUID()}-${file.name}`.replace(/\s+/g, "-");
+    const { error: uploadError } = await supabase.storage.from("studio-content").upload(path, file, { contentType: file.type || "application/octet-stream" });
+    if (uploadError) throw uploadError;
+    const lower = file.name.toLowerCase();
+    const fileType = lower.endsWith(".pdf") ? "pdf" : lower.endsWith(".docx") ? "document" : "text";
+    const { error } = await supabase.from("content_library_files" as never).insert({
+      author_id: user!.id,
+      file_name: file.name,
+      original_file_name: file.name,
+      file_type: fileType,
+      storage_path: path,
+      size_bytes: file.size,
+    } as never);
+    if (error) throw error;
+    return { state: "done", message: `"${file.name}" saved to your content library.` };
   };
 
   const processFiles = async (files: File[]) => {
@@ -130,7 +113,7 @@ export function BulkCourseUpload() {
     }
     setBusy(false);
     qc.invalidateQueries({ queryKey: ["scorm-packages"] });
-    qc.invalidateQueries({ queryKey: ["studio-mine"] });
+    qc.invalidateQueries({ queryKey: ["content-library-files"] });
   };
 
   if (!admin) return <p className="text-sm text-muted-foreground">Admin access required.</p>;
@@ -138,8 +121,9 @@ export function BulkCourseUpload() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Drop as many PDFs, Word documents or SCORM .zip packages as you like — each PDF/document becomes a new
-        unpublished draft course, each .zip is uploaded as a SCORM package. The app detects which is which by file type.
+        Drop as many PDFs, Word documents or SCORM .zip packages as you like — each PDF/document is saved as a
+        reusable content file (not a course), each .zip is uploaded as a SCORM package. The app detects which is
+        which by file type. To build a complete course, use Create course on the Studio page instead.
       </p>
       <div
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
