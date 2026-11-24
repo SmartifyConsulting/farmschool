@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowDownToLine, Scissors, Trash2, Check, Wand2, Sparkles, FolderOpen, FileText, LayoutGrid, Video, Package, Library, Image as ImageIcon, Loader2, Plus, X, ChevronDown, ChevronUp, GripVertical, CheckCircle2, Circle, type LucideIcon } from "lucide-react";
+import { ArrowDownToLine, Scissors, Trash2, Check, Wand2, Sparkles, FolderOpen, FileText, LayoutGrid, Video, Package, Library, Image as ImageIcon, Loader2, Plus, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, GripVertical, CheckCircle2, Circle, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -243,6 +243,7 @@ export function ManualLessonReview(props: Props) {
   const [previewingSlides, setPreviewingSlides] = useState<Record<number, Set<number>>>({});
   const [justMovedSlide, setJustMovedSlide] = useState<Record<number, number>>({});
   const [videoUrlDraft, setVideoUrlDraft] = useState<Record<number, string>>({});
+  const [activeSlideIndex, setActiveSlideIndex] = useState<Record<number, number>>({});
   const moduleCount = new Set(props.draft.lessons.map(lesson => lesson.module).filter(Boolean)).size;
   const pageCount = new Set(props.draft.lessons.flatMap(lesson => lesson.sourceRefs.map(ref => `${ref.sourceId}:${ref.page}`))).size;
   const groups: { label: string; start: number; end: number }[] = [];
@@ -995,40 +996,49 @@ export function ManualLessonReview(props: Props) {
                   </div>
                 );
               })()}
-              {lesson.kind === "slide" ? (
-                <div className="space-y-3">
-                  {slideTexts.map((text, si) => {
-                    const slideApproved = approvedSlides[index]?.has(si) ?? false;
-                    const slidePreviewing = previewingSlides[index]?.has(si) ?? false;
-                    const toggleSet = (setter: typeof setApprovedSlides) => setter(p => {
-                      const next = new Set(p[index] ?? []);
-                      if (next.has(si)) next.delete(si); else next.add(si);
-                      return { ...p, [index]: next };
-                    });
-                    return (
-                      <div key={si} className="space-y-2 rounded-md border border-border bg-background p-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-xs font-semibold text-muted-foreground">Slide {si + 1}{slideApproved && " · Approved"}</p>
-                          <div className="flex items-center gap-1">
-                            <Button size="sm" variant="ghost" disabled={props.readOnly || props.busy} onClick={() => toggleSet(setPreviewingSlides)}>{slidePreviewing ? "Edit" : "Preview"}</Button>
-                            <Button size="sm" variant={slideApproved ? "secondary" : "outline"} disabled={props.readOnly || props.busy} onClick={() => toggleSet(setApprovedSlides)}><Check className="h-3.5 w-3.5" />{slideApproved ? "Reopen" : "Approve"}</Button>
-                          </div>
-                        </div>
-                        {slidePreviewing ? <FormattedLesson content={text} /> : (
-                          <Textarea
-                            aria-label={`Slide ${si + 1} content`}
-                            value={text}
-                            rows={autoRows(text, 2)}
-                            disabled={props.readOnly || props.busy}
-                            onChange={event => setSlideEdits(p => ({ ...p, [index]: slideTexts.map((t, i) => (i === si ? event.target.value : t)) }))}
-                            className="resize-none text-sm"
-                          />
-                        )}
+              {lesson.kind === "slide" ? (() => {
+                const si = Math.min(activeSlideIndex[index] ?? 0, slideTexts.length - 1);
+                const text = slideTexts[si] ?? "";
+                const slideApproved = approvedSlides[index]?.has(si) ?? false;
+                const slidePreviewing = previewingSlides[index]?.has(si) ?? false;
+                const toggleSet = (setter: typeof setApprovedSlides) => setter(p => {
+                  const next = new Set(p[index] ?? []);
+                  if (next.has(si)) next.delete(si); else next.add(si);
+                  return { ...p, [index]: next };
+                });
+                const goTo = (next: number) => setActiveSlideIndex(p => ({ ...p, [index]: Math.max(0, Math.min(slideTexts.length - 1, next)) }));
+                return (
+                  <div className="space-y-2 rounded-md border border-border bg-background p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-1">
+                        <Button size="icon" variant="ghost" aria-label="Previous slide" disabled={si === 0} onClick={() => goTo(si - 1)}><ChevronLeft className="h-4 w-4" /></Button>
+                        <p className="text-xs font-semibold text-muted-foreground">Slide {si + 1} of {slideTexts.length}{slideApproved && " · Approved"}</p>
+                        <Button size="icon" variant="ghost" aria-label="Next slide" disabled={si === slideTexts.length - 1} onClick={() => goTo(si + 1)}><ChevronRight className="h-4 w-4" /></Button>
                       </div>
-                    );
-                  })}
-                </div>
-              ) : <FormattedLesson content={preview.lessonSummary} />}
+                      <div className="flex items-center gap-1">
+                        <Button size="sm" variant="ghost" disabled={props.readOnly || props.busy} onClick={() => toggleSet(setPreviewingSlides)}>{slidePreviewing ? "Edit" : "Preview"}</Button>
+                        <Button size="sm" variant={slideApproved ? "secondary" : "outline"} disabled={props.readOnly || props.busy} onClick={() => toggleSet(setApprovedSlides)}><Check className="h-3.5 w-3.5" />{slideApproved ? "Reopen" : "Approve"}</Button>
+                      </div>
+                    </div>
+                    {slidePreviewing ? <FormattedLesson content={text} /> : (
+                      <Textarea
+                        aria-label={`Slide ${si + 1} content`}
+                        value={text}
+                        rows={autoRows(text, 2)}
+                        disabled={props.readOnly || props.busy}
+                        onChange={event => setSlideEdits(p => ({ ...p, [index]: slideTexts.map((t, i) => (i === si ? event.target.value : t)) }))}
+                        className="resize-none text-sm"
+                      />
+                    )}
+                    <div className="flex items-center justify-between gap-2 border-t border-border pt-2">
+                      <Button size="sm" variant="outline" disabled={si === 0} onClick={() => goTo(si - 1)}>Previous</Button>
+                      {si < slideTexts.length - 1
+                        ? <Button size="sm" onClick={() => goTo(si + 1)}>Next</Button>
+                        : <span className="text-xs text-muted-foreground">Last slide</span>}
+                    </div>
+                  </div>
+                );
+              })() : <FormattedLesson content={preview.lessonSummary} />}
               {preview.questions.map((q, i) => (
                 <div key={i} className="space-y-1 border-t border-border pt-2 text-sm">
                   <p className="font-medium">{i + 1}. {q.question}</p>
