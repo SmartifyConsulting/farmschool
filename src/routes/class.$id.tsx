@@ -310,16 +310,17 @@ function ClassPage() {
                         key={lesson.id + ":" + lessonContentKey(narration)}
                         text={narration}
                       />
-                      {course.published && (
-                        <LessonTutor
-                          key={lesson.id + ":" + (user?.id ?? "guest")}
-                          courseId={id}
-                          lessonId={lesson.id}
-                          title={lesson.title}
-                          signedIn={!!user}
-                        />
-                      )}
                     </div>
+                  )}
+                  {course.published && (
+                    <LessonTutor
+                      key={lesson.id + ":" + (user?.id ?? "guest")}
+                      courseId={id}
+                      lessonId={lesson.id}
+                      title={lesson.title}
+                      signedIn={!!user}
+                      advisorName={`AI ${course.category} Advisor`}
+                    />
                   )}
                   {lesson.kind === "scorm" && (
                     <ScormLesson

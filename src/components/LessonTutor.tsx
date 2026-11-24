@@ -21,11 +21,14 @@ export function LessonTutor({
   lessonId,
   title,
   signedIn,
+  advisorName,
 }: {
   courseId: string;
   lessonId: string;
   title: string;
   signedIn: boolean;
+  /** A course-branded name (e.g. "AI Beekeeping Advisor") shown on the floating trigger and sheet title, instead of a generic "Ask about this lesson" label. */
+  advisorName: string;
 }) {
   const ask = useServerFn(askLessonTutor);
   const [question, setQuestion] = useState("");
@@ -61,16 +64,20 @@ export function LessonTutor({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button type="button" variant="outline" size="sm">
-          <MessageCircle />
-          Ask about this lesson
+        <Button
+          type="button"
+          aria-label={advisorName}
+          title={advisorName}
+          className="fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full p-0 shadow-lg sm:bottom-6"
+        >
+          <MessageCircle className="h-5 w-5" />
         </Button>
       </SheetTrigger>
       <SheetContent className="flex w-full max-w-md flex-col sm:max-w-md">
         <SheetHeader className="pr-7">
-          <SheetTitle>Ask about this lesson</SheetTitle>
+          <SheetTitle>{advisorName}</SheetTitle>
           <SheetDescription>
-            {title} · The tutor uses this lesson’s written material.
+            Currently on: {title} · Uses this lesson’s written material.
           </SheetDescription>
         </SheetHeader>
         {!signedIn ? (
