@@ -1304,15 +1304,27 @@ function Editor() {
         }
         return null;
       };
-      const pageNumbers = lesson.sourceRefs.map((r) => r.page);
-      const slideCitation = pageNumbers.length
-        ? `\n\nSource: page ${pageNumbers.length > 1 ? `${Math.min(...pageNumbers)}–${Math.max(...pageNumbers)}` : pageNumbers[0]}`
-        : "";
-      const slidesBody = slideTexts
-        .map((text, i) => {
+      /** A medium level of citation precision: we know which pages the whole lesson drew from, but not
+       * which page backs each specific sentence. Rather than one blanket page range for the whole
+       * lesson, we distribute the lesson's known pages proportionally across its paragraphs in reading
+       * order, so earlier paragraphs cite earlier pages and later ones cite later pages. This is a real
+       * approximation, not an AI-verified per-sentence citation — close, not exact. */
+      const sortedPages = [...new Set(lesson.sourceRefs.map((r) => r.page))].sort((a, b) => a - b);
+      const slideParagraphs = slideTexts.map((text) => text.split(/\n{2,}/).filter((p) => p.trim()));
+      const totalParagraphs = slideParagraphs.reduce((n, ps) => n + ps.length, 0);
+      let paraIndex = 0;
+      const citeNextParagraph = (paragraph: string): string => {
+        if (!sortedPages.length || !totalParagraphs) return paragraph;
+        const page = sortedPages[Math.min(sortedPages.length - 1, Math.floor((paraIndex / totalParagraphs) * sortedPages.length))];
+        paraIndex++;
+        return `${paragraph}\n\nSource: page ${page}`;
+      };
+      const slidesBody = slideParagraphs
+        .map((paragraphs, i) => {
           const refs = lesson.slideKinds?.[i] ?? [];
           const media = refs.map(mediaBlockForRef).filter((b): b is string => !!b).join("\n\n");
-          return `## Slide ${i + 1}\n\n${text}${media ? `\n\n${media}` : ""}${slideCitation}`;
+          const citedText = paragraphs.map(citeNextParagraph).join("\n\n");
+          return `## Slide ${i + 1}\n\n${citedText}${media ? `\n\n${media}` : ""}`;
         })
         .join("\n\n");
       const knowledgeCheck = preview.questions.length
