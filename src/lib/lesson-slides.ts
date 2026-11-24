@@ -9,9 +9,29 @@ export type SlideBlock =
       kind: "hotspot";
       image: string;
       points: { x: number; y: number; label: string; body: string }[];
-    };
+    }
+  | { kind: "image"; url: string; caption: string }
+  | { kind: "video"; url: string; youtube: boolean; interactions: { atSeconds: number; note: string }[] }
+  | { kind: "facts"; items: { claim: string; evidence: string; image: string | null }[] };
 
 export type LessonSlide = { title: string; blocks: SlideBlock[] };
+
+/** Extracts the video id from a youtube.com/youtu.be URL (watch, youtu.be short link, /embed/, /shorts/), or null if it isn't a recognized YouTube link. */
+export function extractYouTubeId(url: string): string | null {
+  try {
+    const parsed = new URL(url.trim());
+    const host = parsed.hostname.replace(/^www\./, "");
+    if (host === "youtu.be") return parsed.pathname.slice(1) || null;
+    if (host === "youtube.com" || host === "m.youtube.com") {
+      if (parsed.pathname === "/watch") return parsed.searchParams.get("v");
+      const match = /^\/(?:embed|shorts)\/([^/]+)/.exec(parsed.pathname);
+      if (match) return match[1] ?? null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 export function practicalTaskIndex(slides: LessonSlide[], slideIndex: number, blockIndex: number): number {
   return slides.reduce((total, slide) => total + slide.blocks.length, 0)
@@ -31,7 +51,7 @@ function parseBlocks(lines: string[]): SlideBlock[] {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
     const marker =
-      /^:::(tip|warning|takeaway|flip|tabs|accordion|checklist|photo|hotspot)\s*$/.exec(line);
+      /^:::(tip|warning|takeaway|flip|tabs|accordion|checklist|photo|hotspot|image|video|facts)\s*$/.exec(line);
     if (!marker) {
       plain.push(line);
       continue;
@@ -74,6 +94,35 @@ function parseBlocks(lines: string[]): SlideBlock[] {
       if (items.length && items.every((item): item is string => !!item)) block = { kind, items };
     }
     if (kind === "photo" && body) block = { kind, prompt: body };
+    if (kind === "image") {
+      const bodyLines = body.split("\n");
+      const url = bodyLines[0]?.trim();
+      if (url && /^https:\/\//.test(url)) block = { kind, url, caption: bodyLines.slice(1).join("\n").trim() };
+    }
+    if (kind === "video") {
+      const bodyLines = body.split("\n").map((l) => l.trim()).filter(Boolean);
+      const url = bodyLines[0];
+      if (url && /^https:\/\//.test(url)) {
+        const interactions = bodyLines.slice(1).flatMap((l) => {
+          const match = /^(\d+):([0-5]\d)\s+(\S.*)$/.exec(l);
+          return match ? [{ atSeconds: Number(match[1]) * 60 + Number(match[2]), note: match[3]!.trim() }] : [];
+        });
+        block = { kind, url, youtube: /youtube\.com|youtu\.be/.test(url), interactions };
+      }
+    }
+    if (kind === "facts") {
+      const parts = body.split(/^###\s+/m);
+      const items = parts.slice(1).map((part) => {
+        const partLines = part.split("\n");
+        const claim = partLines[0]?.trim() ?? "";
+        const rest = partLines.slice(1).join("\n").trim().split("\n").map((l) => l.trim()).filter(Boolean);
+        const lastLine = rest.at(-1);
+        const image = lastLine && /^https:\/\//.test(lastLine) ? lastLine : null;
+        const evidence = (image ? rest.slice(0, -1) : rest).join(" ").trim();
+        return { claim, evidence, image };
+      });
+      if (!parts[0]?.trim() && items.length && items.every((item) => item.claim && item.evidence)) block = { kind, items };
+    }
     if (kind === "hotspot") {
       const lines = body.split("\n");
       const image = lines[0]?.trim();

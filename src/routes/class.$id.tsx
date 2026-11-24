@@ -25,6 +25,7 @@ import { ExternalVideo, LINKED_VIDEO_SELECT, type LinkedVideo } from "@/componen
 import { FormattedLesson } from "@/components/FormattedLesson";
 import { ScormLesson } from "@/components/ScormLesson";
 import { SlidePlayer } from "@/components/SlidePlayer";
+import { HeroBanner } from "@/components/HeroBanner";
 import { LessonNarration } from "@/components/LessonNarration";
 import { LessonTutor } from "@/components/LessonTutor";
 import { lessonKindIcon } from "@/lib/lesson-kinds";
@@ -302,7 +303,7 @@ function ClassPage() {
                       />
                     ))
                   )}
-                  <h2 className="text-lg font-semibold">{lesson.title}</h2>
+                  {lesson.kind === "slide" ? <HeroBanner title={lesson.title} /> : <h2 className="text-lg font-semibold">{lesson.title}</h2>}
                   {narration.trim() && (
                     <div className="flex flex-wrap gap-2">
                       <LessonNarration

@@ -1268,7 +1268,36 @@ function Editor() {
           qc.invalidateQueries({ queryKey: ["studio-modules", id] });
         }
       }
-      const slidesBody = slideTexts.map((text, i) => `## Slide ${i + 1}\n\n${text}`).join("\n\n");
+      /** Renders the media a trainer attached to one slide's formats (illustrated/visual image, video with pause points, fact cards) as the `:::kind ... :::` fenced blocks SlidePlayer understands — the only point where this preview-stage media reaches a published lesson. */
+      const mediaBlockForRef = (ref: { source: "delivery" | "method"; id: string }): string | null => {
+        if (ref.source !== "method") return null;
+        if ((ref.id === "illustrated" || ref.id === "visual") ) {
+          const url = ref.id === "illustrated" ? lesson.illustratedMediaUrl : lesson.visualMediaUrl;
+          const kind = ref.id === "illustrated" ? lesson.illustratedMediaKind : lesson.visualMediaKind;
+          if (!url) return null;
+          return kind === "video" ? `:::video\n${url}\n:::` : `:::image\n${url}\n:::`;
+        }
+        if (ref.id === "video" && lesson.videoMediaUrl && lesson.videoMediaKind) {
+          const points = (lesson.videoInteractions ?? [])
+            .map((p) => `${Math.floor(p.atSeconds / 60)}:${String(Math.floor(p.atSeconds % 60)).padStart(2, "0")} ${p.note}`)
+            .join("\n");
+          return `:::video\n${lesson.videoMediaUrl}${points ? `\n${points}` : ""}\n:::`;
+        }
+        if (ref.id === "facts" && lesson.factCards?.length) {
+          const items = lesson.factCards
+            .map((c) => `### ${c.claim}\n${c.evidence}${c.mediaUrl ? `\n${c.mediaUrl}` : ""}`)
+            .join("\n");
+          return `:::facts\n${items}\n:::`;
+        }
+        return null;
+      };
+      const slidesBody = slideTexts
+        .map((text, i) => {
+          const refs = lesson.slideKinds?.[i] ?? [];
+          const media = refs.map(mediaBlockForRef).filter((b): b is string => !!b).join("\n\n");
+          return `## Slide ${i + 1}\n\n${text}${media ? `\n\n${media}` : ""}`;
+        })
+        .join("\n\n");
       const knowledgeCheck = preview.questions.length
         ? "\n\n## Knowledge check\n\n" +
           preview.questions

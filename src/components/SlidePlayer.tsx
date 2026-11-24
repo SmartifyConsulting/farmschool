@@ -5,7 +5,9 @@ import { PhotoEvidence } from "@/components/PhotoEvidence";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { LessonSlide, SlideBlock } from "@/lib/lesson-slides";
-import { practicalTaskIndex } from "@/lib/lesson-slides";
+import { practicalTaskIndex, extractYouTubeId } from "@/lib/lesson-slides";
+import { InteractiveVideoPlayer } from "@/components/InteractiveVideoPlayer";
+import { HeroBanner } from "@/components/HeroBanner";
 
 type State = { index: number; seen: number[]; checked: string[] };
 const initial: State = { index: 0, seen: [0], checked: [] };
@@ -200,6 +202,30 @@ function Block({
             <FormattedLesson content={block.points[open]!.body} />
           </div>
         )}
+      </div>
+    );
+  if (block.kind === "image")
+    return (
+      <figure className="space-y-1">
+        <img src={block.url} alt={block.caption || ""} className="w-full rounded-xl border border-border object-cover" />
+        {block.caption && <figcaption className="text-xs text-muted-foreground">{block.caption}</figcaption>}
+      </figure>
+    );
+  if (block.kind === "video") {
+    const youTubeId = block.youtube ? extractYouTubeId(block.url) : null;
+    if (block.youtube && !youTubeId) return <p className="text-xs text-destructive">This video link couldn't be read.</p>;
+    return <InteractiveVideoPlayer kind={block.youtube ? "youtube" : "file"} src={block.youtube ? youTubeId! : block.url} interactions={block.interactions} />;
+  }
+  if (block.kind === "facts")
+    return (
+      <div className="grid gap-2 sm:grid-cols-3">
+        {block.items.map((item, i) => (
+          <div key={i} className="space-y-1.5 rounded-xl border border-border bg-card p-3">
+            {item.image && <img src={item.image} alt="" className="h-24 w-full rounded-lg object-cover" />}
+            <p className="text-sm font-semibold">{item.claim}</p>
+            <p className="text-xs text-muted-foreground">{item.evidence}</p>
+          </div>
+        ))}
       </div>
     );
   if (block.kind === "flip")
