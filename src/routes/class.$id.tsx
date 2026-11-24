@@ -1,7 +1,7 @@
 import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
   CheckCircle2,
@@ -166,6 +166,14 @@ function ClassPage() {
   const total = lessons?.length ?? 0;
   const count = (lessons ?? []).filter((l) => done.has(l.id)).length;
   const pct = total ? Math.round((count / total) * 100) : 0;
+  const resumed = useRef(false);
+  useEffect(() => {
+    if (resumed.current || !lessons?.length) return;
+    resumed.current = true;
+    const firstIncomplete = lessons.findIndex((l) => !done.has(l.id));
+    if (firstIncomplete > 0) setIdx(firstIncomplete);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessons?.length]);
   const lesson = lessons?.[idx];
   const slides = lesson?.kind === "slide" ? parseLessonSlides(lesson.body) : [];
   const slideKey =

@@ -437,7 +437,7 @@ ${data.webSearch ? "You may use web search for current, real-world examples or f
 - videoQueries: 2 to 3 short YouTube search phrases (not links, not claims a video exists) that would find a relevant demonstration.
 - steps: an ordered checklist (3 to 8 items) turning the lesson's procedure into actionable steps.
 - scenarios: 1 to 2 concrete, realistic scenario prompts a learner could be asked to resolve, grounded only in the lesson.
-- quiz: one multiple-choice question, 4 options, the correct option's index, and an exact contiguous quote from the lesson supporting the answer.
+- quiz: one multiple-choice question, 4 options, the correct option's index, an exact contiguous quote from the lesson supporting the answer, and a short hint that nudges without giving the answer away.
 - activities: one concrete hands-on practical activity a learner could do.
 - facts: 2 to 3 short claim+evidence pairs grounded only in the lesson, each claim a short headline and the evidence a sentence supporting it, for a fact-card layout. Do not claim an image exists.`,
         prompt: JSON.stringify({ title: data.title, lesson: data.sourceText.slice(0, 12000) }),

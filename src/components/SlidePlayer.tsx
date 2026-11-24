@@ -170,9 +170,19 @@ function Block({
 }) {
   const [flipped, setFlipped] = useState(false);
   const [open, setOpen] = useState<number | null>(null);
-  const [picked, setPicked] = useState<Record<number, number>>({});
-  const pickedAnswer = (qi: number) => picked[qi];
-  const setPickedAnswer = (qi: number, oi: number) => setPicked((p) => (qi in p ? p : { ...p, [qi]: oi }));
+  const [selected, setSelected] = useState<Record<number, Set<number>>>({});
+  const [quizChecked, setQuizChecked] = useState<Record<number, boolean>>({});
+  const [hintShown, setHintShown] = useState<Record<number, boolean>>({});
+  const toggleOption = (qi: number, oi: number, multi: boolean) =>
+    setSelected((p) => {
+      const current = p[qi] ?? new Set<number>();
+      if (multi) {
+        const next = new Set(current);
+        if (next.has(oi)) next.delete(oi); else next.add(oi);
+        return { ...p, [qi]: next };
+      }
+      return { ...p, [qi]: new Set([oi]) };
+    });
   if (block.kind === "text") return <FormattedLesson content={block.body} />;
   if (block.kind === "photo")
     return lessonId ? (
@@ -233,28 +243,31 @@ function Block({
     );
   if (block.kind === "quizcheck") {
     return (
-      <div className="space-y-4 rounded-xl border border-primary/30 bg-primary/5 p-4">
+      <div className="space-y-5 rounded-xl border border-primary/30 bg-primary/5 p-4">
         <p className="text-sm font-semibold text-primary">Check your understanding</p>
         {block.items.map((item, qi) => {
-          const picked = pickedAnswer(qi);
+          const multi = item.correctIndices.length > 1;
+          const picks = selected[qi] ?? new Set<number>();
+          const revealed = quizChecked[qi] ?? false;
           return (
             <div key={qi} className="space-y-2">
               <p className="text-sm font-medium">{qi + 1}. {item.question}</p>
+              <p className="text-xs text-muted-foreground">{multi ? "Select every correct answer." : "Select the correct answer."}</p>
               <div className="space-y-1.5">
                 {item.options.map((option, oi) => {
-                  const isPicked = picked === oi;
-                  const revealed = picked != null;
-                  const isCorrect = oi === item.correctIndex;
+                  const isPicked = picks.has(oi);
+                  const isCorrect = item.correctIndices.includes(oi);
                   return (
                     <button
                       key={oi}
                       type="button"
-                      onClick={() => setPickedAnswer(qi, oi)}
+                      onClick={() => toggleOption(qi, oi, multi)}
                       disabled={revealed}
                       className={
                         "flex w-full items-center gap-2 rounded-lg border p-2 text-left text-sm " +
                         (revealed && isCorrect ? "border-primary bg-primary/10"
                           : revealed && isPicked ? "border-destructive bg-destructive/10"
+                          : isPicked ? "border-primary/50 bg-primary/5"
                           : "border-border bg-card")
                       }
                     >
@@ -263,6 +276,21 @@ function Block({
                   );
                 })}
               </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {!revealed && (
+                  <Button type="button" size="sm" disabled={!picks.size} onClick={() => setQuizChecked((p) => ({ ...p, [qi]: true }))}>
+                    Check answer
+                  </Button>
+                )}
+                {item.hint && !hintShown[qi] && !revealed && (
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setHintShown((p) => ({ ...p, [qi]: true }))}>
+                    <Lightbulb className="h-3.5 w-3.5" />Show hint
+                  </Button>
+                )}
+              </div>
+              {item.hint && hintShown[qi] && !revealed && (
+                <p className="rounded-md bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-400">{item.hint}</p>
+              )}
             </div>
           );
         })}

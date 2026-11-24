@@ -349,6 +349,9 @@ function MyCourses() {
                       <ProgressBar pct={c.pct} label={`${c.done}/${c.total} lessons`} />
                     </div>
                   )}
+                  <span className="mt-3 inline-block rounded-md bg-primary px-4 py-2 text-center text-xs font-semibold text-primary-foreground">
+                    {c.started ? (c.pct >= 100 ? "Review" : "Resume") : "Start"}
+                  </span>
                 </div>
               </Link>
             ))}

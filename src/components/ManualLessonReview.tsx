@@ -18,7 +18,7 @@ import { estimateMinutes, formatMinutes } from "@/lib/duration-estimate";
 export type LessonPagePreview = {
   lessonTitle: string;
   lessonSummary: string;
-  questions: { question: string; options: string[]; correctIndex: number; sourceQuote: string }[];
+  questions: { question: string; options: string[]; correctIndex: number; sourceQuote: string; hint: string | null }[];
   droppedUnsupportedQuestions: number;
 };
 
@@ -28,7 +28,7 @@ export type MethodSuggestions = {
   videoQueries?: string[];
   steps?: string[];
   scenarios?: string[];
-  quiz?: { question: string; options: string[]; correctIndex: number; sourceQuote: string };
+  quiz?: { question: string; options: string[]; correctIndex: number; sourceQuote: string; hint?: string | null };
   activities?: string;
   facts?: { claim: string; evidence: string }[];
 };

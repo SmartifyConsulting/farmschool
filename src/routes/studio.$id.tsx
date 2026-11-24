@@ -519,7 +519,7 @@ function Editor() {
   type LessonPreview = {
     lessonTitle: string;
     lessonSummary: string;
-    questions: { question: string; options: string[]; correctIndex: number; sourceQuote: string }[];
+    questions: { question: string; options: string[]; correctIndex: number; sourceQuote: string; hint: string | null }[];
     droppedUnsupportedQuestions: number;
   };
   const [aiDraft, setAiDraft] = useState<LessonPreview | null>(null);
@@ -568,7 +568,7 @@ function Editor() {
     videoQueries?: string[];
     steps?: string[];
     scenarios?: string[];
-    quiz?: { question: string; options: string[]; correctIndex: number; sourceQuote: string };
+    quiz?: { question: string; options: string[]; correctIndex: number; sourceQuote: string; hint?: string | null };
     activities?: string;
     facts?: { claim: string; evidence: string }[];
   };
@@ -1343,7 +1343,7 @@ function Editor() {
       const knowledgeCheck = preview.questions.length
         ? "\n\n## Knowledge check\n\n:::quizcheck\n" +
           preview.questions
-            .map((q) => `### ${q.question}\n` + q.options.map((o, j) => `${j === q.correctIndex ? "A*" : "A"}: ${o}`).join("\n"))
+            .map((q) => `### ${q.question}\n` + q.options.map((o, j) => `${j === q.correctIndex ? "A*" : "A"}: ${o}`).join("\n") + (q.hint ? `\nH: ${q.hint}` : ""))
             .join("\n") +
           "\n:::"
         : "";

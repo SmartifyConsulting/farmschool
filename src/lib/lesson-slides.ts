@@ -13,7 +13,7 @@ export type SlideBlock =
   | { kind: "image"; url: string; caption: string }
   | { kind: "video"; url: string; youtube: boolean; interactions: { atSeconds: number; note: string }[] }
   | { kind: "facts"; items: { claim: string; evidence: string; image: string | null }[] }
-  | { kind: "quizcheck"; items: { question: string; options: string[]; correctIndex: number }[] };
+  | { kind: "quizcheck"; items: { question: string; options: string[]; correctIndices: number[]; hint: string | null }[] };
 
 export type LessonSlide = { title: string; blocks: SlideBlock[] };
 
@@ -130,14 +130,20 @@ function parseBlocks(lines: string[]): SlideBlock[] {
         const partLines = part.split("\n");
         const question = partLines[0]?.trim() ?? "";
         const options: string[] = [];
-        let correctIndex = -1;
+        const correctIndices: number[] = [];
+        let hint: string | null = null;
         for (const l of partLines.slice(1)) {
-          const match = /^A(\*)?:\s*(\S.*)$/.exec(l.trim());
-          if (!match) continue;
-          if (match[1]) correctIndex = options.length;
-          options.push(match[2]!.trim());
+          const trimmed = l.trim();
+          const answer = /^A(\*)?:\s*(\S.*)$/.exec(trimmed);
+          if (answer) {
+            if (answer[1]) correctIndices.push(options.length);
+            options.push(answer[2]!.trim());
+            continue;
+          }
+          const hintLine = /^H:\s*(\S.*)$/.exec(trimmed);
+          if (hintLine) hint = hintLine[1]!.trim();
         }
-        return question && options.length >= 2 && correctIndex >= 0 ? [{ question, options, correctIndex }] : [];
+        return question && options.length >= 2 && correctIndices.length ? [{ question, options, correctIndices, hint }] : [];
       });
       if (!parts[0]?.trim() && items.length) block = { kind, items };
     }
