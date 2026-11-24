@@ -102,7 +102,7 @@ export function CourseWizard() {
     finally { setSaving(false); }
   };
   return <>
-    <Button variant="secondary" onClick={() => setOpen(true)}><Sparkles className="h-4 w-4" />Generate with AI</Button>
+    <Button onClick={() => setOpen(true)}><Sparkles className="h-4 w-4" />Create course</Button>
     <Dialog open={open} onOpenChange={value => { if (!value) void close(); }}>
       <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-4xl overflow-y-auto rounded-lg p-5 sm:p-7" onInteractOutside={event => { if (busy || saving) event.preventDefault(); }}>
         <DialogHeader className="pr-7 text-left">
@@ -154,7 +154,7 @@ export function CourseWizard() {
             ))}
             {(input.rubricCriteria?.length ?? 0) < 6 && <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => setInput({ ...input, rubricCriteria: [...(input.rubricCriteria ?? []), { criterion: "", mustPass: false }] })}>Add criterion</Button>}
           </div>
-          <div className="flex flex-wrap items-center gap-3">{busy ? <Button type="button" variant="outline" onClick={() => controller.current?.abort()}><Square className="h-4 w-4" />Stop</Button> : <Button type="submit"><Sparkles className="h-4 w-4" />Generate course draft</Button>}<span role="status" className="flex items-center gap-2 text-sm text-muted-foreground">{busy && <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" />}{progress}</span></div>
+          <div className="flex flex-wrap items-center gap-3 pt-2">{busy ? <Button type="button" variant="outline" onClick={() => controller.current?.abort()}><Square className="h-4 w-4" />Stop</Button> : <Button type="submit"><Sparkles className="h-4 w-4" />Generate course draft</Button>}<span role="status" className="flex items-center gap-2 text-sm text-muted-foreground">{busy && <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" />}{progress}</span></div>
           {log.length > 1 && <ol className="space-y-1 rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">{log.slice(0, -1).map((line, i) => <li key={i}>{line}</li>)}</ol>}
         </form>}
         {draft && <div className="space-y-5">
@@ -165,7 +165,7 @@ export function CourseWizard() {
           <div className="divide-y divide-border border-y border-border">{draft.lessons.map((lesson, index) => <details key={index} className="py-3"><summary className="cursor-pointer font-medium"><BookOpen className="mr-2 inline h-4 w-4 text-primary" />{index + 1}. {lesson.title}<span className="ml-2 text-xs font-normal text-muted-foreground">~{formatMinutes(estimateMinutes(lesson.body))}</span></summary><div className="mt-3 space-y-2"><Input aria-label={`Lesson ${index + 1} title`} maxLength={120} value={lesson.title} disabled={saving} onChange={e => setDraft({ ...draft, lessons: draft.lessons.map((l, i) => i === index ? { ...l, title: e.target.value } : l) })} /><Textarea aria-label={`Lesson ${index + 1} content`} rows={12} maxLength={20000} value={lesson.body} disabled={saving} onChange={e => setDraft({ ...draft, lessons: draft.lessons.map((l, i) => i === index ? { ...l, body: e.target.value } : l) })} /></div></details>)}
           <details className="py-3"><summary className="cursor-pointer font-medium">{draft.quiz.title} · {draft.quiz.questions.length} questions</summary><ol className="mt-3 space-y-4">{draft.quiz.questions.map((q, i) => <li key={i}><p className="font-medium">{i + 1}. {q.question}</p><ul className="mt-2 space-y-1 text-sm">{q.options.map((option, j) => <li key={j} className={`flex items-center gap-2 ${j === q.correctIndex ? "text-primary" : "text-muted-foreground"}`}>{j === q.correctIndex ? <Check className="h-4 w-4 shrink-0" /> : <span className="w-4 shrink-0" />}{option}</li>)}</ul></li>)}</ol></details></div>
           <Label className="flex items-start gap-3 text-sm leading-relaxed"><input type="checkbox" checked={reviewed} disabled={saving} onChange={e => setReviewed(e.target.checked)} className="mt-1 shrink-0 accent-primary" />I have reviewed the draft. I will check the facts and quiz answers before publishing.</Label>
-          <div className="flex flex-wrap gap-3"><Button disabled={!reviewed || saving} onClick={() => void saveDraft()}>{saving ? <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Save className="h-4 w-4" />}{saving ? "Saving…" : "Save draft & open editor"}</Button><Button variant="outline" disabled={saving} onClick={() => void close()}>Discard draft</Button></div>
+          <div className="flex flex-wrap gap-3 pt-2"><Button disabled={!reviewed || saving} onClick={() => void saveDraft()}>{saving ? <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Save className="h-4 w-4" />}{saving ? "Saving…" : "Save draft & open editor"}</Button><Button variant="outline" disabled={saving} onClick={() => void close()}>Discard draft</Button></div>
         </div>}
         {error && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
       </DialogContent>
