@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowDownToLine, Scissors, Trash2, Check, Wand2, Sparkles, FolderOpen, FileText, LayoutGrid, Video, Package, Library, Image as ImageIcon, Loader2, Plus, X, ChevronDown, ChevronUp, GripVertical, type LucideIcon } from "lucide-react";
+import { ArrowDownToLine, Scissors, Trash2, Check, Wand2, Sparkles, FolderOpen, FileText, LayoutGrid, Video, Package, Library, Image as ImageIcon, Loader2, Plus, X, ChevronDown, ChevronUp, GripVertical, CheckCircle2, Circle, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -222,7 +222,18 @@ export function ManualLessonReview(props: Props) {
   const [splitTitle, setSplitTitle] = useState("");
   const [activeGroup, setActiveGroup] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
-  const [collapsedLessons, setCollapsedLessons] = useState<Set<number>>(() => new Set());
+  const [collapsedLessons, setCollapsedLessons] = useState<Set<number>>(() => new Set(props.draft.lessons.map((_, i) => i)));
+  const knownLessonCount = useRef(props.draft.lessons.length);
+  useEffect(() => {
+    if (props.draft.lessons.length > knownLessonCount.current) {
+      setCollapsedLessons(prev => {
+        const next = new Set(prev);
+        for (let i = knownLessonCount.current; i < props.draft.lessons.length; i++) next.delete(i);
+        return next;
+      });
+    }
+    knownLessonCount.current = props.draft.lessons.length;
+  }, [props.draft.lessons.length]);
   const [approvedSlides, setApprovedSlides] = useState<Record<number, Set<number>>>({});
   const [generatingImageFor, setGeneratingImageFor] = useState<string | null>(null);
   const runGenerateImage = useServerFn(generateLessonImage);
@@ -248,6 +259,12 @@ export function ManualLessonReview(props: Props) {
     const gi = groups.findIndex(g => props.focusIndex! >= g.start && props.focusIndex! < g.end);
     if (gi !== -1) setActiveGroup(gi);
     setCollapsed(false);
+    setCollapsedLessons(prev => {
+      if (!prev.has(props.focusIndex!)) return prev;
+      const next = new Set(prev);
+      next.delete(props.focusIndex!);
+      return next;
+    });
     requestAnimationFrame(() =>
       document.getElementById(`outline-lesson-${props.focusIndex}`)?.scrollIntoView({ behavior: "smooth", block: "start" }),
     );
@@ -363,10 +380,17 @@ export function ManualLessonReview(props: Props) {
         })()}
           <div className={`min-w-0 rounded-lg border border-border bg-background p-4 sm:p-5 ${lesson.module ? "sm:ml-4" : ""}`}>
           <div className="flex items-start gap-3">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary text-sm font-semibold text-secondary-foreground">{index + 1}</span>
+            {props.approved[index]
+              ? <CheckCircle2 className="h-8 w-8 shrink-0 text-primary" aria-label={`Lesson ${index + 1} approved`} />
+              : <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary text-sm font-semibold text-secondary-foreground">{index + 1}</span>}
             <div className="min-w-0 flex-1">
-              <Input aria-label={`Lesson ${index + 1} title`} value={lesson.title} maxLength={120} disabled={props.readOnly || props.busy} onChange={event => props.onEdit(index, { ...lesson, title: event.target.value })} className="font-semibold" />
-              <p className="mt-2 text-xs text-muted-foreground">{pages.length ? `Source pages ${Math.min(...pages)}–${Math.max(...pages)}` : "Pasted source"} · ~{formatMinutes(estimateMinutes(lesson.body))}{props.approved[index] ? " · Approved" : " · Needs review"}</p>
+              {collapsedLessons.has(index)
+                ? <p className="truncate font-semibold">{lesson.title || "Untitled lesson"}</p>
+                : <Input aria-label={`Lesson ${index + 1} title`} value={lesson.title} maxLength={120} disabled={props.readOnly || props.busy} onChange={event => props.onEdit(index, { ...lesson, title: event.target.value })} className="font-semibold" />}
+              <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+                {props.approved[index] ? <CheckCircle2 className="h-3 w-3 shrink-0 text-primary" /> : <Circle className="h-3 w-3 shrink-0" />}
+                {pages.length ? `Source pages ${Math.min(...pages)}–${Math.max(...pages)}` : "Pasted source"} · ~{formatMinutes(estimateMinutes(lesson.body))}{props.approved[index] ? " · Approved" : " · Needs review"}
+              </p>
             </div>
             <Button
               size="icon"
