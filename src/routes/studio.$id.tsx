@@ -2033,6 +2033,15 @@ function Editor() {
                 Learner activities
               </Link>
             )}
+            <Link
+              to="/class/$id"
+              params={{ id }}
+              className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs"
+              title="Opens exactly what a learner sees — draft lessons included, since you're the author"
+            >
+              <Eye className="h-3 w-3" />
+              Switch to learner view
+            </Link>
           </div>
         </div>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
