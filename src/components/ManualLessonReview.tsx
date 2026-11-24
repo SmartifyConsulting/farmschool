@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowDownToLine, Scissors, Trash2, Check, Wand2, Sparkles, FolderOpen, FileText, LayoutGrid, Video, Package, Library, Image as ImageIcon, Loader2, Plus, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, GripVertical, CheckCircle2, Circle, type LucideIcon } from "lucide-react";
+import { ArrowDownToLine, Scissors, Trash2, Check, Wand2, Sparkles, FolderOpen, FileText, LayoutGrid, Video, Package, Library, Image as ImageIcon, Loader2, Plus, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, GripVertical, CheckCircle2, Circle, MessageSquare, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -244,6 +244,7 @@ export function ManualLessonReview(props: Props) {
   const [justMovedSlide, setJustMovedSlide] = useState<Record<number, number>>({});
   const [videoUrlDraft, setVideoUrlDraft] = useState<Record<number, string>>({});
   const [activeSlideIndex, setActiveSlideIndex] = useState<Record<number, number>>({});
+  const [notesOpenFor, setNotesOpenFor] = useState<Set<number>>(() => new Set());
   const moduleCount = new Set(props.draft.lessons.map(lesson => lesson.module).filter(Boolean)).size;
   const pageCount = new Set(props.draft.lessons.flatMap(lesson => lesson.sourceRefs.map(ref => `${ref.sourceId}:${ref.page}`))).size;
   const groups: { label: string; start: number; end: number }[] = [];
@@ -1007,8 +1008,11 @@ export function ManualLessonReview(props: Props) {
                   return { ...p, [index]: next };
                 });
                 const goTo = (next: number) => setActiveSlideIndex(p => ({ ...p, [index]: Math.max(0, Math.min(slideTexts.length - 1, next)) }));
+                const noteKey = `${index}:${si}`;
+                const note = lesson.slideNotes?.[si] ?? "";
+                const notesOpen = notesOpenFor.has(index);
                 return (
-                  <div className="space-y-2 rounded-md border border-border bg-background p-3">
+                  <div className="relative space-y-2 rounded-md border border-border bg-background p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-1">
                         <Button size="icon" variant="ghost" aria-label="Previous slide" disabled={si === 0} onClick={() => goTo(si - 1)}><ChevronLeft className="h-4 w-4" /></Button>
@@ -1029,6 +1033,29 @@ export function ManualLessonReview(props: Props) {
                         onChange={event => setSlideEdits(p => ({ ...p, [index]: slideTexts.map((t, i) => (i === si ? event.target.value : t)) }))}
                         className="resize-none text-sm"
                       />
+                    )}
+                    <button
+                      type="button"
+                      key={noteKey}
+                      aria-label={note ? `Edit your note on slide ${si + 1}` : `Add a note on slide ${si + 1}`}
+                      title="Private note — only you see this, never shown to learners"
+                      onClick={() => setNotesOpenFor(p => { const next = new Set(p); if (next.has(index)) next.delete(index); else next.add(index); return next; })}
+                      className="absolute -bottom-2.5 -right-2.5 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background shadow hover:bg-muted"
+                    >
+                      <MessageSquare className={`h-4 w-4 ${note ? "fill-primary text-primary" : "text-muted-foreground"}`} />
+                    </button>
+                    {notesOpen && (
+                      <div className="mt-2 space-y-1 rounded-md border border-dashed border-border bg-muted/30 p-2">
+                        <p className="text-[11px] font-medium text-muted-foreground">Your note on this slide (private — never shown to learners)</p>
+                        <Textarea
+                          aria-label={`Note on slide ${si + 1}`}
+                          value={note}
+                          rows={2}
+                          disabled={props.readOnly || props.busy}
+                          onChange={event => props.onEdit(index, { ...lesson, slideNotes: { ...(lesson.slideNotes ?? {}), [si]: event.target.value } })}
+                          className="resize-none text-xs"
+                        />
+                      </div>
                     )}
                     <div className="flex items-center justify-between gap-2 border-t border-border pt-2">
                       <Button size="sm" variant="outline" disabled={si === 0} onClick={() => goTo(si - 1)}>Previous</Button>

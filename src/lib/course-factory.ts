@@ -26,6 +26,8 @@ export type DraftLesson = {
   /** A trainer-uploaded diagram/photo for the Labeled diagram format, pinned with click-to-place points (x/y as a 0–100 percent of the image). */
   hotspotImage?: string | null;
   hotspotPoints?: { x: number; y: number; label: string; body: string }[] | null;
+  /** Trainer's own private notes per slide index (e.g. "double-check this figure") — an authoring aid, never shown to learners or carried into the published lesson. */
+  slideNotes?: Record<number, string> | null;
   /** Training format this lesson imports as; defaults to "slide" when unset. */
   kind?: "reading" | "slide" | "video" | "scorm";
   /** When kind is "slide": each slide's own list of assigned formats (delivery mediums and/or training methods), in drop order; defaults to three empty slides when unset. */
