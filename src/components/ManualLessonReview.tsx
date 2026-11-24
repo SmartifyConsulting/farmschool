@@ -11,6 +11,7 @@ import { reflowText, type DraftCourse, type DraftLesson, type IllustrationGuide 
 import { buildLessonScormZip } from "@/lib/scorm-export";
 import { generateLessonImage } from "@/lib/studio-ai.functions";
 import { InteractiveVideoPlayer } from "@/components/InteractiveVideoPlayer";
+import { HeroBanner } from "@/components/HeroBanner";
 
 export type LessonPagePreview = {
   lessonTitle: string;
@@ -27,13 +28,14 @@ export type MethodSuggestions = {
   scenarios?: string[];
   quiz?: { question: string; options: string[]; correctIndex: number; sourceQuote: string };
   activities?: string;
+  facts?: { claim: string; evidence: string }[];
 };
 
 const ILLUSTRATION_BUCKET = "lesson-illustrations";
 const MAX_MEDIA_BYTES = 25 * 1024 * 1024;
 
 /** These method ids present as "how the content is delivered", grouped with the delivery-kind toggle below; the rest are "how it's tested". */
-const TRAINING_FORMAT_METHOD_IDS = ["illustrated", "video"];
+const TRAINING_FORMAT_METHOD_IDS = ["illustrated", "video", "facts"];
 /** Rough estimate of wrapped lines so a textarea's `rows` always fits its text — no inner scrollbar. */
 function autoRows(text: string, min: number) {
   const explicitLines = text.split("\n").length;
@@ -665,6 +667,14 @@ export function ManualLessonReview(props: Props) {
                         const caption = methodId === "illustrated" ? result.illustrated : result.visual;
                         if (caption) currentLesson = await generateImageForMethod(methodId, caption, currentLesson);
                       }
+                      if (selected.includes("facts") && result.facts?.length) {
+                        const existing = currentLesson.factCards ?? [];
+                        currentLesson = {
+                          ...currentLesson,
+                          factCards: result.facts.map((fact, i) => ({ ...fact, mediaUrl: existing[i]?.mediaUrl ?? null, mediaKind: existing[i]?.mediaKind ?? null })),
+                        };
+                        props.onEdit(index, currentLesson);
+                      }
                     })();
                   }}
                 >
@@ -687,6 +697,7 @@ export function ManualLessonReview(props: Props) {
             const slideTexts = slideEdits[index] ?? splitIntoSlides(preview.lessonSummary, slides.length);
             return <div className="mt-4 space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
               <p className="text-xs font-semibold text-primary">AI-generated page preview — adjust each slide, then commit it to the course</p>
+              <HeroBanner title={lesson.title} />
               {(["illustrated", "visual"] as const).filter(methodId => selected.includes(methodId)).map(methodId => {
                 const caption = methodId === "illustrated" ? props.suggestions[index]?.illustrated : props.suggestions[index]?.visual;
                 const key = `${index}:${methodId}`;
@@ -834,6 +845,45 @@ export function ManualLessonReview(props: Props) {
                         </fieldset>
                       );
                     })()}
+                  </div>
+                );
+              })()}
+              {selected.includes("facts") && !!lesson.factCards?.length && (() => {
+                const cards = lesson.factCards!;
+                const citedPage = lesson.sourceRefs[0]?.page;
+                const updateCard = (ci: number, patch: Partial<(typeof cards)[number]>) =>
+                  props.onEdit(index, { ...lesson, factCards: cards.map((c, i) => (i === ci ? { ...c, ...patch } : c)) });
+                return (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Fact cards</p>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {cards.map((card, ci) => (
+                        <div key={ci} className="space-y-1 rounded-md border border-border bg-background p-2">
+                          <Input
+                            aria-label={`Fact card ${ci + 1} claim`}
+                            value={card.claim}
+                            disabled={props.readOnly || props.busy}
+                            onChange={event => updateCard(ci, { claim: event.target.value })}
+                            className="h-7 text-xs font-semibold"
+                          />
+                          <Textarea
+                            aria-label={`Fact card ${ci + 1} evidence`}
+                            rows={2}
+                            value={card.evidence}
+                            disabled={props.readOnly || props.busy}
+                            onChange={event => updateCard(ci, { evidence: event.target.value })}
+                            className="resize-none text-xs"
+                          />
+                          {citedPage != null && <p className="text-[11px] italic text-muted-foreground">Source: page {citedPage}</p>}
+                          <MediaPicker
+                            mediaUrl={card.mediaUrl}
+                            mediaKind={card.mediaKind}
+                            disabled={props.readOnly || props.busy}
+                            onChange={(nextUrl, nextKind) => updateCard(ci, { mediaUrl: nextUrl, mediaKind: nextKind })}
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 );
               })()}

@@ -396,7 +396,7 @@ export const generateCourseDescription = createServerFn({ method: "POST" })
     }
   });
 
-const METHOD_IDS = ["illustrated", "video", "steps", "scenario", "quiz", "visual", "activities"] as const;
+const METHOD_IDS = ["illustrated", "video", "steps", "scenario", "quiz", "visual", "activities", "facts"] as const;
 
 /**
  * Per-method content suggestions for a draft lesson — one idea per ticked checkbox, not a full
@@ -432,7 +432,8 @@ export const generateMethodSuggestions = createServerFn({ method: "POST" })
 - steps: an ordered checklist (3 to 8 items) turning the lesson's procedure into actionable steps.
 - scenarios: 1 to 2 concrete, realistic scenario prompts a learner could be asked to resolve, grounded only in the lesson.
 - quiz: one multiple-choice question, 4 options, the correct option's index, and an exact contiguous quote from the lesson supporting the answer.
-- activities: one concrete hands-on practical activity a learner could do.`,
+- activities: one concrete hands-on practical activity a learner could do.
+- facts: 2 to 3 short claim+evidence pairs grounded only in the lesson, each claim a short headline and the evidence a sentence supporting it, for a fact-card layout. Do not claim an image exists.`,
         prompt: JSON.stringify({ title: data.title, lesson: data.sourceText.slice(0, 12000) }),
         output: Output.object({
           schema: methodSuggestionsSchema,

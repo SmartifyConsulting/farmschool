@@ -14,4 +14,9 @@ export const methodSuggestionsSchema = z.object({
     sourceQuote: z.string().max(350),
   }).nullable(),
   activities: z.string().max(300).nullable(),
+  /** 2 to 3 short claim+evidence pairs for a fact-card layout, each with its own image slot the trainer fills in. */
+  facts: z.array(z.object({
+    claim: z.string().max(140),
+    evidence: z.string().max(300),
+  })).max(3).nullable(),
 });

@@ -557,6 +557,7 @@ function Editor() {
     scenarios?: string[];
     quiz?: { question: string; options: string[]; correctIndex: number; sourceQuote: string };
     activities?: string;
+    facts?: { claim: string; evidence: string }[];
   };
   const runGenerateMethodSuggestions = useServerFn(generateMethodSuggestions);
   const [methodSuggestions, setMethodSuggestions] = useState<Record<number, MethodSuggestions>>({});
@@ -584,6 +585,7 @@ function Editor() {
         ...(result.scenarios != null ? { scenarios: result.scenarios } : {}),
         ...(result.quiz != null ? { quiz: result.quiz } : {}),
         ...(result.activities != null ? { activities: result.activities } : {}),
+        ...(result.facts != null ? { facts: result.facts } : {}),
       };
       setMethodSuggestions((p) => ({ ...p, [index]: suggestions }));
       return suggestions;
@@ -1016,6 +1018,12 @@ function Editor() {
       label: "Activities",
       detail: "A hands-on practical activity learners can do",
       icon: Activity,
+    },
+    {
+      id: "facts",
+      label: "Fact cards",
+      detail: "Short claim-and-evidence cards with an image each",
+      icon: LayoutGrid,
     },
   ];
   const recommendMethods = (title: string, body: string) => {

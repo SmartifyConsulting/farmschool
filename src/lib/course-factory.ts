@@ -21,6 +21,8 @@ export type DraftLesson = {
   videoMediaKind?: "image" | "video" | "youtube" | null;
   /** Trainer-authored pause points for the Video format: playback stops at `atSeconds` and shows `note` until the viewer clicks Continue. Ignored for a still image. */
   videoInteractions?: { atSeconds: number; note: string }[] | null;
+  /** AI-suggested claim+evidence pairs for the Fact cards format, each with its own trainer-supplied image slot (review stage only — not yet carried through to the published lesson). */
+  factCards?: { claim: string; evidence: string; mediaUrl?: string | null; mediaKind?: "image" | "video" | null }[] | null;
   /** Training format this lesson imports as; defaults to "slide" when unset. */
   kind?: "reading" | "slide" | "video" | "scorm";
   /** When kind is "slide": each slide's own list of assigned formats (delivery mediums and/or training methods), in drop order; defaults to three empty slides when unset. */
