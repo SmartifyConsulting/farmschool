@@ -11,6 +11,10 @@ export const courseWizardInput = z.object({
   /** Localizes spelling, regulatory references and examples (e.g. "South Africa"); left blank, the AI defaults to generic, non-jurisdiction-specific guidance. */
   country: z.string().trim().max(100).optional(),
   tone: z.enum(["Plain and practical", "Formal", "Conversational and encouraging"]),
+  /** Target word count per lesson — the page-density/granularity control. */
+  lessonLength: z.enum(["Concise", "Standard", "In-depth"]),
+  /** Lets the model use OpenAI's built-in web search for current facts beyond the topic prompt; off by default so output stays limited to the model's own training knowledge. */
+  webSearch: z.boolean().optional(),
   /** Free-text instruction on what must stay word-for-word from the trainer's own material vs. what to leave out — prevents the AI from diluting or hallucinating compliance-critical details. */
   sourceFidelity: z.string().trim().max(500).optional(),
   /** Weighted assessment criteria the final quiz should be checked against; "must pass" criteria are called out as non-negotiable in the generation instructions. */
@@ -43,7 +47,7 @@ export type CourseWizardDraft = z.infer<typeof courseWizardDraft>;
 export const wizardDefaults: CourseWizardInput = {
   topic: "", audience: "Smallholder farmers", lessonCount: 4,
   level: "Beginner", language: "English", passMark: DEFAULT_PASS_MARK,
-  tone: "Plain and practical",
+  tone: "Plain and practical", lessonLength: "Standard",
 };
 
 export function validateGeneratedCourse(value: unknown, input: CourseWizardInput): CourseWizardDraft {
