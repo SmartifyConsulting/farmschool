@@ -26,6 +26,7 @@ export function CourseWizard() {
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState("");
+  const [log, setLog] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [reviewed, setReviewed] = useState(false);
   const [extracting, setExtracting] = useState(false);
@@ -62,7 +63,7 @@ export function CourseWizard() {
     const parsed = courseWizardInput.safeParse({ ...input, rubricCriteria: input.rubricCriteria?.filter(c => c.criterion.trim()) });
     if (!parsed.success) { setError("Enter a topic of at least 10 characters and complete the course settings."); return; }
     setBusy(true); setError(""); setDraft(null); setReviewed(false);
-    setProgress("Connecting to OpenAI…");
+    setProgress("Connecting to OpenAI…"); setLog(["Connecting to OpenAI…"]);
     const abort = new AbortController(); controller.current = abort;
     let received = false;
     try {
@@ -74,15 +75,18 @@ export function CourseWizard() {
       });
       if (!response.ok) { const failure = await response.json().catch(() => null); throw new Error(failure?.message ?? "The course could not be generated. Please try again later."); }
       await readWizardEvents(response, event => {
-        if (event.type === "progress") setProgress(event.message);
+        if (event.type === "progress") { setProgress(event.message); setLog(prev => prev.at(-1) === event.message ? prev : [...prev, event.message]); }
         if (event.type === "error") throw new Error(event.message);
-        if (event.type === "draft") { received = true; courseId.current = crypto.randomUUID(); setDraft(event.draft); }
+        if (event.type === "draft") {
+          received = true; courseId.current = crypto.randomUUID(); setDraft(event.draft);
+          setLog(prev => [...prev, "Draft ready — review it below.", ...(event.draft.notes ?? [])]);
+        }
       });
       if (!received && !abort.signal.aborted) throw new Error("The draft was interrupted. Nothing has been saved.");
     } catch (err) {
-      if (!abort.signal.aborted) setError(friendlyError(err, "The draft could not be generated. Nothing has been saved."));
-      else setProgress("Generation stopped. Nothing has been saved.");
-      if (!abort.signal.aborted) setProgress("");
+      if (!abort.signal.aborted) { const message = friendlyError(err, "The draft could not be generated. Nothing has been saved."); setError(message); setLog(prev => [...prev, message]); }
+      else setLog(prev => [...prev, "Generation stopped. Nothing has been saved."]);
+      setProgress("");
     } finally { if (controller.current === abort) { setBusy(false); controller.current = null; } }
   };
   const saveDraft = async () => {
@@ -151,8 +155,10 @@ export function CourseWizard() {
             {(input.rubricCriteria?.length ?? 0) < 6 && <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => setInput({ ...input, rubricCriteria: [...(input.rubricCriteria ?? []), { criterion: "", mustPass: false }] })}>Add criterion</Button>}
           </div>
           <div className="flex flex-wrap items-center gap-3">{busy ? <Button type="button" variant="outline" onClick={() => controller.current?.abort()}><Square className="h-4 w-4" />Stop</Button> : <Button type="submit"><Sparkles className="h-4 w-4" />Generate course draft</Button>}<span role="status" className="flex items-center gap-2 text-sm text-muted-foreground">{busy && <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" />}{progress}</span></div>
+          {log.length > 1 && <ol className="space-y-1 rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">{log.slice(0, -1).map((line, i) => <li key={i}>{line}</li>)}</ol>}
         </form>}
         {draft && <div className="space-y-5">
+          {log.length > 0 && <details className="rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground"><summary className="cursor-pointer font-medium text-foreground">What the AI did ({log.length})</summary><ol className="mt-2 space-y-1">{log.map((line, i) => <li key={i}>{line}</li>)}</ol></details>}
           <div className="space-y-2"><Label htmlFor="wizard-title">Course title</Label><Input id="wizard-title" value={draft.title} maxLength={120} disabled={saving} onChange={e => setDraft({ ...draft, title: e.target.value })} /></div>
           <div className="space-y-2"><Label htmlFor="wizard-description">Description</Label><Textarea id="wizard-description" value={draft.description} maxLength={4000} disabled={saving} onChange={e => setDraft({ ...draft, description: e.target.value })} /></div>
           <div className="flex flex-wrap gap-3 text-sm text-muted-foreground"><span>{draft.category}</span><span>{input.level}</span><span>{draft.lessons.length} readings + final quiz</span><span>{input.passMark}% pass mark</span><span title="A rough reading-time estimate, not a measured figure">~{formatMinutes(draft.lessons.reduce((total, l) => total + estimateMinutes(l.body), 0) + estimateMinutes("", draft.quiz.questions.length))} total</span></div>

@@ -10,6 +10,7 @@ import { FormattedLesson } from "@/components/FormattedLesson";
 import { reflowText, type DraftCourse, type DraftLesson, type IllustrationGuide } from "@/lib/course-factory";
 import { buildLessonScormZip } from "@/lib/scorm-export";
 import { generateLessonImage } from "@/lib/studio-ai.functions";
+import { searchYouTubeVideo } from "@/lib/youtube-search.functions";
 import { InteractiveVideoPlayer } from "@/components/InteractiveVideoPlayer";
 import { HeroBanner } from "@/components/HeroBanner";
 import { estimateMinutes, formatMinutes } from "@/lib/duration-estimate";
@@ -237,6 +238,8 @@ export function ManualLessonReview(props: Props) {
   const [approvedSlides, setApprovedSlides] = useState<Record<number, Set<number>>>({});
   const [generatingImageFor, setGeneratingImageFor] = useState<string | null>(null);
   const runGenerateImage = useServerFn(generateLessonImage);
+  const runSearchYouTube = useServerFn(searchYouTubeVideo);
+  const [searchingVideoFor, setSearchingVideoFor] = useState<number | null>(null);
   const [previewingSlides, setPreviewingSlides] = useState<Record<number, Set<number>>>({});
   const [justMovedSlide, setJustMovedSlide] = useState<Record<number, number>>({});
   const [videoUrlDraft, setVideoUrlDraft] = useState<Record<number, string>>({});
@@ -769,13 +772,32 @@ export function ManualLessonReview(props: Props) {
                   props.onEdit(index, { ...lesson, videoMediaUrl: draft, videoMediaKind: "youtube" });
                   setVideoUrlDraft(p => ({ ...p, [index]: "" }));
                 };
+                const searchAndEmbed = async (query: string) => {
+                  setSearchingVideoFor(index);
+                  try {
+                    const result = await runSearchYouTube({ data: { query } });
+                    if (!result.configured) { toast.error("YouTube search isn't set up yet — paste a link instead, or ask an admin to add YOUTUBE_DATA_API_KEY."); return; }
+                    if (!result.videoId) { toast.error("No matching video found for that search — try another, or paste a link."); return; }
+                    props.onEdit(index, { ...lesson, videoMediaUrl: `https://youtu.be/${result.videoId}`, videoMediaKind: "youtube" });
+                    toast.success(result.title ? `Embedded "${result.title}" — check it's relevant before publishing.` : "Video embedded — check it's relevant before publishing.");
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : "Could not search YouTube.");
+                  } finally {
+                    setSearchingVideoFor(null);
+                  }
+                };
                 return (
                   <div className="max-w-xs space-y-1">
                     <p className="text-xs font-medium text-muted-foreground">Video</p>
                     {videoQueries.length ? (
                       <ul className="space-y-1">
                         {videoQueries.map((query, qi) => (
-                          <li key={qi}>
+                          <li key={qi} className="flex items-center gap-1.5">
+                            {!props.readOnly && !props.busy && (
+                              <Button size="sm" variant="outline" className="h-6 px-1.5 text-[11px]" disabled={searchingVideoFor === index} onClick={() => void searchAndEmbed(query)}>
+                                {searchingVideoFor === index ? <Loader2 className="h-3 w-3 animate-spin" /> : <Video className="h-3 w-3" />}{lesson.videoMediaUrl ? "Replace" : "Use this"}
+                              </Button>
+                            )}
                             <a
                               href={`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`}
                               target="_blank"

@@ -43,6 +43,8 @@ export const courseWizardDraft = z.object({
       correctIndex: z.number().int().min(0).max(3),
     })).min(3).max(8),
   }),
+  /** Transparent self-reported notes — what the AI assumed, what it couldn't verify, and what it deliberately left out — shown to the trainer alongside the draft, not hidden in it. */
+  notes: z.array(z.string().min(1).max(300)).max(5).optional(),
 });
 
 export type CourseWizardInput = z.infer<typeof courseWizardInput>;
