@@ -19,6 +19,8 @@ export type DraftLesson = {
   videoMediaUrl?: string | null;
   /** "youtube" means videoMediaUrl is a youtube.com/youtu.be URL to embed, not an uploaded file. */
   videoMediaKind?: "image" | "video" | "youtube" | null;
+  /** Trainer-authored pause points for the Video format: playback stops at `atSeconds` and shows `note` until the viewer clicks Continue. Ignored for a still image. */
+  videoInteractions?: { atSeconds: number; note: string }[] | null;
   /** Training format this lesson imports as; defaults to "slide" when unset. */
   kind?: "reading" | "slide" | "video" | "scorm";
   /** When kind is "slide": each slide's own list of assigned formats (delivery mediums and/or training methods), in drop order; defaults to three empty slides when unset. */

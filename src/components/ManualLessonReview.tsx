@@ -10,6 +10,7 @@ import { FormattedLesson } from "@/components/FormattedLesson";
 import { reflowText, type DraftCourse, type DraftLesson, type IllustrationGuide } from "@/lib/course-factory";
 import { buildLessonScormZip } from "@/lib/scorm-export";
 import { generateLessonImage } from "@/lib/studio-ai.functions";
+import { InteractiveVideoPlayer } from "@/components/InteractiveVideoPlayer";
 
 export type LessonPagePreview = {
   lessonTitle: string;
@@ -64,6 +65,20 @@ function extractYouTubeId(url: string): string | null {
   } catch {
     return null;
   }
+}
+/** Formats whole seconds as mm:ss for the pause-point time field. */
+function formatSeconds(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = Math.floor(totalSeconds % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+/** Parses an mm:ss or plain-seconds time field; null if it isn't a recognizable time. */
+function parseTimeInput(value: string): number | null {
+  const trimmed = value.trim();
+  if (/^\d+$/.test(trimmed)) return Number(trimmed);
+  const match = /^(\d+):([0-5]?\d)$/.exec(trimmed);
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
 }
 function resizeSlides(current: FormatRef[][], count: number): FormatRef[][] {
   const next = Math.max(1, Math.min(MAX_SLIDES, count));
@@ -447,6 +462,11 @@ export function ManualLessonReview(props: Props) {
                 ? DELIVERY_FORMAT_ITEMS.find(d => d.id === ref.id)
                 : props.methods.find(m => m.id === ref.id);
             const updateSlides = (next: FormatRef[][]) => props.onEdit(index, { ...lesson, kind: "slide", slideKinds: next });
+            /** Every format the trainer has switched on anywhere in this lesson — placeable onto any slide, including a slide that already holds other formats. */
+            const placeableRefs: FormatRef[] = [
+              ...trainingFormatMethods.filter(m => selected.includes(m.id)).map(m => ({ source: "method" as const, id: m.id })),
+              ...DELIVERY_FORMAT_ITEMS.filter(d => (d.id === "scorm" ? !!lesson.scormFile : (lesson.enabledFormats ?? []).includes(d.id))).map(d => ({ source: "delivery" as const, id: d.id })),
+            ];
             const promptScormUpload = () => {
               const input = document.createElement("input");
               input.type = "file";
@@ -579,6 +599,27 @@ export function ManualLessonReview(props: Props) {
                         ) : (
                           <FileText className="mt-3 h-7 w-7 text-muted-foreground" />
                         )}
+                        {!props.readOnly && !props.busy && (() => {
+                          const available = placeableRefs.filter(ref => !formats.some(f => f.source === ref.source && f.id === ref.id));
+                          if (!available.length) return null;
+                          return (
+                            <select
+                              aria-label={`Add a format to slide ${si + 1}`}
+                              value=""
+                              onChange={event => {
+                                const [source, id] = event.target.value.split(":") as [FormatRef["source"], string];
+                                if (!source || !id) return;
+                                updateSlides(slides.map((f, i) => (i === si ? [...f, { source, id }] : f)));
+                              }}
+                              className="mt-1 w-full rounded border border-dashed border-border bg-background px-1 text-[11px] text-muted-foreground"
+                            >
+                              <option value="">+ Add format…</option>
+                              {available.map(ref => (
+                                <option key={`${ref.source}:${ref.id}`} value={`${ref.source}:${ref.id}`}>{formatMeta(ref)?.label ?? ref.id}</option>
+                              ))}
+                            </select>
+                          );
+                        })()}
                       </div>
                     ))}
                     {!props.readOnly && !props.busy && slides.length < MAX_SLIDES && (
@@ -713,14 +754,7 @@ export function ManualLessonReview(props: Props) {
                     {isYouTube ? (
                       youTubeId ? (
                         <div className="space-y-1">
-                          <div className="aspect-video overflow-hidden rounded bg-muted">
-                            <iframe
-                              src={`https://www.youtube.com/embed/${youTubeId}`}
-                              title="Embedded video"
-                              className="h-full w-full"
-                              allowFullScreen
-                            />
-                          </div>
+                          <InteractiveVideoPlayer kind="youtube" src={youTubeId} interactions={lesson.videoInteractions ?? []} />
                           {!props.readOnly && !props.busy && (
                             <Button size="sm" variant="ghost" onClick={() => props.onEdit(index, { ...lesson, videoMediaUrl: null, videoMediaKind: null })}>
                               <X className="h-3.5 w-3.5" />Remove video
@@ -732,11 +766,15 @@ export function ManualLessonReview(props: Props) {
                       )
                     ) : (
                       <>
-                        {lesson.videoMediaUrl && (
-                          <div className="overflow-hidden rounded bg-muted">
-                            {lesson.videoMediaKind === "video" ? <video src={lesson.videoMediaUrl} className="h-24 w-full object-cover" muted /> : <img src={lesson.videoMediaUrl} alt="" className="h-24 w-full object-cover" />}
+                        {lesson.videoMediaUrl && lesson.videoMediaKind === "video" ? (
+                          <div className="space-y-1">
+                            <InteractiveVideoPlayer kind="file" src={lesson.videoMediaUrl} interactions={lesson.videoInteractions ?? []} />
                           </div>
-                        )}
+                        ) : lesson.videoMediaUrl ? (
+                          <div className="overflow-hidden rounded bg-muted">
+                            <img src={lesson.videoMediaUrl} alt="" className="h-24 w-full object-cover" />
+                          </div>
+                        ) : null}
                         {!lesson.videoMediaUrl && !props.readOnly && !props.busy && (
                           <div className="flex items-center gap-1">
                             <Input
@@ -758,6 +796,44 @@ export function ManualLessonReview(props: Props) {
                         />
                       </>
                     )}
+                    {(isYouTube ? youTubeId : lesson.videoMediaKind === "video") && (() => {
+                      const points = [...(lesson.videoInteractions ?? [])].sort((a, b) => a.atSeconds - b.atSeconds);
+                      const updatePoints = (next: { atSeconds: number; note: string }[]) => props.onEdit(index, { ...lesson, videoInteractions: next });
+                      return (
+                        <fieldset disabled={props.readOnly || props.busy} className="space-y-1.5 border-t border-border pt-2">
+                          <legend className="text-xs font-medium text-muted-foreground">Pause points — video stops here until the learner clicks Continue</legend>
+                          {points.map((point, pi) => (
+                            <div key={pi} className="flex items-start gap-1">
+                              <Input
+                                aria-label={`Pause point ${pi + 1} time`}
+                                defaultValue={formatSeconds(point.atSeconds)}
+                                onBlur={event => {
+                                  const seconds = parseTimeInput(event.target.value);
+                                  if (seconds == null) { toast.error("Use mm:ss, e.g. 1:30."); event.target.value = formatSeconds(point.atSeconds); return; }
+                                  updatePoints(points.map((p, i) => (i === pi ? { ...p, atSeconds: seconds } : p)));
+                                }}
+                                className="h-8 w-16 text-xs"
+                              />
+                              <Textarea
+                                aria-label={`Pause point ${pi + 1} note`}
+                                rows={1}
+                                value={point.note}
+                                onChange={event => updatePoints(points.map((p, i) => (i === pi ? { ...p, note: event.target.value } : p)))}
+                                className="min-h-0 resize-none text-xs"
+                              />
+                              <Button size="icon" variant="ghost" aria-label={`Remove pause point ${pi + 1}`} onClick={() => updatePoints(points.filter((_, i) => i !== pi))}>
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          ))}
+                          {!props.readOnly && !props.busy && (
+                            <Button size="sm" variant="outline" onClick={() => updatePoints([...points, { atSeconds: 0, note: "" }])}>
+                              <Plus className="h-3.5 w-3.5" />Add pause point
+                            </Button>
+                          )}
+                        </fieldset>
+                      );
+                    })()}
                   </div>
                 );
               })()}
