@@ -36,6 +36,7 @@ import {
   splitLessonSource,
 } from "@/lib/lesson-slides";
 import { courseThemeStyle, type ColorOverrides } from "@/lib/course-theme";
+import { courseFontStyle, googleFontHrefs, type FontSettings } from "@/lib/course-font";
 import { createCheckoutSession } from "@/lib/checkout.functions";
 import { formatPrice, hasActiveEnrollment, isPaidCourse } from "@/lib/marketplace";
 import { CourseSubmissions } from "@/components/CourseSubmissions";
@@ -80,7 +81,7 @@ function ClassPage() {
         await supabase
           .from("studio_courses")
           .select(
-            "id, title, description, category, level, cover_url, published, author_id, theme, price_cents, currency, prerequisite_course_id, ai_tutor_name, ai_tutor_instructions, ai_tutor_welcome, ai_tutor_icon_url, pronunciation_dictionary, color_overrides",
+            "id, title, description, category, level, cover_url, published, author_id, theme, price_cents, currency, prerequisite_course_id, ai_tutor_name, ai_tutor_instructions, ai_tutor_welcome, ai_tutor_icon_url, pronunciation_dictionary, color_overrides, font_settings",
           )
           .eq("id", id)
           .maybeSingle()
@@ -92,6 +93,7 @@ function ClassPage() {
         ai_tutor_welcome: string | null; ai_tutor_icon_url: string | null;
         pronunciation_dictionary: { term: string; replacement: string }[] | null;
         color_overrides: ColorOverrides | null;
+        font_settings: FontSettings | null;
       } | null,
   });
   const { data: lessons } = useQuery({
@@ -239,20 +241,24 @@ function ClassPage() {
   };
 
   const colors = course.color_overrides ?? {};
+  const fonts = course.font_settings ?? {};
+  const fontHrefs = googleFontHrefs(fonts);
   return (
     <div
       style={{
         ...(courseThemeStyle(course.theme, colors) as CSSProperties),
+        ...(courseFontStyle(fonts) as CSSProperties),
         color: colors.pageText || undefined,
         backgroundColor: colors.pageBg || undefined,
       }}
     >
-      {(colors.link || colors.headingColor) && (
-        <style>{`
-          ${colors.link ? `.course-colors a { color: ${colors.link}; }` : ""}
-          ${colors.headingColor ? `.course-colors h2, .course-colors h3, .course-colors h4 { color: ${colors.headingColor}; }` : ""}
-        `}</style>
-      )}
+      {fontHrefs.map((href) => <link key={href} rel="stylesheet" href={href} />)}
+      <style>{`
+        ${colors.link ? `.course-colors a { color: ${colors.link}; }` : ""}
+        ${colors.headingColor ? `.course-colors h2, .course-colors h3, .course-colors h4 { color: ${colors.headingColor}; }` : ""}
+        .course-colors { font-family: var(--course-body-font, inherit); font-size: var(--course-body-size, inherit); line-height: var(--course-line-height, inherit); }
+        .course-colors h1, .course-colors h2, .course-colors h3, .course-colors h4 { font-family: var(--course-heading-font, var(--course-body-font, inherit)); }
+      `}</style>
       <div className="course-colors">
       <Phone>
         <Header />

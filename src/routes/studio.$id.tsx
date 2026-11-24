@@ -69,6 +69,7 @@ import {
   type CourseThemeName,
   type ColorOverrides,
 } from "@/lib/course-theme";
+import { COURSE_FONTS, COURSE_FONT_NAMES, DENSITY_SCALE, type FontSettings } from "@/lib/course-font";
 import { FormattedLesson } from "@/components/FormattedLesson";
 import { SlideEditor } from "@/components/SlideEditor";
 import { QuizQuestionEditor } from "@/components/QuizQuestionEditor";
@@ -1099,6 +1100,7 @@ function Editor() {
     ai_tutor_icon_url: "",
     pronunciation_dictionary: [] as { term: string; replacement: string }[],
     color_overrides: {} as ColorOverrides,
+    font_settings: {} as FontSettings,
   });
   const [contentTone, setContentTone] = useState<PolishTone>("professional");
   const [topicLoading, setTopicLoading] = useState(false);
@@ -1134,6 +1136,7 @@ function Editor() {
         ai_tutor_icon_url?: string | null;
         pronunciation_dictionary?: { term: string; replacement: string }[] | null;
         color_overrides?: ColorOverrides | null;
+        font_settings?: FontSettings | null;
       };
       setForm({
         title: course.title,
@@ -1157,6 +1160,7 @@ function Editor() {
         ai_tutor_icon_url: designCourse.ai_tutor_icon_url ?? "",
         pronunciation_dictionary: designCourse.pronunciation_dictionary ?? [],
         color_overrides: designCourse.color_overrides ?? {},
+        font_settings: designCourse.font_settings ?? {},
       });
     }
   }, [course]);
@@ -2465,6 +2469,39 @@ function Editor() {
                             </div>
                           </div>
                         ))}
+                      </fieldset>
+                      <fieldset className="space-y-2 rounded-md border border-border p-3">
+                        <legend className="px-1 text-xs font-semibold text-muted-foreground">Font</legend>
+                        <label className="block space-y-1 text-xs font-medium">
+                          Heading font
+                          <select
+                            value={form.font_settings.headingFont ?? ""}
+                            onChange={(e) => setForm({ ...form, font_settings: e.target.value ? { ...form.font_settings, headingFont: e.target.value } : (() => { const { headingFont: _drop, ...rest } = form.font_settings; return rest; })() })}
+                            className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+                          >
+                            {COURSE_FONT_NAMES.map((n) => <option key={n} value={n === "system" ? "" : n}>{COURSE_FONTS[n].label}</option>)}
+                          </select>
+                        </label>
+                        <label className="block space-y-1 text-xs font-medium">
+                          Body font
+                          <select
+                            value={form.font_settings.bodyFont ?? ""}
+                            onChange={(e) => setForm({ ...form, font_settings: e.target.value ? { ...form.font_settings, bodyFont: e.target.value } : (() => { const { bodyFont: _drop, ...rest } = form.font_settings; return rest; })() })}
+                            className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+                          >
+                            {COURSE_FONT_NAMES.map((n) => <option key={n} value={n === "system" ? "" : n}>{COURSE_FONTS[n].label}</option>)}
+                          </select>
+                        </label>
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium">Text size</p>
+                          <div className="flex gap-1">
+                            {(Object.keys(DENSITY_SCALE) as (keyof typeof DENSITY_SCALE)[]).map((d) => (
+                              <Button key={d} type="button" size="sm" variant={(form.font_settings.density || "standard") === d ? "default" : "outline"} onClick={() => setForm({ ...form, font_settings: { ...form.font_settings, density: d } })}>
+                                {DENSITY_SCALE[d].label}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
                       </fieldset>
                     </div>
                     <div className="min-w-0 space-y-3">
