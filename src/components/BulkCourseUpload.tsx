@@ -7,9 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useLearning";
 import { friendlyError } from "@/lib/friendly-error";
 import { mimeFor, parseManifest, findEntryFile } from "@/lib/scorm";
-import { extractDocument } from "@/lib/document-extraction";
-import { buildCourseDraft } from "@/lib/course-factory";
-import { STUDIO_CATEGORIES } from "@/lib/studio";
 
 const MAX_ZIP = 200 * 1024 * 1024;
 const DOCUMENT_EXTENSIONS = [".pdf", ".docx", ".txt", ".md"];
@@ -28,7 +25,6 @@ export function BulkCourseUpload({ requireAdmin = true }: { requireAdmin?: boole
   const [dragging, setDragging] = useState(false);
   const [queue, setQueue] = useState<FileStatus[]>([]);
   const [busy, setBusy] = useState(false);
-  const [mode, setMode] = useState<"content" | "course">("content");
   const { data: admin } = useQuery({
     queryKey: ["admin-course-upload", user?.id],
     enabled: !!user && requireAdmin,
@@ -95,42 +91,6 @@ export function BulkCourseUpload({ requireAdmin = true }: { requireAdmin?: boole
     return { state: "done", message: `"${file.name}" saved to your content library.` };
   };
 
-  /** Converts the file into a complete, unpublished draft course with lessons — a different outcome
-   * from uploadAsContent, chosen via the mode toggle rather than always happening. */
-  const uploadAsCourse = async (file: File): Promise<Partial<FileStatus>> => {
-    const pages = await extractDocument(file);
-    const title = file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim() || "Untitled course";
-    const draft = buildCourseDraft(title, pages);
-    if (!draft.lessons.length) return { state: "error", message: "No readable lesson content was found in this file." };
-    const { data: course, error: courseError } = await supabase
-      .from("studio_courses")
-      .insert({ title: draft.title.slice(0, 120), description: "", category: STUDIO_CATEGORIES[0] ?? "Farm Management", level: "Beginner", author_id: user!.id })
-      .select("id")
-      .single();
-    if (courseError || !course) throw courseError ?? new Error("Could not create the course.");
-    const moduleIds = new Map<string, string>();
-    const moduleNames = [...new Set(draft.lessons.map((l) => l.module).filter((m): m is string => !!m))];
-    if (moduleNames.length) {
-      const { data: created, error: moduleError } = await supabase
-        .from("studio_modules" as never)
-        .insert(moduleNames.map((t, i) => ({ course_id: course.id, title: t, position: i })) as never)
-        .select("id, title");
-      if (moduleError) throw moduleError;
-      for (const m of (created ?? []) as unknown as { id: string; title: string }[]) moduleIds.set(m.title, m.id);
-    }
-    const rows = draft.lessons.map((lesson, i) => ({
-      course_id: course.id,
-      module_id: lesson.module ? (moduleIds.get(lesson.module) ?? null) : null,
-      kind: "reading",
-      position: i,
-      title: lesson.title,
-      body: `${lesson.body}\n\nSource: ${lesson.sourceRefs.map((r) => `${r.sourceId}, page ${r.page}`).join("; ")}\nReview required before publishing.`.slice(0, 20000),
-    }));
-    const { error: lessonsError } = await supabase.from("studio_lessons").insert(rows);
-    if (lessonsError) throw lessonsError;
-    return { state: "done", message: `"${draft.title}" created as an unpublished draft with ${draft.lessons.length} lesson(s) — review before publishing.`, href: `/studio/${course.id}` };
-  };
-
   const processFiles = async (files: File[]) => {
     if (!user || busy) return;
     const items: FileStatus[] = files.map((f) => ({
@@ -148,7 +108,7 @@ export function BulkCourseUpload({ requireAdmin = true }: { requireAdmin?: boole
       setQueue((prev) => prev.map((q) => (q === items[i] ? { ...q, state: "working", message: isScorm ? "Reading package…" : "Reading document…" } : q)));
       try {
         if (unsupported.includes(file)) throw new Error("Unsupported file type — use .pdf, .docx, .txt, .md or a SCORM .zip.");
-        const result = isScorm ? await uploadScorm(file) : mode === "course" ? await uploadAsCourse(file) : await uploadAsContent(file);
+        const result = isScorm ? await uploadScorm(file) : await uploadAsContent(file);
         setQueue((prev) => prev.map((q) => (q === items[i] ? { ...q, ...result } as FileStatus : q)));
       } catch (e) {
         setQueue((prev) => prev.map((q) => (q === items[i] ? { ...q, state: "error", message: friendlyError(e, "Could not process this file.") } : q)));
@@ -166,20 +126,9 @@ export function BulkCourseUpload({ requireAdmin = true }: { requireAdmin?: boole
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Drop as many PDFs, Word documents or SCORM .zip packages as you like — SCORM .zips always upload as
-        packages. For PDFs and documents, choose what they become below.
+        Drop as many PDFs, Word documents or SCORM .zip packages as you like. SCORM .zips upload as
+        packages; PDFs and documents are saved as reusable content files you can attach to a lesson later.
       </p>
-      <fieldset disabled={busy} className="flex flex-wrap items-center gap-4 rounded-lg border border-border p-3 text-sm">
-        <legend className="px-1 text-xs font-medium text-muted-foreground">PDFs and documents become…</legend>
-        <label className="flex items-center gap-2">
-          <input type="radio" name="bulk-mode" checked={mode === "content"} onChange={() => setMode("content")} className="accent-primary" />
-          <span>Completed Content <span className="text-xs text-muted-foreground">— a reusable file, attach it to a lesson later</span></span>
-        </label>
-        <label className="flex items-center gap-2">
-          <input type="radio" name="bulk-mode" checked={mode === "course"} onChange={() => setMode("course")} className="accent-primary" />
-          <span>Completed Course <span className="text-xs text-muted-foreground">— a full unpublished draft course with lessons</span></span>
-        </label>
-      </fieldset>
       <div
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
