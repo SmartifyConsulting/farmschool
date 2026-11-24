@@ -70,6 +70,7 @@ import {
   type ColorOverrides,
 } from "@/lib/course-theme";
 import { COURSE_FONTS, COURSE_FONT_NAMES, DENSITY_SCALE, type FontSettings } from "@/lib/course-font";
+import type { LayoutSettings } from "@/lib/course-layout";
 import { FormattedLesson } from "@/components/FormattedLesson";
 import { SlideEditor } from "@/components/SlideEditor";
 import { QuizQuestionEditor } from "@/components/QuizQuestionEditor";
@@ -1101,6 +1102,7 @@ function Editor() {
     pronunciation_dictionary: [] as { term: string; replacement: string }[],
     color_overrides: {} as ColorOverrides,
     font_settings: {} as FontSettings,
+    layout_settings: {} as LayoutSettings,
   });
   const [contentTone, setContentTone] = useState<PolishTone>("professional");
   const [topicLoading, setTopicLoading] = useState(false);
@@ -1137,6 +1139,7 @@ function Editor() {
         pronunciation_dictionary?: { term: string; replacement: string }[] | null;
         color_overrides?: ColorOverrides | null;
         font_settings?: FontSettings | null;
+        layout_settings?: LayoutSettings | null;
       };
       setForm({
         title: course.title,
@@ -1161,6 +1164,7 @@ function Editor() {
         pronunciation_dictionary: designCourse.pronunciation_dictionary ?? [],
         color_overrides: designCourse.color_overrides ?? {},
         font_settings: designCourse.font_settings ?? {},
+        layout_settings: designCourse.layout_settings ?? {},
       });
     }
   }, [course]);
@@ -2502,6 +2506,50 @@ function Editor() {
                             ))}
                           </div>
                         </div>
+                      </fieldset>
+                      <fieldset className="space-y-2 rounded-md border border-border p-3">
+                        <legend className="px-1 text-xs font-semibold text-muted-foreground">Layout</legend>
+                        <label className="flex items-center justify-between gap-2 text-xs font-medium">
+                          Full width
+                          <input
+                            type="checkbox"
+                            checked={!!form.layout_settings.fullWidth}
+                            onChange={(e) => setForm({ ...form, layout_settings: { ...form.layout_settings, fullWidth: e.target.checked } })}
+                            className="accent-primary"
+                          />
+                        </label>
+                        <label className="block space-y-1 text-xs font-medium">
+                          Content width: {form.layout_settings.contentWidth ?? 100}%
+                          <input
+                            type="range"
+                            min={30}
+                            max={100}
+                            value={form.layout_settings.contentWidth ?? 100}
+                            onChange={(e) => setForm({ ...form, layout_settings: { ...form.layout_settings, contentWidth: Number(e.target.value) } })}
+                            className="w-full"
+                          />
+                        </label>
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium">Align content</p>
+                          <div className="flex gap-1">
+                            {(["left", "center", "right"] as const).map((a) => (
+                              <Button key={a} type="button" size="sm" variant={(form.layout_settings.align || "center") === a ? "default" : "outline"} onClick={() => setForm({ ...form, layout_settings: { ...form.layout_settings, align: a } })}>
+                                {a[0]!.toUpperCase() + a.slice(1)}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                        <label className="block space-y-1 text-xs font-medium">
+                          Spacing (px): {form.layout_settings.spacing ?? 0}
+                          <input
+                            type="range"
+                            min={0}
+                            max={80}
+                            value={form.layout_settings.spacing ?? 0}
+                            onChange={(e) => setForm({ ...form, layout_settings: { ...form.layout_settings, spacing: Number(e.target.value) } })}
+                            className="w-full"
+                          />
+                        </label>
                       </fieldset>
                     </div>
                     <div className="min-w-0 space-y-3">

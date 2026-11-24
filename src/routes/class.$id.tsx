@@ -37,6 +37,7 @@ import {
 } from "@/lib/lesson-slides";
 import { courseThemeStyle, type ColorOverrides } from "@/lib/course-theme";
 import { courseFontStyle, googleFontHrefs, type FontSettings } from "@/lib/course-font";
+import { courseLayoutStyle, type LayoutSettings } from "@/lib/course-layout";
 import { createCheckoutSession } from "@/lib/checkout.functions";
 import { formatPrice, hasActiveEnrollment, isPaidCourse } from "@/lib/marketplace";
 import { CourseSubmissions } from "@/components/CourseSubmissions";
@@ -81,7 +82,7 @@ function ClassPage() {
         await supabase
           .from("studio_courses")
           .select(
-            "id, title, description, category, level, cover_url, published, author_id, theme, price_cents, currency, prerequisite_course_id, ai_tutor_name, ai_tutor_instructions, ai_tutor_welcome, ai_tutor_icon_url, pronunciation_dictionary, color_overrides, font_settings",
+            "id, title, description, category, level, cover_url, published, author_id, theme, price_cents, currency, prerequisite_course_id, ai_tutor_name, ai_tutor_instructions, ai_tutor_welcome, ai_tutor_icon_url, pronunciation_dictionary, color_overrides, font_settings, layout_settings",
           )
           .eq("id", id)
           .maybeSingle()
@@ -94,6 +95,7 @@ function ClassPage() {
         pronunciation_dictionary: { term: string; replacement: string }[] | null;
         color_overrides: ColorOverrides | null;
         font_settings: FontSettings | null;
+        layout_settings: LayoutSettings | null;
       } | null,
   });
   const { data: lessons } = useQuery({
@@ -262,7 +264,8 @@ function ClassPage() {
       <div className="course-colors">
       <Phone>
         <Header />
-        <Sheet>
+        <Sheet wide={!!course.layout_settings?.fullWidth}>
+        <div style={courseLayoutStyle(course.layout_settings)}>
           <div className="mb-4">
             <CanvasHeading eyebrow={`${course.category} · ${course.level}`} title={course.title} {...(colors.titleColor ? { titleColor: colors.titleColor } : {})} />
           </div>
@@ -495,6 +498,7 @@ function ClassPage() {
               )}
             </aside>
           </div>
+        </div>
         </Sheet>
       </Phone>
       </div>
