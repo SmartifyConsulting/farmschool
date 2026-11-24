@@ -159,8 +159,9 @@ function ApiConnections() {
     <Phone>
       <Header />
       <Sheet wide>
-        <div className="mx-auto max-w-4xl space-y-4 pb-10">
-          <CanvasHeading eyebrow="Admin" title="API connections" />
+        <CanvasHeading eyebrow="Admin" title="API connections" />
+        <AdminNav />
+        <div className="mx-auto max-w-4xl space-y-4 pb-10 pt-4">
           {!ready ? (
             <p className="text-sm text-muted-foreground">Checking permissions…</p>
           ) : !user ? (
@@ -169,7 +170,6 @@ function ApiConnections() {
             <p className="text-sm text-muted-foreground">Administrator access required.</p>
           ) : (
             <>
-              <AdminNav />
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm text-muted-foreground">Only the short prefix is ever shown — full keys can't be retrieved after creation.</p>
                 <div className="flex gap-2">

@@ -225,8 +225,9 @@ function AdminUsers() {
     <Phone>
       <Header />
       <Sheet wide>
-        <div className="mx-auto max-w-4xl space-y-4 pb-10">
-          <CanvasHeading eyebrow="Admin" title="Users" />
+        <CanvasHeading eyebrow="Admin" title="Users" />
+        <AdminNav />
+        <div className="mx-auto max-w-4xl space-y-4 pb-10 pt-4">
           {!ready || checking ? (
             <p className="text-sm text-muted-foreground">Checking permissions…</p>
           ) : !user ? (
@@ -240,7 +241,6 @@ function AdminUsers() {
             <p className="text-sm text-muted-foreground">Administrator access required.</p>
           ) : (
             <>
-              <AdminNav />
               <p className="text-sm text-muted-foreground">
                 Manage learner and trainer profiles. Creating a brand-new sign-in isn't available
                 here — invite people to sign up directly; this screen manages their profile once

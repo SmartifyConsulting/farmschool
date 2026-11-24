@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useLearning";
 import { toast } from "sonner";
+import { BulkCourseUpload } from "@/components/BulkCourseUpload";
 
 export const Route = createFileRoute("/studio/content-library")({
   head: () => ({ meta: [{ title: "Content Library — Plusticity" }] }),
@@ -107,6 +108,12 @@ function ContentLibraryPage() {
             <p className="mb-4 text-sm text-muted-foreground">
               Every file you've uploaded into any course's Content Library, in one place.
             </p>
+            <details className="mb-5 rounded-lg border border-border p-3">
+              <summary className="cursor-pointer text-sm font-medium">Upload PDFs, documents or SCORM packages</summary>
+              <div className="mt-3">
+                <BulkCourseUpload requireAdmin={false} />
+              </div>
+            </details>
             <Input
               aria-label="Search files"
               placeholder="Search by file name or course"

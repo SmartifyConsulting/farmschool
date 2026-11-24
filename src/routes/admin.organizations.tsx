@@ -50,8 +50,9 @@ function AdminOrganizations() {
     <Phone>
       <Header />
       <Sheet wide>
-        <div className="mx-auto max-w-4xl space-y-4 pb-10">
-          <CanvasHeading eyebrow="Admin" title="Organizations" />
+        <CanvasHeading eyebrow="Admin" title="Organizations" />
+        <AdminNav />
+        <div className="mx-auto max-w-4xl space-y-4 pb-10 pt-4">
           {!ready ? (
             <p className="text-sm text-muted-foreground">Checking permissions…</p>
           ) : !user ? (
@@ -65,7 +66,6 @@ function AdminOrganizations() {
             <p className="text-sm text-muted-foreground">Administrator access required.</p>
           ) : (
             <>
-              <AdminNav />
               <p className="text-sm text-muted-foreground">
                 Set a parent organization to give that parent's managers read-only visibility into this
                 org's cohort and progress reports. It grants no management rights in the child org, and

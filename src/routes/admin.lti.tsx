@@ -149,8 +149,9 @@ function LtiPlatforms() {
     <Phone>
       <Header />
       <Sheet wide>
-        <div className="mx-auto max-w-4xl space-y-4 pb-10">
-          <CanvasHeading eyebrow="Admin" title="LTI platforms" />
+        <CanvasHeading eyebrow="Admin" title="LTI platforms" />
+        <AdminNav />
+        <div className="mx-auto max-w-4xl space-y-4 pb-10 pt-4">
           {!ready ? (
             <p className="text-sm text-muted-foreground">Checking permissions…</p>
           ) : !user ? (
@@ -164,7 +165,6 @@ function LtiPlatforms() {
             <p className="text-sm text-muted-foreground">Administrator access required.</p>
           ) : (
             <>
-              <AdminNav />
               <p className="text-sm text-muted-foreground">
                 A launch only signs in an existing Plusticity account matched by email — it never creates
                 one. Register the platform's login/token/JWKS endpoints here, then point the platform's

@@ -46,15 +46,17 @@ function AdminHome() {
         ) : !isAdmin ? (
           <p className="py-8 text-sm text-muted-foreground">Administrator access required.</p>
         ) : (
-          <div className="max-w-3xl space-y-4 pb-10">
-            <p className="text-sm text-muted-foreground">
-              Manage course creators and learning platform connections.
-            </p>
+          <>
             <AdminNav />
-            <p className="text-xs text-muted-foreground">
-              Creator approvals are required before new courses can be published.
-            </p>
-          </div>
+            <div className="max-w-3xl space-y-4 pb-10 pt-4">
+              <p className="text-sm text-muted-foreground">
+                Manage course creators and learning platform connections.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Creator approvals are required before new courses can be published.
+              </p>
+            </div>
+          </>
         )}
       </Sheet>
     </Phone>

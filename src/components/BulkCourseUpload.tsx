@@ -18,8 +18,10 @@ type FileStatus = { name: string; kind: "scorm" | "document"; state: "pending" |
 
 /** Drag-and-drop bulk intake: any mix of PDFs/Word docs and SCORM .zip packages, auto-detected by
  * extension — no manual "provider"/type selection needed. Each document becomes its own unpublished
- * draft course; each .zip is uploaded as a SCORM package. Used on the admin Library page. */
-export function BulkCourseUpload() {
+ * draft course; each .zip is uploaded as a SCORM package. Used on the admin Library page (gated to
+ * admins) and the trainer's own Content Library page (requireAdmin=false — any signed-in trainer,
+ * since everything here is already scoped to their own author_id). */
+export function BulkCourseUpload({ requireAdmin = true }: { requireAdmin?: boolean }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -29,13 +31,14 @@ export function BulkCourseUpload() {
   const [mode, setMode] = useState<"content" | "course">("content");
   const { data: admin } = useQuery({
     queryKey: ["admin-course-upload", user?.id],
-    enabled: !!user,
+    enabled: !!user && requireAdmin,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("has_role", { _user_id: user!.id, _role: "admin" });
       if (error) throw error;
       return !!data;
     },
   });
+  const authorized = requireAdmin ? admin : !!user;
 
   const uploadScorm = async (file: File): Promise<Partial<FileStatus>> => {
     if (file.size > MAX_ZIP) return { state: "error", message: "Package must be smaller than 200MB." };
@@ -154,10 +157,11 @@ export function BulkCourseUpload() {
     setBusy(false);
     qc.invalidateQueries({ queryKey: ["scorm-packages"] });
     qc.invalidateQueries({ queryKey: ["content-library-files"] });
+    qc.invalidateQueries({ queryKey: ["content-library-all"] });
     qc.invalidateQueries({ queryKey: ["studio-mine"] });
   };
 
-  if (!admin) return <p className="text-sm text-muted-foreground">Admin access required.</p>;
+  if (!authorized) return <p className="text-sm text-muted-foreground">{requireAdmin ? "Admin access required." : "Sign in to upload."}</p>;
 
   return (
     <div className="space-y-4">
