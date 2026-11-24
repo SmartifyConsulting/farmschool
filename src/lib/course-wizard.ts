@@ -8,6 +8,16 @@ export const courseWizardInput = z.object({
   level: z.enum(["Beginner", "Intermediate", "Advanced"]),
   language: z.string().trim().min(2).max(60),
   passMark: z.number().refine(n => PASS_MARKS.some(mark => mark === n)),
+  /** Localizes spelling, regulatory references and examples (e.g. "South Africa"); left blank, the AI defaults to generic, non-jurisdiction-specific guidance. */
+  country: z.string().trim().max(100).optional(),
+  tone: z.enum(["Plain and practical", "Formal", "Conversational and encouraging"]),
+  /** Free-text instruction on what must stay word-for-word from the trainer's own material vs. what to leave out — prevents the AI from diluting or hallucinating compliance-critical details. */
+  sourceFidelity: z.string().trim().max(500).optional(),
+  /** Weighted assessment criteria the final quiz should be checked against; "must pass" criteria are called out as non-negotiable in the generation instructions. */
+  rubricCriteria: z.array(z.object({
+    criterion: z.string().trim().min(1).max(200),
+    mustPass: z.boolean(),
+  })).max(6).optional(),
 });
 
 export const courseWizardDraft = z.object({
@@ -33,6 +43,7 @@ export type CourseWizardDraft = z.infer<typeof courseWizardDraft>;
 export const wizardDefaults: CourseWizardInput = {
   topic: "", audience: "Smallholder farmers", lessonCount: 4,
   level: "Beginner", language: "English", passMark: DEFAULT_PASS_MARK,
+  tone: "Plain and practical",
 };
 
 export function validateGeneratedCourse(value: unknown, input: CourseWizardInput): CourseWizardDraft {

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Check, LoaderCircle, Save, Sparkles, Square } from "lucide-react";
+import { BookOpen, Check, LoaderCircle, Save, Sparkles, Square, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,7 +41,7 @@ export function CourseWizard() {
     setOpen(false); setDraft(null); setReviewed(false); setError("");
   };
   const generate = async () => {
-    const parsed = courseWizardInput.safeParse(input);
+    const parsed = courseWizardInput.safeParse({ ...input, rubricCriteria: input.rubricCriteria?.filter(c => c.criterion.trim()) });
     if (!parsed.success) { setError("Enter a topic of at least 10 characters and complete the course settings."); return; }
     setBusy(true); setError(""); setDraft(null); setReviewed(false);
     setProgress("Connecting to OpenAI…");
@@ -95,6 +95,20 @@ export function CourseWizard() {
             <div className="space-y-2"><Label htmlFor="wizard-level">Level</Label><Select value={input.level} onValueChange={level => setInput({ ...input, level: level as CourseWizardInput["level"] })} disabled={busy}><SelectTrigger id="wizard-level"><SelectValue /></SelectTrigger><SelectContent>{["Beginner", "Intermediate", "Advanced"].map(level => <SelectItem key={level} value={level}>{level}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-2"><Label htmlFor="wizard-count">Reading lessons</Label><Input id="wizard-count" type="number" min={2} max={8} value={input.lessonCount} onChange={e => setInput({ ...input, lessonCount: Number(e.target.value) })} disabled={busy} /></div>
             <div className="space-y-2"><Label htmlFor="wizard-pass">Final quiz pass mark</Label><Select value={String(input.passMark)} onValueChange={n => setInput({ ...input, passMark: Number(n) })} disabled={busy}><SelectTrigger id="wizard-pass"><SelectValue /></SelectTrigger><SelectContent>{PASS_MARKS.map(mark => <SelectItem key={mark} value={String(mark)}>{mark}%</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-2"><Label htmlFor="wizard-country">Country / region (optional)</Label><Input id="wizard-country" placeholder="e.g. South Africa" value={input.country ?? ""} onChange={e => setInput({ ...input, country: e.target.value })} maxLength={100} disabled={busy} /></div>
+            <div className="space-y-2"><Label htmlFor="wizard-tone">Tone of voice</Label><Select value={input.tone} onValueChange={tone => setInput({ ...input, tone: tone as CourseWizardInput["tone"] })} disabled={busy}><SelectTrigger id="wizard-tone"><SelectValue /></SelectTrigger><SelectContent>{["Plain and practical", "Formal", "Conversational and encouraging"].map(tone => <SelectItem key={tone} value={tone}>{tone}</SelectItem>)}</SelectContent></Select></div>
+          </div>
+          <div className="space-y-2"><Label htmlFor="wizard-fidelity">Keep word-for-word / leave out (optional)</Label><Textarea id="wizard-fidelity" placeholder={'e.g. "Keep every number, deadline and pass mark exactly as given. Leave out the 2019 pricing section."'} value={input.sourceFidelity ?? ""} onChange={e => setInput({ ...input, sourceFidelity: e.target.value })} maxLength={500} rows={2} disabled={busy} /></div>
+          <div className="space-y-2">
+            <Label>Assessment criteria (optional)</Label>
+            {(input.rubricCriteria ?? []).map((item, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Input aria-label={`Criterion ${i + 1}`} value={item.criterion} maxLength={200} disabled={busy} onChange={e => setInput({ ...input, rubricCriteria: (input.rubricCriteria ?? []).map((c, ci) => ci === i ? { ...c, criterion: e.target.value } : c) })} />
+                <Label className="flex shrink-0 items-center gap-1.5 text-xs font-normal"><input type="checkbox" checked={item.mustPass} disabled={busy} onChange={e => setInput({ ...input, rubricCriteria: (input.rubricCriteria ?? []).map((c, ci) => ci === i ? { ...c, mustPass: e.target.checked } : c) })} className="accent-primary" />Must-pass</Label>
+                <Button type="button" size="icon" variant="ghost" aria-label={`Remove criterion ${i + 1}`} disabled={busy} onClick={() => setInput({ ...input, rubricCriteria: (input.rubricCriteria ?? []).filter((_, ci) => ci !== i) })}><X className="h-3.5 w-3.5" /></Button>
+              </div>
+            ))}
+            {(input.rubricCriteria?.length ?? 0) < 6 && <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => setInput({ ...input, rubricCriteria: [...(input.rubricCriteria ?? []), { criterion: "", mustPass: false }] })}>Add criterion</Button>}
           </div>
           <div className="flex flex-wrap items-center gap-3">{busy ? <Button type="button" variant="outline" onClick={() => controller.current?.abort()}><Square className="h-4 w-4" />Stop</Button> : <Button type="submit"><Sparkles className="h-4 w-4" />Generate course draft</Button>}<span role="status" className="flex items-center gap-2 text-sm text-muted-foreground">{busy && <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" />}{progress}</span></div>
         </form>}
