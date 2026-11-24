@@ -448,7 +448,7 @@ type Screen = string;
 
 function Editor() {
   const { id } = Route.useParams();
-  const [screen, setScreen] = useState<Screen>("overview");
+  const [screen, setScreen] = useState<Screen>("import");
   const [designTab, setDesignTab] = useState<"auto" | "manual">("auto");
   const [selectedLesson, setSelectedLesson] = useState<string | null>(null);
   const [changeNote, setChangeNote] = useState("");
@@ -1091,6 +1091,10 @@ function Editor() {
     value_proposition: "",
     outcomes_timeline: "",
     illustration_guide: DEFAULT_ILLUSTRATION_GUIDE as IllustrationGuide,
+    ai_tutor_name: "",
+    ai_tutor_instructions: "",
+    ai_tutor_welcome: "",
+    ai_tutor_icon_url: "",
   });
   const [contentTone, setContentTone] = useState<PolishTone>("professional");
   const [topicLoading, setTopicLoading] = useState(false);
@@ -1118,7 +1122,13 @@ function Editor() {
   useEffect(() => {
     if (course) {
       // Older generated schemas omit this optional course-design metadata.
-      const designCourse = course as typeof course & { illustration_guide?: Partial<IllustrationGuide> | null };
+      const designCourse = course as typeof course & {
+        illustration_guide?: Partial<IllustrationGuide> | null;
+        ai_tutor_name?: string | null;
+        ai_tutor_instructions?: string | null;
+        ai_tutor_welcome?: string | null;
+        ai_tutor_icon_url?: string | null;
+      };
       setForm({
         title: course.title,
         description: course.description,
@@ -1135,6 +1145,10 @@ function Editor() {
           style: designCourse.illustration_guide?.style || DEFAULT_ILLUSTRATION_GUIDE.style,
           characters: designCourse.illustration_guide?.characters ?? [],
         },
+        ai_tutor_name: designCourse.ai_tutor_name ?? "",
+        ai_tutor_instructions: designCourse.ai_tutor_instructions ?? "",
+        ai_tutor_welcome: designCourse.ai_tutor_welcome ?? "",
+        ai_tutor_icon_url: designCourse.ai_tutor_icon_url ?? "",
       });
     }
   }, [course]);
@@ -2344,6 +2358,47 @@ function Editor() {
                           />
                         </div>
                       </label>
+                      <fieldset className="space-y-2 rounded-md border border-border p-3">
+                        <legend className="px-1 text-xs font-semibold text-muted-foreground">AI Tutor</legend>
+                        <label className="block space-y-1 text-xs font-medium">
+                          Name
+                          <Input
+                            value={form.ai_tutor_name}
+                            onChange={(e) => setForm({ ...form, ai_tutor_name: e.target.value })}
+                            placeholder={`AI ${courseIndustry(form.category) === "Agriculture" ? form.category : form.category.split(" / ").slice(1).join(" / ")} Advisor`}
+                            maxLength={100}
+                          />
+                        </label>
+                        <label className="block space-y-1 text-xs font-medium">
+                          Welcome message
+                          <Textarea
+                            value={form.ai_tutor_welcome}
+                            onChange={(e) => setForm({ ...form, ai_tutor_welcome: e.target.value })}
+                            placeholder="Shown as the tutor's first message, before the learner asks anything"
+                            rows={autoRows(form.ai_tutor_welcome, 2)}
+                            maxLength={500}
+                            className="resize-none"
+                          />
+                        </label>
+                        <label className="block space-y-1 text-xs font-medium">
+                          Custom instructions
+                          <Textarea
+                            value={form.ai_tutor_instructions}
+                            onChange={(e) => setForm({ ...form, ai_tutor_instructions: e.target.value })}
+                            placeholder="A tone or persona for the tutor to follow, within the existing safety rules"
+                            rows={autoRows(form.ai_tutor_instructions, 2)}
+                            maxLength={500}
+                            className="resize-none"
+                          />
+                        </label>
+                        <label className="block space-y-1 text-xs font-medium">
+                          Icon
+                          <CoverImageInput
+                            value={form.ai_tutor_icon_url}
+                            onChange={(url) => setForm({ ...form, ai_tutor_icon_url: url })}
+                          />
+                        </label>
+                      </fieldset>
                     </div>
                     <div className="min-w-0 space-y-3">
                       <div>

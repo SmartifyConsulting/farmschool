@@ -14,13 +14,14 @@ export const askLessonTutor = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator(input)
   .handler(async ({ data, context }) => {
-    const { data: course } = await context.supabase
+    const { data: course } = (await context.supabase
       .from("studio_courses")
-      .select("id")
+      .select("id, ai_tutor_instructions")
       .eq("id", data.courseId)
       .eq("published", true)
-      .maybeSingle();
+      .maybeSingle()) as unknown as { data: { id: string; ai_tutor_instructions: string | null } | null };
     if (!course) return { error: "This course is not available." } as const;
+    const customInstructions = course.ai_tutor_instructions ?? undefined;
     // Never read quiz questions or the private answer key.
     const { data: lesson } = await context.supabase
       .from("studio_lessons")
@@ -57,6 +58,7 @@ export const askLessonTutor = createServerFn({ method: "POST" })
           source,
           data.question,
           data.followUpTo,
+          customInstructions,
         ),
       } as const;
     } catch {

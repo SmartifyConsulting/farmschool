@@ -22,6 +22,8 @@ export function LessonTutor({
   title,
   signedIn,
   advisorName,
+  welcomeMessage,
+  iconUrl,
 }: {
   courseId: string;
   lessonId: string;
@@ -29,6 +31,10 @@ export function LessonTutor({
   signedIn: boolean;
   /** A course-branded name (e.g. "AI Beekeeping Advisor") shown on the floating trigger and sheet title, instead of a generic "Ask about this lesson" label. */
   advisorName: string;
+  /** Trainer-authored first message shown before the learner asks anything, instead of the generic placeholder hint. */
+  welcomeMessage?: string;
+  /** Trainer-uploaded icon shown on the floating trigger and sheet header instead of the generic chat icon. */
+  iconUrl?: string;
 }) {
   const ask = useServerFn(askLessonTutor);
   const [question, setQuestion] = useState("");
@@ -70,12 +76,15 @@ export function LessonTutor({
           title={advisorName}
           className="fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full p-0 shadow-lg sm:bottom-6"
         >
-          <MessageCircle className="h-5 w-5" />
+          {iconUrl ? <img src={iconUrl} alt="" className="h-full w-full rounded-full object-cover" /> : <MessageCircle className="h-5 w-5" />}
         </Button>
       </SheetTrigger>
       <SheetContent className="flex w-full max-w-md flex-col sm:max-w-md">
         <SheetHeader className="pr-7">
-          <SheetTitle>{advisorName}</SheetTitle>
+          <SheetTitle className="flex items-center gap-2">
+            {iconUrl && <img src={iconUrl} alt="" className="h-6 w-6 rounded-full object-cover" />}
+            {advisorName}
+          </SheetTitle>
           <SheetDescription>
             Currently on: {title} · Uses this lesson’s written material.
           </SheetDescription>
@@ -92,8 +101,8 @@ export function LessonTutor({
               aria-label="Lesson tutor conversation"
             >
               {!turns.length && (
-                <p className="text-sm text-muted-foreground">
-                  Ask for a simpler explanation or a hint about a concept in the lesson.
+                <p className="whitespace-pre-wrap rounded-xl bg-muted p-3 text-sm text-muted-foreground">
+                  {welcomeMessage?.trim() || "Ask for a simpler explanation or a hint about a concept in the lesson."}
                 </p>
               )}
               {turns.map((turn, index) => (

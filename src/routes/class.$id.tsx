@@ -80,11 +80,17 @@ function ClassPage() {
         await supabase
           .from("studio_courses")
           .select(
-            "id, title, description, category, level, cover_url, published, author_id, theme, price_cents, currency, prerequisite_course_id",
+            "id, title, description, category, level, cover_url, published, author_id, theme, price_cents, currency, prerequisite_course_id, ai_tutor_name, ai_tutor_instructions, ai_tutor_welcome, ai_tutor_icon_url",
           )
           .eq("id", id)
           .maybeSingle()
-      ).data,
+      ).data as unknown as {
+        id: string; title: string; description: string; category: string; level: string;
+        cover_url: string | null; published: boolean; author_id: string; theme: string;
+        price_cents: number; currency: string; prerequisite_course_id: string | null;
+        ai_tutor_name: string | null; ai_tutor_instructions: string | null;
+        ai_tutor_welcome: string | null; ai_tutor_icon_url: string | null;
+      } | null,
   });
   const { data: lessons } = useQuery({
     queryKey: ["class-lessons", id],
@@ -327,7 +333,9 @@ function ClassPage() {
                       lessonId={lesson.id}
                       title={lesson.title}
                       signedIn={!!user}
-                      advisorName={`AI ${course.category} Advisor`}
+                      advisorName={course.ai_tutor_name?.trim() || `AI ${course.category} Advisor`}
+                      {...(course.ai_tutor_welcome ? { welcomeMessage: course.ai_tutor_welcome } : {})}
+                      {...(course.ai_tutor_icon_url ? { iconUrl: course.ai_tutor_icon_url } : {})}
                     />
                   )}
                   {lesson.kind === "scorm" && (
