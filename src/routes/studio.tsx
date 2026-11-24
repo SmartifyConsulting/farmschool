@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { PenSquare, Package, Library, ZoomIn, ZoomOut } from "lucide-react";
+import { PenSquare, Package, Library, ZoomIn, ZoomOut, ClipboardCheck } from "lucide-react";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,6 +106,12 @@ function Studio() {
                 <Link to="/studio/content-library">
                   <Library className="h-4 w-4" />
                   Content Library
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to="/studio/grading-queue">
+                  <ClipboardCheck className="h-4 w-4" />
+                  Grading Queue
                 </Link>
               </Button>
             </div>

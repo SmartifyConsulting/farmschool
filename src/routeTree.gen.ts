@@ -62,6 +62,7 @@ import { Route as ScormIndexRouteImport } from './routes/scorm.index'
 import { Route as ScormIdRouteImport } from './routes/scorm.$id'
 import { Route as StudioIdRouteImport } from './routes/studio.$id'
 import { Route as StudioContentLibraryRouteImport } from './routes/studio.content-library'
+import { Route as StudioGradingQueueRouteImport } from './routes/studio.grading-queue'
 import { Route as StudioReportsRouteImport } from './routes/studio.reports'
 import { Route as VerifyTokenRouteImport } from './routes/verify.$token'
 import { Route as ApiCronCohortRemindersRouteImport } from './routes/api/cron/cohort-reminders'
@@ -342,6 +343,11 @@ const StudioContentLibraryRoute = StudioContentLibraryRouteImport.update({
   path: '/content-library',
   getParentRoute: () => StudioRoute,
 } as any)
+const StudioGradingQueueRoute = StudioGradingQueueRouteImport.update({
+  id: '/grading-queue',
+  path: '/grading-queue',
+  getParentRoute: () => StudioRoute,
+} as any)
 const StudioReportsRoute = StudioReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
@@ -461,6 +467,7 @@ export interface FileRoutesByFullPath {
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
   '/studio/content-library': typeof StudioContentLibraryRoute
+  '/studio/grading-queue': typeof StudioGradingQueueRoute
   '/studio/reports': typeof StudioReportsRoute
   '/verify/$token': typeof VerifyTokenRoute
   '/admin/': typeof AdminIndexRoute
@@ -529,6 +536,7 @@ export interface FileRoutesByTo {
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
   '/studio/content-library': typeof StudioContentLibraryRoute
+  '/studio/grading-queue': typeof StudioGradingQueueRoute
   '/studio/reports': typeof StudioReportsRoute
   '/verify/$token': typeof VerifyTokenRoute
   '/admin': typeof AdminIndexRoute
@@ -598,6 +606,7 @@ export interface FileRoutesById {
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
   '/studio/content-library': typeof StudioContentLibraryRoute
+  '/studio/grading-queue': typeof StudioGradingQueueRoute
   '/studio/reports': typeof StudioReportsRoute
   '/verify/$token': typeof VerifyTokenRoute
   '/admin/': typeof AdminIndexRoute
@@ -668,6 +677,7 @@ export interface FileRouteTypes {
     | '/scorm/$id'
     | '/studio/$id'
     | '/studio/content-library'
+    | '/studio/grading-queue'
     | '/studio/reports'
     | '/verify/$token'
     | '/admin/'
@@ -736,6 +746,7 @@ export interface FileRouteTypes {
     | '/scorm/$id'
     | '/studio/$id'
     | '/studio/content-library'
+    | '/studio/grading-queue'
     | '/studio/reports'
     | '/verify/$token'
     | '/admin'
@@ -804,6 +815,7 @@ export interface FileRouteTypes {
     | '/scorm/$id'
     | '/studio/$id'
     | '/studio/content-library'
+    | '/studio/grading-queue'
     | '/studio/reports'
     | '/verify/$token'
     | '/admin/'
@@ -1255,6 +1267,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudioContentLibraryRouteImport
       parentRoute: typeof StudioRoute
     }
+    '/studio/grading-queue': {
+      id: '/studio/grading-queue'
+      path: '/grading-queue'
+      fullPath: '/studio/grading-queue'
+      preLoaderRoute: typeof StudioGradingQueueRouteImport
+      parentRoute: typeof StudioRoute
+    }
     '/studio/reports': {
       id: '/studio/reports'
       path: '/reports'
@@ -1390,12 +1409,14 @@ const OrganizationsRouteWithChildren = OrganizationsRoute._addFileChildren(
 interface StudioRouteChildren {
   StudioIdRoute: typeof StudioIdRoute
   StudioContentLibraryRoute: typeof StudioContentLibraryRoute
+  StudioGradingQueueRoute: typeof StudioGradingQueueRoute
   StudioReportsRoute: typeof StudioReportsRoute
 }
 
 const StudioRouteChildren: StudioRouteChildren = {
   StudioIdRoute: StudioIdRoute,
   StudioContentLibraryRoute: StudioContentLibraryRoute,
+  StudioGradingQueueRoute: StudioGradingQueueRoute,
   StudioReportsRoute: StudioReportsRoute,
 }
 
