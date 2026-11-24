@@ -61,6 +61,7 @@ import { Route as ProgramsIdRouteImport } from './routes/programs.$id'
 import { Route as ScormIndexRouteImport } from './routes/scorm.index'
 import { Route as ScormIdRouteImport } from './routes/scorm.$id'
 import { Route as StudioIdRouteImport } from './routes/studio.$id'
+import { Route as StudioContentLibraryRouteImport } from './routes/studio.content-library'
 import { Route as StudioReportsRouteImport } from './routes/studio.reports'
 import { Route as VerifyTokenRouteImport } from './routes/verify.$token'
 import { Route as ApiCronCohortRemindersRouteImport } from './routes/api/cron/cohort-reminders'
@@ -336,6 +337,11 @@ const StudioIdRoute = StudioIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => StudioRoute,
 } as any)
+const StudioContentLibraryRoute = StudioContentLibraryRouteImport.update({
+  id: '/content-library',
+  path: '/content-library',
+  getParentRoute: () => StudioRoute,
+} as any)
 const StudioReportsRoute = StudioReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
@@ -454,6 +460,7 @@ export interface FileRoutesByFullPath {
   '/programs/$id': typeof ProgramsIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
+  '/studio/content-library': typeof StudioContentLibraryRoute
   '/studio/reports': typeof StudioReportsRoute
   '/verify/$token': typeof VerifyTokenRoute
   '/admin/': typeof AdminIndexRoute
@@ -521,6 +528,7 @@ export interface FileRoutesByTo {
   '/programs/$id': typeof ProgramsIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
+  '/studio/content-library': typeof StudioContentLibraryRoute
   '/studio/reports': typeof StudioReportsRoute
   '/verify/$token': typeof VerifyTokenRoute
   '/admin': typeof AdminIndexRoute
@@ -589,6 +597,7 @@ export interface FileRoutesById {
   '/programs/$id': typeof ProgramsIdRoute
   '/scorm/$id': typeof ScormIdRoute
   '/studio/$id': typeof StudioIdRoute
+  '/studio/content-library': typeof StudioContentLibraryRoute
   '/studio/reports': typeof StudioReportsRoute
   '/verify/$token': typeof VerifyTokenRoute
   '/admin/': typeof AdminIndexRoute
@@ -658,6 +667,7 @@ export interface FileRouteTypes {
     | '/programs/$id'
     | '/scorm/$id'
     | '/studio/$id'
+    | '/studio/content-library'
     | '/studio/reports'
     | '/verify/$token'
     | '/admin/'
@@ -725,6 +735,7 @@ export interface FileRouteTypes {
     | '/programs/$id'
     | '/scorm/$id'
     | '/studio/$id'
+    | '/studio/content-library'
     | '/studio/reports'
     | '/verify/$token'
     | '/admin'
@@ -792,6 +803,7 @@ export interface FileRouteTypes {
     | '/programs/$id'
     | '/scorm/$id'
     | '/studio/$id'
+    | '/studio/content-library'
     | '/studio/reports'
     | '/verify/$token'
     | '/admin/'
@@ -1236,6 +1248,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudioIdRouteImport
       parentRoute: typeof StudioRoute
     }
+    '/studio/content-library': {
+      id: '/studio/content-library'
+      path: '/content-library'
+      fullPath: '/studio/content-library'
+      preLoaderRoute: typeof StudioContentLibraryRouteImport
+      parentRoute: typeof StudioRoute
+    }
     '/studio/reports': {
       id: '/studio/reports'
       path: '/reports'
@@ -1370,11 +1389,13 @@ const OrganizationsRouteWithChildren = OrganizationsRoute._addFileChildren(
 
 interface StudioRouteChildren {
   StudioIdRoute: typeof StudioIdRoute
+  StudioContentLibraryRoute: typeof StudioContentLibraryRoute
   StudioReportsRoute: typeof StudioReportsRoute
 }
 
 const StudioRouteChildren: StudioRouteChildren = {
   StudioIdRoute: StudioIdRoute,
+  StudioContentLibraryRoute: StudioContentLibraryRoute,
   StudioReportsRoute: StudioReportsRoute,
 }
 

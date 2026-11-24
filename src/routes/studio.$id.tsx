@@ -453,6 +453,18 @@ function Editor() {
   const [changeNote, setChangeNote] = useState("");
   const [reviewingLessons, setReviewingLessons] = useState(false);
   const { user, ready: authReady } = useAuth();
+  const { data: creatorApplication } = useQuery({
+    queryKey: ["creator-application", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("creator_applications" as never)
+        .select("status" as never)
+        .eq("user_id" as never, user!.id)
+        .maybeSingle();
+      return data as unknown as { status: string } | null;
+    },
+  });
   const [factoryStep, setFactoryStep] = useState(0);
   const [outlineOpen, setOutlineOpen] = useState(true);
   const [collapsedOutlineModules, setCollapsedOutlineModules] = useState<Set<string>>(new Set());
@@ -1815,6 +1827,15 @@ function Editor() {
   const readyToPublish = readiness.every((item) => item.ready);
 
   const setPublished = async (published: boolean) => {
+    if (published && creatorApplication?.status !== "approved") {
+      toast.error(
+        creatorApplication
+          ? `Your creator application is ${creatorApplication.status} — publishing opens once it's approved.`
+          : "Apply for creator approval before publishing a course.",
+      );
+      void nav({ to: "/creator-application" });
+      return;
+    }
     if (published && !readyToPublish) {
       toast.error("Complete the publishing checklist and save your course details first.");
       return;

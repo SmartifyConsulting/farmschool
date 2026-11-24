@@ -1,17 +1,23 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { PenSquare } from "lucide-react";
+import { PenSquare, Package, Library, ZoomIn, ZoomOut } from "lucide-react";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useLearning";
 import { CourseWizard } from "@/components/CourseWizard";
 import { StudioCourseActions } from "@/components/StudioCourseActions";
 import { CourseViewToggle, useCourseView } from "@/components/CourseViewToggle";
-import { QuestionBank } from "@/components/QuestionBank";
-import { CourseArchiveRestore } from "@/components/CourseArchiveTools";
+
+/** Card-grid column counts from most spacious (fewest, largest cards) to most compact (most, smallest cards per row). */
+const CARD_GRID_CLASSES = [
+  "md:grid-cols-2 xl:grid-cols-3",
+  "md:grid-cols-3 xl:grid-cols-4",
+  "md:grid-cols-4 xl:grid-cols-5",
+  "md:grid-cols-5 xl:grid-cols-6",
+];
 
 export const Route = createFileRoute("/studio")({
   head: () => ({
@@ -40,6 +46,15 @@ function Studio() {
   const { user, ready } = useAuth();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
+  const [density, setDensity] = useState(() => {
+    try { return Math.min(CARD_GRID_CLASSES.length - 1, Math.max(0, Number(localStorage.getItem("plusticity:studio:density")) || 0)); }
+    catch { return 0; }
+  });
+  const changeDensity = (next: number) => {
+    const clamped = Math.min(CARD_GRID_CLASSES.length - 1, Math.max(0, next));
+    setDensity(clamped);
+    try { localStorage.setItem("plusticity:studio:density", String(clamped)); } catch { /* ignore */ }
+  };
   const qc = useQueryClient();
   const { data } = useQuery({
     queryKey: ["studio-mine", user?.id],
@@ -77,28 +92,23 @@ function Studio() {
         ) : (
           <>
             <p className="mb-4 text-sm text-muted-foreground">
-              Create and edit courses here. To publish a new course, first{" "}
-              <Link to="/creator-application" className="font-semibold text-primary">
-                apply for creator approval
-              </Link>
-              . Have a SCORM package?{" "}
-              <Link to="/scorm" className="font-semibold text-primary">
-                Upload SCORM courses
-              </Link>
-              .
+              Create and edit courses here.
             </p>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
               {user && <CourseWizard />}
+              <Button asChild variant="outline">
+                <Link to="/scorm">
+                  <Package className="h-4 w-4" />
+                  Upload SCORM
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to="/studio/content-library">
+                  <Library className="h-4 w-4" />
+                  Content Library
+                </Link>
+              </Button>
             </div>
-            <details className="mt-4 rounded-xl border border-border/60 bg-muted/30 p-3 text-sm">
-              <summary className="cursor-pointer font-medium text-muted-foreground">
-                Advanced tools (question bank, restore from archive)
-              </summary>
-              <div className="mt-3 space-y-3">
-                <QuestionBank />
-                {user && <CourseArchiveRestore />}
-              </div>
-            </details>
             <div className="mt-5 flex flex-wrap gap-3">
               <Input
                 aria-label="Search your courses"
@@ -119,8 +129,18 @@ function Studio() {
                 <option value="revision">Revisions</option>
               </select>
               <CourseViewToggle view={view} onChange={setView} />
+              {view === "cards" && (
+                <div role="group" aria-label="Card size" className="flex shrink-0 items-center gap-1">
+                  <Button type="button" size="icon" variant="outline" aria-label="Zoom out — more, smaller cards" disabled={density === CARD_GRID_CLASSES.length - 1} onClick={() => changeDensity(density + 1)}>
+                    <ZoomOut className="size-4" />
+                  </Button>
+                  <Button type="button" size="icon" variant="outline" aria-label="Zoom in — fewer, larger cards" disabled={density === 0} onClick={() => changeDensity(density - 1)}>
+                    <ZoomIn className="size-4" />
+                  </Button>
+                </div>
+              )}
             </div>
-            <div className={view === "cards" ? "mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3" : "mt-5 grid gap-3"}>
+            <div className={view === "cards" ? `mt-5 grid gap-3 ${CARD_GRID_CLASSES[density]}` : "mt-5 grid gap-3"}>
               {(data ?? [])
                 .filter(
                   (c) =>
