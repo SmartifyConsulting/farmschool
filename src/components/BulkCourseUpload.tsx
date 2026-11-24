@@ -1,9 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { CheckCircle2, FileArchive, FileText, Loader2, Upload, XCircle } from "lucide-react";
-import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
-import { AdminNav } from "@/components/AdminNav";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useLearning";
@@ -12,23 +10,16 @@ import { mimeFor, parseManifest, findEntryFile } from "@/lib/scorm";
 import { extractDocument } from "@/lib/document-extraction";
 import { buildCourseDraft } from "@/lib/course-factory";
 import { STUDIO_CATEGORIES } from "@/lib/studio";
-import { pageMeta } from "@/lib/page-meta";
-
-export const Route = createFileRoute("/admin/course-upload")({
-  component: AdminCourseUpload,
-  head: () =>
-    pageMeta(
-      "Bulk course upload — Plusticity",
-      "Drag and drop PDFs, documents or SCORM packages to create courses in bulk.",
-    ),
-});
 
 const MAX_ZIP = 200 * 1024 * 1024;
 const DOCUMENT_EXTENSIONS = [".pdf", ".docx", ".txt", ".md"];
 
 type FileStatus = { name: string; kind: "scorm" | "document"; state: "pending" | "working" | "done" | "error"; message: string; href?: string };
 
-function AdminCourseUpload() {
+/** Drag-and-drop bulk intake: any mix of PDFs/Word docs and SCORM .zip packages, auto-detected by
+ * extension — no manual "provider"/type selection needed. Each document becomes its own unpublished
+ * draft course; each .zip is uploaded as a SCORM package. Used on the admin Library page. */
+export function BulkCourseUpload() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -142,77 +133,66 @@ function AdminCourseUpload() {
     qc.invalidateQueries({ queryKey: ["studio-mine"] });
   };
 
+  if (!admin) return <p className="text-sm text-muted-foreground">Admin access required.</p>;
+
   return (
-    <Phone>
-      <Header />
-      <Sheet wide>
-        <div className="mb-4">
-          <CanvasHeading eyebrow="Admin" title="Bulk course upload" />
-        </div>
-        <AdminNav />
-        {!admin ? (
-          <p className="mt-6 text-sm text-muted-foreground">Admin access required.</p>
-        ) : (
-          <div className="mt-6 space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Drop as many PDFs, Word documents or SCORM .zip packages as you like — each PDF/document becomes a new
-              unpublished draft course, each .zip is uploaded as a SCORM package. The app detects which is which by file type.
-            </p>
-            <div
-              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragging(false);
-                const files = Array.from(e.dataTransfer.files);
-                if (files.length) void processFiles(files);
-              }}
-              className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-10 text-center ${dragging ? "border-primary bg-primary/5" : "border-border"}`}
-            >
-              <Upload className="h-8 w-8 text-muted-foreground" />
-              <p className="text-sm font-medium">Drag and drop files here</p>
-              <p className="text-xs text-muted-foreground">PDF, DOCX, TXT, MD or SCORM .zip — any mix, any number</p>
-              <Button type="button" variant="outline" disabled={busy} onClick={() => inputRef.current?.click()}>Choose files</Button>
-              <input
-                ref={inputRef}
-                type="file"
-                multiple
-                accept=".pdf,.docx,.txt,.md,.zip"
-                className="hidden"
-                onChange={(e) => {
-                  const files = Array.from(e.target.files ?? []);
-                  if (files.length) void processFiles(files);
-                  e.target.value = "";
-                }}
-              />
-            </div>
-            {queue.length > 0 && (
-              <div className="divide-y divide-border rounded-lg border border-border">
-                {queue.map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3">
-                    {item.kind === "scorm" ? <FileArchive className="h-5 w-5 shrink-0 text-muted-foreground" /> : <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{item.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {item.state === "working" ? item.message || "Working…" : item.message}
-                        {item.href && (
-                          <>
-                            {" · "}
-                            <Link to={item.href} className="text-primary hover:underline">Open</Link>
-                          </>
-                        )}
-                      </p>
-                    </div>
-                    {item.state === "working" && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />}
-                    {item.state === "done" && <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />}
-                    {item.state === "error" && <XCircle className="h-4 w-4 shrink-0 text-destructive" />}
-                  </div>
-                ))}
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Drop as many PDFs, Word documents or SCORM .zip packages as you like — each PDF/document becomes a new
+        unpublished draft course, each .zip is uploaded as a SCORM package. The app detects which is which by file type.
+      </p>
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          const files = Array.from(e.dataTransfer.files);
+          if (files.length) void processFiles(files);
+        }}
+        className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-10 text-center ${dragging ? "border-primary bg-primary/5" : "border-border"}`}
+      >
+        <Upload className="h-8 w-8 text-muted-foreground" />
+        <p className="text-sm font-medium">Drag and drop files here</p>
+        <p className="text-xs text-muted-foreground">PDF, DOCX, TXT, MD or SCORM .zip — any mix, any number</p>
+        <Button type="button" variant="outline" disabled={busy} onClick={() => inputRef.current?.click()}>Choose files</Button>
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept=".pdf,.docx,.txt,.md,.zip"
+          className="hidden"
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? []);
+            if (files.length) void processFiles(files);
+            e.target.value = "";
+          }}
+        />
+      </div>
+      {queue.length > 0 && (
+        <div className="divide-y divide-border rounded-lg border border-border">
+          {queue.map((item, i) => (
+            <div key={i} className="flex items-center gap-3 p-3">
+              {item.kind === "scorm" ? <FileArchive className="h-5 w-5 shrink-0 text-muted-foreground" /> : <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{item.name}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {item.state === "working" ? item.message || "Working…" : item.message}
+                  {item.href && (
+                    <>
+                      {" · "}
+                      <Link to={item.href} className="text-primary hover:underline">Open</Link>
+                    </>
+                  )}
+                </p>
               </div>
-            )}
-          </div>
-        )}
-      </Sheet>
-    </Phone>
+              {item.state === "working" && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />}
+              {item.state === "done" && <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />}
+              {item.state === "error" && <XCircle className="h-4 w-4 shrink-0 text-destructive" />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

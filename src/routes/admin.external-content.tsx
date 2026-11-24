@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BulkCourseUpload } from "@/components/BulkCourseUpload";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useAuth } from "@/hooks/useLearning";
 import { supabase } from "@/integrations/supabase/client";
@@ -276,7 +277,11 @@ function ExternalContentAdmin() {
               <TabsTrigger value="library" className="rounded-none border-b-2 border-transparent px-1 pb-2 text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none">Video Library</TabsTrigger>
               <TabsTrigger value="imports" className="rounded-none border-b-2 border-transparent px-1 pb-2 text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none">Imports</TabsTrigger>
               <TabsTrigger value="usage" className="rounded-none border-b-2 border-transparent px-1 pb-2 text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none">Course Usage</TabsTrigger>
+              <TabsTrigger value="manuals" className="rounded-none border-b-2 border-transparent px-1 pb-2 text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none">Bulk Content Upload</TabsTrigger>
             </TabsList>
+            <TabsContent value="manuals" className="space-y-4">
+              <BulkCourseUpload />
+            </TabsContent>
 
             <TabsContent value="providers" className="space-y-4">
               {providers.map((p) => (

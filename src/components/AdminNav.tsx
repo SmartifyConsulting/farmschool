@@ -6,7 +6,6 @@ const SECTIONS = [
   { to: "/admin/programs", label: "Programs" },
   { to: "/admin/grade-moderation", label: "Grade Moderation" },
   { to: "/admin/creators", label: "Creator Approvals" },
-  { to: "/admin/course-upload", label: "Bulk Course Upload" },
   { to: "/admin/external-content", label: "Library" },
   { to: "/admin/api-connections", label: "API Connections" },
   { to: "/admin/lti", label: "LTI Platforms" },

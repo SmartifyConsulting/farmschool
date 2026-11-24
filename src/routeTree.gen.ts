@@ -33,7 +33,6 @@ import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminApiConnectionsRouteImport } from './routes/admin.api-connections'
 import { Route as AdminCohortsRouteImport } from './routes/admin.cohorts'
 import { Route as AdminComplianceRouteImport } from './routes/admin.compliance'
-import { Route as AdminCourseUploadRouteImport } from './routes/admin.course-upload'
 import { Route as AdminCreatorsRouteImport } from './routes/admin.creators'
 import { Route as AdminExternalContentRouteImport } from './routes/admin.external-content'
 import { Route as AdminGradeModerationRouteImport } from './routes/admin.grade-moderation'
@@ -195,11 +194,6 @@ const AdminCohortsRoute = AdminCohortsRouteImport.update({
 const AdminComplianceRoute = AdminComplianceRouteImport.update({
   id: '/admin/compliance',
   path: '/admin/compliance',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminCourseUploadRoute = AdminCourseUploadRouteImport.update({
-  id: '/admin/course-upload',
-  path: '/admin/course-upload',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminCreatorsRoute = AdminCreatorsRouteImport.update({
@@ -439,7 +433,6 @@ export interface FileRoutesByFullPath {
   '/admin/api-connections': typeof AdminApiConnectionsRoute
   '/admin/cohorts': typeof AdminCohortsRoute
   '/admin/compliance': typeof AdminComplianceRoute
-  '/admin/course-upload': typeof AdminCourseUploadRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/grade-moderation': typeof AdminGradeModerationRoute
@@ -508,7 +501,6 @@ export interface FileRoutesByTo {
   '/admin/api-connections': typeof AdminApiConnectionsRoute
   '/admin/cohorts': typeof AdminCohortsRoute
   '/admin/compliance': typeof AdminComplianceRoute
-  '/admin/course-upload': typeof AdminCourseUploadRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/grade-moderation': typeof AdminGradeModerationRoute
@@ -578,7 +570,6 @@ export interface FileRoutesById {
   '/admin/api-connections': typeof AdminApiConnectionsRoute
   '/admin/cohorts': typeof AdminCohortsRoute
   '/admin/compliance': typeof AdminComplianceRoute
-  '/admin/course-upload': typeof AdminCourseUploadRoute
   '/admin/creators': typeof AdminCreatorsRoute
   '/admin/external-content': typeof AdminExternalContentRoute
   '/admin/grade-moderation': typeof AdminGradeModerationRoute
@@ -649,7 +640,6 @@ export interface FileRouteTypes {
     | '/admin/api-connections'
     | '/admin/cohorts'
     | '/admin/compliance'
-    | '/admin/course-upload'
     | '/admin/creators'
     | '/admin/external-content'
     | '/admin/grade-moderation'
@@ -718,7 +708,6 @@ export interface FileRouteTypes {
     | '/admin/api-connections'
     | '/admin/cohorts'
     | '/admin/compliance'
-    | '/admin/course-upload'
     | '/admin/creators'
     | '/admin/external-content'
     | '/admin/grade-moderation'
@@ -787,7 +776,6 @@ export interface FileRouteTypes {
     | '/admin/api-connections'
     | '/admin/cohorts'
     | '/admin/compliance'
-    | '/admin/course-upload'
     | '/admin/creators'
     | '/admin/external-content'
     | '/admin/grade-moderation'
@@ -857,7 +845,6 @@ export interface RootRouteChildren {
   AdminApiConnectionsRoute: typeof AdminApiConnectionsRoute
   AdminCohortsRoute: typeof AdminCohortsRoute
   AdminComplianceRoute: typeof AdminComplianceRoute
-  AdminCourseUploadRoute: typeof AdminCourseUploadRoute
   AdminCreatorsRoute: typeof AdminCreatorsRoute
   AdminExternalContentRoute: typeof AdminExternalContentRoute
   AdminGradeModerationRoute: typeof AdminGradeModerationRoute
@@ -1063,13 +1050,6 @@ declare module '@tanstack/react-router' {
       path: '/admin/compliance'
       fullPath: '/admin/compliance'
       preLoaderRoute: typeof AdminComplianceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/course-upload': {
-      id: '/admin/course-upload'
-      path: '/admin/course-upload'
-      fullPath: '/admin/course-upload'
-      preLoaderRoute: typeof AdminCourseUploadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/creators': {
@@ -1458,7 +1438,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdminApiConnectionsRoute: AdminApiConnectionsRoute,
   AdminCohortsRoute: AdminCohortsRoute,
   AdminComplianceRoute: AdminComplianceRoute,
-  AdminCourseUploadRoute: AdminCourseUploadRoute,
   AdminCreatorsRoute: AdminCreatorsRoute,
   AdminExternalContentRoute: AdminExternalContentRoute,
   AdminGradeModerationRoute: AdminGradeModerationRoute,
