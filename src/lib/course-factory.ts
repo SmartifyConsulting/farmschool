@@ -23,6 +23,9 @@ export type DraftLesson = {
   videoInteractions?: { atSeconds: number; note: string }[] | null;
   /** AI-suggested claim+evidence pairs for the Fact cards format, each with its own trainer-supplied image slot (review stage only — not yet carried through to the published lesson). */
   factCards?: { claim: string; evidence: string; mediaUrl?: string | null; mediaKind?: "image" | "video" | null }[] | null;
+  /** A trainer-uploaded diagram/photo for the Labeled diagram format, pinned with click-to-place points (x/y as a 0–100 percent of the image). */
+  hotspotImage?: string | null;
+  hotspotPoints?: { x: number; y: number; label: string; body: string }[] | null;
   /** Training format this lesson imports as; defaults to "slide" when unset. */
   kind?: "reading" | "slide" | "video" | "scorm";
   /** When kind is "slide": each slide's own list of assigned formats (delivery mediums and/or training methods), in drop order; defaults to three empty slides when unset. */

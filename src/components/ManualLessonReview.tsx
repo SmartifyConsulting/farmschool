@@ -37,7 +37,7 @@ const ILLUSTRATION_BUCKET = "lesson-illustrations";
 const MAX_MEDIA_BYTES = 25 * 1024 * 1024;
 
 /** These method ids present as "how the content is delivered", grouped with the delivery-kind toggle below; the rest are "how it's tested". */
-const TRAINING_FORMAT_METHOD_IDS = ["illustrated", "video", "facts"];
+const TRAINING_FORMAT_METHOD_IDS = ["illustrated", "video", "facts", "hotspot"];
 /** Rough estimate of wrapped lines so a textarea's `rows` always fits its text — no inner scrollbar. */
 function autoRows(text: string, min: number) {
   const explicitLines = text.split("\n").length;
@@ -934,6 +934,64 @@ export function ManualLessonReview(props: Props) {
                         </div>
                       ))}
                     </div>
+                  </div>
+                );
+              })()}
+              {selected.includes("hotspot") && (() => {
+                const points = lesson.hotspotPoints ?? [];
+                const updatePoints = (next: typeof points) => props.onEdit(index, { ...lesson, hotspotPoints: next });
+                return (
+                  <div className="max-w-sm space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Labeled diagram</p>
+                    <MediaPicker
+                      mediaUrl={lesson.hotspotImage}
+                      mediaKind={lesson.hotspotImage ? "image" : null}
+                      disabled={props.readOnly || props.busy}
+                      onChange={(nextUrl, nextKind) => {
+                        if (nextUrl && nextKind === "video") { toast.error("Choose a still image — a diagram or photo, not a video."); return; }
+                        props.onEdit(index, { ...lesson, hotspotImage: nextUrl, hotspotPoints: nextUrl ? points : [] });
+                      }}
+                    />
+                    {lesson.hotspotImage && (
+                      <>
+                        <div
+                          className="relative cursor-crosshair overflow-hidden rounded border border-border"
+                          onClick={event => {
+                            if (props.readOnly || props.busy) return;
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            const x = ((event.clientX - rect.left) / rect.width) * 100;
+                            const y = ((event.clientY - rect.top) / rect.height) * 100;
+                            updatePoints([...points, { x, y, label: `Point ${points.length + 1}`, body: "" }]);
+                          }}
+                        >
+                          <img src={lesson.hotspotImage} alt="" className="block w-full" />
+                          {points.map((point, pi) => (
+                            <span
+                              key={pi}
+                              style={{ left: `${point.x}%`, top: `${point.y}%` }}
+                              className="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-background bg-primary text-[10px] font-bold text-primary-foreground shadow"
+                            >
+                              {pi + 1}
+                            </span>
+                          ))}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">Click the diagram to add a labeled point.</p>
+                        <div className="space-y-1.5">
+                          {points.map((point, pi) => (
+                            <div key={pi} className="flex items-start gap-1.5 rounded border border-border p-1.5">
+                              <span className="mt-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">{pi + 1}</span>
+                              <div className="min-w-0 flex-1 space-y-1">
+                                <Input aria-label={`Point ${pi + 1} label`} value={point.label} disabled={props.readOnly || props.busy} onChange={event => updatePoints(points.map((p, i) => (i === pi ? { ...p, label: event.target.value } : p)))} className="h-7 text-xs" />
+                                <Textarea aria-label={`Point ${pi + 1} explanation`} rows={1} value={point.body} disabled={props.readOnly || props.busy} onChange={event => updatePoints(points.map((p, i) => (i === pi ? { ...p, body: event.target.value } : p)))} className="resize-none text-xs" />
+                              </div>
+                              <Button size="icon" variant="ghost" aria-label={`Remove point ${pi + 1}`} disabled={props.readOnly || props.busy} onClick={() => updatePoints(points.filter((_, i) => i !== pi))}>
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 );
               })()}

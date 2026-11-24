@@ -28,6 +28,7 @@ import {
   Puzzle,
   Activity,
   RefreshCw,
+  MapPin,
 } from "lucide-react";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -1025,6 +1026,12 @@ function Editor() {
       detail: "Short claim-and-evidence cards with an image each",
       icon: LayoutGrid,
     },
+    {
+      id: "hotspot",
+      label: "Labeled diagram",
+      detail: "Pin labelled points onto a diagram or photo",
+      icon: MapPin,
+    },
   ];
   const recommendMethods = (title: string, body: string) => {
     const content = (title + " " + body).toLowerCase();
@@ -1288,6 +1295,12 @@ function Editor() {
             .map((c) => `### ${c.claim}\n${c.evidence}${c.mediaUrl ? `\n${c.mediaUrl}` : ""}`)
             .join("\n");
           return `:::facts\n${items}\n:::`;
+        }
+        if (ref.id === "hotspot" && lesson.hotspotImage && lesson.hotspotPoints?.length) {
+          const points = lesson.hotspotPoints
+            .map((p) => `### ${Math.round(p.x)},${Math.round(p.y)} ${p.label}\n${p.body}`)
+            .join("\n");
+          return `:::hotspot\n${lesson.hotspotImage}\n${points}\n:::`;
         }
         return null;
       };
