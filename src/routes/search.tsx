@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { ArrowLeft, BookOpen, Folder, Search, X } from "lucide-react";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
 import { courses } from "@/lib/courses";
-import { courseIndustry } from "@/lib/industries";
+import { catalogueSector, sectorInitial } from "@/lib/catalogue-sectors";
 import { pageMeta } from "@/lib/page-meta";
 import { CoursePrice } from "@/components/CoursePrice";
 import { CourseViewToggle, useCourseView } from "@/components/CourseViewToggle";
@@ -34,6 +34,7 @@ function SearchPage() {
   const [view, setView] = useCourseView("catalogue", "cards");
   const [query, setQuery] = useState("");
   const [industry, setIndustry] = useState<string | null>(null);
+  const [letter, setLetter] = useState("All");
   const {
     data: published = [],
     isLoading,
@@ -61,7 +62,7 @@ function SearchPage() {
         id: c.id,
         title: c.title,
         category: c.category || "General",
-        industry: courseIndustry(c.category || ""),
+        industry: catalogueSector(c.category || ""),
         description: c.description || "",
         cover: c.cover_url,
         source: "studio" as const,
@@ -72,7 +73,7 @@ function SearchPage() {
         id: c.id,
         title: c.title,
         category: c.category,
-        industry: courseIndustry(c.category),
+        industry: catalogueSector(c.category),
         description: c.description,
         cover: c.image,
         source: "sample" as const,
@@ -88,10 +89,17 @@ function SearchPage() {
       .toLowerCase()
       .includes(query.trim().toLowerCase()),
   );
-  const folders = Array.from(new Set(matching.map((course) => course.industry)))
-    .sort()
+  const allFolders = Array.from(new Set(matching.map((course) => course.industry)))
+    .sort((a, b) => a.localeCompare(b))
     .map((name) => ({ name, count: matching.filter((course) => course.industry === name).length }));
-  const visible = matching.filter((course) => !industry || course.industry === industry);
+  const folders = allFolders.filter(
+    (folder) => letter === "All" || sectorInitial(folder.name) === letter,
+  );
+  const visible = matching.filter((course) =>
+    industry
+      ? course.industry === industry
+      : letter === "All" || sectorInitial(course.industry) === letter,
+  );
 
   return (
     <Phone>
@@ -122,16 +130,57 @@ function SearchPage() {
               </button>
             )}
           </div>
+          <div
+            role="group"
+            aria-label="Filter industry folders alphabetically"
+            className="flex flex-wrap gap-1.5"
+          >
+            {["All", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].map((initial) => (
+              <Button
+                key={initial}
+                type="button"
+                size="sm"
+                variant={letter === initial ? "default" : "outline"}
+                className="min-w-8 px-2 text-[13px]"
+                aria-pressed={letter === initial}
+                aria-label={
+                  initial === "All"
+                    ? "All industry folders"
+                    : `Industries beginning with ${initial}`
+                }
+                disabled={
+                  initial !== "All" &&
+                  !allFolders.some((folder) => sectorInitial(folder.name) === initial)
+                }
+                onClick={() => {
+                  setLetter(initial);
+                  setIndustry(null);
+                }}
+              >
+                {initial}
+              </Button>
+            ))}
+          </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             {industry ? (
-              <Button type="button" variant="ghost" size="sm" onClick={() => setIndustry(null)}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setIndustry(null);
+                  setLetter("All");
+                }}
+              >
                 <ArrowLeft className="size-4" />
                 All industries
               </Button>
             ) : (
               <h2 className="font-semibold">Browse by industry</h2>
             )}
-            <span className="text-xs text-muted-foreground">{visible.length} courses</span>
+            <span className="text-xs text-muted-foreground">
+              {visible.length} {visible.length === 1 ? "course" : "courses"}
+            </span>
             {industry && <CourseViewToggle view={view} onChange={setView} />}
           </div>
           {industry && <h2 className="text-lg font-semibold">{industry}</h2>}
