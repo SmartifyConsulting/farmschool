@@ -81,14 +81,12 @@ function Studio() {
   });
   const folders = (allFolders ?? []).filter((f) => f.parent_id === currentFolderId);
 
-  const { data } = useQuery({
+  const { data, isPending: coursesPending, error: coursesError, refetch: refetchCourses } = useQuery({
     queryKey: ["studio-mine", user?.id],
     enabled: !!user,
     queryFn: async () => {
       if (!user) return [];
-      return (
-        (
-          await supabase
+      const result = await supabase
             .from("studio_courses")
             .select(
               "id, title, published, category, cover_url, version_number, revision_of, folder_id, studio_lessons(count), studio_modules(count)" as never,
@@ -96,9 +94,9 @@ function Studio() {
             .eq("author_id", user.id)
             .is("deleted_at", null)
             .order("updated_at", { ascending: false })
-            .limit(200)
-        ).data ?? []
-      ) as unknown as {
+            .limit(200);
+      if (result.error) throw result.error;
+      return (result.data ?? []) as unknown as {
         id: string; title: string; published: boolean; category: string; cover_url: string | null;
         version_number: number; revision_of: string | null; folder_id: string | null;
         studio_lessons: { count: number }[]; studio_modules: { count: number }[];
@@ -425,7 +423,16 @@ function Studio() {
                   </article>
                   );
                 })}
-              {!folders.length && !coursesHere.length && (
+              {user && coursesPending && (
+                <p role="status" className="col-span-full py-6 text-sm text-muted-foreground">Loading your courses…</p>
+              )}
+              {coursesError && (
+                <div role="alert" className="col-span-full rounded-md border border-destructive/30 p-4 text-sm">
+                  <p>Your courses could not be loaded. Please try again.</p>
+                  <Button className="mt-2" variant="outline" size="sm" onClick={() => void refetchCourses()}>Try again</Button>
+                </div>
+              )}
+              {!coursesPending && !coursesError && !folders.length && !coursesHere.length && (
                 <p className="col-span-full flex items-center justify-center gap-2 py-8 text-center text-sm text-muted-foreground">
                   <Folder className="h-5 w-5" />
                   {currentFolderId ? "This folder is empty." : "No courses yet — click Create above to start."}
