@@ -1186,6 +1186,133 @@ export type Database = {
           },
         ]
       }
+      content_library_derivations: {
+        Row: {
+          author_id: string
+          created_at: string
+          produced_file_id: string
+          raw_file_id: string
+        }
+        Insert: {
+          author_id?: string
+          created_at?: string
+          produced_file_id: string
+          raw_file_id: string
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          produced_file_id?: string
+          raw_file_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_library_derivations_produced_file_id_author_id_fkey"
+            columns: ["produced_file_id", "author_id"]
+            isOneToOne: false
+            referencedRelation: "content_library_files"
+            referencedColumns: ["id", "author_id"]
+          },
+          {
+            foreignKeyName: "content_library_derivations_raw_file_id_author_id_fkey"
+            columns: ["raw_file_id", "author_id"]
+            isOneToOne: false
+            referencedRelation: "content_library_files"
+            referencedColumns: ["id", "author_id"]
+          },
+        ]
+      }
+      content_library_files: {
+        Row: {
+          author_id: string
+          classification: string
+          created_at: string
+          description: string
+          file_hash: string | null
+          file_name: string
+          file_type: string
+          folder_id: string | null
+          id: string
+          keywords: string[]
+          material_stage: string
+          original_file_name: string
+          size_bytes: number
+          storage_path: string
+        }
+        Insert: {
+          author_id: string
+          classification?: string
+          created_at?: string
+          description?: string
+          file_hash?: string | null
+          file_name: string
+          file_type: string
+          folder_id?: string | null
+          id?: string
+          keywords?: string[]
+          material_stage?: string
+          original_file_name: string
+          size_bytes: number
+          storage_path: string
+        }
+        Update: {
+          author_id?: string
+          classification?: string
+          created_at?: string
+          description?: string
+          file_hash?: string | null
+          file_name?: string
+          file_type?: string
+          folder_id?: string | null
+          id?: string
+          keywords?: string[]
+          material_stage?: string
+          original_file_name?: string
+          size_bytes?: number
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_library_files_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "content_library_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_library_folders: {
+        Row: {
+          author_id: string
+          created_at: string
+          id: string
+          name: string
+          parent_id: string | null
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          id?: string
+          name: string
+          parent_id?: string | null
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          parent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_library_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "content_library_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_archive_restores: {
         Row: {
           archive_digest: string
@@ -3142,7 +3269,9 @@ export type Database = {
           avatar_url: string | null
           bio: string
           created_at: string
+          first_name: string
           full_name: string
+          last_name: string
           learner_role: string
           preferred_language: string | null
           region: string
@@ -3153,7 +3282,9 @@ export type Database = {
           avatar_url?: string | null
           bio?: string
           created_at?: string
+          first_name?: string
           full_name: string
+          last_name?: string
           learner_role: string
           preferred_language?: string | null
           region: string
@@ -3164,7 +3295,9 @@ export type Database = {
           avatar_url?: string | null
           bio?: string
           created_at?: string
+          first_name?: string
           full_name?: string
+          last_name?: string
           learner_role?: string
           preferred_language?: string | null
           region?: string
@@ -3598,6 +3731,38 @@ export type Database = {
           },
         ]
       }
+      studio_course_folders: {
+        Row: {
+          author_id: string
+          created_at: string
+          id: string
+          name: string
+          parent_id: string | null
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          id?: string
+          name: string
+          parent_id?: string | null
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          parent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_course_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "studio_course_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       studio_course_source_drafts: {
         Row: {
           course_id: string
@@ -3670,20 +3835,30 @@ export type Database = {
       }
       studio_courses: {
         Row: {
+          ai_tutor_icon_url: string | null
+          ai_tutor_instructions: string | null
+          ai_tutor_name: string | null
+          ai_tutor_welcome: string | null
           author_id: string
           category: string
+          color_overrides: Json
           core_messaging: string
           cover_url: string | null
           created_at: string
           currency: string
+          deleted_at: string | null
           description: string
+          folder_id: string | null
+          font_settings: Json
           id: string
           illustration_guide: Json
           level: string
+          library_scope: string
           moodle_id: number | null
           outcomes_timeline: string
           prerequisite_course_id: string | null
           price_cents: number
+          pronunciation_dictionary: Json
           published: boolean
           revision_base: number | null
           revision_of: string | null
@@ -3695,20 +3870,30 @@ export type Database = {
           version_number: number
         }
         Insert: {
+          ai_tutor_icon_url?: string | null
+          ai_tutor_instructions?: string | null
+          ai_tutor_name?: string | null
+          ai_tutor_welcome?: string | null
           author_id?: string
           category?: string
+          color_overrides?: Json
           core_messaging?: string
           cover_url?: string | null
           created_at?: string
           currency?: string
+          deleted_at?: string | null
           description?: string
+          folder_id?: string | null
+          font_settings?: Json
           id?: string
           illustration_guide?: Json
           level?: string
+          library_scope?: string
           moodle_id?: number | null
           outcomes_timeline?: string
           prerequisite_course_id?: string | null
           price_cents?: number
+          pronunciation_dictionary?: Json
           published?: boolean
           revision_base?: number | null
           revision_of?: string | null
@@ -3720,20 +3905,30 @@ export type Database = {
           version_number?: number
         }
         Update: {
+          ai_tutor_icon_url?: string | null
+          ai_tutor_instructions?: string | null
+          ai_tutor_name?: string | null
+          ai_tutor_welcome?: string | null
           author_id?: string
           category?: string
+          color_overrides?: Json
           core_messaging?: string
           cover_url?: string | null
           created_at?: string
           currency?: string
+          deleted_at?: string | null
           description?: string
+          folder_id?: string | null
+          font_settings?: Json
           id?: string
           illustration_guide?: Json
           level?: string
+          library_scope?: string
           moodle_id?: number | null
           outcomes_timeline?: string
           prerequisite_course_id?: string | null
           price_cents?: number
+          pronunciation_dictionary?: Json
           published?: boolean
           revision_base?: number | null
           revision_of?: string | null
@@ -3745,6 +3940,13 @@ export type Database = {
           version_number?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "studio_courses_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "studio_course_folders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "studio_courses_prerequisite_course_id_fkey"
             columns: ["prerequisite_course_id"]
@@ -4131,6 +4333,10 @@ export type Database = {
         }
         Returns: string
       }
+      admin_delete_organization: {
+        Args: { _organization: string }
+        Returns: undefined
+      }
       admin_list_organizations: {
         Args: never
         Returns: {
@@ -4140,6 +4346,10 @@ export type Database = {
         }[]
       }
       admin_platform_analytics: { Args: never; Returns: Json }
+      admin_rename_organization: {
+        Args: { _name: string; _organization: string }
+        Returns: undefined
+      }
       admin_revoke_api_key: {
         Args: { _id: string }
         Returns: {
@@ -4421,6 +4631,30 @@ export type Database = {
         Args: { _organization: string }
         Returns: Json
       }
+      content_library_attach_to_draft: {
+        Args: {
+          _course_id: string
+          _file_id: string
+          _lesson_body?: string
+          _lesson_id?: string
+          _source_id: string
+          _storage_path: string
+        }
+        Returns: string
+      }
+      content_library_register_produced: {
+        Args: {
+          _description?: string
+          _file_id: string
+          _file_name: string
+          _file_type: string
+          _folder_id?: string
+          _size_bytes: number
+          _source_ids: string[]
+          _storage_path: string
+        }
+        Returns: string
+      }
       course_assessment_learners: {
         Args: { _course: string }
         Returns: {
@@ -4510,6 +4744,15 @@ export type Database = {
           partner_name: string
           unread: boolean
         }[]
+      }
+      duplicate_organization: {
+        Args: {
+          _expected: number
+          _name: string
+          _source: string
+          _target: string
+        }
+        Returns: string
       }
       effective_course_deadline: {
         Args: { _course: string; _user: string }
