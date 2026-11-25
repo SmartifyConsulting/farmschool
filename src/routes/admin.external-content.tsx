@@ -15,7 +15,7 @@ export const Route = createFileRoute("/admin/external-content")({
   }),
   component: ExternalContentAdmin,
   head: () =>
-    pageMeta("Library — Plusticity", "Manage Raw sources and Completed training material."),
+    pageMeta("Content Library — Plusticity", "Manage Raw sources and Completed training material."),
 });
 
 function ExternalContentAdmin() {
@@ -32,7 +32,7 @@ function ExternalContentAdmin() {
       <Header />
       <Sheet wide>
         <div className="mb-4">
-          <CanvasHeading eyebrow="Admin" title="Library" />
+          <CanvasHeading eyebrow="Admin" title="Content Library" />
         </div>
         {!ready || (user && isLoading) ? (
           <p className="py-8 text-sm text-muted-foreground">Checking permissions…</p>

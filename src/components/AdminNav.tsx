@@ -5,7 +5,7 @@ const SECTIONS = [
   { to: "/admin/cohorts", label: "Cohorts" },
   { to: "/admin/programs", label: "Programs" },
   { to: "/admin/grade-moderation", label: "Grade Moderation" },
-  { to: "/admin/external-content", label: "Library" },
+  { to: "/admin/external-content", label: "Content Library" },
   { to: "/admin/providers", label: "Providers" },
   { to: "/admin/organizations", label: "Organizations" },
   { to: "/admin/token-ledger", label: "Token Ledger" },
