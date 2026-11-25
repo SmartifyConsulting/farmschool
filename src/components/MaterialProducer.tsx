@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,12 @@ import { produceLibraryLesson } from "@/lib/library-production.functions";
 import { friendlyError } from "@/lib/friendly-error";
 import { rpcArgs } from "@/lib/rpc-args";
 import { portableMaterialText, type LibraryFile } from "@/lib/library-materials";
+import {
+  MAX_SOURCE_CHARACTERS,
+  MAX_LESSON_CHARACTERS,
+  splitProductionSource,
+  produceSections,
+} from "@/lib/library-production";
 
 export function MaterialProducer({
   sources,
@@ -49,6 +55,13 @@ export function MaterialProducer({
   const [busy, setBusy] = useState(false);
   const [format, setFormat] = useState<"text" | "scorm">("text");
   const [edited, setEdited] = useState(false);
+  const [completed, setCompleted] = useState(0);
+  const [incomplete, setIncomplete] = useState(false);
+  const [transforming, setTransforming] = useState(false);
+  const [stopping, setStopping] = useState(false);
+  const stopRequested = useRef(false);
+  const production = useRef<{ key: string; results: string[] } | null>(null);
+  const sections = useMemo(() => splitProductionSource(sourceText), [sourceText]);
   const attempt = useRef<{
     key: string;
     id: string;
@@ -58,6 +71,12 @@ export function MaterialProducer({
   } | null>(null);
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setLoadError("");
+    setSourceText("");
+    setCompleted(0);
+    setIncomplete(false);
+    production.current = null;
     void (async () => {
       try {
         const sections: string[] = [];
@@ -72,9 +91,9 @@ export function MaterialProducer({
           sections.push(
             `## ${file.original_file_name}\n\n` + pages.map((page) => page.text).join("\n\n"),
           );
-          if (sections.join("\n\n").length > 100000)
+          if (sections.join("\n\n").length > MAX_SOURCE_CHARACTERS)
             throw new Error(
-              "Choose fewer or smaller sources: this selection exceeds 100,000 characters.",
+              "Choose fewer sources for this lesson: the selection exceeds 1,000,000 characters.",
             );
         }
         const text = sections.join("\n\n");
@@ -97,6 +116,7 @@ export function MaterialProducer({
     })();
     return () => {
       cancelled = true;
+      stopRequested.current = true;
     };
   }, [sources, initialBody]);
   const close = async () => {
@@ -114,23 +134,80 @@ export function MaterialProducer({
     onClose();
   };
   const run = async () => {
+    if (busy || !sections.length || loadError) return;
+    const key = JSON.stringify({
+      ids: sources.map((file) => file.id),
+      title,
+      sourceText,
+      instruction,
+    });
+    const cachedBody = production.current?.results.join("\n\n") ?? "";
+    if (
+      edited &&
+      body.trim() &&
+      (production.current?.key !== key || body !== cachedBody || !incomplete) &&
+      !(await confirm({
+        title: "Replace this draft with AI output?",
+        description:
+          "Your current edits will be replaced by the combined lesson. Your Raw sources stay unchanged.",
+        confirmLabel: "Transform material",
+        cancelLabel: "Keep editing",
+      }))
+    )
+      return;
+    if (production.current?.key !== key || production.current.results.length === sections.length)
+      production.current = { key, results: [] };
+    const batch = production.current;
+    stopRequested.current = false;
+    setStopping(false);
+    setCompleted(batch.results.length);
+    setIncomplete(true);
+    setTransforming(true);
     setBusy(true);
     try {
-      const result = await generate({
-        data: { sourceIds: sources.map((file) => file.id), title, sourceText, instruction },
+      const finished = await produceSections({
+        sections,
+        results: batch.results,
+        generate: async (text, index, total) => {
+          const result = await generate({
+            data: {
+              sourceIds: sources.map((file) => file.id),
+              title,
+              sourceText: text,
+              instruction,
+              sectionIndex: index,
+              sectionCount: total,
+            },
+          });
+          return result.body;
+        },
+        onProgress: (count, body) => {
+          setCompleted(count);
+          setBody(body);
+          setEdited(true);
+        },
+        stopped: () => stopRequested.current,
       });
-      setBody(result.body);
-      setEdited(true);
+      setIncomplete(!finished);
     } catch (error) {
       toast.error(
-        friendlyError(error, "Could not transform this material. You can edit it manually."),
+        friendlyError(error, "Processing stopped. Completed sections are kept; retry to continue."),
       );
     } finally {
+      setTransforming(false);
       setBusy(false);
     }
   };
   const save = async () => {
-    if (!user || busy || !title.trim() || !body.trim()) return;
+    if (
+      !user ||
+      busy ||
+      incomplete ||
+      body.length > MAX_LESSON_CHARACTERS ||
+      !title.trim() ||
+      !body.trim()
+    )
+      return;
     setBusy(true);
     try {
       const key = JSON.stringify({
@@ -241,6 +318,37 @@ export function MaterialProducer({
         </label>
         {loading && <p role="status">Reading source material…</p>}
         {loadError && <p role="alert">{loadError}</p>}
+        {!loading && !loadError && sections.length > 1 && (
+          <p className="text-sm text-muted-foreground">
+            This material will be processed in {sections.length} sections and combined into one
+            lesson. Each section uses one AI request from your existing allowance.
+          </p>
+        )}
+        {incomplete && !busy && (
+          <p role="status" className="text-sm">
+            {completed} of {sections.length} sections complete. Retry to finish the remaining
+            sections. Keep this window open to retain progress.
+          </p>
+        )}
+        {transforming && (
+          <div role="status" className="space-y-2 text-sm">
+            <p>
+              {stopping
+                ? "Stopping after the current section…"
+                : `Processing section ${Math.min(completed + 1, sections.length)} of ${sections.length}…`}
+            </p>
+            <Button
+              variant="outline"
+              disabled={stopping}
+              onClick={() => {
+                stopRequested.current = true;
+                setStopping(true);
+              }}
+            >
+              Stop After This Section
+            </Button>
+          </div>
+        )}
         <fieldset disabled={busy || loading} className="space-y-3">
           <label className="block text-sm">
             Transformation instructions (optional AI assistance)
@@ -252,10 +360,10 @@ export function MaterialProducer({
           </label>
           <Button
             variant="outline"
-            disabled={!sourceText || !instruction.trim() || !title.trim()}
+            disabled={!sourceText || !!loadError || !instruction.trim() || !title.trim()}
             onClick={() => void run()}
           >
-            Transform with AI
+            {incomplete ? "Retry Remaining Sections" : "Transform with AI"}
           </Button>
           <p className="text-sm text-muted-foreground">
             AI runs only when you choose it and uses your existing AI allowance. You can build and
@@ -293,7 +401,9 @@ export function MaterialProducer({
           </label>
           <div className="flex gap-2">
             <Button
-              disabled={!body.trim() || body.length > 100000 || !title.trim()}
+              disabled={
+                incomplete || !body.trim() || body.length > MAX_LESSON_CHARACTERS || !title.trim()
+              }
               onClick={() => void save()}
             >
               Save to Completed
@@ -302,6 +412,12 @@ export function MaterialProducer({
               Cancel
             </Button>
           </div>
+          {body.length > MAX_LESSON_CHARACTERS && (
+            <p className="text-sm text-muted-foreground">
+              Transform the source into a lesson, or shorten the draft to 100,000 characters before
+              saving.
+            </p>
+          )}
         </fieldset>
         {busy && <p role="status">Working…</p>}
       </DialogContent>

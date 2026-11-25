@@ -1,6 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  MAX_SECTION_CHARACTERS,
+  MAX_PRODUCTION_SECTIONS,
+  productionSectionBudget,
+} from "./library-production";
 
 export const produceLibraryLesson = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -9,9 +14,17 @@ export const produceLibraryLesson = createServerFn({ method: "POST" })
       .object({
         sourceIds: z.array(z.string().uuid()).min(1).max(20),
         title: z.string().trim().min(1).max(200),
-        sourceText: z.string().min(1).max(100000),
+        sourceText: z.string().min(1).max(MAX_SECTION_CHARACTERS),
         instruction: z.string().trim().min(1).max(1000),
+        sectionIndex: z
+          .number()
+          .int()
+          .min(0)
+          .max(MAX_PRODUCTION_SECTIONS - 1)
+          .default(0),
+        sectionCount: z.number().int().min(1).max(MAX_PRODUCTION_SECTIONS).default(1),
       })
+      .refine((value) => value.sectionIndex < value.sectionCount, "Invalid section position.")
       .parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -32,6 +45,7 @@ export const produceLibraryLesson = createServerFn({ method: "POST" })
     );
     if (quotaError || typeof allowance !== "number")
       throw new Error("Your AI allowance is unavailable or used up.");
+    const outputBudget = productionSectionBudget(data.sectionCount);
     const { createOpenAI } = await import("@ai-sdk/openai");
     const { generateText, Output } = await import("ai");
     const { output } = await generateText({
@@ -42,9 +56,11 @@ export const produceLibraryLesson = createServerFn({ method: "POST" })
       prompt: JSON.stringify({
         title: data.title,
         instruction: data.instruction,
+        section: `${data.sectionIndex + 1} of ${data.sectionCount}`,
+        outputGuidance: `This is one consecutive section of a larger lesson. Cover the important teaching points from this section only. Do not repeat a lesson-wide introduction or conclusion for each section. Use distinct descriptive headings. Keep the entire Markdown body within ${outputBudget} characters so all sections fit into one editable lesson.`,
         sources: data.sourceText,
       }),
-      output: Output.object({ schema: z.object({ body: z.string().min(1).max(40000) }) }),
+      output: Output.object({ schema: z.object({ body: z.string().min(1).max(outputBudget) }) }),
     });
     return { body: output.body };
   });
