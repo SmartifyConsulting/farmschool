@@ -3,10 +3,16 @@ import { ArrowLeft } from "lucide-react";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
 import { ContentLibraryContent } from "@/components/ContentLibraryContent";
 export const Route = createFileRoute("/studio/content-library")({
+  validateSearch: (
+    s: Record<string, unknown>,
+  ): { tab?: "raw" | "drafts" | "produced" | undefined } => ({
+    tab: s["tab"] === "drafts" || s["tab"] === "produced" ? s["tab"] : undefined,
+  }),
   head: () => ({ meta: [{ title: "Content Library — Plusticity" }] }),
   component: ContentLibraryPage,
 });
 function ContentLibraryPage() {
+  const { tab } = Route.useSearch();
   return (
     <Phone>
       <Header />
@@ -21,7 +27,7 @@ function ContentLibraryPage() {
           </Link>
           <CanvasHeading eyebrow="For trainers" title="Content Library" />
         </div>
-        <ContentLibraryContent />
+        <ContentLibraryContent initialStage={tab ?? "raw"} />
       </Sheet>
     </Phone>
   );

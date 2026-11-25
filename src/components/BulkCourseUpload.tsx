@@ -27,6 +27,7 @@ const DOCUMENT_EXTENSIONS = [
 ];
 
 type FileStatus = {
+  id: string;
   name: string;
   kind: "scorm" | "document";
   state: "pending" | "working" | "done" | "error";
@@ -35,7 +36,7 @@ type FileStatus = {
 };
 
 /** Drag-and-drop bulk intake: any mix of PDFs/Word docs and SCORM .zip packages, auto-detected by
- * extension — no manual "provider"/type selection needed. Each document becomes its own unpublished
+ * extension — no manual "provider"/type selection needed. Documents stay as Raw Material, rather than becoming an unpublished
  * draft course; each .zip is uploaded as a SCORM package. Used on the admin Library page (gated to
  * admins) and the trainer's own Content Library page (requireAdmin=false — any signed-in trainer,
  * since everything here is already scoped to their own author_id). */
@@ -147,6 +148,7 @@ export function BulkCourseUpload({
   const processFiles = async (files: File[]) => {
     if (!user || busy) return;
     const items: FileStatus[] = files.map((f) => ({
+      id: crypto.randomUUID(),
       name: f.name,
       kind: /\.zip$/i.test(f.name) ? "scorm" : "document",
       state: "pending",
@@ -164,7 +166,7 @@ export function BulkCourseUpload({
       const isScorm = /\.zip$/i.test(file.name);
       setQueue((prev) =>
         prev.map((q) =>
-          q === items[i]
+          q.id === items[i]!.id
             ? {
                 ...q,
                 state: "working",
@@ -178,12 +180,12 @@ export function BulkCourseUpload({
           throw new Error("Use PDF, Word, text, image or video files, or a SCORM .zip.");
         const result = isScorm ? await uploadScorm(file) : await uploadAsContent(file);
         setQueue((prev) =>
-          prev.map((q) => (q === items[i] ? ({ ...q, ...result } as FileStatus) : q)),
+          prev.map((q) => (q.id === items[i]!.id ? ({ ...q, ...result } as FileStatus) : q)),
         );
       } catch (e) {
         setQueue((prev) =>
           prev.map((q) =>
-            q === items[i]
+            q.id === items[i]!.id
               ? { ...q, state: "error", message: friendlyError(e, "Could not process this file.") }
               : q,
           ),
@@ -253,7 +255,7 @@ export function BulkCourseUpload({
       {queue.length > 0 && (
         <div className="divide-y divide-border rounded-lg border border-border">
           {queue.map((item, i) => (
-            <div key={i} className="flex items-center gap-3 p-3">
+            <div key={item.id} className="flex items-center gap-3 p-3">
               {item.kind === "scorm" ? (
                 <FileArchive className="h-5 w-5 shrink-0 text-muted-foreground" />
               ) : (

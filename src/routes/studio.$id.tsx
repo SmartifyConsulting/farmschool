@@ -2013,11 +2013,12 @@ function Editor() {
           <CanvasHeading eyebrow={course.published ? "Published" : "Draft"} title="Course editor" />
           <div className="flex flex-wrap gap-2">
             <Link
-              to="/studio"
+              to={(course as unknown as { library_scope?: string }).library_scope === "admin" ? "/admin/external-content" : "/studio"}
+              search={(course as unknown as { library_scope?: string }).library_scope === "admin" ? { tab: "drafts" } : {}}
               className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs"
             >
               <ArrowLeft className="h-3 w-3" />
-              All my courses
+              {(course as unknown as { library_scope?: string }).library_scope === "admin" ? "Admin Library" : "All my courses"}
             </Link>
             {course.published && (
               <Link

@@ -8,11 +8,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { pageMeta } from "@/lib/page-meta";
 
 export const Route = createFileRoute("/admin/external-content")({
+  validateSearch: (
+    s: Record<string, unknown>,
+  ): { tab?: "raw" | "drafts" | "produced" | undefined } => ({
+    tab: s["tab"] === "drafts" || s["tab"] === "produced" ? s["tab"] : undefined,
+  }),
   component: ExternalContentAdmin,
-  head: () => pageMeta("Library — Plusticity", "Manage Raw sources and Completed training material."),
+  head: () =>
+    pageMeta("Library — Plusticity", "Manage Raw sources and Completed training material."),
 });
 
 function ExternalContentAdmin() {
+  const { tab } = Route.useSearch();
   const { user, ready } = useAuth();
   const { data: isAdmin, isLoading } = useQuery({
     queryKey: ["admin-home-role", user?.id],
@@ -43,7 +50,7 @@ function ExternalContentAdmin() {
         ) : (
           <div className="space-y-4">
             <AdminNav />
-            <ContentLibraryContent />
+            <ContentLibraryContent scope="admin" initialStage={tab ?? "raw"} />
           </div>
         )}
       </Sheet>

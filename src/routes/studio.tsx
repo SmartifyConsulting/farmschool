@@ -127,6 +127,7 @@ function Studio() {
           "id, title, description, published, category, cover_url, version_number, revision_of, folder_id, studio_lessons(count), studio_modules(count)" as never,
         )
         .eq("author_id", user.id)
+        .eq("library_scope" as never, "personal")
         .is("deleted_at", null)
         .order("updated_at", { ascending: false })
         .limit(200);
