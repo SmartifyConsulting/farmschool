@@ -283,7 +283,7 @@ export function ContentLibraryContent() {
             }}
           >
             <SectionTabsList aria-label="Content Library stages">
-              <SectionTabsTrigger value="raw">Raw</SectionTabsTrigger>
+              <SectionTabsTrigger value="raw">Raw Material</SectionTabsTrigger>
               <SectionTabsTrigger value="produced">Processed</SectionTabsTrigger>
             </SectionTabsList>
             <TabsContent value={stage}>

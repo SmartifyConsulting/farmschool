@@ -104,7 +104,7 @@ export function LibraryMaterialPicker({
   return (
     <Tabs defaultValue="raw">
       <SectionTabsList aria-label="Curriculum material source">
-        <SectionTabsTrigger value="raw">Raw</SectionTabsTrigger>
+        <SectionTabsTrigger value="raw">Raw Material</SectionTabsTrigger>
         <SectionTabsTrigger value="produced">Processed</SectionTabsTrigger>
         <SectionTabsTrigger value="courses">Other courses</SectionTabsTrigger>
       </SectionTabsList>
