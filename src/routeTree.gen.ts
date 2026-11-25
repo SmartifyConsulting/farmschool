@@ -39,6 +39,7 @@ import { Route as AdminGradeModerationRouteImport } from './routes/admin.grade-m
 import { Route as AdminLtiRouteImport } from './routes/admin.lti'
 import { Route as AdminOrganizationsRouteImport } from './routes/admin.organizations'
 import { Route as AdminProgramsRouteImport } from './routes/admin.programs'
+import { Route as AdminProvidersRouteImport } from './routes/admin.providers'
 import { Route as AdminRecycleBinRouteImport } from './routes/admin.recycle-bin'
 import { Route as AdminTokenLedgerRouteImport } from './routes/admin.token-ledger'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
@@ -226,6 +227,11 @@ const AdminOrganizationsRoute = AdminOrganizationsRouteImport.update({
 const AdminProgramsRoute = AdminProgramsRouteImport.update({
   id: '/admin/programs',
   path: '/admin/programs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminProvidersRoute = AdminProvidersRouteImport.update({
+  id: '/admin/providers',
+  path: '/admin/providers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRecycleBinRoute = AdminRecycleBinRouteImport.update({
@@ -451,6 +457,7 @@ export interface FileRoutesByFullPath {
   '/admin/lti': typeof AdminLtiRoute
   '/admin/organizations': typeof AdminOrganizationsRoute
   '/admin/programs': typeof AdminProgramsRoute
+  '/admin/providers': typeof AdminProvidersRoute
   '/admin/recycle-bin': typeof AdminRecycleBinRoute
   '/admin/token-ledger': typeof AdminTokenLedgerRoute
   '/admin/users': typeof AdminUsersRoute
@@ -521,6 +528,7 @@ export interface FileRoutesByTo {
   '/admin/lti': typeof AdminLtiRoute
   '/admin/organizations': typeof AdminOrganizationsRoute
   '/admin/programs': typeof AdminProgramsRoute
+  '/admin/providers': typeof AdminProvidersRoute
   '/admin/recycle-bin': typeof AdminRecycleBinRoute
   '/admin/token-ledger': typeof AdminTokenLedgerRoute
   '/admin/users': typeof AdminUsersRoute
@@ -592,6 +600,7 @@ export interface FileRoutesById {
   '/admin/lti': typeof AdminLtiRoute
   '/admin/organizations': typeof AdminOrganizationsRoute
   '/admin/programs': typeof AdminProgramsRoute
+  '/admin/providers': typeof AdminProvidersRoute
   '/admin/recycle-bin': typeof AdminRecycleBinRoute
   '/admin/token-ledger': typeof AdminTokenLedgerRoute
   '/admin/users': typeof AdminUsersRoute
@@ -664,6 +673,7 @@ export interface FileRouteTypes {
     | '/admin/lti'
     | '/admin/organizations'
     | '/admin/programs'
+    | '/admin/providers'
     | '/admin/recycle-bin'
     | '/admin/token-ledger'
     | '/admin/users'
@@ -734,6 +744,7 @@ export interface FileRouteTypes {
     | '/admin/lti'
     | '/admin/organizations'
     | '/admin/programs'
+    | '/admin/providers'
     | '/admin/recycle-bin'
     | '/admin/token-ledger'
     | '/admin/users'
@@ -804,6 +815,7 @@ export interface FileRouteTypes {
     | '/admin/lti'
     | '/admin/organizations'
     | '/admin/programs'
+    | '/admin/providers'
     | '/admin/recycle-bin'
     | '/admin/token-ledger'
     | '/admin/users'
@@ -875,6 +887,7 @@ export interface RootRouteChildren {
   AdminLtiRoute: typeof AdminLtiRoute
   AdminOrganizationsRoute: typeof AdminOrganizationsRoute
   AdminProgramsRoute: typeof AdminProgramsRoute
+  AdminProvidersRoute: typeof AdminProvidersRoute
   AdminRecycleBinRoute: typeof AdminRecycleBinRoute
   AdminTokenLedgerRoute: typeof AdminTokenLedgerRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -1117,6 +1130,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/programs'
       fullPath: '/admin/programs'
       preLoaderRoute: typeof AdminProgramsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/providers': {
+      id: '/admin/providers'
+      path: '/admin/providers'
+      fullPath: '/admin/providers'
+      preLoaderRoute: typeof AdminProvidersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/recycle-bin': {
@@ -1485,6 +1505,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminLtiRoute: AdminLtiRoute,
   AdminOrganizationsRoute: AdminOrganizationsRoute,
   AdminProgramsRoute: AdminProgramsRoute,
+  AdminProvidersRoute: AdminProvidersRoute,
   AdminRecycleBinRoute: AdminRecycleBinRoute,
   AdminTokenLedgerRoute: AdminTokenLedgerRoute,
   AdminUsersRoute: AdminUsersRoute,

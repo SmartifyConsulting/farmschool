@@ -28,16 +28,41 @@ type NullableParameters = {
   lti_save_platform: "_id" | "_default_course_id";
   admin_set_organization_parent: "_parent";
   studio_save_quiz_pool: "_sample_size";
+  content_library_register_produced: "_folder_id";
+  content_library_attach_to_draft: "_lesson_id" | "_lesson_body";
+};
+
+// Verified against the library migrations; generated database types predate them.
+type LibraryArgs = {
+  content_library_register_produced: {
+    _file_id: string;
+    _source_ids: string[];
+    _file_name: string;
+    _file_type: string;
+    _storage_path: string;
+    _size_bytes: number;
+    _description?: string;
+    _folder_id?: string;
+  };
+  content_library_attach_to_draft: {
+    _source_id: string;
+    _course_id: string;
+    _file_id: string;
+    _storage_path: string;
+    _lesson_id?: string;
+    _lesson_body?: string;
+  };
 };
 type Functions = Database["public"]["Functions"];
-type Args<N extends keyof NullableParameters> = Functions[N]["Args"];
+type Args<N extends keyof NullableParameters> = N extends keyof LibraryArgs
+  ? LibraryArgs[N]
+  : N extends keyof Functions
+    ? Functions[N]["Args"]
+    : never;
 type SqlArgs<N extends keyof NullableParameters> = {
   [K in keyof Args<N>]: K extends NullableParameters[N] ? Args<N>[K] | null : Args<N>[K];
 };
 
-export function rpcArgs<N extends keyof NullableParameters>(
-  _name: N,
-  args: SqlArgs<N>,
-): Args<N> {
+export function rpcArgs<N extends keyof NullableParameters>(_name: N, args: SqlArgs<N>): Args<N> {
   return args as Args<N>;
 }

@@ -31,6 +31,12 @@ const TOPIC_ALIASES: Record<string, string> = {
   "personal finance": "Finance",
 };
 
+export const CATALOGUE_SECTORS = [
+  ...Object.values(SECTOR_LABELS),
+  "General and Cross-industry",
+  "Uncategorised",
+].sort((a, b) => a.localeCompare(b));
+
 /** Discovery labels only: never changes stored categories or portal access rules. */
 export function catalogueSector(category: string): string {
   const normalized = category.trim().toLowerCase();

@@ -6,6 +6,7 @@ const SECTIONS = [
   { to: "/admin/programs", label: "Programs" },
   { to: "/admin/grade-moderation", label: "Grade Moderation" },
   { to: "/admin/external-content", label: "Library" },
+  { to: "/admin/providers", label: "Providers" },
   { to: "/admin/organizations", label: "Organizations" },
   { to: "/admin/token-ledger", label: "Token Ledger" },
   { to: "/admin/recycle-bin", label: "Recycle Bin" },

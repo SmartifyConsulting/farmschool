@@ -32,6 +32,7 @@ import {
   type ContentFileType,
 } from "@/lib/studio-content";
 import { toast } from "sonner";
+import { LibraryMaterialPicker } from "@/components/LibraryMaterialPicker";
 
 const MAX_FILE_BYTES = 500 * 1024 * 1024;
 
@@ -363,58 +364,60 @@ export function StudioContentLibrary({
       <Dialog open={catalogueOpen} onOpenChange={setCatalogueOpen}>
         <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Reuse content from your other courses</DialogTitle>
+            <DialogTitle>Reuse your content</DialogTitle>
           </DialogHeader>
           <Input
             value={catalogueSearch}
             onChange={(e) => setCatalogueSearch(e.target.value)}
-            placeholder="Search by file name or course"
+            placeholder="Search by file name, folder or course"
             aria-label="Search your content catalogue"
           />
-          <ul className="mt-2 space-y-2">
-            {catalogue
-              .filter((item) => {
-                const q = catalogueSearch.trim().toLowerCase();
-                if (!q) return true;
-                return (
-                  item.file_name.toLowerCase().includes(q) ||
-                  item.course_title.toLowerCase().includes(q)
-                );
-              })
-              .map((item) => {
-                const Icon = TYPE_ICON[item.file_type as ContentFileType] ?? FileText;
-                const alreadyAdded = files.some((f) => f.storage_path === item.storage_path);
-                return (
-                  <li
-                    key={item.id}
-                    className="flex flex-wrap items-center gap-3 rounded-lg border border-border p-3"
-                  >
-                    <Icon className="h-5 w-5 shrink-0 text-muted-foreground" />
-                    <div className="min-w-0 flex-1">
-                      <p className="break-words text-sm font-medium">{item.file_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {CONTENT_TYPE_LABELS[item.file_type as ContentFileType] ?? item.file_type} ·
-                        from "{item.course_title}"
-                      </p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={alreadyAdded}
-                      onClick={() => reuse(item)}
+          <LibraryMaterialPicker courseId={courseId} search={catalogueSearch}>
+            <ul className="mt-2 space-y-2">
+              {catalogue
+                .filter((item) => {
+                  const q = catalogueSearch.trim().toLowerCase();
+                  if (!q) return true;
+                  return (
+                    item.file_name.toLowerCase().includes(q) ||
+                    item.course_title.toLowerCase().includes(q)
+                  );
+                })
+                .map((item) => {
+                  const Icon = TYPE_ICON[item.file_type as ContentFileType] ?? FileText;
+                  const alreadyAdded = files.some((f) => f.storage_path === item.storage_path);
+                  return (
+                    <li
+                      key={item.id}
+                      className="flex flex-wrap items-center gap-3 rounded-lg border border-border p-3"
                     >
-                      <Plus className="h-4 w-4" />
-                      {alreadyAdded ? "Added" : "Add"}
-                    </Button>
-                  </li>
-                );
-              })}
-            {catalogue.length === 0 && (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                No content in your other courses yet.
-              </p>
-            )}
-          </ul>
+                      <Icon className="h-5 w-5 shrink-0 text-muted-foreground" />
+                      <div className="min-w-0 flex-1">
+                        <p className="break-words text-sm font-medium">{item.file_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {CONTENT_TYPE_LABELS[item.file_type as ContentFileType] ?? item.file_type}{" "}
+                          · from "{item.course_title}"
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={alreadyAdded}
+                        onClick={() => reuse(item)}
+                      >
+                        <Plus className="h-4 w-4" />
+                        {alreadyAdded ? "Added" : "Add"}
+                      </Button>
+                    </li>
+                  );
+                })}
+              {catalogue.length === 0 && (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  No content in your other courses yet.
+                </p>
+              )}
+            </ul>
+          </LibraryMaterialPicker>
         </DialogContent>
       </Dialog>
       {!readOnly && (
@@ -549,7 +552,9 @@ export function StudioContentLibrary({
               Cancel all
             </Button>
             <Button size="sm" onClick={commitUploads} disabled={committing}>
-              {committing ? "Uploading…" : `Add ${pending.length} file${pending.length > 1 ? "s" : ""}`}
+              {committing
+                ? "Uploading…"
+                : `Add ${pending.length} file${pending.length > 1 ? "s" : ""}`}
             </Button>
           </div>
         </div>

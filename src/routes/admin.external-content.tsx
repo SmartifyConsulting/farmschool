@@ -9,10 +9,8 @@ import { AdminNav } from "@/components/AdminNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { SectionTabsList, SectionTabsTrigger } from "@/components/SectionTabs";
-import { BulkCourseUpload } from "@/components/BulkCourseUpload";
+import { ContentLibraryContent } from "@/components/ContentLibraryContent";
+import { CourseWizard } from "@/components/CourseWizard";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useAuth } from "@/hooks/useLearning";
 import { supabase } from "@/integrations/supabase/client";
@@ -123,7 +121,6 @@ function ExternalContentAdmin() {
   const [busy, setBusy] = useState(false);
   const [lastErrors, setLastErrors] = useState<{ row: number; message: string }[]>([]);
   const [filter, setFilter] = useState({ cat: "", lang: "", prov: "" });
-  const [np, setNp] = useState({ name: "", slug: "", website: "", attribution: "" });
 
   const doImport = async (method: "manual" | "csv", rows: Record<string, string>[]) => {
     if (!pid) {
@@ -178,44 +175,6 @@ function ExternalContentAdmin() {
       reload();
     }
   };
-  const toggleProvider = async (id: string, enabled: boolean) => {
-    const { error } = await supabase
-      .from("external_content_providers")
-      .update({ enabled })
-      .eq("id", id);
-    if (error) toast.error("We couldn't change that provider.");
-    else {
-      toast.success(
-        enabled
-          ? "Provider turned on."
-          : "Provider turned off. Its videos show as unavailable to learners.",
-      );
-      reload();
-    }
-  };
-  const addProvider = async () => {
-    const slug = (np.slug || np.name)
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .slice(0, 40);
-    if (np.name.trim().length < 2 || !/^https:\/\//.test(np.website)) {
-      toast.error("Add a name and a website starting with https://");
-      return;
-    }
-    const { error } = await supabase.from("external_content_providers").insert({
-      name: np.name.trim(),
-      slug,
-      website: np.website.trim(),
-      attribution: np.attribution.trim(),
-    });
-    if (error) toast.error(friendlyError(error, "We couldn't add that provider."));
-    else {
-      toast.success("Provider added.");
-      setNp({ name: "", slug: "", website: "", attribution: "" });
-      reload();
-    }
-  };
 
   const shown = items.filter(
     (i) =>
@@ -255,313 +214,264 @@ function ExternalContentAdmin() {
         ) : (
           <div className="space-y-4">
             <AdminNav />
-            <Tabs defaultValue="library" className="min-w-0">
-              <SectionTabsList aria-label="Admin library sections">
-                <SectionTabsTrigger value="library">Content Library</SectionTabsTrigger>
-                <SectionTabsTrigger value="providers">Providers</SectionTabsTrigger>
-              </SectionTabsList>
-
-              <TabsContent value="providers" className="space-y-4">
-                {providers.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-border p-4"
-                  >
-                    <div className="min-w-0">
-                      <h3 className="font-semibold">{p.name}</h3>
-                      <p className="break-all text-xs text-muted-foreground">{p.website}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Approved methods:{" "}
-                        {p.integration_methods
-                          .map((m: string) =>
-                            m === "csv" ? "CSV import" : m === "manual" ? "Manual links" : m,
-                          )
-                          .join(", ")}{" "}
-                        · Automatic feed: not available (no public API offered)
-                      </p>
-                      <p className="mt-1 text-xs">{p.attribution}</p>
-                    </div>
-                    <label className="flex items-center gap-2 text-sm">
-                      {p.enabled ? "On" : "Off"}
-                      <Switch
-                        checked={p.enabled}
-                        onCheckedChange={(v) => toggleProvider(p.id, v)}
-                        aria-label={`Enable ${p.name}`}
-                      />
-                    </label>
-                  </div>
-                ))}
-                <div className="grid gap-2 rounded-2xl border border-dashed border-border p-4 sm:grid-cols-2">
-                  <h3 className="font-semibold sm:col-span-2">Add a provider</h3>
-                  <Input
-                    placeholder="Name"
-                    value={np.name}
-                    onChange={(e) => setNp({ ...np, name: e.target.value })}
-                    maxLength={120}
-                  />
-                  <Input
-                    placeholder="Website (https://…)"
-                    value={np.website}
-                    onChange={(e) => setNp({ ...np, website: e.target.value })}
-                  />
-                  <Input
-                    className="sm:col-span-2"
-                    placeholder="Attribution shown to learners"
-                    value={np.attribution}
-                    onChange={(e) => setNp({ ...np, attribution: e.target.value })}
-                    maxLength={300}
-                  />
-                  <Button onClick={addProvider} className="sm:w-fit">
-                    Add provider
-                  </Button>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="library" className="space-y-3">
-                <div className="flex flex-wrap gap-2">
-                  <select
-                    className={sel}
-                    value={filter.cat}
-                    onChange={(e) => setFilter({ ...filter, cat: e.target.value })}
-                    aria-label="Category"
-                  >
-                    <option value="">All categories</option>
-                    {[...new Set(items.map((i) => i.category))].sort().map((c) => (
-                      <option key={c}>{c}</option>
-                    ))}
-                  </select>
-                  <select
-                    className={sel}
-                    value={filter.lang}
-                    onChange={(e) => setFilter({ ...filter, lang: e.target.value })}
-                    aria-label="Language"
-                  >
-                    <option value="">All languages</option>
-                    {[...new Set(items.map((i) => i.language))].sort().map((c) => (
-                      <option key={c}>{c}</option>
-                    ))}
-                  </select>
-                  <select
-                    className={sel}
-                    value={filter.prov}
-                    onChange={(e) => setFilter({ ...filter, prov: e.target.value })}
-                    aria-label="Provider"
-                  >
-                    <option value="">All providers</option>
-                    {providers.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {shown.length} video{shown.length === 1 ? "" : "s"}. Records marked “Sample” are
-                  starter data for testing.
-                </p>
-                <ul className="space-y-2">
-                  {shown.map((i) => (
-                    <li
-                      key={i.id}
-                      className="flex flex-wrap items-center gap-3 rounded-xl border border-border p-3"
+            <div className="flex flex-wrap items-center gap-3">
+              <CourseWizard />
+              <Link to="/studio" className="text-sm font-semibold text-primary">
+                Open Course Studio
+              </Link>
+              <p className="text-sm text-muted-foreground">
+                Create a course, reuse your Raw or Processed material, then review and publish it
+                with a Free price. AI assistance uses your existing allowance.
+              </p>
+            </div>
+            <ContentLibraryContent
+              externalVideos={
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    <select
+                      className={sel}
+                      value={filter.cat}
+                      onChange={(e) => setFilter({ ...filter, cat: e.target.value })}
+                      aria-label="Category"
                     >
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium">
-                          {i.title}{" "}
-                          {i.is_sample && (
-                            <span className="ml-1 rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-semibold">
-                              Sample
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {i.provider?.name} · {i.category} · {i.language} ·{" "}
-                          {i.embed_url ? "Embedded player" : "Link-out"} · used in {i.links.length}{" "}
-                          course{i.links.length === 1 ? "" : "s"}
-                        </p>
-                      </div>
-                      {status(i.import_status)}
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        aria-label={`Remove ${i.title}`}
-                        onClick={() => removeItem(i)}
+                      <option value="">All categories</option>
+                      {[...new Set(items.map((i) => i.category))].sort().map((c) => (
+                        <option key={c}>{c}</option>
+                      ))}
+                    </select>
+                    <select
+                      className={sel}
+                      value={filter.lang}
+                      onChange={(e) => setFilter({ ...filter, lang: e.target.value })}
+                      aria-label="Language"
+                    >
+                      <option value="">All languages</option>
+                      {[...new Set(items.map((i) => i.language))].sort().map((c) => (
+                        <option key={c}>{c}</option>
+                      ))}
+                    </select>
+                    <select
+                      className={sel}
+                      value={filter.prov}
+                      onChange={(e) => setFilter({ ...filter, prov: e.target.value })}
+                      aria-label="Provider"
+                    >
+                      <option value="">All providers</option>
+                      {providers.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {shown.length} video{shown.length === 1 ? "" : "s"}. Records marked “Sample” are
+                    starter data for testing.
+                  </p>
+                  <ul className="space-y-2">
+                    {shown.map((i) => (
+                      <li
+                        key={i.id}
+                        className="flex flex-wrap items-center gap-3 rounded-xl border border-border p-3"
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-                <section
-                  className="rounded-xl border border-border p-4"
-                  aria-label="Add videos and import"
-                >
-                  <h2 className="text-sm font-semibold">Add videos and import</h2>
-                  <div className="mt-4 space-y-4">
-                    <label className="flex items-center gap-2 text-sm">
-                      Provider
-                      <select
-                        className={sel}
-                        value={pid}
-                        onChange={(e) => setProviderId(e.target.value)}
-                        aria-label="Import provider"
-                      >
-                        {providers.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name}
-                            {p.enabled ? "" : " (off)"}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <div className="grid gap-4 lg:grid-cols-2">
-                      <section className="space-y-2 rounded-2xl border border-border p-4">
-                        <h3 className="flex items-center gap-2 font-semibold">
-                          <Link2 className="h-4 w-4" />
-                          Add one video link
-                        </h3>
-                        <Input
-                          placeholder="Video page or YouTube link (https://…)"
-                          value={manual.url}
-                          onChange={(e) => setManual({ ...manual, url: e.target.value })}
-                          aria-label="Video link"
-                        />
-                        <Input
-                          placeholder="Title (filled in automatically for YouTube)"
-                          value={manual.title}
-                          onChange={(e) => setManual({ ...manual, title: e.target.value })}
-                          maxLength={200}
-                        />
-                        <Textarea
-                          placeholder="Short description"
-                          value={manual.description}
-                          onChange={(e) => setManual({ ...manual, description: e.target.value })}
-                          rows={2}
-                          maxLength={4000}
-                        />
-                        <div className="grid grid-cols-2 gap-2">
-                          <select
-                            className={sel}
-                            value={manual.category}
-                            onChange={(e) => setManual({ ...manual, category: e.target.value })}
-                            aria-label="Category"
-                          >
-                            {STUDIO_CATEGORIES.map((c) => (
-                              <option key={c}>{c}</option>
-                            ))}
-                          </select>
-                          <Input
-                            value={manual.language}
-                            onChange={(e) => setManual({ ...manual, language: e.target.value })}
-                            aria-label="Language"
-                            maxLength={40}
-                          />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium">
+                            {i.title}{" "}
+                            {i.is_sample && (
+                              <span className="ml-1 rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-semibold">
+                                Sample
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {i.provider?.name} · {i.category} · {i.language} ·{" "}
+                            {i.embed_url ? "Embedded player" : "Link-out"} · used in{" "}
+                            {i.links.length} course{i.links.length === 1 ? "" : "s"}
+                          </p>
                         </div>
-                        <Button disabled={busy} onClick={() => doImport("manual", [manual])}>
-                          Add video
-                        </Button>
-                      </section>
-                      <section className="space-y-2 rounded-2xl border border-border p-4">
-                        <h3 className="flex items-center gap-2 font-semibold">
-                          <Upload className="h-4 w-4" />
-                          Bulk import
-                        </h3>
-                        <p className="text-xs text-muted-foreground">
-                          CSV or TSV (tab-separated), file or pasted text. Columns: title, url,
-                          description, category, language, thumbnail, duration, published. A link
-                          without "https://" is accepted — it's added automatically. Duplicates are
-                          skipped automatically.
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          <input
-                            type="file"
-                            accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain"
-                            aria-label="CSV or TSV file"
-                            className="text-xs file:mr-2 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-primary"
-                            onChange={async (e) => {
-                              const f = e.target.files?.[0];
-                              if (f) setCsv(await f.text());
-                              e.target.value = "";
-                            }}
-                          />
-                          <Button size="sm" variant="ghost" asChild>
-                            <a
-                              href={`data:text/csv;charset=utf-8,${encodeURIComponent(CSV_TEMPLATE)}`}
-                              download="video-import-template.csv"
-                            >
-                              <Download className="h-4 w-4" />
-                              Template
-                            </a>
-                          </Button>
-                        </div>
-                        <Textarea
-                          value={csv}
-                          onChange={(e) => setCsv(e.target.value)}
-                          rows={5}
-                          placeholder="…or paste CSV here"
-                          aria-label="CSV text"
-                        />
-                        <label className="flex items-center gap-2 text-xs">
-                          <input
-                            type="checkbox"
-                            checked={updateExisting}
-                            onChange={(e) => setUpdateExisting(e.target.checked)}
-                          />
-                          Refresh details of videos already in the library (course links are kept)
-                        </label>
+                        {status(i.import_status)}
                         <Button
-                          disabled={busy || !csv.trim()}
-                          onClick={() => doImport("csv", parseCsv(csv))}
+                          size="icon"
+                          variant="ghost"
+                          aria-label={`Remove ${i.title}`}
+                          onClick={() => removeItem(i)}
                         >
-                          Import CSV
+                          <Trash2 className="h-4 w-4" />
                         </Button>
+                      </li>
+                    ))}
+                  </ul>
+                  <section
+                    className="rounded-xl border border-border p-4"
+                    aria-label="Add videos and import"
+                  >
+                    <h2 className="text-sm font-semibold">Add videos and import</h2>
+                    <div className="mt-4 space-y-4">
+                      <label className="flex items-center gap-2 text-sm">
+                        Provider
+                        <select
+                          className={sel}
+                          value={pid}
+                          onChange={(e) => setProviderId(e.target.value)}
+                          aria-label="Import provider"
+                        >
+                          {providers.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                              {p.enabled ? "" : " (off)"}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <div className="grid gap-4 lg:grid-cols-2">
+                        <section className="space-y-2 rounded-2xl border border-border p-4">
+                          <h3 className="flex items-center gap-2 font-semibold">
+                            <Link2 className="h-4 w-4" />
+                            Add one video link
+                          </h3>
+                          <Input
+                            placeholder="Video page or YouTube link (https://…)"
+                            value={manual.url}
+                            onChange={(e) => setManual({ ...manual, url: e.target.value })}
+                            aria-label="Video link"
+                          />
+                          <Input
+                            placeholder="Title (filled in automatically for YouTube)"
+                            value={manual.title}
+                            onChange={(e) => setManual({ ...manual, title: e.target.value })}
+                            maxLength={200}
+                          />
+                          <Textarea
+                            placeholder="Short description"
+                            value={manual.description}
+                            onChange={(e) => setManual({ ...manual, description: e.target.value })}
+                            rows={2}
+                            maxLength={4000}
+                          />
+                          <div className="grid grid-cols-2 gap-2">
+                            <select
+                              className={sel}
+                              value={manual.category}
+                              onChange={(e) => setManual({ ...manual, category: e.target.value })}
+                              aria-label="Category"
+                            >
+                              {STUDIO_CATEGORIES.map((c) => (
+                                <option key={c}>{c}</option>
+                              ))}
+                            </select>
+                            <Input
+                              value={manual.language}
+                              onChange={(e) => setManual({ ...manual, language: e.target.value })}
+                              aria-label="Language"
+                              maxLength={40}
+                            />
+                          </div>
+                          <Button disabled={busy} onClick={() => doImport("manual", [manual])}>
+                            Add video
+                          </Button>
+                        </section>
+                        <section className="space-y-2 rounded-2xl border border-border p-4">
+                          <h3 className="flex items-center gap-2 font-semibold">
+                            <Upload className="h-4 w-4" />
+                            Bulk import
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            CSV or TSV (tab-separated), file or pasted text. Columns: title, url,
+                            description, category, language, thumbnail, duration, published. A link
+                            without "https://" is accepted — it's added automatically. Duplicates
+                            are skipped automatically.
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <input
+                              type="file"
+                              accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain"
+                              aria-label="CSV or TSV file"
+                              className="text-xs file:mr-2 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-primary"
+                              onChange={async (e) => {
+                                const f = e.target.files?.[0];
+                                if (f) setCsv(await f.text());
+                                e.target.value = "";
+                              }}
+                            />
+                            <Button size="sm" variant="ghost" asChild>
+                              <a
+                                href={`data:text/csv;charset=utf-8,${encodeURIComponent(CSV_TEMPLATE)}`}
+                                download="video-import-template.csv"
+                              >
+                                <Download className="h-4 w-4" />
+                                Template
+                              </a>
+                            </Button>
+                          </div>
+                          <Textarea
+                            value={csv}
+                            onChange={(e) => setCsv(e.target.value)}
+                            rows={5}
+                            placeholder="…or paste CSV here"
+                            aria-label="CSV text"
+                          />
+                          <label className="flex items-center gap-2 text-xs">
+                            <input
+                              type="checkbox"
+                              checked={updateExisting}
+                              onChange={(e) => setUpdateExisting(e.target.checked)}
+                            />
+                            Refresh details of videos already in the library (course links are kept)
+                          </label>
+                          <Button
+                            disabled={busy || !csv.trim()}
+                            onClick={() => doImport("csv", parseCsv(csv))}
+                          >
+                            Import CSV
+                          </Button>
+                        </section>
+                      </div>
+                      {lastErrors.length > 0 && (
+                        <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm">
+                          <p className="font-semibold">Rows that need attention</p>
+                          <ul className="mt-1 list-disc pl-5 text-xs">
+                            {lastErrors.map((e, i) => (
+                              <li key={i}>
+                                Row {e.row}: {e.message}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      <section className="space-y-2">
+                        <h3 className="font-semibold">Import history</h3>
+                        {imports.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No imports yet.</p>
+                        ) : (
+                          <ul className="space-y-1">
+                            {imports.map((h) => (
+                              <li
+                                key={h.id}
+                                className="rounded-xl border border-border p-2 text-xs"
+                              >
+                                <strong>
+                                  {h.method === "csv"
+                                    ? "CSV import"
+                                    : h.method === "manual"
+                                      ? "Manual link"
+                                      : h.method === "link_check"
+                                        ? "Link check"
+                                        : "Feed"}
+                                </strong>{" "}
+                                · {new Date(h.created_at).toLocaleString()} ·{" "}
+                                {h.method === "link_check"
+                                  ? `${h.updated_count} working, ${h.error_count} unavailable`
+                                  : `${h.created_count} new, ${h.updated_count} updated, ${h.duplicate_count} duplicates, ${h.error_count} errors`}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                       </section>
                     </div>
-                    {lastErrors.length > 0 && (
-                      <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm">
-                        <p className="font-semibold">Rows that need attention</p>
-                        <ul className="mt-1 list-disc pl-5 text-xs">
-                          {lastErrors.map((e, i) => (
-                            <li key={i}>
-                              Row {e.row}: {e.message}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    <section className="space-y-2">
-                      <h3 className="font-semibold">Import history</h3>
-                      {imports.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No imports yet.</p>
-                      ) : (
-                        <ul className="space-y-1">
-                          {imports.map((h) => (
-                            <li key={h.id} className="rounded-xl border border-border p-2 text-xs">
-                              <strong>
-                                {h.method === "csv"
-                                  ? "CSV import"
-                                  : h.method === "manual"
-                                    ? "Manual link"
-                                    : h.method === "link_check"
-                                      ? "Link check"
-                                      : "Feed"}
-                              </strong>{" "}
-                              · {new Date(h.created_at).toLocaleString()} ·{" "}
-                              {h.method === "link_check"
-                                ? `${h.updated_count} working, ${h.error_count} unavailable`
-                                : `${h.created_count} new, ${h.updated_count} updated, ${h.duplicate_count} duplicates, ${h.error_count} errors`}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </section>
-                  </div>
-                </section>
-                <section aria-label="Upload content">
-                  <BulkCourseUpload />
-                </section>
-              </TabsContent>
-            </Tabs>
+                  </section>
+                </div>
+              }
+            />
           </div>
         )}
       </Sheet>
