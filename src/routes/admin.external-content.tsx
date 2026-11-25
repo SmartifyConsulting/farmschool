@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ContentLibraryContent } from "@/components/ContentLibraryContent";
-import { CourseWizard } from "@/components/CourseWizard";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useAuth } from "@/hooks/useLearning";
 import { supabase } from "@/integrations/supabase/client";
@@ -214,16 +213,6 @@ function ExternalContentAdmin() {
         ) : (
           <div className="space-y-4">
             <AdminNav />
-            <div className="flex flex-wrap items-center gap-3">
-              <CourseWizard />
-              <Link to="/studio" className="text-sm font-semibold text-primary">
-                Open Course Studio
-              </Link>
-              <p className="text-sm text-muted-foreground">
-                Create a course, reuse your Raw or Processed material, then review and publish it
-                with a Free price. AI assistance uses your existing allowance.
-              </p>
-            </div>
             <ContentLibraryContent
               externalVideos={
                 <div className="space-y-3">
