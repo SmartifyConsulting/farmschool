@@ -52,9 +52,17 @@ function MyCourses() {
   const { data: progress = [], isLoading: progressLoading } = useProgress();
   const { ids } = useBookmarks();
   const { data: prof } = useQuery({
-    queryKey: ["profile", user?.id],
+    queryKey: ["profile", user?.id, "learning"],
     enabled: !!user,
-    queryFn: async () => (await supabase.from("profiles").select("full_name").maybeSingle()).data,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
   });
   const { data: certs = [], error: certificateError } = useQuery({
     queryKey: ["certificates", user?.id],

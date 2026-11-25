@@ -280,15 +280,17 @@ function AvatarMenu({
   const brand = useLearningBrand();
   const isAdmin = useIsAdmin();
   const { data: prof } = useQuery({
-    queryKey: ["avatar-profile", user?.id],
+    queryKey: ["profile", user?.id, "avatar"],
     enabled: !!user,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("profiles" as never)
-          .select("first_name, last_name, full_name" as never)
-          .maybeSingle()
-      ).data as { first_name: string; last_name: string; full_name: string } | null,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("first_name, last_name, full_name" as never)
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { first_name: string; last_name: string; full_name: string } | null;
+    },
   });
   if (!ready || !user) return null;
   const firstLast = [prof?.first_name, prof?.last_name].filter(Boolean).join(" ").trim();
