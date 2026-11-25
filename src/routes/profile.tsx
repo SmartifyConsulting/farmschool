@@ -174,7 +174,7 @@ function Profile() {
         <Header />
         <Sheet>
           <CanvasHeading title="Settings" />
-          <p className="py-10 text-center text-sm text-muted-foreground">
+          <p className="py-10 text-sm text-muted-foreground">
             <Link
               to="/auth"
               search={portal ? { portal } : {}}
@@ -244,7 +244,7 @@ function Profile() {
           </SectionTabsList>
           <TabsContent value={tab}>
             {tab === "Profile" && (
-              <div className="mx-auto mt-5 max-w-xl space-y-4">
+              <div className="mt-5 max-w-xl space-y-4">
                 {profilePending && <p role="status">Loading profile…</p>}
                 {profileError && (
                   <div role="alert">
@@ -309,7 +309,7 @@ function Profile() {
             )}
 
             {tab === "Account" && (
-              <div className="mx-auto mt-5 max-w-xl space-y-3">
+              <div className="mt-5 max-w-xl space-y-3">
                 <div className="flex items-center gap-2 rounded-xl border border-border p-3 text-sm">
                   <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="min-w-0 flex-1 truncate">{user?.email}</span>
@@ -347,13 +347,13 @@ function Profile() {
             )}
 
             {tab === "Preferences" && (
-              <div className="mx-auto mt-5 max-w-xl">
+              <div className="mt-5 max-w-xl">
                 <CohortEmailPreferences />
               </div>
             )}
 
             {tab === "Billing" && (
-              <div className="mx-auto mt-5 max-w-xl space-y-3">
+              <div className="mt-5 max-w-xl space-y-3">
                 <div className="rounded-xl border border-border p-4">
                   <p className="flex items-center gap-2 text-sm font-semibold">
                     <CreditCard className="h-4 w-4 text-primary" />
@@ -401,7 +401,7 @@ function Profile() {
                       </li>
                     ))}
                     {usage.length === 0 && (
-                      <p className="py-8 text-center text-sm text-muted-foreground">
+                      <p className="py-8 text-sm text-muted-foreground">
                         No AI usage yet.
                       </p>
                     )}
