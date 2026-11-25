@@ -63,7 +63,7 @@ export function LibraryMaterialPicker({
         const { data, error } = await supabase.storage
           .from("studio-content")
           .download(attempt.path);
-        if (error || !data) throw error ?? new Error("Could not read the Processed lesson.");
+        if (error || !data) throw error ?? new Error("Could not read the Completed lesson.");
         if (data.size > 1000000)
           throw new Error("This lesson is too large to reuse as an editable lesson.");
         body = await data.text();
@@ -87,7 +87,7 @@ export function LibraryMaterialPicker({
       if (data !== attempt.id) throw new Error("Copy not confirmed. Retry the same item.");
       toast.success(
         lesson
-          ? "Processed lesson copied into your draft curriculum."
+          ? "Completed lesson copied into your draft curriculum."
           : "File copied into your draft content library.",
       );
       await Promise.all([
@@ -105,7 +105,7 @@ export function LibraryMaterialPicker({
     <Tabs defaultValue="raw">
       <SectionTabsList aria-label="Curriculum material source">
         <SectionTabsTrigger value="raw">Raw Material</SectionTabsTrigger>
-        <SectionTabsTrigger value="produced">Processed</SectionTabsTrigger>
+        <SectionTabsTrigger value="produced">Completed</SectionTabsTrigger>
         <SectionTabsTrigger value="courses">Other courses</SectionTabsTrigger>
       </SectionTabsList>
       {(["raw", "produced"] as const).map((stage) => (
@@ -202,7 +202,7 @@ export function LibraryMaterialPicker({
                   .includes(search.trim().toLowerCase()),
             ) && (
               <p className="py-4 text-sm text-muted-foreground">
-                No {stage === "raw" ? "Raw" : "Processed"} files match this search.
+                No {stage === "raw" ? "Raw" : "Completed"} files match this search.
               </p>
             )}
         </TabsContent>

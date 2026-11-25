@@ -105,7 +105,7 @@ export function MaterialProducer({
       edited &&
       !(await confirm({
         title: "Discard this unsaved output?",
-        description: "The Raw files are unchanged. This output has not been saved to Processed.",
+        description: "The Raw files are unchanged. This output has not been saved to Completed.",
         confirmLabel: "Discard output",
         cancelLabel: "Keep editing",
       }))
@@ -185,7 +185,7 @@ export function MaterialProducer({
           _file_type: format,
           _storage_path: output.path,
           _size_bytes: output.blob.size,
-          _description: `Processed from ${sources.map((file) => file.file_name).join(", ")}`.slice(
+          _description: `Created from ${sources.map((file) => file.file_name).join(", ")}`.slice(
             0,
             4000,
           ),
@@ -201,7 +201,7 @@ export function MaterialProducer({
       }
       if (data !== output.id)
         throw new Error("Save not confirmed. Retry this output before starting another copy.");
-      toast.success("Saved to Processed. Your Raw sources are unchanged.");
+      toast.success("Saved to Completed. Your Raw sources are unchanged.");
       onSaved();
     } catch (error) {
       toast.error(
@@ -262,7 +262,7 @@ export function MaterialProducer({
             edit blocks manually.
           </p>
           <Tabs defaultValue="edit">
-            <SectionTabsList aria-label="Processed material workspace">
+            <SectionTabsList aria-label="Completed material workspace">
               <SectionTabsTrigger value="edit">Edit</SectionTabsTrigger>
               <SectionTabsTrigger value="preview">Preview</SectionTabsTrigger>
             </SectionTabsList>
@@ -296,7 +296,7 @@ export function MaterialProducer({
               disabled={!body.trim() || body.length > 100000 || !title.trim()}
               onClick={() => void save()}
             >
-              Save to Processed
+              Save to Completed
             </Button>
             <Button variant="outline" onClick={() => void close()}>
               Cancel

@@ -9,7 +9,7 @@ import { pageMeta } from "@/lib/page-meta";
 
 export const Route = createFileRoute("/admin/external-content")({
   component: ExternalContentAdmin,
-  head: () => pageMeta("Library — Plusticity", "Manage Raw sources and Processed training material."),
+  head: () => pageMeta("Library — Plusticity", "Manage Raw sources and Completed training material."),
 });
 
 function ExternalContentAdmin() {

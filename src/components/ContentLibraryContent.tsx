@@ -190,7 +190,7 @@ export function ContentLibraryContent() {
       tone: "danger",
       title: "Delete this folder?",
       confirmLabel: "Delete folder",
-      description: `"${folder.name}" and any subfolders will be deleted in both Raw and Processed views. Files move to the root and keep their stage and sector.`,
+      description: `"${folder.name}" and any subfolders will be deleted in both Raw and Completed views. Files move to the root and keep their stage and sector.`,
     });
     if (!ok) return;
     const { error } = await supabase
@@ -209,7 +209,7 @@ export function ContentLibraryContent() {
       file.material_stage === "raw" &&
       linkedMaterials(file.id, "raw", files, derivations).length
     ) {
-      toast.error("Keep this Raw source while it has linked Processed outputs.");
+      toast.error("Keep this Raw source while it has linked Completed outputs.");
       return;
     }
     const ok = await confirm({
@@ -284,14 +284,14 @@ export function ContentLibraryContent() {
           >
             <SectionTabsList aria-label="Content Library stages">
               <SectionTabsTrigger value="raw">Raw Material</SectionTabsTrigger>
-              <SectionTabsTrigger value="produced">Processed</SectionTabsTrigger>
+              <SectionTabsTrigger value="produced">Completed</SectionTabsTrigger>
             </SectionTabsList>
             <TabsContent value={stage}>
                 <>
                   <p className="mb-4 text-sm text-muted-foreground">
                     {stage === "raw"
                       ? "Original uploaded sources. Transform selected documents into reusable learning material; originals stay unchanged."
-                      : "Transformed learning material, linked to its Raw sources. Processed does not mean published to learners."}
+                      : "Transformed learning material, linked to its Raw sources. Completed does not mean published to learners."}
                   </p>
                   <MaterialTypeFilters value={fileType} onChange={setFileType} />
                   <Input
@@ -389,7 +389,7 @@ export function ContentLibraryContent() {
                   )}
                   {selectedSector === null && !libraryError && !isLoading && !sectors.length && (
                     <p className="supporting-text py-6 text-muted-foreground">
-                      No {stage === "raw" ? "Raw" : "Processed"} files match these filters.
+                      No {stage === "raw" ? "Raw" : "Completed"} files match these filters.
                     </p>
                   )}
                   {selectedSector !== null && (
@@ -547,7 +547,7 @@ export function ContentLibraryContent() {
                           ? "This folder is empty."
                           : stage === "raw"
                             ? "Nothing here yet — upload a file above and it'll show up here."
-                            : "No Processed material yet. Select a document in Raw and choose Transform."}
+                            : "No Completed material yet. Select a document in Raw and choose Transform."}
                     </p>
                   ) : (
                     <div className="divide-y divide-border rounded-lg border border-border">
@@ -591,9 +591,9 @@ export function ContentLibraryContent() {
                                 className={`inline-block rounded-full px-2 py-0.5 text-[13px] ${stage === "raw" && linkedMaterials(file.id, stage, files, derivations).length ? "bg-emerald-100 text-emerald-900" : "bg-muted text-muted-foreground"}`}
                               >
                                 {stage === "produced"
-                                  ? "Processed"
+                                  ? "Completed"
                                   : linkedMaterials(file.id, stage, files, derivations).length
-                                    ? "Processed"
+                                    ? "Completed"
                                     : "Raw"}
                               </span>
                               <p className="truncate text-xs text-muted-foreground">
@@ -602,7 +602,7 @@ export function ContentLibraryContent() {
                               </p>
                               {linkedMaterials(file.id, stage, files, derivations).length > 0 && (
                                 <div className="mt-1 text-sm text-muted-foreground">
-                                  {stage === "raw" ? "Processed outputs: " : "Raw sources: "}
+                                  {stage === "raw" ? "Completed outputs: " : "Raw sources: "}
                                   {linkedMaterials(file.id, stage, files, derivations).map(
                                     (related) => (
                                       <button
