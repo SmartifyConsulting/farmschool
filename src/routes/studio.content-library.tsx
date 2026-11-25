@@ -89,7 +89,9 @@ function ContentLibraryPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("content_library_files" as never)
-        .select("id, file_name, file_type, storage_path, size_bytes, description, created_at, folder_id" as never)
+        .select(
+          "id, file_name, file_type, storage_path, size_bytes, description, created_at, folder_id" as never,
+        )
         .order("created_at" as never, { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as ContentFile[];
@@ -104,7 +106,9 @@ function ContentLibraryPage() {
   const filtered = (files ?? []).filter(
     (f) => !search.trim() || f.file_name.toLowerCase().includes(search.trim().toLowerCase()),
   );
-  const shownFiles = search.trim() ? filtered : filtered.filter((f) => f.folder_id === currentFolderId);
+  const shownFiles = search.trim()
+    ? filtered
+    : filtered.filter((f) => f.folder_id === currentFolderId);
 
   const createFolder = async () => {
     if (!user || newFolderName.trim().length < 1) return;
@@ -144,7 +148,10 @@ function ContentLibraryPage() {
       description: `"${folder.name}" and any subfolders will be deleted. Files inside move back to the root.`,
     });
     if (!ok) return;
-    const { error } = await supabase.from("content_library_folders" as never).delete().eq("id", folder.id);
+    const { error } = await supabase
+      .from("content_library_folders" as never)
+      .delete()
+      .eq("id", folder.id);
     if (error) {
       toast.error("Could not delete this folder.");
       return;
@@ -161,7 +168,10 @@ function ContentLibraryPage() {
     });
     if (!ok) return;
     await supabase.storage.from("studio-content").remove([file.storage_path]);
-    const { error } = await supabase.from("content_library_files" as never).delete().eq("id", file.id);
+    const { error } = await supabase
+      .from("content_library_files" as never)
+      .delete()
+      .eq("id", file.id);
     if (error) {
       toast.error("Could not delete this file.");
       return;
@@ -184,7 +194,9 @@ function ContentLibraryPage() {
   const download = async (file: ContentFile) => {
     setDownloading(file.id);
     try {
-      const { data, error } = await supabase.storage.from("studio-content").createSignedUrl(file.storage_path, 60);
+      const { data, error } = await supabase.storage
+        .from("studio-content")
+        .createSignedUrl(file.storage_path, 60);
       if (error || !data) throw error ?? new Error("No URL returned");
       window.open(data.signedUrl, "_blank", "noopener,noreferrer");
     } catch {
@@ -206,13 +218,16 @@ function ContentLibraryPage() {
         </div>
         {ready && !user ? (
           <p className="py-10 text-center text-sm text-muted-foreground">
-            <Link to="/auth" className="font-semibold text-primary">Sign in</Link> to view your content library.
+            <Link to="/auth" className="font-semibold text-primary">
+              Sign in
+            </Link>{" "}
+            to view your content library.
           </p>
         ) : (
           <>
             <p className="mb-4 text-sm text-muted-foreground">
-              Every file you've uploaded as reusable content, in one place — organise it into folders
-              and attach it to a lesson whenever you like.
+              Every file you've uploaded as reusable content, in one place — organise it into
+              folders and attach it to a lesson whenever you like.
             </p>
             <Input
               aria-label="Search files"
@@ -221,12 +236,15 @@ function ContentLibraryPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="mb-4 max-w-md"
             />
-            <details className="mb-5 rounded-lg border border-border p-3">
-              <summary className="cursor-pointer text-sm font-medium">Upload PDFs, documents or SCORM packages</summary>
+            <section
+              className="mb-5 rounded-lg border border-border p-3"
+              aria-label="Upload content"
+            >
+              <h2 className="text-sm font-semibold">Upload PDFs, documents or SCORM packages</h2>
               <div className="mt-3">
                 <BulkCourseUpload requireAdmin={false} />
               </div>
-            </details>
+            </section>
 
             {!search.trim() && (
               <div className="mb-4 space-y-3">
@@ -263,33 +281,75 @@ function ContentLibraryPage() {
                       className="max-w-xs"
                       autoFocus
                     />
-                    <Button size="sm" disabled={newFolderName.trim().length < 1} onClick={createFolder}>Create</Button>
-                    <Button size="sm" variant="ghost" onClick={() => { setCreatingFolder(false); setNewFolderName(""); }}>Cancel</Button>
+                    <Button
+                      size="sm"
+                      disabled={newFolderName.trim().length < 1}
+                      onClick={createFolder}
+                    >
+                      Create
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setCreatingFolder(false);
+                        setNewFolderName("");
+                      }}
+                    >
+                      Cancel
+                    </Button>
                   </div>
                 )}
                 {folders.length > 0 && (
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
                     {folders.map((folder) => (
-                      <div key={folder.id} className="group relative flex items-center gap-2 rounded-xl border border-border p-3">
+                      <div
+                        key={folder.id}
+                        className="group relative flex items-center gap-2 rounded-xl border border-border p-3"
+                      >
                         {renaming?.type === "folder" && renaming.id === folder.id ? (
                           <div className="flex w-full items-center gap-1">
-                            <Input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} className="h-8 text-sm" autoFocus />
-                            <Button size="sm" className="h-8 px-2" onClick={saveRename}>Save</Button>
+                            <Input
+                              value={renameValue}
+                              onChange={(e) => setRenameValue(e.target.value)}
+                              className="h-8 text-sm"
+                              autoFocus
+                            />
+                            <Button size="sm" className="h-8 px-2" onClick={saveRename}>
+                              Save
+                            </Button>
                           </div>
                         ) : (
                           <>
                             <button
                               className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                              onClick={() => setFolderPath([...folderPath, { id: folder.id, name: folder.name }])}
+                              onClick={() =>
+                                setFolderPath([...folderPath, { id: folder.id, name: folder.name }])
+                              }
                             >
                               <Folder className="h-5 w-5 shrink-0 text-muted-foreground" />
                               <span className="truncate text-sm font-medium">{folder.name}</span>
                             </button>
                             <div className="hidden items-center gap-0.5 group-hover:flex">
-                              <Button size="icon" variant="ghost" className="h-7 w-7" aria-label={`Rename ${folder.name}`} onClick={() => { setRenaming({ type: "folder", id: folder.id }); setRenameValue(folder.name); }}>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                aria-label={`Rename ${folder.name}`}
+                                onClick={() => {
+                                  setRenaming({ type: "folder", id: folder.id });
+                                  setRenameValue(folder.name);
+                                }}
+                              >
                                 <Pencil className="h-3.5 w-3.5" />
                               </Button>
-                              <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" aria-label={`Delete ${folder.name}`} onClick={() => deleteFolder(folder)}>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 text-destructive"
+                                aria-label={`Delete ${folder.name}`}
+                                onClick={() => deleteFolder(folder)}
+                              >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </div>
@@ -303,10 +363,16 @@ function ContentLibraryPage() {
             )}
 
             {isLoading ? (
-              <p className="py-10 text-center text-sm text-muted-foreground"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></p>
+              <p className="py-10 text-center text-sm text-muted-foreground">
+                <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+              </p>
             ) : !shownFiles.length ? (
               <p className="flex flex-col items-center gap-2 py-10 text-center text-sm text-muted-foreground">
-                {search.trim() ? <FilePlus2 className="h-8 w-8" /> : <Library className="h-8 w-8" />}
+                {search.trim() ? (
+                  <FilePlus2 className="h-8 w-8" />
+                ) : (
+                  <Library className="h-8 w-8" />
+                )}
                 {search.trim()
                   ? "No files match your search."
                   : folderPath.length
@@ -323,8 +389,15 @@ function ContentLibraryPage() {
                       <div className="min-w-0 flex-1">
                         {renaming?.type === "file" && renaming.id === file.id ? (
                           <div className="flex items-center gap-1">
-                            <Input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} className="h-8 text-sm" autoFocus />
-                            <Button size="sm" className="h-8 px-2" onClick={saveRename}>Save</Button>
+                            <Input
+                              value={renameValue}
+                              onChange={(e) => setRenameValue(e.target.value)}
+                              className="h-8 text-sm"
+                              autoFocus
+                            />
+                            <Button size="sm" className="h-8 px-2" onClick={saveRename}>
+                              Save
+                            </Button>
                           </div>
                         ) : (
                           <p className="truncate font-medium">{file.file_name}</p>
@@ -343,18 +416,43 @@ function ContentLibraryPage() {
                         >
                           <option value="">Root</option>
                           {allFolders.map((f) => (
-                            <option key={f.id} value={f.id}>{f.name}</option>
+                            <option key={f.id} value={f.id}>
+                              {f.name}
+                            </option>
                           ))}
                         </select>
                       )}
-                      <Button size="icon" variant="ghost" aria-label={`Rename ${file.file_name}`} onClick={() => { setRenaming({ type: "file", id: file.id }); setRenameValue(file.file_name); }}>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`Rename ${file.file_name}`}
+                        onClick={() => {
+                          setRenaming({ type: "file", id: file.id });
+                          setRenameValue(file.file_name);
+                        }}
+                      >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="outline" disabled={downloading === file.id} onClick={() => void download(file)}>
-                        {downloading === file.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={downloading === file.id}
+                        onClick={() => void download(file)}
+                      >
+                        {downloading === file.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
                         Open
                       </Button>
-                      <Button size="icon" variant="ghost" className="text-destructive" aria-label={`Delete ${file.file_name}`} onClick={() => deleteFile(file)}>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="text-destructive"
+                        aria-label={`Delete ${file.file_name}`}
+                        onClick={() => deleteFile(file)}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>

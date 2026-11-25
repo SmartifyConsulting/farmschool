@@ -392,10 +392,11 @@ function ExternalContentAdmin() {
                     </li>
                   ))}
                 </ul>
-                <details className="rounded-xl border border-border p-4">
-                  <summary className="cursor-pointer text-sm font-semibold">
-                    Add videos and import
-                  </summary>
+                <section
+                  className="rounded-xl border border-border p-4"
+                  aria-label="Add videos and import"
+                >
+                  <h2 className="text-sm font-semibold">Add videos and import</h2>
                   <div className="mt-4 space-y-4">
                     <label className="flex items-center gap-2 text-sm">
                       Provider
@@ -555,7 +556,7 @@ function ExternalContentAdmin() {
                       )}
                     </section>
                   </div>
-                </details>
+                </section>
                 <section aria-label="Upload content">
                   <BulkCourseUpload />
                 </section>

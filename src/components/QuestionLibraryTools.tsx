@@ -82,9 +82,12 @@ export function QuestionLibraryTools({
     if (busy || disabled) return;
     setBusy(true);
     try {
-      const { data, error } = await supabase.rpc("export_bank_questions", rpcArgs("export_bank_questions", {
-        _library: scope || null,
-      }));
+      const { data, error } = await supabase.rpc(
+        "export_bank_questions",
+        rpcArgs("export_bank_questions", {
+          _library: scope || null,
+        }),
+      );
       if (error) throw error;
       const json = JSON.stringify(data, null, 2);
       const entries = parseQuestionBankFile(json);
@@ -124,10 +127,13 @@ export function QuestionLibraryTools({
         }))
       )
         return;
-      const { data, error } = await supabase.rpc("import_bank_questions", rpcArgs("import_bank_questions", {
-        _library: scope || null,
-        _entries: entries,
-      }));
+      const { data, error } = await supabase.rpc(
+        "import_bank_questions",
+        rpcArgs("import_bank_questions", {
+          _library: scope || null,
+          _entries: entries,
+        }),
+      );
       if (error) throw error;
       await qc.invalidateQueries({ queryKey: ["question-bank"] });
       toast.success(`${data} questions imported.`);
@@ -204,8 +210,8 @@ export function QuestionLibraryTools({
         credit and wildcard answers are not supported. Custom feedback is not transferred. Essays
         require grader notes and remain subject to the destination system’s grading method.
       </p>
-      <details>
-        <summary className="cursor-pointer text-sm">Create a shared library</summary>
+      <section aria-label="Create a shared library">
+        <h3 className="text-sm font-semibold">Create a shared library</h3>
         <div className="mt-2 flex gap-2">
           <Input
             aria-label="Shared library name"
@@ -224,7 +230,7 @@ export function QuestionLibraryTools({
             Create
           </Button>
         </div>
-      </details>
+      </section>
       {library?.owner && (
         <details>
           <summary className="cursor-pointer text-sm">Manage shared library access</summary>

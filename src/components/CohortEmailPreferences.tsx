@@ -42,8 +42,8 @@ export function CohortEmailPreferences() {
     }
   };
   return (
-    <details className="my-3 rounded-lg border p-3">
-      <summary className="cursor-pointer text-sm">Email reminder preferences</summary>
+    <section className="my-3 rounded-lg border p-3" aria-label="Email reminder preferences">
+      <h2 className="text-sm font-semibold">Email reminder preferences</h2>
       <div className="mt-2 space-y-2">
         <p className="text-xs text-muted-foreground">
           Receive assignment, approaching deadline and overdue reminders when your organisation
@@ -65,6 +65,6 @@ export function CohortEmailPreferences() {
           </label>
         )}
       </div>
-    </details>
+    </section>
   );
 }
