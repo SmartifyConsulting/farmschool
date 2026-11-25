@@ -64,11 +64,7 @@ function formatSize(bytes: number): string {
 
 /** The trainer's single cross-course home for files uploaded via the drag-and-drop bulk uploader
  * (content_library_files — course-less by design), organised into folders they create themselves. */
-export function ContentLibraryContent({
-  externalVideos,
-}: {
-  externalVideos?: import("react").ReactNode;
-}) {
+export function ContentLibraryContent() {
   const { user, ready } = useAuth();
   const qc = useQueryClient();
   const confirm = useConfirm();
@@ -88,7 +84,7 @@ export function ContentLibraryContent({
     loading: isLoading,
     error: libraryError,
   } = useLibraryMaterials();
-  const [stage, setStage] = useState<MaterialStage | "videos">("raw");
+  const [stage, setStage] = useState<MaterialStage>("raw");
   const [selected, setSelected] = useState<string[]>([]);
   const [fileType, setFileType] = useState<MaterialType>("All");
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
@@ -278,7 +274,7 @@ export function ContentLibraryContent({
           <Tabs
             value={stage}
             onValueChange={(value) => {
-              setStage(value as MaterialStage | "videos");
+              setStage(value as MaterialStage);
               setSearch("");
               setFolderPath([]);
               setSelected([]);
@@ -289,14 +285,8 @@ export function ContentLibraryContent({
             <SectionTabsList aria-label="Content Library stages">
               <SectionTabsTrigger value="raw">Raw</SectionTabsTrigger>
               <SectionTabsTrigger value="produced">Processed</SectionTabsTrigger>
-              {externalVideos && (
-                <SectionTabsTrigger value="videos">Training videos</SectionTabsTrigger>
-              )}
             </SectionTabsList>
             <TabsContent value={stage}>
-              {stage === "videos" ? (
-                externalVideos
-              ) : (
                 <>
                   <p className="mb-4 text-sm text-muted-foreground">
                     {stage === "raw"
@@ -709,7 +699,6 @@ export function ContentLibraryContent({
                     </div>
                   )}
                 </>
-              )}
             </TabsContent>
           </Tabs>
           {producer && (
