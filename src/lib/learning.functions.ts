@@ -140,7 +140,7 @@ export const submitQuiz = createServerFn({ method: "POST" })
       const feedback: (string | null)[] = questions.map(() => null);
       const correct = grading.map((item) => item === true);
       if (written.length) {
-        const apiKey = process.env["OPENAI_API_KEY"];
+        const apiKey = (process.env["OPENAI_API_KEY"] ?? process.env["OPEN_API_KEY"]);
         if (!apiKey)
           throw new Error(
             "Written grading is unavailable right now. Your answers were not graded.",

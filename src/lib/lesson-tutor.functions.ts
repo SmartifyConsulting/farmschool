@@ -40,7 +40,7 @@ export const askLessonTutor = createServerFn({ method: "POST" })
         : splitLessonSource(lesson.body).content;
     if (!source.trim())
       return { error: "This lesson has no written material for the tutor." } as const;
-    const apiKey = process.env["OPENAI_API_KEY"];
+    const apiKey = (process.env["OPENAI_API_KEY"] ?? process.env["OPEN_API_KEY"]);
     if (!apiKey) return { error: "The lesson tutor is unavailable right now." } as const;
     const { data: used, error: quotaError } = await context.supabase.rpc(
       "lesson_tutor_reserve_request",

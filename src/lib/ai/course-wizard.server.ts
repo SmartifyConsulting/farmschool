@@ -13,7 +13,7 @@ const LESSON_LENGTH_WORDS: Record<import("@/lib/course-wizard").CourseWizardInpu
 export async function handleCourseWizard(request: Request): Promise<Response> {
   const token = request.headers.get("authorization")?.replace(/^Bearer /, "");
   if (!token || token.split(".").length !== 3) return Response.json({ message: "Please sign in to create a course." }, { status: 401 });
-  const url = process.env["SUPABASE_URL"], key = process.env["SUPABASE_PUBLISHABLE_KEY"], apiKey = process.env["OPENAI_API_KEY"];
+  const url = process.env["SUPABASE_URL"], key = process.env["SUPABASE_PUBLISHABLE_KEY"], apiKey = (process.env["OPENAI_API_KEY"] ?? process.env["OPEN_API_KEY"]);
   if (!url || !key || !apiKey) return Response.json({ message: "The AI connection is not configured yet." }, { status: 503 });
   const db = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },

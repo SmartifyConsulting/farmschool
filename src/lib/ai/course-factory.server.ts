@@ -29,7 +29,7 @@ export async function handleCourseFactoryGenerate(request: Request): Promise<Res
   if (!token || token.split(".").length !== 3) return Response.json({ message: "Sign in to generate lessons." }, { status: 401 });
   const url = process.env["SUPABASE_URL"];
   const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
-  const apiKey = process.env["OPENAI_API_KEY"];
+  const apiKey = (process.env["OPENAI_API_KEY"] ?? process.env["OPEN_API_KEY"]);
   if (!url || !key || !apiKey) return Response.json({ message: "AI service is not configured." }, { status: 503 });
   const auth = createClient(url, key, { auth: { persistSession: false }, global: { fetch: (input, init) => {
     const headers = new Headers(init?.headers);

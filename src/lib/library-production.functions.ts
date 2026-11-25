@@ -24,7 +24,7 @@ export const produceLibraryLesson = createServerFn({ method: "POST" })
       .in("id", ids);
     if (error || sources?.length !== ids.length)
       throw new Error("Choose your own Raw source files.");
-    const apiKey = process.env["OPENAI_API_KEY"];
+    const apiKey = (process.env["OPENAI_API_KEY"] ?? process.env["OPEN_API_KEY"]);
     if (!apiKey)
       throw new Error("The AI connection is not configured. You can edit the material manually.");
     const { data: allowance, error: quotaError } = await context.supabase.rpc(
