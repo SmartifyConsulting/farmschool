@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/useLearning";
 import { friendlyError } from "@/lib/friendly-error";
 import { toast } from "sonner";
 import { portalSearch } from "@/lib/customer-portal";
+import { CohortEmailPreferences } from "@/components/CohortEmailPreferences";
 
 export const Route = createFileRoute("/profile")({
   validateSearch: portalSearch,
@@ -35,7 +36,7 @@ export const Route = createFileRoute("/profile")({
   component: Profile,
 });
 
-const TABS = ["About Me", "Account", "Billing", "Token Ledger"] as const;
+const TABS = ["About Me", "Account", "Preferences", "Billing", "Token Ledger"] as const;
 type Tab = (typeof TABS)[number];
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
@@ -307,6 +308,12 @@ function Profile() {
               <LogOut className="h-4 w-4 shrink-0" />
               Sign out
             </button>
+          </div>
+        )}
+
+        {tab === "Preferences" && (
+          <div className="mx-auto mt-5 max-w-xl">
+            <CohortEmailPreferences />
           </div>
         )}
 

@@ -13,7 +13,8 @@ import { CourseViewToggle, useCourseView } from "@/components/CourseViewToggle";
 import { readAllPages } from "@/lib/database-pages";
 import { certificateStatus } from "@/lib/certificates";
 import { extendedDeadline } from "@/lib/deadline-extension";
-import { CohortEmailPreferences } from "@/components/CohortEmailPreferences";
+import { CohortReportsContent } from "@/components/CohortReports";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CertificateDocument } from "@/components/CertificateDocument";
 import { LearningPrograms } from "@/components/LearningPrograms";
 
@@ -213,176 +214,194 @@ function MyCourses() {
       <Header />
       <Sheet>
         <CanvasHeading title="My learning" />
-        <CohortEmailPreferences />
-        <LearningPrograms />
-        <Link to="/cohorts" className="mt-2 inline-block text-sm font-semibold text-primary">
-          Cohort reports for managers
-        </Link>
-        <Link to="/skills" className="mt-3 inline-block text-sm font-semibold text-primary">
-          My skills & trainer feedback
-        </Link>
-        <div className="mt-3 flex justify-end">
-          <CourseViewToggle view={view} onChange={setView} />
-        </div>
-        <div className="mt-4">
-          <SearchBox />
-        </div>
-        <div
-          className="mt-4 flex flex-wrap gap-1 rounded-2xl bg-muted p-1 text-sm md:max-w-xl"
-          role="group"
-          aria-label="Filter my courses"
-        >
-          {["In progress", "Assigned", "Completed", "Saved", "Certifications"].map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              aria-pressed={tab === t}
-              className={`flex-1 rounded-full px-2 py-2 ${tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+        <Tabs defaultValue="courses" className="mt-4">
+          <TabsList className="h-auto flex-wrap" aria-label="My Learning sections">
+            <TabsTrigger value="courses">Courses</TabsTrigger>
+            <TabsTrigger value="programs">Programs</TabsTrigger>
+            <TabsTrigger value="cohorts">Cohorts</TabsTrigger>
+          </TabsList>
+          <TabsContent value="programs">
+            <LearningPrograms />
+          </TabsContent>
+          <TabsContent value="cohorts">
+            <CohortReportsContent />
+          </TabsContent>
+          <TabsContent value="courses">
+            <Link to="/skills" className="mt-3 inline-block text-sm font-semibold text-primary">
+              My skills & trainer feedback
+            </Link>
+            <div className="mt-3 flex justify-end">
+              <CourseViewToggle view={view} onChange={setView} />
+            </div>
+            <div className="mt-4">
+              <SearchBox />
+            </div>
+            <div
+              className="mt-4 flex flex-wrap gap-1 rounded-2xl bg-muted p-1 text-sm md:max-w-xl"
+              role="group"
+              aria-label="Filter my courses"
             >
-              {t}
-            </button>
-          ))}
-        </div>
-        {!user ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">
-            <Link to="/auth" className="font-semibold text-primary">
-              Sign in
-            </Link>{" "}
-            to see your courses.
-          </p>
-        ) : tab === "Certifications" ? (
-          <ul className={view === "cards" ? "mt-4 grid gap-3 md:grid-cols-2" : "mt-4 grid gap-3"}>
-            {certificateError && (
-              <p role="alert">Could not load your certificates. Refresh to try again.</p>
-            )}
-            {certs.map((c) => (
-              <li key={c.id}>
+              {["In progress", "Assigned", "Completed", "Saved", "Certifications"].map((t) => (
                 <button
-                  onClick={() => setOpenCertId(c.id)}
-                  className="flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left hover:bg-muted"
+                  key={t}
+                  type="button"
+                  onClick={() => setTab(t)}
+                  aria-pressed={tab === t}
+                  className={`flex-1 rounded-full px-2 py-2 ${tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
                 >
-                  <Award className="h-6 w-6 shrink-0 text-accent" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium">{c.title}</span>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <BadgeCheck className="h-3.5 w-3.5 text-primary" />
-                      {certificateStatus(c)} · {new Date(c.issued_at).toLocaleDateString()} ·{" "}
-                      {credentialCode(c.id)}
-                    </span>
-                  </span>
-                  <span className="text-xs font-semibold text-primary">View</span>
+                  {t}
                 </button>
-              </li>
-            ))}
-            {certs.length === 0 && (
-              <p className="py-8 text-center text-sm text-muted-foreground md:col-span-2">
-                Finish a course and claim its certificate to see it here.
+              ))}
+            </div>
+            {!user ? (
+              <p className="py-10 text-center text-sm text-muted-foreground">
+                <Link to="/auth" className="font-semibold text-primary">
+                  Sign in
+                </Link>{" "}
+                to see your courses.
               </p>
-            )}
-          </ul>
-        ) : (
-          <div
-            className={
-              view === "cards" ? "mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3" : "mt-4 grid gap-3"
-            }
-          >
-            {(progressLoading || studioLoading || assignmentsLoading) && (
-              <p className="col-span-full text-sm text-muted-foreground">Loading your courses…</p>
-            )}
-            {studioError && (
-              <p role="alert" className="col-span-full text-sm text-destructive">
-                Could not load creator courses. Please try again.
-              </p>
-            )}
-            {assignmentsError && (
-              <p role="alert" className="col-span-full text-sm text-destructive">
-                Could not load assigned courses. Please try again.
-              </p>
-            )}
-            {visible.map((c) => (
-              <Link
-                key={`${c.source}-${c.id}`}
-                to={c.source === "studio" ? "/class/$id" : "/course/$id"}
-                params={{ id: c.id }}
-                className={`flex gap-3 rounded-2xl border border-border p-3 hover:border-primary/50 ${view === "cards" ? "flex-col" : ""}`}
+            ) : tab === "Certifications" ? (
+              <ul
+                className={view === "cards" ? "mt-4 grid gap-3 md:grid-cols-2" : "mt-4 grid gap-3"}
               >
-                {c.cover ? (
-                  <img
-                    src={c.cover}
-                    alt=""
-                    className={
-                      view === "cards"
-                        ? "aspect-video w-full rounded-xl object-cover"
-                        : "aspect-video w-36 shrink-0 rounded-xl object-cover"
-                    }
-                  />
-                ) : (
-                  <div
-                    className={`grid aspect-video shrink-0 place-items-center rounded-xl bg-muted ${view === "cards" ? "w-full" : "w-36"}`}
-                  >
-                    <BookOpen className="h-6 w-6 text-primary" />
-                  </div>
+                {certificateError && (
+                  <p role="alert">Could not load your certificates. Refresh to try again.</p>
                 )}
-                <div className="min-w-0 flex-1">
-                  <p className="line-clamp-2 text-sm font-semibold">{c.title}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {c.category}
-                    {c.source === "sample" ? " · Sample" : ""}
+                {certs.map((c) => (
+                  <li key={c.id}>
+                    <button
+                      onClick={() => setOpenCertId(c.id)}
+                      className="flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left hover:bg-muted"
+                    >
+                      <Award className="h-6 w-6 shrink-0 text-accent" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-medium">{c.title}</span>
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <BadgeCheck className="h-3.5 w-3.5 text-primary" />
+                          {certificateStatus(c)} · {new Date(c.issued_at).toLocaleDateString()} ·{" "}
+                          {credentialCode(c.id)}
+                        </span>
+                      </span>
+                      <span className="text-xs font-semibold text-primary">View</span>
+                    </button>
+                  </li>
+                ))}
+                {certs.length === 0 && (
+                  <p className="py-8 text-center text-sm text-muted-foreground md:col-span-2">
+                    Finish a course and claim its certificate to see it here.
                   </p>
-                  <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                    <FileText className="h-3 w-3" />
-                    {c.total} lessons
+                )}
+              </ul>
+            ) : (
+              <div
+                className={
+                  view === "cards"
+                    ? "mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3"
+                    : "mt-4 grid gap-3"
+                }
+              >
+                {(progressLoading || studioLoading || assignmentsLoading) && (
+                  <p className="col-span-full text-sm text-muted-foreground">
+                    Loading your courses…
                   </p>
-                  {c.assigned && (
-                    <p className="mt-2 text-xs font-medium text-primary">
-                      {c.dueAt
-                        ? "Due " +
-                          new Date(c.dueAt).toLocaleDateString("en-ZA", {
-                            timeZone: "Africa/Johannesburg",
-                          })
-                        : "Assigned · No deadline"}
-                    </p>
-                  )}
-                  {c.started && (
-                    <div className="mt-3">
-                      <ProgressBar pct={c.pct} label={`${c.done}/${c.total} lessons`} />
+                )}
+                {studioError && (
+                  <p role="alert" className="col-span-full text-sm text-destructive">
+                    Could not load creator courses. Please try again.
+                  </p>
+                )}
+                {assignmentsError && (
+                  <p role="alert" className="col-span-full text-sm text-destructive">
+                    Could not load assigned courses. Please try again.
+                  </p>
+                )}
+                {visible.map((c) => (
+                  <Link
+                    key={`${c.source}-${c.id}`}
+                    to={c.source === "studio" ? "/class/$id" : "/course/$id"}
+                    params={{ id: c.id }}
+                    className={`flex gap-3 rounded-2xl border border-border p-3 hover:border-primary/50 ${view === "cards" ? "flex-col" : ""}`}
+                  >
+                    {c.cover ? (
+                      <img
+                        src={c.cover}
+                        alt=""
+                        className={
+                          view === "cards"
+                            ? "aspect-video w-full rounded-xl object-cover"
+                            : "aspect-video w-36 shrink-0 rounded-xl object-cover"
+                        }
+                      />
+                    ) : (
+                      <div
+                        className={`grid aspect-video shrink-0 place-items-center rounded-xl bg-muted ${view === "cards" ? "w-full" : "w-36"}`}
+                      >
+                        <BookOpen className="h-6 w-6 text-primary" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 text-sm font-semibold">{c.title}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {c.category}
+                        {c.source === "sample" ? " · Sample" : ""}
+                      </p>
+                      <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                        <FileText className="h-3 w-3" />
+                        {c.total} lessons
+                      </p>
+                      {c.assigned && (
+                        <p className="mt-2 text-xs font-medium text-primary">
+                          {c.dueAt
+                            ? "Due " +
+                              new Date(c.dueAt).toLocaleDateString("en-ZA", {
+                                timeZone: "Africa/Johannesburg",
+                              })
+                            : "Assigned · No deadline"}
+                        </p>
+                      )}
+                      {c.started && (
+                        <div className="mt-3">
+                          <ProgressBar pct={c.pct} label={`${c.done}/${c.total} lessons`} />
+                        </div>
+                      )}
+                      <span className="mt-3 inline-block rounded-md bg-primary px-4 py-2 text-center text-xs font-semibold text-primary-foreground">
+                        {c.started ? (c.pct >= 100 ? "Review" : "Resume") : "Start"}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+                {!progressLoading &&
+                  !studioLoading &&
+                  !assignmentsLoading &&
+                  !studioError &&
+                  !assignmentsError &&
+                  visible.length === 0 && (
+                    <div className="col-span-full py-10 text-center text-sm text-muted-foreground">
+                      {tab === "Assigned"
+                        ? "No courses assigned yet."
+                        : tab === "Saved"
+                          ? "No saved courses yet."
+                          : tab === "Completed"
+                            ? "No completed courses yet."
+                            : "No courses in progress yet."}
+                      <p className="mt-3">
+                        <Link to="/search" className="font-semibold text-primary">
+                          Explore the catalogue
+                        </Link>
+                      </p>
                     </div>
                   )}
-                  <span className="mt-3 inline-block rounded-md bg-primary px-4 py-2 text-center text-xs font-semibold text-primary-foreground">
-                    {c.started ? (c.pct >= 100 ? "Review" : "Resume") : "Start"}
-                  </span>
-                </div>
-              </Link>
-            ))}
-            {!progressLoading &&
-              !studioLoading &&
-              !assignmentsLoading &&
-              !studioError &&
-              !assignmentsError &&
-              visible.length === 0 && (
-                <div className="col-span-full py-10 text-center text-sm text-muted-foreground">
-                  {tab === "Assigned"
-                    ? "No courses assigned yet."
-                    : tab === "Saved"
-                      ? "No saved courses yet."
-                      : tab === "Completed"
-                        ? "No completed courses yet."
-                        : "No courses in progress yet."}
-                  <p className="mt-3">
-                    <Link to="/search" className="font-semibold text-primary">
-                      Explore the catalogue
-                    </Link>
-                  </p>
-                </div>
-              )}
-          </div>
-        )}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </Sheet>
       <Dialog open={!!openCert} onOpenChange={(o) => !o && setOpenCertId(null)}>
         <DialogContent className="max-w-2xl print:max-w-none print:border-0 print:shadow-none">
           <DialogTitle className="sr-only">Certificate</DialogTitle>
-          {openCert && <CertificateDocument key={openCert.id} certificate={openCert} learnerName={name} />}
+          {openCert && (
+            <CertificateDocument key={openCert.id} certificate={openCert} learnerName={name} />
+          )}
         </DialogContent>
       </Dialog>
     </Phone>
