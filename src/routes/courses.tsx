@@ -221,9 +221,14 @@ function MyCourses() {
             <TabsTrigger value="cohorts">Cohorts</TabsTrigger>
           </TabsList>
           <TabsContent value="programs">
-            <LearningPrograms />
+            {user ? <LearningPrograms /> : (
+              <p className="py-10 text-center text-sm text-muted-foreground">
+                <Link to="/auth" className="font-semibold text-primary">Sign in</Link> to see your programs.
+              </p>
+            )}
           </TabsContent>
           <TabsContent value="cohorts">
+            <h2 className="mt-4 font-semibold">Cohort reports</h2>
             <CohortReportsContent />
           </TabsContent>
           <TabsContent value="courses">
