@@ -4281,7 +4281,7 @@ function LessonEditor({
           <ScormPicker value={scormLessonRef(body)} onChange={(pid) => setBody(`scorm:${pid}`)} />
         )}
         {kind === "slide" && !readOnly && (
-          <SlideEditor value={body} onChange={setBody} readOnly={false} />
+          <SlideEditor key={lesson.id} value={body} onChange={setBody} readOnly={false} courseId={courseId} lessonTitle={title} />
         )}
         {kind !== "quiz" && kind !== "scorm" && kind !== "slide" && (
           <Textarea

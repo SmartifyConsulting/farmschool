@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { courses, allLessons } from "@/lib/courses";
 import { parsePassMark } from "@/lib/studio";
 import { gradeQuiz, parseQuizQuestions, quizSubmission } from "@/lib/studio-quiz";
-import { parseLessonSlides, practicalTaskIndex } from "@/lib/lesson-slides";
+import { parseLessonSlides, slideBlockLocations } from "@/lib/lesson-slides";
 import { hasActiveEnrollment } from "@/lib/marketplace";
 import { chooseQuizIndices, quizSampleSize, privateQuizBankId, quizResult } from "@/lib/quiz-pools";
 import { examDraftAnswers, examStartResponse } from "@/lib/exam-controls";
@@ -262,9 +262,9 @@ export const claimCertificate = createServerFn({ method: "POST" })
       const photoTasks = lessons.flatMap((lesson) => {
         if (lesson.kind !== "slide") return [];
         const slides = parseLessonSlides(lesson.body ?? "");
-        return slides.flatMap((slide, slideIndex) => slide.blocks.flatMap((block, blockIndex) =>
-          block.kind === "photo" ? [{ lessonId: lesson.id, blockIndex: practicalTaskIndex(slides, slideIndex, blockIndex) }] : [],
-        ));
+        return slideBlockLocations(slides).flatMap(({ block, taskIndex }) =>
+          block.kind === "photo" ? [{ lessonId: lesson.id, blockIndex: taskIndex }] : [],
+        );
       });
       if (photoTasks.length) {
         const { data: evidence, error: evidenceError } = await supabaseAdmin.from("lesson_photo_submissions")

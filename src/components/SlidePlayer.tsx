@@ -5,7 +5,7 @@ import { PhotoEvidence } from "@/components/PhotoEvidence";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { LessonSlide, SlideBlock } from "@/lib/lesson-slides";
-import { practicalTaskIndex, extractYouTubeId } from "@/lib/lesson-slides";
+import { practicalTaskIndex, extractYouTubeId, slideBlockLocations } from "@/lib/lesson-slides";
 import { InteractiveVideoPlayer } from "@/components/InteractiveVideoPlayer";
 import { HeroBanner } from "@/components/HeroBanner";
 
@@ -71,6 +71,7 @@ export function SlidePlayer({
   const slide = slides[state.index];
   if (!slide) return <p className="text-sm text-muted-foreground">No slides yet.</p>;
   const allSeen = state.seen.length === slides.length;
+  const locations = slideBlockLocations(slides);
   return (
     <section className="space-y-3" aria-label="Lesson slides">
       <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
@@ -120,6 +121,7 @@ export function SlidePlayer({
             lessonId={lessonId}
             blockIndex={practicalTaskIndex(slides, state.index, i)}
             isTrainer={!!isTrainer}
+            nestedIndex={(ci, bi) => locations.find((item) => item.path === `${state.index}:${i}:${ci}:${bi}`)!.taskIndex}
             checked={(item) => state.checked.includes([state.index, i, item].join(":"))}
             toggle={(item) => {
               const key = [state.index, i, item].join(":");
@@ -160,13 +162,15 @@ function Block({
   lessonId,
   blockIndex,
   isTrainer,
+  nestedIndex,
 }: {
   block: SlideBlock;
-  checked: (item: number) => boolean;
-  toggle: (item: number) => void;
+  checked: (item: number | string) => boolean;
+  toggle: (item: number | string) => void;
   lessonId: string | undefined;
   blockIndex: number;
   isTrainer: boolean;
+  nestedIndex?: (column: number, block: number) => number;
 }) {
   const [flipped, setFlipped] = useState(false);
   const [open, setOpen] = useState<number | null>(null);
@@ -299,10 +303,13 @@ function Block({
   }
   if (block.kind === "columns")
     return (
-      <div className={`grid gap-3 ${block.columns.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
-        {block.columns.map((text, ci) => (
-          <div key={ci} className="rounded-lg border border-border bg-card p-3">
-            <FormattedLesson content={text} />
+      <div className={`grid min-w-0 gap-3 ${block.columns.length === 2 ? "md:grid-cols-2" : block.columns.length === 4 ? "lg:grid-cols-4 md:grid-cols-2" : "lg:grid-cols-3"}`}>
+        {block.columns.map((blocks, ci) => (
+          <div key={ci} className="min-w-0 space-y-3 break-words rounded-lg border border-border bg-card p-3">
+            {blocks.map((child, bi) => <Block key={bi} block={child} lessonId={lessonId} isTrainer={isTrainer}
+              blockIndex={nestedIndex?.(ci, bi) ?? blockIndex}
+              checked={(item) => checked([ci, bi, item].join(":"))}
+              toggle={(item) => toggle([ci, bi, item].join(":"))} />)}
           </div>
         ))}
       </div>

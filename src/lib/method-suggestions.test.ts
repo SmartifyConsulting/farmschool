@@ -4,21 +4,21 @@ import { methodSuggestionsSchema } from "./method-suggestions";
 
 const unused = {
   illustrated: null, visual: null, videoQueries: null, steps: null,
-  scenarios: null, quiz: null, activities: null,
+  scenarios: null, quiz: null, activities: null, facts: null,
 };
 
 describe("method suggestions structured output", () => {
   it("requires every property in the provider JSON schema, including nested quiz fields", () => {
     const schema = z.toJSONSchema(methodSuggestionsSchema);
     expect(schema.required).toEqual([
-      "illustrated", "visual", "videoQueries", "steps", "scenarios", "quiz", "activities",
+      "illustrated", "visual", "videoQueries", "steps", "scenarios", "quiz", "activities", "facts",
     ]);
     const quizSchema = schema.properties?.["quiz"];
     const quiz = typeof quizSchema === "object"
       ? quizSchema.anyOf?.find(branch => typeof branch === "object" && branch.type === "object")
       : undefined;
     if (typeof quiz !== "object") throw new Error("Missing quiz object schema");
-    expect(quiz?.required).toEqual(["question", "options", "correctIndex", "sourceQuote"]);
+    expect(quiz?.required).toEqual(["question", "options", "correctIndex", "sourceQuote", "hint"]);
   });
 
   it("accepts selected suggestions with explicit nulls for unused methods", () => {

@@ -1,5 +1,5 @@
 export type SlideBlock =
-  | { kind: "text"; body: string }
+  | { kind: "text"; body: string; fenced?: true }
   | { kind: "tip" | "warning" | "takeaway"; body: string }
   | { kind: "flip"; front: string; back: string }
   | { kind: "tabs" | "accordion"; items: { label: string; body: string }[] }
@@ -14,7 +14,7 @@ export type SlideBlock =
   | { kind: "video"; url: string; youtube: boolean; interactions: { atSeconds: number; note: string }[] }
   | { kind: "facts"; items: { claim: string; evidence: string; image: string | null }[] }
   | { kind: "quizcheck"; items: { question: string; options: string[]; correctIndices: number[]; hint: string | null }[] }
-  | { kind: "columns"; columns: string[] };
+  | { kind: "columns"; columns: SlideBlock[][] };
 
 export type LessonSlide = { title: string; blocks: SlideBlock[] };
 
@@ -41,8 +41,33 @@ export function practicalTaskIndex(slides: LessonSlide[], slideIndex: number, bl
     + blockIndex;
 }
 
+export function slideBlockLocations(slides: LessonSlide[]) {
+  let nestedIndex = slides.reduce((total, slide) => total + slide.blocks.length, 0) * 2;
+  return slides.flatMap((slide, si) => slide.blocks.flatMap((block, bi) => {
+    const top = { block, path: `${si}:${bi}`, taskIndex: practicalTaskIndex(slides, si, bi) };
+    return block.kind === "columns"
+      ? [top, ...block.columns.flatMap((column, ci) => column.map((child, i) => ({ block: child, path: `${si}:${bi}:${ci}:${i}`, taskIndex: nestedIndex++ })))]
+      : [top];
+  }));
+}
+
 /** Plain manual text remains readable. Only complete, recognised widgets become interactive. */
-function parseBlocks(lines: string[]): SlideBlock[] {
+export function blockFenceEnd(lines: string[], start: number): number {
+  if (lines[start]?.trim() !== ":::columns") {
+    let end = start + 1;
+    while (end < lines.length && !/^:::/.test(lines[end]!)) end++;
+    return /^:::\s*$/.test(lines[end] ?? "") ? end : -1;
+  }
+  let depth = 1;
+  for (let end = start + 1; end < lines.length; end++) {
+    if (/^:::\w+\s*$/.test(lines[end]!)) depth++;
+    else if (/^:::\s*$/.test(lines[end]!) && --depth === 0) return end;
+  }
+  return -1;
+}
+
+export function parseBlocks(source: string | string[], depth = 0): SlideBlock[] {
+  const lines = typeof source === "string" ? source.replace(/\r\n?/g, "\n").split("\n") : source;
   const blocks: SlideBlock[] = [];
   let plain: string[] = [];
   const flush = () => {
@@ -53,14 +78,13 @@ function parseBlocks(lines: string[]): SlideBlock[] {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
     const marker =
-      /^:::(tip|warning|takeaway|flip|tabs|accordion|checklist|photo|hotspot|image|video|facts|quizcheck|columns)\s*$/.exec(line);
+      /^:::(text|tip|warning|takeaway|flip|tabs|accordion|checklist|photo|hotspot|image|video|facts|quizcheck|columns)\s*$/.exec(line);
     if (!marker) {
       plain.push(line);
       continue;
     }
-    let end = i + 1;
-    while (end < lines.length && !/^:::\s*$/.test(lines[end]!) && !/^:::/.test(lines[end]!)) end++;
-    if (!/^:::\s*$/.test(lines[end] ?? "")) {
+    const end = blockFenceEnd(lines, i);
+    if (end < 0) {
       plain.push(line);
       continue;
     }
@@ -70,6 +94,7 @@ function parseBlocks(lines: string[]): SlideBlock[] {
       .trim();
     const kind = marker[1];
     let block: SlideBlock | undefined;
+    if (kind === "text" && body) block = { kind, body, fenced: true };
     if ((kind === "tip" || kind === "warning" || kind === "takeaway") && body)
       block = { kind, body };
     if (kind === "flip") {
@@ -149,8 +174,18 @@ function parseBlocks(lines: string[]): SlideBlock[] {
       if (!parts[0]?.trim() && items.length) block = { kind, items };
     }
     if (kind === "columns") {
-      const columns = body.split(/^---col---\s*$/m).map((c) => c.trim());
-      if (columns.length >= 2 && columns.every((c) => c)) block = { kind, columns };
+      const columns: string[][] = [[]];
+      let innerDepth = 0;
+      for (const columnLine of body.split("\n")) {
+        if (!innerDepth && /^---col---\s*$/.test(columnLine)) columns.push([]);
+        else {
+          columns.at(-1)!.push(columnLine);
+          if (/^:::\w+\s*$/.test(columnLine)) innerDepth++;
+          else if (/^:::\s*$/.test(columnLine)) innerDepth = Math.max(0, innerDepth - 1);
+        }
+      }
+      if (depth < 1 && columns.length >= 2)
+        block = { kind, columns: columns.map((column) => parseBlocks(column, depth + 1)) };
     }
     if (kind === "hotspot") {
       const lines = body.split("\n");
@@ -205,9 +240,13 @@ export function parseLessonSlides(source: string): LessonSlide[] {
   const { content } = splitLessonSource(source);
   const groups: { title: string; lines: string[] }[] = [];
   let current = { title: "", lines: [] as string[] };
-  for (const line of content.replace(/\r\n?/g, "\n").split("\n")) {
+  const sourceLines = content.replace(/\r\n?/g, "\n").split("\n");
+  let fenceEnd = -1;
+  for (let lineIndex = 0; lineIndex < sourceLines.length; lineIndex++) {
+    const line = sourceLines[lineIndex]!;
+    if (lineIndex > fenceEnd && /^:::\w+\s*$/.test(line)) fenceEnd = blockFenceEnd(sourceLines, lineIndex);
     const heading = /^(?:#{1,2}\s+)(.+)$/.exec(line);
-    if (heading) {
+    if (heading && lineIndex > fenceEnd) {
       groups.push(current);
       current = { title: heading[1]!.trim(), lines: [] };
     } else {
@@ -264,6 +303,9 @@ export function slideText(slide: LessonSlide, revealAnswers = true): string {
     slide.title,
     ...slide.blocks.flatMap((block) => {
       if (block.kind === "flip") return revealAnswers ? [block.front, block.back] : [block.front];
+      if (block.kind === "columns") return block.columns.map((blocks) => slideText({ title: "", blocks }, revealAnswers));
+      if (block.kind === "quizcheck") return block.items.flatMap((item) => revealAnswers ? [item.question, ...item.options] : [item.question]);
+      if (block.kind === "facts") return block.items.flatMap((item) => [item.claim, item.evidence]);
       if (block.kind === "checklist") return block.items;
       if (block.kind === "tabs" || block.kind === "accordion")
         return block.items.flatMap(({ label, body }) => [label, body]);

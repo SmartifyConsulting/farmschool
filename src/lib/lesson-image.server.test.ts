@@ -4,7 +4,7 @@ import { createLessonImage } from "./lesson-image.server";
 afterEach(() => vi.unstubAllGlobals());
 
 describe("lesson image provider request", () => {
-  it("uses the documented active Image API model and returns the generated image", async () => {
+  it("uses the configured Image API model and requests the returned base64 image", async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({
       created: 1,
       data: [{ b64_json: "aW1hZ2U=" }],
@@ -19,7 +19,7 @@ describe("lesson image provider request", () => {
     expect(body.model).toBe("dall-e-3");
     expect(body.size).toBe("1024x1024");
     expect(body.prompt).toContain("Show a beehive entrance.");
-    expect(body).not.toHaveProperty("response_format");
+    expect(body.response_format).toBe("b64_json");
   });
 
   it("does not silently switch models or retry when OpenAI rejects the request", async () => {
