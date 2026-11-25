@@ -45,7 +45,7 @@ export const suggestCategoriesWithAI = createServerFn({ method: "POST" })
       title: (item.title ?? item.file_name ?? "").slice(0, 500),
       description: (item.description ?? "").slice(0, 2000),
     }));
-    const apiKey = process.env["OPENAI_API_KEY"];
+    const apiKey = (process.env["OPENAI_API_KEY"] ?? process.env["OPEN_API_KEY"]);
     if (!apiKey) throw new Error("AI is unavailable. You can choose the categories manually.");
     const quota = await context.supabase.rpc("course_factory_reserve_ai_request" as never);
     if (quota.error || typeof quota.data !== "number")

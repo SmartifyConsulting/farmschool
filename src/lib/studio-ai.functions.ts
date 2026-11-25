@@ -41,7 +41,7 @@ export const generateBlock = createServerFn({ method: "POST" })
     await ownCourse(context.supabase, context.userId, data.courseId);
     const { data: course, error } = await context.supabase.from("studio_courses").select("published").eq("id", data.courseId).single();
     if (error || !course || course.published) throw new Error("Open a draft course before generating a block.");
-    const apiKey = process.env["OPENAI_API_KEY"];
+    const apiKey = (process.env["OPENAI_API_KEY"] ?? process.env["OPEN_API_KEY"]);
     if (!apiKey) throw new Error("The AI connection is not configured yet.");
     const { data: count, error: quotaError } = await context.supabase.rpc("course_factory_reserve_ai_request" as never);
     if (quotaError || typeof count !== "number") throw new Error("Your AI allowance is unavailable or used up. Please try later.");
@@ -92,7 +92,7 @@ export const analyzeContentFile = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await ownCourse(context.supabase, context.userId, data.courseId);
     const text = (data.extractedText ?? "").trim();
-    const apiKey = process.env["OPENAI_API_KEY"];
+    const apiKey = (process.env["OPENAI_API_KEY"] ?? process.env["OPEN_API_KEY"]);
     if (!text || !apiKey) return EMPTY_FILE_ANALYSIS;
     const { data: count, error: quotaError } = await context.supabase.rpc(
       "course_factory_reserve_ai_request" as never,
@@ -141,7 +141,7 @@ export const assistLesson = createServerFn({ method: "POST" })
   .inputValidator((i: unknown) => assistInput.parse(i))
   .handler(async ({ data, context }) => {
     await ownCourse(context.supabase, context.userId, data.courseId);
-    const apiKey = process.env["OPENAI_API_KEY"];
+    const apiKey = (process.env["OPENAI_API_KEY"] ?? process.env["OPEN_API_KEY"]);
     if (!apiKey) throw new Error("The AI connection is not configured yet.");
     const { data: count, error: quotaError } = await context.supabase.rpc("course_factory_reserve_ai_request" as never);
     if (quotaError || typeof count !== "number") {
@@ -227,7 +227,7 @@ export const polishText = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     if (data.courseId) await ownCourse(context.supabase, context.userId, data.courseId);
     if (!data.text.trim()) throw new Error("Add some text first.");
-    const apiKey = process.env["OPENAI_API_KEY"];
+    const apiKey = (process.env["OPENAI_API_KEY"] ?? process.env["OPEN_API_KEY"]);
     if (!apiKey) throw new Error("The AI connection is not configured yet.");
     const { data: count, error: quotaError } = await context.supabase.rpc("course_factory_reserve_ai_request" as never);
     if (quotaError || typeof count !== "number") {
@@ -257,7 +257,7 @@ export const generateCourseDetails = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     if (!data.sourceText.trim()) throw new Error("Upload a manual first.");
-    const apiKey = process.env["OPENAI_API_KEY"];
+    const apiKey = (process.env["OPENAI_API_KEY"] ?? process.env["OPEN_API_KEY"]);
     if (!apiKey) throw new Error("The AI connection is not configured yet.");
     const { data: count, error: quotaError } = await context.supabase.rpc("course_factory_reserve_ai_request" as never);
     if (quotaError || typeof count !== "number") {
@@ -292,7 +292,7 @@ export const generateCourseTopic = createServerFn({ method: "POST" })
     z.object({ title: z.string().max(120), description: z.string().max(4000), industry: z.string().max(100) }).parse(i),
   )
   .handler(async ({ data, context }) => {
-    const apiKey = process.env["OPENAI_API_KEY"];
+    const apiKey = (process.env["OPENAI_API_KEY"] ?? process.env["OPEN_API_KEY"]);
     if (!apiKey) throw new Error("The AI connection is not configured yet.");
     const { data: count, error: quotaError } = await context.supabase.rpc("course_factory_reserve_ai_request" as never);
     if (quotaError || typeof count !== "number") {
@@ -332,7 +332,7 @@ export const generateCourseOutlineWithAI = createServerFn({ method: "POST" })
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
-    const apiKey = process.env["OPENAI_API_KEY"];
+    const apiKey = (process.env["OPENAI_API_KEY"] ?? process.env["OPEN_API_KEY"]);
     if (!apiKey) throw new Error("The AI connection is not configured yet.");
     const { data: count, error: quotaError } = await context.supabase.rpc("course_factory_reserve_ai_request" as never);
     if (quotaError || typeof count !== "number") {
@@ -407,7 +407,7 @@ export const generateCourseDescription = createServerFn({ method: "POST" })
   .inputValidator((i: unknown) => z.object({ courseId: z.string().uuid(), title: z.string().max(120), sourceText: z.string().max(200000).optional() }).parse(i))
   .handler(async ({ data, context }) => {
     await ownCourse(context.supabase, context.userId, data.courseId);
-    const apiKey = process.env["OPENAI_API_KEY"];
+    const apiKey = (process.env["OPENAI_API_KEY"] ?? process.env["OPEN_API_KEY"]);
     if (!apiKey) throw new Error("The AI connection is not configured yet.");
     const { data: count, error: quotaError } = await context.supabase.rpc("course_factory_reserve_ai_request" as never);
     if (quotaError || typeof count !== "number") {
@@ -453,7 +453,7 @@ export const generateMethodSuggestions = createServerFn({ method: "POST" })
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
-    const apiKey = process.env["OPENAI_API_KEY"];
+    const apiKey = (process.env["OPENAI_API_KEY"] ?? process.env["OPEN_API_KEY"]);
     if (!apiKey) throw new Error("The AI connection is not configured yet.");
     const { data: count, error: quotaError } = await context.supabase.rpc("course_factory_reserve_ai_request" as never);
     if (quotaError || typeof count !== "number") {
@@ -495,7 +495,7 @@ export const generateLessonImage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({ caption: z.string().min(1).max(600) }).parse(i))
   .handler(async ({ data, context }) => {
-    const apiKey = process.env["OPENAI_API_KEY"];
+    const apiKey = (process.env["OPENAI_API_KEY"] ?? process.env["OPEN_API_KEY"]);
     if (!apiKey) throw new Error("The AI connection is not configured yet.");
     const { data: count, error: quotaError } = await context.supabase.rpc("course_factory_reserve_ai_request" as never);
     if (quotaError || typeof count !== "number") {
