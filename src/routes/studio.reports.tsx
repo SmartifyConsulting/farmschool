@@ -2,15 +2,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
 import { AnalyticsReport } from "@/components/reports/AnalyticsReport";
 import { ComplianceReport } from "@/components/reports/ComplianceReport";
+import { CourseUsageReport } from "@/components/reports/CourseUsageReport";
 import { pageMeta } from "@/lib/page-meta";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { SectionTabsList, SectionTabsTrigger } from "@/components/SectionTabs";
 
-type ReportTab = "analytics" | "compliance";
+type ReportTab = "analytics" | "compliance" | "course-usage";
 
 export const Route = createFileRoute("/studio/reports")({
   validateSearch: (s: Record<string, unknown>): { tab: ReportTab } => ({
-    tab: s["tab"] === "compliance" ? "compliance" : "analytics",
+    tab: s["tab"] === "compliance" || s["tab"] === "course-usage" ? s["tab"] : "analytics",
   }),
   head: () =>
     pageMeta(
@@ -33,12 +34,19 @@ function Reports() {
           onValueChange={(value) => void navigate({ search: { tab: value as ReportTab } })}
         >
           <SectionTabsList aria-label="Report type" className="mb-5">
-            {(["analytics", "compliance"] as const).map((t) => (
+            {(["analytics", "compliance", "course-usage"] as const).map((t) => (
               <SectionTabsTrigger key={t} value={t}>
-                {t === "analytics" ? "Analytics" : "Compliance"}
+                {t === "analytics"
+                  ? "Analytics"
+                  : t === "compliance"
+                    ? "Compliance"
+                    : "Course Usage"}
               </SectionTabsTrigger>
             ))}
           </SectionTabsList>
+          <TabsContent value="course-usage">
+            <CourseUsageReport />
+          </TabsContent>
           <TabsContent value="analytics">
             <AnalyticsReport />
           </TabsContent>
