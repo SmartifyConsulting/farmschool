@@ -18,6 +18,7 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { SectionTabsList, SectionTabsTrigger } from "@/components/SectionTabs";
 import { CertificateDocument } from "@/components/CertificateDocument";
 import { LearningPrograms } from "@/components/LearningPrograms";
+import { MySkills } from "@/components/MySkills";
 
 export const Route = createFileRoute("/courses")({
   head: () =>
@@ -220,6 +221,7 @@ function MyCourses() {
             <SectionTabsTrigger value="courses">Courses</SectionTabsTrigger>
             <SectionTabsTrigger value="programs">Programs</SectionTabsTrigger>
             <SectionTabsTrigger value="cohorts">Cohorts</SectionTabsTrigger>
+            <SectionTabsTrigger value="skills">My Skills</SectionTabsTrigger>
           </SectionTabsList>
           <TabsContent value="programs">
             {user ? (
@@ -237,10 +239,10 @@ function MyCourses() {
             <h2 className="mt-4 font-semibold">Cohort reports</h2>
             <CohortReportsContent />
           </TabsContent>
+          <TabsContent value="skills">
+            <MySkills />
+          </TabsContent>
           <TabsContent value="courses">
-            <Link to="/skills" className="mt-3 inline-block text-sm font-semibold text-primary">
-              My skills & trainer feedback
-            </Link>
             <div className="mt-3 flex justify-end">
               <CourseViewToggle view={view} onChange={setView} />
             </div>
