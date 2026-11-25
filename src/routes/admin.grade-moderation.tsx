@@ -83,13 +83,13 @@ function ModerationPage() {
     <Phone>
       <Header />
       <Sheet wide>
-        <CanvasHeading eyebrow="Administration" title="Grade moderation" />
+        <CanvasHeading eyebrow="Admin" title="Grade moderation" />
         {!ready ? (
-          <p>Checking access…</p>
+          <p className="supporting-text text-muted-foreground">Checking access…</p>
         ) : !user ? (
           <Link to="/auth">Sign in</Link>
         ) : !admin ? (
-          <p>Administrator access required.</p>
+          <p className="supporting-text text-muted-foreground">Administrator access required.</p>
         ) : (
           <div className="mt-4 space-y-4">
             <AdminNav />
@@ -99,12 +99,16 @@ function ModerationPage() {
               remain separate.
             </p>
             {report.isPending ? (
-              <p>Loading proposals…</p>
+              <p className="supporting-text text-muted-foreground">Loading proposals…</p>
             ) : report.isError ? (
               <p role="alert">Could not load grade proposals.</p>
             ) : (
               <>
-                {!report.data.records.length && <p>No pending proposals on this page.</p>}
+                {!report.data.records.length && (
+                  <p className="supporting-text text-muted-foreground">
+                    No pending proposals on this page.
+                  </p>
+                )}
                 {report.data.records.map((item) => (
                   <article key={item.id} className="space-y-3 rounded-xl border p-4">
                     <h2 className="font-semibold">
@@ -153,7 +157,7 @@ function ModerationPage() {
                   >
                     Previous
                   </Button>
-                  <span className="text-sm">
+                  <span className="supporting-text text-muted-foreground">
                     Page {page + 1} · {report.data.total} pending
                   </span>
                   <Button
