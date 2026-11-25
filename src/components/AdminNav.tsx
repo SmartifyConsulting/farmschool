@@ -5,11 +5,10 @@ const SECTIONS = [
   { to: "/admin/cohorts", label: "Cohorts" },
   { to: "/admin/programs", label: "Programs" },
   { to: "/admin/grade-moderation", label: "Grade Moderation" },
-  { to: "/admin/creators", label: "Creator Approvals" },
   { to: "/admin/external-content", label: "Library" },
-  { to: "/admin/recycle-bin", label: "Recycle Bin" },
   { to: "/admin/organizations", label: "Organizations" },
   { to: "/admin/token-ledger", label: "Token Ledger" },
+  { to: "/admin/recycle-bin", label: "Recycle Bin" },
 ] as const;
 
 /** Persistent section nav shown on every admin screen, so switching sections never needs a trip back through the index. */

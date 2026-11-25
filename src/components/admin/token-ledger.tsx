@@ -5,16 +5,29 @@ import { Download, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { listTokenLedger } from "@/lib/token-ledger.functions";
 import { cn } from "@/lib/utils";
 import {
   BudgetStrip,
   DailyCostChart,
   FailureReasons,
+  SavingsCard,
   SpendByRetailer,
   SpendByUser,
+  TopProducts,
   useZarRate,
 } from "./token-ledger-insights";
 import {
@@ -23,10 +36,12 @@ import {
   downloadCsv,
   isFailed,
   num,
+  productLabel,
   retailerLabel,
   rowsToCsv,
   runLabel,
   setDisplayRate,
+  storeLabel,
   totals,
   usd,
   userLabel,
@@ -36,20 +51,24 @@ import {
 const monthKey = (iso: string) =>
   new Date(iso).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 const dayHeading = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  new Date(iso).toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 
 const ymd = (d: Date) => d.toISOString().slice(0, 10);
 
-type GroupMode = "month" | "day" | "user" | "run";
+type GroupMode = "month" | "day" | "product" | "user" | "run";
 
 const GROUP_LABEL: Record<GroupMode, string> = {
   month: "Month",
   day: "Day",
+  product: "Product",
   user: "User",
   run: "Bulk action",
 };
-
-/** Labels that mean "no value", kept last when groups are sorted by cost. */
 const EMPTY_GROUPS = new Set([UNATTRIBUTED, NO_USER, "Single action"]);
 
 export function TokenLedger() {
@@ -66,15 +85,15 @@ export function TokenLedger() {
   const [resultFilter, setResultFilter] = useState("all");
   const [userFilter, setUserFilter] = useState("all");
   const [search, setSearch] = useState("");
-  // By day is the default: each date is its own accordion section, newest first.
   const [groupMode, setGroupMode] = useState<GroupMode>("day");
   const allRows = (data?.rows ?? []) as Row[];
-
-  // Show everything in rand when the live rate is known (set before children render).
   const zar = useZarRate();
   setDisplayRate(zar.data?.rate ?? null);
 
-  const activityOptions = useMemo(() => Array.from(new Set(allRows.map((r) => r.operation))).sort(), [allRows]);
+  const activityOptions = useMemo(
+    () => Array.from(new Set(allRows.map((r) => r.operation))).sort(),
+    [allRows],
+  );
   const userOptions = useMemo(() => Array.from(new Set(allRows.map(userLabel))).sort(), [allRows]);
 
   const rows = useMemo(() => {
@@ -84,7 +103,13 @@ export function TokenLedger() {
       if (resultFilter === "ok" && isFailed(r)) return false;
       if (resultFilter === "failed" && !isFailed(r)) return false;
       if (userFilter !== "all" && userLabel(r) !== userFilter) return false;
-      if (q && !`${r.operation} ${r.model ?? ""} ${userLabel(r)}`.toLowerCase().includes(q)) return false;
+      if (
+        q &&
+        !`${r.product_name ?? ""} ${r.store_name ?? ""} ${r.retailer_name ?? ""}`
+          .toLowerCase()
+          .includes(q)
+      )
+        return false;
       return true;
     });
   }, [allRows, activityFilter, resultFilter, userFilter, search]);
@@ -92,13 +117,15 @@ export function TokenLedger() {
 
   const groups = useMemo(() => {
     const keyOf = (r: Row) =>
-      groupMode === "user"
-        ? userLabel(r)
-        : groupMode === "run"
-          ? runLabel(r)
-          : groupMode === "day"
-            ? dayHeading(r.created_at)
-            : monthKey(r.created_at);
+      groupMode === "product"
+        ? productLabel(r)
+        : groupMode === "user"
+          ? userLabel(r)
+          : groupMode === "run"
+            ? runLabel(r)
+            : groupMode === "day"
+              ? dayHeading(r.created_at)
+              : monthKey(r.created_at);
     const m = new Map<string, Row[]>();
     for (const r of rows) {
       const k = keyOf(r);
@@ -122,6 +149,7 @@ export function TokenLedger() {
     downloadCsv(`token-ledger_${from}_to_${to}.csv`, header, lines);
   };
 
+  const showProduct = groupMode !== "product";
   const showUser = groupMode !== "user";
 
   return (
@@ -130,7 +158,8 @@ export function TokenLedger() {
         <div>
           <h3 className="text-sm font-semibold">Token ledger</h3>
           <p className="text-xs text-muted-foreground">
-            Every paid AI call Plusticity makes, with tokens used and estimated cost. Exact billing is on each provider's account.
+            Every paid AI and search call Plusticity makes, with tokens used and estimated cost.
+            Exact billing is on each provider's account.
           </p>
           <p className="text-[11px] text-muted-foreground">
             {zar.data
@@ -150,7 +179,9 @@ export function TokenLedger() {
                 onClick={() => setTab(k)}
                 className={cn(
                   "rounded-full px-3 py-1 text-xs font-medium",
-                  tab === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+                  tab === k
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted",
                 )}
               >
                 {k === "ledger" ? "Ledger" : "Reports"}
@@ -159,11 +190,23 @@ export function TokenLedger() {
           </div>
           <label className="flex items-center gap-1 text-xs text-muted-foreground">
             From
-            <Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="h-8 w-[140px] text-xs" />
+            <Input
+              type="date"
+              value={from}
+              max={to}
+              onChange={(e) => setFrom(e.target.value)}
+              className="h-8 w-[140px] text-xs"
+            />
           </label>
           <label className="flex items-center gap-1 text-xs text-muted-foreground">
             To
-            <Input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} className="h-8 w-[140px] text-xs" />
+            <Input
+              type="date"
+              value={to}
+              min={from}
+              onChange={(e) => setTo(e.target.value)}
+              className="h-8 w-[140px] text-xs"
+            />
           </label>
           <Select value="" onValueChange={(v) => preset(Number(v))}>
             <SelectTrigger className="h-8 w-[120px] text-xs">
@@ -204,10 +247,12 @@ export function TokenLedger() {
           </div>
 
           <div className="grid gap-2 lg:grid-cols-2">
+            <SavingsCard rows={allRows} />
             <SpendByRetailer rows={allRows} />
-            <SpendByUser rows={allRows} />
           </div>
+          <SpendByUser rows={allRows} />
           <DailyCostChart rows={allRows} />
+          <TopProducts rows={allRows} />
 
           <div className="flex flex-wrap items-center gap-2">
             <Select value={activityFilter} onValueChange={setActivityFilter}>
@@ -217,7 +262,9 @@ export function TokenLedger() {
               <SelectContent>
                 <SelectItem value="all">All activities</SelectItem>
                 {activityOptions.map((a) => (
-                  <SelectItem key={a} value={a}>{a}</SelectItem>
+                  <SelectItem key={a} value={a}>
+                    {a}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -238,12 +285,14 @@ export function TokenLedger() {
               <SelectContent>
                 <SelectItem value="all">All users</SelectItem>
                 {userOptions.map((u) => (
-                  <SelectItem key={u} value={u}>{u}</SelectItem>
+                  <SelectItem key={u} value={u}>
+                    {u}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Input
-              placeholder="Search activity, model or user"
+              placeholder="Search product, store or retailer"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-8 w-[240px] text-xs"
@@ -255,11 +304,19 @@ export function TokenLedger() {
               </SelectTrigger>
               <SelectContent>
                 {(Object.keys(GROUP_LABEL) as GroupMode[]).map((k) => (
-                  <SelectItem key={k} value={k}>{GROUP_LABEL[k]}</SelectItem>
+                  <SelectItem key={k} value={k}>
+                    {GROUP_LABEL[k]}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Button size="sm" variant="outline" className="ml-auto h-8" onClick={exportRows} disabled={!rows.length}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="ml-auto h-8"
+              onClick={exportRows}
+              disabled={!rows.length}
+            >
               <Download className="mr-1.5 h-3.5 w-3.5" /> Export CSV
             </Button>
           </div>
@@ -270,20 +327,28 @@ export function TokenLedger() {
             ) : isLoading ? (
               <p className="p-6 text-sm text-muted-foreground">Loading…</p>
             ) : rows.length === 0 ? (
-              <p className="p-6 text-sm text-muted-foreground">Nothing recorded for these filters.</p>
+              <p className="p-6 text-sm text-muted-foreground">
+                Nothing recorded for these filters.
+              </p>
             ) : (
-              // Re-keyed on the grouping so switching it re-opens the first section.
               <Accordion key={groupMode} type="multiple" defaultValue={[groups[0]?.[0] ?? ""]}>
                 {groups.map(([label, list]) => {
                   const g = totals(list);
                   return (
-                    <AccordionItem key={label} value={label} className="border-border last:border-b-0">
+                    <AccordionItem
+                      key={label}
+                      value={label}
+                      className="border-border last:border-b-0"
+                    >
                       <AccordionTrigger className="bg-muted/50 px-4 py-3 text-sm font-medium hover:no-underline">
                         <span className="flex flex-1 items-center justify-between gap-3 pr-3 text-left">
                           <span className="truncate">{label}</span>
                           <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
-                            {num(g.tokens)} tokens · {usd(g.cost)} · {list.length} call{list.length === 1 ? "" : "s"}
-                            {g.failed > 0 && <span className="text-destructive"> · {g.failed} failed</span>}
+                            {num(g.tokens)} tokens · {usd(g.cost)} · {list.length} call
+                            {list.length === 1 ? "" : "s"}
+                            {g.failed > 0 && (
+                              <span className="text-destructive"> · {g.failed} failed</span>
+                            )}
                           </span>
                         </span>
                       </AccordionTrigger>
@@ -294,6 +359,8 @@ export function TokenLedger() {
                               <tr>
                                 <th className="px-4 py-2 font-medium">When</th>
                                 <th className="px-4 py-2 font-medium">Activity</th>
+                                {showProduct && <th className="px-4 py-2 font-medium">Product</th>}
+                                {showProduct && <th className="px-4 py-2 font-medium">Store</th>}
                                 {showUser && <th className="px-4 py-2 font-medium">User</th>}
                                 <th className="px-4 py-2 font-medium">Model</th>
                                 <th className="px-4 py-2 text-right font-medium">In</th>
@@ -315,24 +382,62 @@ export function TokenLedger() {
                                     </td>
                                     <td className="px-4 py-2">
                                       {r.operation}
-                                      {r.run_label && <div className="text-[10px] text-muted-foreground">{r.run_label}</div>}
+                                      {r.run_label && (
+                                        <div className="text-[10px] text-muted-foreground">
+                                          {r.run_label}
+                                        </div>
+                                      )}
                                     </td>
+                                    {showProduct && (
+                                      <td className="px-4 py-2">
+                                        {r.product_name ?? (
+                                          <span className="text-muted-foreground">—</span>
+                                        )}
+                                      </td>
+                                    )}
+                                    {showProduct && (
+                                      <td className="px-4 py-2">
+                                        {r.store_name ?? (
+                                          <span className="text-muted-foreground">—</span>
+                                        )}
+                                      </td>
+                                    )}
                                     {showUser && (
                                       <td className="whitespace-nowrap px-4 py-2">
-                                        {r.user_name ?? <span className="text-muted-foreground">—</span>}
+                                        {r.user_name ?? (
+                                          <span className="text-muted-foreground">—</span>
+                                        )}
                                       </td>
                                     )}
                                     <td className="px-4 py-2 font-mono">{r.model ?? "—"}</td>
-                                    <td className="px-4 py-2 text-right font-mono tabular-nums">{num(r.input_tokens ?? 0)}</td>
-                                    <td className="px-4 py-2 text-right font-mono tabular-nums">{num(r.output_tokens ?? 0)}</td>
-                                    <td className="px-4 py-2 text-right font-mono tabular-nums">{num(r.total_tokens ?? 0)}</td>
-                                    <td className="px-4 py-2 text-right font-mono tabular-nums">{usd(Number(r.cost_usd ?? 0))}</td>
+                                    <td className="px-4 py-2 text-right font-mono tabular-nums">
+                                      {num(r.input_tokens ?? 0)}
+                                    </td>
+                                    <td className="px-4 py-2 text-right font-mono tabular-nums">
+                                      {num(r.output_tokens ?? 0)}
+                                    </td>
+                                    <td className="px-4 py-2 text-right font-mono tabular-nums">
+                                      {num(r.total_tokens ?? 0)}
+                                    </td>
+                                    <td className="px-4 py-2 text-right font-mono tabular-nums">
+                                      {usd(Number(r.cost_usd ?? 0))}
+                                    </td>
                                     <td className="px-4 py-2">
-                                      <Badge variant={failed ? "destructive" : "outline"} className="text-[10px]">
-                                        {failed ? (r.status === 429 ? "No credit / limit" : `Error ${r.status}`) : "OK"}
+                                      <Badge
+                                        variant={failed ? "destructive" : "outline"}
+                                        className="text-[10px]"
+                                      >
+                                        {failed
+                                          ? r.status === 429
+                                            ? "No credit / limit"
+                                            : `Error ${r.status}`
+                                          : "OK"}
                                       </Badge>
                                       {failed && r.error_message && (
-                                        <div className="mt-0.5 max-w-[260px] truncate text-[10px] text-muted-foreground" title={r.error_message}>
+                                        <div
+                                          className="mt-0.5 max-w-[260px] truncate text-[10px] text-muted-foreground"
+                                          title={r.error_message}
+                                        >
                                           {r.error_message}
                                         </div>
                                       )}
@@ -356,10 +461,13 @@ export function TokenLedger() {
   );
 }
 
-type ReportGroup = "activity" | "user" | "run" | "model" | "day";
+type ReportGroup = "activity" | "product" | "store" | "retailer" | "user" | "run" | "model" | "day";
 
 const REPORT_GROUP_LABEL: [ReportGroup, string][] = [
   ["activity", "Activity"],
+  ["product", "Product"],
+  ["store", "Store"],
+  ["retailer", "Retailer"],
   ["user", "User"],
   ["run", "Bulk action"],
   ["model", "Model"],
@@ -372,7 +480,10 @@ function TokenReport({ rows, loading }: { rows: Row[]; loading: boolean }) {
   const [result, setResult] = useState("all");
   const [groupBy, setGroupBy] = useState<ReportGroup>("activity");
 
-  const activities = useMemo(() => Array.from(new Set(rows.map((r) => r.operation))).sort(), [rows]);
+  const activities = useMemo(
+    () => Array.from(new Set(rows.map((r) => r.operation))).sort(),
+    [rows],
+  );
   const models = useMemo(() => Array.from(new Set(rows.map((r) => r.model ?? "—"))).sort(), [rows]);
 
   const filtered = useMemo(
@@ -394,12 +505,18 @@ function TokenReport({ rows, loading }: { rows: Row[]; loading: boolean }) {
       groupBy === "activity"
         ? r.operation
         : groupBy === "model"
-          ? r.model ?? "—"
-          : groupBy === "user"
-            ? userLabel(r)
-            : groupBy === "run"
-              ? runLabel(r)
-              : r.created_at.slice(0, 10);
+          ? (r.model ?? "—")
+          : groupBy === "product"
+            ? productLabel(r)
+            : groupBy === "store"
+              ? storeLabel(r)
+              : groupBy === "retailer"
+                ? retailerLabel(r)
+                : groupBy === "user"
+                  ? userLabel(r)
+                  : groupBy === "run"
+                    ? runLabel(r)
+                    : r.created_at.slice(0, 10);
     const m = new Map<string, Row[]>();
     for (const r of filtered) m.set(keyOf(r), [...(m.get(keyOf(r)) ?? []), r]);
     return Array.from(m.entries())
@@ -427,7 +544,12 @@ function TokenReport({ rows, loading }: { rows: Row[]; loading: boolean }) {
       ]),
     );
 
-  const picker = (label: string, value: string, set: (v: string) => void, options: [string, string][]) => (
+  const picker = (
+    label: string,
+    value: string,
+    set: (v: string) => void,
+    options: [string, string][],
+  ) => (
     <div className="space-y-1">
       <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
       <Select value={value} onValueChange={set}>
@@ -448,11 +570,27 @@ function TokenReport({ rows, loading }: { rows: Row[]; loading: boolean }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-3">
-        {picker("Activity", activity, setActivity, [["all", "All activities"], ...activities.map((a) => [a, a] as [string, string])])}
-        {picker("Model", model, setModel, [["all", "All models"], ...models.map((a) => [a, a] as [string, string])])}
-        {picker("Result", result, setResult, [["all", "All results"], ["ok", "Successful"], ["failed", "Failed"]])}
+        {picker("Activity", activity, setActivity, [
+          ["all", "All activities"],
+          ...activities.map((a) => [a, a] as [string, string]),
+        ])}
+        {picker("Model", model, setModel, [
+          ["all", "All models"],
+          ...models.map((a) => [a, a] as [string, string]),
+        ])}
+        {picker("Result", result, setResult, [
+          ["all", "All results"],
+          ["ok", "Successful"],
+          ["failed", "Failed"],
+        ])}
         {picker("Group by", groupBy, (v) => setGroupBy(v as ReportGroup), REPORT_GROUP_LABEL)}
-        <Button size="sm" variant="outline" className="ml-auto h-8" onClick={exportReport} disabled={!grouped.length}>
+        <Button
+          size="sm"
+          variant="outline"
+          className="ml-auto h-8"
+          onClick={exportReport}
+          disabled={!grouped.length}
+        >
           <Download className="mr-1.5 h-3.5 w-3.5" /> Export CSV
         </Button>
       </div>

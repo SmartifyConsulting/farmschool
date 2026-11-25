@@ -13,6 +13,7 @@ import { licenseOrder, licenseReport, licenseReportCsv } from "@/lib/cohort-lice
 import { createCohortLicenseCheckout } from "@/lib/cohort-license-checkout.functions";
 import { resumeCohortLicenseCheckout } from "@/lib/cohort-license-resume.functions";
 import { formatPrice } from "@/lib/marketplace";
+import { CoursePrice } from "@/components/CoursePrice";
 import { friendlyError } from "@/lib/friendly-error";
 
 type Course = { id: string; title: string; price_cents: number; currency: string };
@@ -275,7 +276,7 @@ export function CohortLicenses({ cohortId, courses }: { cohortId: string; course
         {course && (
           <p className="text-sm">
             {Number.isInteger(Number(quantity)) && Number(quantity) > 0
-              ? formatPrice(course.price_cents * Number(quantity), course.currency)
+              ? <CoursePrice amount={course.price_cents * Number(quantity)} currency={course.currency} />
               : "Choose a quantity"}{" "}
             · Payment confirmation is required before licences become usable.
           </p>

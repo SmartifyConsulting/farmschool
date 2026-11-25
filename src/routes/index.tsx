@@ -236,7 +236,7 @@ function Index() {
           eyebrow={user ? `Hi, ${user.email?.split("@")[0]}` : "Welcome"}
           title="How will you flex your brain today?"
         />
-        <div className="mt-4">
+        <div className="mt-4 pb-6">
           <SearchBox />
         </div>
         <Hero />

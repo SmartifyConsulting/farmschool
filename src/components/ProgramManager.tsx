@@ -18,7 +18,13 @@ import { friendlyError } from "@/lib/friendly-error";
 import { programStages, type ProgramStage } from "@/lib/programs";
 
 const newStage = (): ProgramStage => ({ title: "", required: 1, course_ids: [] });
-export function ProgramManager({ organizationId }: { organizationId?: string }) {
+export function ProgramManager({
+  organizationId,
+  embedded = false,
+}: {
+  organizationId?: string;
+  embedded?: boolean;
+}) {
   const { user, ready } = useAuth();
   const isAdmin = useIsAdmin();
   const organizationAccess = useQuery({
@@ -223,12 +229,15 @@ export function ProgramManager({ organizationId }: { organizationId?: string }) 
   };
   const updateStage = (index: number, patch: Partial<ProgramStage>) =>
     setStages(stages.map((s, i) => (i === index ? { ...s, ...patch } : s)));
-  return (
-    <Phone>
-      <Header />
-      <Sheet wide>
+  const content = (
+    <>
+      {embedded ? (
+        <h3 className="font-semibold">Organization programs</h3>
+      ) : (
         <CanvasHeading title={organizationId ? "Organization programs" : "Learning programs"} />
-        {organizationId ? (
+      )}
+      {!embedded &&
+        (organizationId ? (
           <Link
             className="block text-primary underline"
             to="/organizations/$id"
@@ -238,274 +247,281 @@ export function ProgramManager({ organizationId }: { organizationId?: string }) 
           </Link>
         ) : (
           <AdminNav />
-        )}
-        {!ready ? (
-          <p>Checking sign-in…</p>
-        ) : !user ? (
-          <Link to="/auth">Sign in</Link>
-        ) : organizationId && organizationAccess.isPending ? (
-          <p>Checking organization access…</p>
-        ) : !allowed ? (
-          <p>Program management access required.</p>
-        ) : data.isPending ? (
-          <p>Loading programs…</p>
-        ) : data.isError ? (
-          <p role="alert">Could not load program management.</p>
-        ) : (
-          <div className="space-y-6 py-5">
-            <section className="space-y-3 rounded-xl border p-4">
-              <h2 className="font-semibold">Program draft</h2>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => {
-                    setId(crypto.randomUUID());
-                    setVersion(0);
-                    setTitle("");
-                    setDescription("");
-                    setStages([newStage()]);
-                  }}
-                >
-                  New program
-                </Button>
-                <select
-                  aria-label="Open saved program"
-                  className="rounded border p-2"
-                  value={data.data.programs.some((p) => p.id === id) ? id : ""}
-                  disabled={busy}
-                  onChange={(e) => {
-                    const p = data.data.programs.find((p) => p.id === e.target.value);
-                    if (!p) return;
-                    setId(p.id);
-                    setVersion(p.draft_version);
-                    setTitle(p.title);
-                    setDescription(p.description);
-                    setStages(programStages.parse(p.stages));
-                  }}
-                >
-                  <option value="">Choose a saved draft</option>
-                  {data.data.programs.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <label className="block text-sm">
-                Program title
-                <Input
-                  value={title}
-                  maxLength={200}
-                  disabled={busy}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
-              </label>
-              <label className="block text-sm">
-                Description
-                <Textarea
-                  value={description}
-                  maxLength={5000}
-                  disabled={busy}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </label>
-              <Input
-                aria-label="Find a course for program stages"
-                placeholder="Filter courses by title"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              {stages.map((stage, index) => (
-                <section className="space-y-2 rounded border p-3" key={index}>
-                  <h3 className="font-semibold">Stage {index + 1}</h3>
-                  <label className="block text-sm">
-                    Stage title
-                    <Input
-                      value={stage.title}
-                      maxLength={200}
-                      disabled={busy}
-                      onChange={(e) => updateStage(index, { title: e.target.value })}
-                    />
-                  </label>
-                  <label className="block text-sm">
-                    Required course completions
-                    <Input
-                      type="number"
-                      min={1}
-                      max={100}
-                      value={stage.required}
-                      disabled={busy}
-                      onChange={(e) => updateStage(index, { required: Number(e.target.value) })}
-                    />
-                  </label>
-                  <div className="max-h-56 space-y-2 overflow-y-auto">
-                    {data.data.courses
-                      .filter((c) => c.title.toLowerCase().includes(search.toLowerCase()))
-                      .map((course) => (
-                        <label className="flex items-center gap-2 text-sm" key={course.id}>
-                          <Checkbox
-                            checked={stage.course_ids.includes(course.id)}
-                            disabled={
-                              busy ||
-                              stages.some((s, i) => i !== index && s.course_ids.includes(course.id))
-                            }
-                            onCheckedChange={(checked) =>
-                              updateStage(index, {
-                                course_ids:
-                                  checked === true
-                                    ? [...stage.course_ids, course.id]
-                                    : stage.course_ids.filter((id) => id !== course.id),
-                              })
-                            }
-                          />
-                          {course.title}
-                        </label>
-                      ))}
-                  </div>
-                  <p className="text-xs">{stage.course_ids.length} courses selected</p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busy || index === 0}
-                      onClick={() =>
-                        setStages(
-                          stages.map((s, i) =>
-                            i === index - 1 ? stage : i === index ? stages[index - 1]! : s,
-                          ),
-                        )
-                      }
-                    >
-                      Move earlier
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busy || stages.length === 1}
-                      onClick={() => setStages(stages.filter((_, i) => i !== index))}
-                    >
-                      Remove stage
-                    </Button>
-                  </div>
-                </section>
-              ))}
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  disabled={busy || stages.length >= 30}
-                  onClick={() => setStages([...stages, newStage()])}
-                >
-                  Add stage
-                </Button>
-                <Button variant="outline" disabled={busy} onClick={() => save(false)}>
-                  Save draft
-                </Button>
-                <Button disabled={busy} onClick={() => save(true)}>
-                  Save and publish version
-                </Button>
-              </div>
-            </section>
-            <section className="space-y-3 rounded-xl border p-4">
-              <h2 className="font-semibold">Assign published program</h2>
-              <select
-                className="block w-full rounded border p-2"
-                aria-label="Published program version"
-                value={published}
-                disabled={busy}
-                onChange={(e) => setPublished(e.target.value)}
-              >
-                <option value="">Choose program version</option>
-                {data.data.versions.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.title} · Version {v.version}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="block w-full rounded border p-2"
-                aria-label="Program cohort"
-                value={cohort}
-                disabled={busy}
-                onChange={(e) => setCohort(e.target.value)}
-              >
-                <option value="">Choose cohort</option>
-                {data.data.cohorts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              <label className="block text-sm">
-                Due date (optional)
-                <Input
-                  type="datetime-local"
-                  value={due}
-                  disabled={busy}
-                  onChange={(e) => setDue(e.target.value)}
-                />
-              </label>
+        ))}
+      {!ready ? (
+        <p>Checking sign-in…</p>
+      ) : !user ? (
+        <Link to="/auth">Sign in</Link>
+      ) : organizationId && organizationAccess.isPending ? (
+        <p>Checking organization access…</p>
+      ) : !allowed ? (
+        <p>Program management access required.</p>
+      ) : data.isPending ? (
+        <p>Loading programs…</p>
+      ) : data.isError ? (
+        <p role="alert">Could not load program management.</p>
+      ) : (
+        <div className="space-y-6 py-5">
+          <section className="space-y-3 rounded-xl border p-4">
+            <h2 className="font-semibold">Program draft</h2>
+            <div className="flex flex-wrap gap-2">
               <Button
-                disabled={busy || !cohort || !published}
+                type="button"
+                variant="outline"
+                disabled={busy}
                 onClick={() => {
-                  const existing = data.data.assignments.find(
-                    (a) => a.cohort_id === cohort && a.version_id === published,
-                  );
-                  assign(
-                    cohort,
-                    published,
-                    true,
-                    existing?.version ?? 0,
-                    due ? new Date(due).toISOString() : null,
-                  );
+                  setId(crypto.randomUUID());
+                  setVersion(0);
+                  setTitle("");
+                  setDescription("");
+                  setStages([newStage()]);
                 }}
               >
-                Assign program
+                New program
               </Button>
-              {data.data.assignments
-                .filter((a) => data.data.cohorts.some((c) => c.id === a.cohort_id))
-                .map((a) => (
-                  <article key={a.id} className="space-y-2 rounded border p-3 text-sm">
-                    <p>
-                      {data.data.versions.find((v) => v.id === a.version_id)?.title ?? "Program"} ·
-                      Version {data.data.versions.find((v) => v.id === a.version_id)?.version} ·{" "}
-                      {data.data.cohorts.find((c) => c.id === a.cohort_id)?.name} ·{" "}
-                      {a.active ? "Active" : "Ended"}
-                      {a.due_at ? ` · Due ${new Date(a.due_at).toLocaleDateString()}` : ""}
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={busy}
-                        onClick={() =>
-                          assign(a.cohort_id, a.version_id, !a.active, a.version, a.due_at)
-                        }
-                      >
-                        {a.active ? "End assignment" : "Restore assignment"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setRoster({ cohort: a.cohort_id, version: a.version_id })}
-                      >
-                        View progress
-                      </Button>
-                    </div>
-                  </article>
+              <select
+                aria-label="Open saved program"
+                className="rounded border p-2"
+                value={data.data.programs.some((p) => p.id === id) ? id : ""}
+                disabled={busy}
+                onChange={(e) => {
+                  const p = data.data.programs.find((p) => p.id === e.target.value);
+                  if (!p) return;
+                  setId(p.id);
+                  setVersion(p.draft_version);
+                  setTitle(p.title);
+                  setDescription(p.description);
+                  setStages(programStages.parse(p.stages));
+                }}
+              >
+                <option value="">Choose a saved draft</option>
+                {data.data.programs.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                  </option>
                 ))}
-            </section>
-            {roster && (
-              <ProgramRoster
-                key={roster.cohort + roster.version}
-                cohort={roster.cohort}
-                version={roster.version}
+              </select>
+            </div>
+            <label className="block text-sm">
+              Program title
+              <Input
+                value={title}
+                maxLength={200}
+                disabled={busy}
+                onChange={(e) => setTitle(e.target.value)}
               />
-            )}
-          </div>
-        )}
-      </Sheet>
+            </label>
+            <label className="block text-sm">
+              Description
+              <Textarea
+                value={description}
+                maxLength={5000}
+                disabled={busy}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </label>
+            <Input
+              aria-label="Find a course for program stages"
+              placeholder="Filter courses by title"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {stages.map((stage, index) => (
+              <section className="space-y-2 rounded border p-3" key={index}>
+                <h3 className="font-semibold">Stage {index + 1}</h3>
+                <label className="block text-sm">
+                  Stage title
+                  <Input
+                    value={stage.title}
+                    maxLength={200}
+                    disabled={busy}
+                    onChange={(e) => updateStage(index, { title: e.target.value })}
+                  />
+                </label>
+                <label className="block text-sm">
+                  Required course completions
+                  <Input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={stage.required}
+                    disabled={busy}
+                    onChange={(e) => updateStage(index, { required: Number(e.target.value) })}
+                  />
+                </label>
+                <div className="max-h-56 space-y-2 overflow-y-auto">
+                  {data.data.courses
+                    .filter((c) => c.title.toLowerCase().includes(search.toLowerCase()))
+                    .map((course) => (
+                      <label className="flex items-center gap-2 text-sm" key={course.id}>
+                        <Checkbox
+                          checked={stage.course_ids.includes(course.id)}
+                          disabled={
+                            busy ||
+                            stages.some((s, i) => i !== index && s.course_ids.includes(course.id))
+                          }
+                          onCheckedChange={(checked) =>
+                            updateStage(index, {
+                              course_ids:
+                                checked === true
+                                  ? [...stage.course_ids, course.id]
+                                  : stage.course_ids.filter((id) => id !== course.id),
+                            })
+                          }
+                        />
+                        {course.title}
+                      </label>
+                    ))}
+                </div>
+                <p className="text-xs">{stage.course_ids.length} courses selected</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy || index === 0}
+                    onClick={() =>
+                      setStages(
+                        stages.map((s, i) =>
+                          i === index - 1 ? stage : i === index ? stages[index - 1]! : s,
+                        ),
+                      )
+                    }
+                  >
+                    Move earlier
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy || stages.length === 1}
+                    onClick={() => setStages(stages.filter((_, i) => i !== index))}
+                  >
+                    Remove stage
+                  </Button>
+                </div>
+              </section>
+            ))}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                disabled={busy || stages.length >= 30}
+                onClick={() => setStages([...stages, newStage()])}
+              >
+                Add stage
+              </Button>
+              <Button variant="outline" disabled={busy} onClick={() => save(false)}>
+                Save draft
+              </Button>
+              <Button disabled={busy} onClick={() => save(true)}>
+                Save and publish version
+              </Button>
+            </div>
+          </section>
+          <section className="space-y-3 rounded-xl border p-4">
+            <h2 className="font-semibold">Assign published program</h2>
+            <select
+              className="block w-full rounded border p-2"
+              aria-label="Published program version"
+              value={published}
+              disabled={busy}
+              onChange={(e) => setPublished(e.target.value)}
+            >
+              <option value="">Choose program version</option>
+              {data.data.versions.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.title} · Version {v.version}
+                </option>
+              ))}
+            </select>
+            <select
+              className="block w-full rounded border p-2"
+              aria-label="Program cohort"
+              value={cohort}
+              disabled={busy}
+              onChange={(e) => setCohort(e.target.value)}
+            >
+              <option value="">Choose cohort</option>
+              {data.data.cohorts.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <label className="block text-sm">
+              Due date (optional)
+              <Input
+                type="datetime-local"
+                value={due}
+                disabled={busy}
+                onChange={(e) => setDue(e.target.value)}
+              />
+            </label>
+            <Button
+              disabled={busy || !cohort || !published}
+              onClick={() => {
+                const existing = data.data.assignments.find(
+                  (a) => a.cohort_id === cohort && a.version_id === published,
+                );
+                assign(
+                  cohort,
+                  published,
+                  true,
+                  existing?.version ?? 0,
+                  due ? new Date(due).toISOString() : null,
+                );
+              }}
+            >
+              Assign program
+            </Button>
+            {data.data.assignments
+              .filter((a) => data.data.cohorts.some((c) => c.id === a.cohort_id))
+              .map((a) => (
+                <article key={a.id} className="space-y-2 rounded border p-3 text-sm">
+                  <p>
+                    {data.data.versions.find((v) => v.id === a.version_id)?.title ?? "Program"} ·
+                    Version {data.data.versions.find((v) => v.id === a.version_id)?.version} ·{" "}
+                    {data.data.cohorts.find((c) => c.id === a.cohort_id)?.name} ·{" "}
+                    {a.active ? "Active" : "Ended"}
+                    {a.due_at ? ` · Due ${new Date(a.due_at).toLocaleDateString()}` : ""}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() =>
+                        assign(a.cohort_id, a.version_id, !a.active, a.version, a.due_at)
+                      }
+                    >
+                      {a.active ? "End assignment" : "Restore assignment"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setRoster({ cohort: a.cohort_id, version: a.version_id })}
+                    >
+                      View progress
+                    </Button>
+                  </div>
+                </article>
+              ))}
+          </section>
+          {roster && (
+            <ProgramRoster
+              key={roster.cohort + roster.version}
+              cohort={roster.cohort}
+              version={roster.version}
+            />
+          )}
+        </div>
+      )}
+    </>
+  );
+  return embedded ? (
+    <section className="space-y-4">{content}</section>
+  ) : (
+    <Phone>
+      <Header />
+      <Sheet wide>{content}</Sheet>
     </Phone>
   );
 }

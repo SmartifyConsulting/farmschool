@@ -91,6 +91,7 @@ function Organizations() {
                   <p className="text-sm">
                     {o.can_manage ? "Workspace manager" : "Workspace member"}
                   </p>
+                  {o.can_manage && <Link to="/organizations/$id" params={{ id: o.id }} hash="organization-settings" className="inline-block text-sm font-semibold text-primary underline">Edit organisation</Link>}
                 </article>
               ))
             ) : (

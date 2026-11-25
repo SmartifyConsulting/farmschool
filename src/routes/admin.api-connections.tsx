@@ -161,7 +161,7 @@ function ApiConnections() {
       <Sheet wide>
         <CanvasHeading eyebrow="Admin" title="API connections" />
         <AdminNav />
-        <div className="mx-auto max-w-4xl space-y-4 pb-10 pt-4">
+        <div className="max-w-4xl space-y-4 pb-10 pt-4">
           {!ready ? (
             <p className="text-sm text-muted-foreground">Checking permissions…</p>
           ) : !user ? (

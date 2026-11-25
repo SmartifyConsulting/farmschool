@@ -2,20 +2,19 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { BookOpen, Search, X } from "lucide-react";
+import { ArrowLeft, BookOpen, Folder, Search, X } from "lucide-react";
 import { Phone, Header, Sheet, CanvasHeading } from "@/components/AppShell";
 import { courses } from "@/lib/courses";
 import { courseIndustry } from "@/lib/industries";
 import { pageMeta } from "@/lib/page-meta";
-import { formatPrice } from "@/lib/marketplace";
+import { CoursePrice } from "@/components/CoursePrice";
 import { CourseViewToggle, useCourseView } from "@/components/CourseViewToggle";
+import { Button } from "@/components/ui/button";
+import { readAllPages } from "@/lib/database-pages";
 
 export const Route = createFileRoute("/search")({
   head: () =>
-    pageMeta(
-      "Course Catalogue — Plusticity",
-      "Discover courses from creators across industries.",
-    ),
+    pageMeta("Course Catalogue — Plusticity", "Discover courses from creators across industries."),
   component: SearchPage,
 });
 
@@ -34,8 +33,7 @@ type Listing = {
 function SearchPage() {
   const [view, setView] = useCourseView("catalogue", "cards");
   const [query, setQuery] = useState("");
-  const [industry, setIndustry] = useState("All");
-  const [category, setCategory] = useState("All");
+  const [industry, setIndustry] = useState<string | null>(null);
   const {
     data: published = [],
     isLoading,
@@ -43,13 +41,16 @@ function SearchPage() {
   } = useQuery({
     queryKey: ["catalogue-published"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("studio_courses")
-        .select("id,title,description,category,cover_url,price_cents,currency")
-        .eq("published", true)
-        .order("updated_at", { ascending: false })
-        .limit(120);
-      if (error) throw error;
+      const { data } = await readAllPages(
+        supabase
+          .from("studio_courses")
+          .select("id,title,description,category,cover_url,price_cents,currency", {
+            count: "exact",
+          })
+          .eq("published", true)
+          .order("updated_at", { ascending: false })
+          .order("id"),
+      );
       return data ?? [];
     },
   });
@@ -82,31 +83,15 @@ function SearchPage() {
     [published],
   );
 
-  const industries = useMemo(
-    () => ["All", ...Array.from(new Set(listings.map((c) => c.industry))).sort()],
-    [listings],
-  );
-  const categories = useMemo(
-    () => [
-      "All",
-      ...Array.from(
-        new Set(
-          listings
-            .filter((c) => industry === "All" || c.industry === industry)
-            .map((c) => c.category),
-        ),
-      ).sort(),
-    ],
-    [listings, industry],
-  );
-  const visible = listings.filter((c) => {
-    const matchesIndustry = industry === "All" || c.industry === industry;
-    const matchesCategory = category === "All" || c.category === category;
-    const matchesSearch = `${c.title} ${c.category} ${c.description}`
+  const matching = listings.filter((course) =>
+    (course.title + " " + course.category + " " + course.industry + " " + course.description)
       .toLowerCase()
-      .includes(query.trim().toLowerCase());
-    return matchesIndustry && matchesCategory && matchesSearch;
-  });
+      .includes(query.trim().toLowerCase()),
+  );
+  const folders = Array.from(new Set(matching.map((course) => course.industry)))
+    .sort()
+    .map((name) => ({ name, count: matching.filter((course) => course.industry === name).length }));
+  const visible = matching.filter((course) => !industry || course.industry === industry);
 
   return (
     <Phone>
@@ -137,90 +122,104 @@ function SearchPage() {
               </button>
             )}
           </div>
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground">Industry</p>
-            <div className="flex flex-wrap gap-2" aria-label="Industries">
-              {industries.map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  aria-pressed={industry === name}
-                  onClick={() => {
-                    setIndustry(name);
-                    setCategory("All");
-                  }}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-medium ${industry === name ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted"}`}
-                >
-                  {name}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs font-semibold text-muted-foreground">Topic</p>
-            <div className="flex flex-wrap gap-2" aria-label="Course categories">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setCategory(cat)}
-                  aria-pressed={category === cat}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-medium ${category === cat ? "border-primary bg-primary text-primary-foreground" : "border-border text-foreground hover:bg-muted"}`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="font-semibold">Explore courses</h2>
+            {industry ? (
+              <Button type="button" variant="ghost" size="sm" onClick={() => setIndustry(null)}>
+                <ArrowLeft className="size-4" />
+                All industries
+              </Button>
+            ) : (
+              <h2 className="font-semibold">Browse by industry</h2>
+            )}
             <span className="text-xs text-muted-foreground">{visible.length} courses</span>
-            <CourseViewToggle view={view} onChange={setView} />
+            {industry && <CourseViewToggle view={view} onChange={setView} />}
           </div>
+          {industry && <h2 className="text-lg font-semibold">{industry}</h2>}
           {isLoading && <p className="text-sm text-muted-foreground">Loading published courses…</p>}
           {error && (
             <p role="alert" className="text-sm text-destructive">
               Could not load creator courses. Please try again.
             </p>
           )}
-          <div className={view === "cards" ? "grid gap-3 sm:grid-cols-2 lg:grid-cols-3" : "grid gap-3"}>
-            {visible.map((c) => (
-              <Link
-                key={`${c.source}-${c.id}`}
-                to={c.source === "studio" ? "/class/$id" : "/course/$id"}
-                params={{ id: c.id }}
-                className={`overflow-hidden rounded-2xl border border-border bg-card transition hover:border-primary/50 ${view === "list" ? "flex items-center" : ""}`}
-              >
-                {c.cover ? (
-                  <img src={c.cover} alt="" loading="lazy" className={view === "cards" ? "aspect-video w-full object-cover" : "aspect-video w-36 shrink-0 object-cover sm:w-48"} />
-                ) : (
-                  <div className={`grid aspect-video place-items-center bg-muted ${view === "cards" ? "w-full" : "w-36 shrink-0 sm:w-48"}`}>
-                    <BookOpen className="h-9 w-9 text-primary" />
-                  </div>
-                )}
-                <div className="min-w-0 flex-1 space-y-2 p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {c.industry} · {c.category}
+          {!industry ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label="Industry folders">
+              {folders.map((folder) => (
+                <button
+                  key={folder.name}
+                  type="button"
+                  onClick={() => setIndustry(folder.name)}
+                  className="flex min-h-32 items-center gap-4 rounded-xl border border-amber-200 bg-amber-50 p-5 text-left transition hover:border-amber-400 hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring dark:border-amber-800 dark:bg-amber-950/20"
+                >
+                  <Folder
+                    aria-hidden="true"
+                    className="size-14 shrink-0 fill-amber-300 text-amber-500"
+                  />
+                  <span className="min-w-0">
+                    <span className="block break-words font-semibold">{folder.name}</span>
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      {folder.count} {folder.count === 1 ? "course" : "courses"}
                     </span>
-                    <span className="shrink-0 text-xs font-semibold text-primary">
-                      {formatPrice(c.priceCents, c.currency)}
-                    </span>
-                  </div>
-                  <h3 className="line-clamp-2 text-sm font-semibold">{c.title}</h3>
-                  <p className="line-clamp-2 text-xs text-muted-foreground">
-                    {c.description || "Explore this course on Plusticity."}
-                  </p>
-                  {c.source === "sample" && (
-                    <span className="inline-block rounded-full bg-muted px-2 py-1 text-[11px] text-muted-foreground">
-                      Sample course · Not a real offer
-                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div
+              className={
+                view === "cards" ? "grid gap-3 sm:grid-cols-2 lg:grid-cols-3" : "grid gap-3"
+              }
+            >
+              {visible.map((c) => (
+                <Link
+                  key={`${c.source}-${c.id}`}
+                  to={c.source === "studio" ? "/class/$id" : "/course/$id"}
+                  params={{ id: c.id }}
+                  className={`overflow-hidden rounded-2xl border border-border bg-card transition hover:border-primary/50 ${view === "list" ? "flex items-center" : ""}`}
+                >
+                  {c.cover ? (
+                    <img
+                      src={c.cover}
+                      alt=""
+                      loading="lazy"
+                      className={
+                        view === "cards"
+                          ? "aspect-video w-full object-cover"
+                          : "aspect-video w-36 shrink-0 object-cover sm:w-48"
+                      }
+                    />
+                  ) : (
+                    <div
+                      className={`grid aspect-video place-items-center bg-muted ${view === "cards" ? "w-full" : "w-36 shrink-0 sm:w-48"}`}
+                    >
+                      <BookOpen className="h-9 w-9 text-primary" />
+                    </div>
                   )}
-                </div>
-              </Link>
-            ))}
-          </div>
-          {!isLoading && visible.length === 0 && (
+                  <div className="min-w-0 flex-1 space-y-2 p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {c.industry} · {c.category}
+                      </span>
+                      <span className="shrink-0 text-xs font-semibold text-primary">
+                        <CoursePrice amount={c.priceCents} currency={c.currency} />
+                      </span>
+                    </div>
+                    <h3 className="line-clamp-2 text-sm font-semibold">{c.title}</h3>
+                    <p className="line-clamp-2 text-xs text-muted-foreground">
+                      {c.description || "Explore this course on Plusticity."}
+                    </p>
+                    {c.source === "sample" && (
+                      <span className="inline-block rounded-full bg-muted px-2 py-1 text-[11px] text-muted-foreground">
+                        Sample course · Not a real offer
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+          {!isLoading && !error && visible.length === 0 && (
             <p className="py-10 text-center text-sm text-muted-foreground">
-              No courses match your search. Try another topic or category.
+              No courses match your search. Try another search or browse all industries.
             </p>
           )}
           <p className="text-xs text-muted-foreground">

@@ -12,14 +12,18 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { pageMeta } from "@/lib/page-meta";
 import { courses as catalogueCourses } from "@/lib/courses";
+import { CreatorApplications } from "@/components/CreatorApplications";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { SectionTabsList, SectionTabsTrigger } from "@/components/SectionTabs";
+import { CountrySelect } from "@/components/CountrySelect";
 
 export const Route = createFileRoute("/admin/users")({
+  validateSearch: (search: Record<string, unknown>): { view: "accounts" | "creators" } => ({
+    view: search["view"] === "creators" ? "creators" : "accounts",
+  }),
   component: AdminUsers,
   head: () =>
-    pageMeta(
-      "Users — Plusticity Administration",
-      "View and manage learner and trainer accounts.",
-    ),
+    pageMeta("Users — Plusticity Administration", "View and manage learner and trainer accounts."),
 });
 
 type ProfileRow = { user_id: string; full_name: string; region: string; learner_role: string };
@@ -117,6 +121,8 @@ function UserDrilldown({ userId, onClose }: { userId: string; onClose: () => voi
 }
 
 function AdminUsers() {
+  const { view } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const { user, ready } = useAuth();
   const qc = useQueryClient();
   const confirm = useConfirm();
@@ -227,132 +233,151 @@ function AdminUsers() {
       <Sheet wide>
         <CanvasHeading eyebrow="Admin" title="Users" />
         <AdminNav />
-        <div className="mx-auto max-w-4xl space-y-4 pb-10 pt-4">
-          {!ready || checking ? (
-            <p className="text-sm text-muted-foreground">Checking permissions…</p>
-          ) : !user ? (
-            <p className="text-sm">
-              <Link to="/auth" className="font-semibold text-primary">
-                Sign in
-              </Link>{" "}
-              as an administrator.
-            </p>
-          ) : !admin ? (
-            <p className="text-sm text-muted-foreground">Administrator access required.</p>
-          ) : (
-            <>
-              <p className="text-sm text-muted-foreground">
-                Manage learner and trainer profiles. Creating a brand-new sign-in isn't available
-                here — invite people to sign up directly; this screen manages their profile once
-                they have an account.
-              </p>
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name (up to 100 results)"
-                aria-label="Search users"
-                className="max-w-sm"
-              />
-              {isLoading && <p className="text-sm text-muted-foreground">Loading users…</p>}
-              {error && (
-                <p role="alert" className="text-sm text-destructive">
-                  Could not load users. Run the admin users migration in Supabase first.
+        <Tabs
+          value={view}
+          onValueChange={(value) =>
+            void navigate({ search: { view: value === "creators" ? "creators" : "accounts" } })
+          }
+          className="pt-4"
+        >
+          <SectionTabsList aria-label="User management sections">
+            <SectionTabsTrigger value="accounts">User accounts</SectionTabsTrigger>
+            <SectionTabsTrigger value="creators">Creator approvals</SectionTabsTrigger>
+          </SectionTabsList>
+          <TabsContent value="creators">
+            <CreatorApplications />
+          </TabsContent>
+          <TabsContent value="accounts">
+            <div className="max-w-4xl space-y-4 pb-10 pt-4">
+              {!ready || checking ? (
+                <p className="text-sm text-muted-foreground">Checking permissions…</p>
+              ) : !user ? (
+                <p className="text-sm">
+                  <Link to="/auth" className="font-semibold text-primary">
+                    Sign in
+                  </Link>{" "}
+                  as an administrator.
                 </p>
-              )}
-              {!isLoading && !error && filtered.length === 0 && (
-                <p className="py-8 text-sm text-muted-foreground">No users found.</p>
-              )}
-              <div className="space-y-2">
-                {filtered.map((row) => (
-                  <div key={row.user_id} className="rounded-2xl border border-border p-4">
-                    {editing === row.user_id ? (
-                      <div className="space-y-2">
-                        <Input
-                          value={edit.full_name}
-                          onChange={(e) => setEdit({ ...edit, full_name: e.target.value })}
-                          placeholder="Full name"
-                          aria-label="Full name"
-                        />
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input
-                            value={edit.region}
-                            onChange={(e) => setEdit({ ...edit, region: e.target.value })}
-                            placeholder="Region"
-                            aria-label="Region"
-                          />
-                          <Input
-                            value={edit.learner_role}
-                            onChange={(e) => setEdit({ ...edit, learner_role: e.target.value })}
-                            placeholder="Role"
-                            aria-label="Learner role"
-                          />
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" onClick={saveEdit}>
-                            Save
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div>
-                            <p className="font-semibold">
-                              {row.full_name}{" "}
-                              {adminIds?.has(row.user_id) && (
-                                <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                                  Admin
-                                </span>
-                              )}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {row.learner_role} · {row.region}
-                            </p>
+              ) : !admin ? (
+                <p className="text-sm text-muted-foreground">Administrator access required.</p>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Manage learner and trainer profiles. Creating a brand-new sign-in isn't
+                    available here — invite people to sign up directly; this screen manages their
+                    profile once they have an account.
+                  </p>
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search by name (up to 100 results)"
+                    aria-label="Search users"
+                    className="max-w-sm"
+                  />
+                  {isLoading && <p className="text-sm text-muted-foreground">Loading users…</p>}
+                  {error && (
+                    <p role="alert" className="text-sm text-destructive">
+                      Could not load users. Run the admin users migration in Supabase first.
+                    </p>
+                  )}
+                  {!isLoading && !error && filtered.length === 0 && (
+                    <p className="py-8 text-sm text-muted-foreground">No users found.</p>
+                  )}
+                  <div className="space-y-2">
+                    {filtered.map((row) => (
+                      <div
+                        key={row.user_id}
+                        className="rounded-lg border border-border px-3 py-2.5"
+                      >
+                        {editing === row.user_id ? (
+                          <div className="space-y-2">
+                            <Input
+                              value={edit.full_name}
+                              onChange={(e) => setEdit({ ...edit, full_name: e.target.value })}
+                              placeholder="Full name"
+                              aria-label="Full name"
+                            />
+                            <div className="grid grid-cols-2 gap-2">
+                              <CountrySelect
+                                value={edit.region}
+                                onChange={(e) => setEdit({ ...edit, region: e.target.value })}
+                                aria-label="Country"
+                              />
+                              <Input
+                                value={edit.learner_role}
+                                onChange={(e) => setEdit({ ...edit, learner_role: e.target.value })}
+                                placeholder="Role"
+                                aria-label="Learner role"
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={saveEdit}>
+                                Save
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
+                                Cancel
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setOpen(open === row.user_id ? null : row.user_id)}
-                            >
-                              {open === row.user_id ? "Hide courses" : "View courses"}
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => startEdit(row)}>
-                              Edit
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => void toggleAdmin(row, !adminIds?.has(row.user_id))}
-                            >
-                              {adminIds?.has(row.user_id) ? "Remove admin" : "Make admin"}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-destructive"
-                              onClick={() => void removeProfile(row)}
-                            >
-                              Remove
-                            </Button>
-                          </div>
-                        </div>
-                        {open === row.user_id && (
-                          <div className="mt-3">
-                            <UserDrilldown userId={row.user_id} onClose={() => setOpen(null)} />
-                          </div>
+                        ) : (
+                          <>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div>
+                                <p className="font-semibold">
+                                  {row.full_name}{" "}
+                                  {adminIds?.has(row.user_id) && (
+                                    <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                                      Admin
+                                    </span>
+                                  )}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {row.learner_role} · {row.region}
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setOpen(open === row.user_id ? null : row.user_id)}
+                                >
+                                  {open === row.user_id ? "Hide courses" : "View courses"}
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => startEdit(row)}>
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => void toggleAdmin(row, !adminIds?.has(row.user_id))}
+                                >
+                                  {adminIds?.has(row.user_id) ? "Remove admin" : "Make admin"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-destructive"
+                                  onClick={() => void removeProfile(row)}
+                                >
+                                  Remove
+                                </Button>
+                              </div>
+                            </div>
+                            {open === row.user_id && (
+                              <div className="mt-3">
+                                <UserDrilldown userId={row.user_id} onClose={() => setOpen(null)} />
+                              </div>
+                            )}
+                          </>
                         )}
-                      </>
-                    )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+                </>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </Sheet>
     </Phone>
   );

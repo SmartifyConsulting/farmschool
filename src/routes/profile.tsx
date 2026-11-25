@@ -1,14 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
-import {
-  Camera,
-  CreditCard,
-  KeyRound,
-  LogOut,
-  Mail,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
+import { Camera, CreditCard, KeyRound, LogOut, Mail, ShieldCheck, Sparkles } from "lucide-react";
 import { Phone, Header, Sheet, useIsAdmin, CanvasHeading } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,14 +12,19 @@ import { friendlyError } from "@/lib/friendly-error";
 import { toast } from "sonner";
 import { portalSearch } from "@/lib/customer-portal";
 import { CohortEmailPreferences } from "@/components/CohortEmailPreferences";
+import { CountrySelect } from "@/components/CountrySelect";
+import { profileSettings } from "@/lib/profile-settings";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { SectionTabsList, SectionTabsTrigger } from "@/components/SectionTabs";
+import { TokenLedger } from "@/components/admin/token-ledger";
 
 export const Route = createFileRoute("/profile")({
   validateSearch: portalSearch,
   head: () => ({
     meta: [
-      { title: "Profile — Plusticity" },
+      { title: "Settings — Plusticity" },
       { name: "description", content: "Your profile, account and billing." },
-      { property: "og:title", content: "Profile — Plusticity" },
+      { property: "og:title", content: "Settings — Plusticity" },
       { property: "og:description", content: "Your Plusticity profile." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -36,14 +33,14 @@ export const Route = createFileRoute("/profile")({
   component: Profile,
 });
 
-const TABS = ["About Me", "Account", "Preferences", "Billing", "Token Ledger"] as const;
+const TABS = ["Profile", "Account", "Preferences", "Billing", "Token Ledger"] as const;
 type Tab = (typeof TABS)[number];
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
 function Profile() {
   const { portal } = Route.useSearch();
-  const [tab, setTab] = useState<Tab>("About Me");
+  const [tab, setTab] = useState<Tab>("Profile");
   const { user, ready } = useAuth();
   const isAdmin = useIsAdmin();
   const nav = useNavigate();
@@ -52,16 +49,31 @@ function Profile() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [savingAbout, setSavingAbout] = useState(false);
 
-  const { data: prof } = useQuery({
-    queryKey: ["profile", user?.id],
+  const {
+    data: prof,
+    isPending: profilePending,
+    isError: profileError,
+    refetch: reloadProfile,
+  } = useQuery({
+    queryKey: ["profile", user?.id, "settings"],
     enabled: !!user,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("profiles")
-          .select("full_name, first_name, last_name, region, learner_role, bio, avatar_url" as never)
-          .maybeSingle()
-      ).data as { full_name: string; first_name: string; last_name: string; region: string; learner_role: string; bio: string; avatar_url: string | null } | null,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("full_name, first_name, last_name, region, learner_role, bio, avatar_url" as never)
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data as {
+        full_name: string;
+        first_name: string;
+        last_name: string;
+        region: string;
+        learner_role: string;
+        bio: string;
+        avatar_url: string | null;
+      } | null;
+    },
   });
 
   const { data: usage = [] } = useQuery({
@@ -74,10 +86,16 @@ function Profile() {
     },
   });
 
-  const [about, setAbout] = useState({ firstName: "", lastName: "", region: "", learnerRole: "", bio: "" });
-  const aboutLoaded = useRef(false);
-  if (prof && !aboutLoaded.current) {
-    aboutLoaded.current = true;
+  const [about, setAbout] = useState({
+    firstName: "",
+    lastName: "",
+    region: "",
+    learnerRole: "",
+    bio: "",
+  });
+  const aboutLoaded = useRef<string | null>(null);
+  if (prof && user && aboutLoaded.current !== user.id) {
+    aboutLoaded.current = user.id;
     setAbout({
       firstName: prof.first_name ?? "",
       lastName: prof.last_name ?? "",
@@ -126,27 +144,28 @@ function Profile() {
   };
 
   const saveAbout = async () => {
-    if (!user) return;
-    setSavingAbout(true);
-    const fullName = `${about.firstName.trim()} ${about.lastName.trim()}`.trim();
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        full_name: fullName,
-        first_name: about.firstName.trim(),
-        last_name: about.lastName.trim(),
-        region: about.region.trim(),
-        learner_role: about.learnerRole.trim(),
-        bio: about.bio.trim(),
-      } as never)
-      .eq("user_id", user.id);
-    setSavingAbout(false);
-    if (error) {
-      toast.error(friendlyError(error, "Could not save your profile."));
+    if (!user || savingAbout || profilePending || profileError) return;
+    const parsed = profileSettings.safeParse(about);
+    if (!parsed.success) {
+      toast.error(friendlyError(parsed.error.issues[0]?.message, "Check your profile details."));
       return;
     }
-    toast.success("Profile saved.");
-    qc.invalidateQueries({ queryKey: ["profile", user.id] });
+    setSavingAbout(true);
+    try {
+      const { data: saved, error } = await supabase
+        .from("profiles")
+        .upsert({ user_id: user.id, ...parsed.data } as never, { onConflict: "user_id" })
+        .select("user_id")
+        .single();
+      if (error) throw error;
+      if (!saved) throw new Error("Your profile could not be saved. Please try again.");
+      toast.success("Profile saved.");
+      qc.invalidateQueries({ queryKey: ["profile", user.id] });
+    } catch (error) {
+      toast.error(friendlyError(error, "Could not save your profile."));
+    } finally {
+      setSavingAbout(false);
+    }
   };
 
   if (ready && !user)
@@ -154,12 +173,16 @@ function Profile() {
       <Phone>
         <Header />
         <Sheet>
-          <CanvasHeading title="Profile" />
+          <CanvasHeading title="Settings" />
           <p className="py-10 text-center text-sm text-muted-foreground">
-            <Link to="/auth" search={portal ? { portal } : {}} className="font-semibold text-primary">
+            <Link
+              to="/auth"
+              search={portal ? { portal } : {}}
+              className="font-semibold text-primary"
+            >
               Sign in
             </Link>{" "}
-            to see your profile.
+            to manage your settings.
           </p>
         </Sheet>
       </Phone>
@@ -169,7 +192,7 @@ function Profile() {
     <Phone>
       <Header />
       <Sheet>
-        <CanvasHeading title="Profile" />
+        <CanvasHeading title="Settings" />
         <div className="mt-4 flex flex-wrap items-center gap-4">
           <div className="relative shrink-0">
             {prof?.avatar_url ? (
@@ -211,158 +234,182 @@ function Profile() {
           </div>
         </div>
 
-        <div className="mx-auto mt-5 flex max-w-xl flex-wrap rounded-full bg-muted p-1 text-sm">
-          {TABS.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`flex-1 rounded-full px-2 py-1.5 ${tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-
-        {tab === "About Me" && (
-          <div className="mx-auto mt-5 max-w-xl space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block space-y-1 text-xs font-medium">
-                First name
-                <Input
-                  value={about.firstName}
-                  onChange={(e) => setAbout({ ...about, firstName: e.target.value })}
-                  maxLength={60}
-                />
-              </label>
-              <label className="block space-y-1 text-xs font-medium">
-                Last name
-                <Input
-                  value={about.lastName}
-                  onChange={(e) => setAbout({ ...about, lastName: e.target.value })}
-                  maxLength={60}
-                />
-              </label>
-              <label className="block space-y-1 text-xs font-medium">
-                Role
-                <Input
-                  value={about.learnerRole}
-                  onChange={(e) => setAbout({ ...about, learnerRole: e.target.value })}
-                  maxLength={100}
-                />
-              </label>
-            </div>
-            <label className="block space-y-1 text-xs font-medium">
-              Region
-              <Input
-                value={about.region}
-                onChange={(e) => setAbout({ ...about, region: e.target.value })}
-                maxLength={100}
-              />
-            </label>
-            <label className="block space-y-1 text-xs font-medium">
-              About me
-              <Textarea
-                value={about.bio}
-                onChange={(e) => setAbout({ ...about, bio: e.target.value })}
-                placeholder="A short bio other learners and trainers will see"
-                rows={4}
-                maxLength={2000}
-              />
-            </label>
-            <Button onClick={saveAbout} disabled={savingAbout} className="w-full sm:w-auto">
-              {savingAbout ? "Saving…" : "Save changes"}
-            </Button>
-          </div>
-        )}
-
-        {tab === "Account" && (
-          <div className="mx-auto mt-5 max-w-xl space-y-3">
-            <div className="flex items-center gap-2 rounded-xl border border-border p-3 text-sm">
-              <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 flex-1 truncate">{user?.email}</span>
-            </div>
-            {!portal && <Link
-              to="/developer"
-              className="flex items-center gap-2 rounded-xl border border-border p-3 text-sm hover:bg-muted"
-            >
-              <KeyRound className="h-4 w-4 shrink-0 text-muted-foreground" />
-              API keys
-            </Link>}
-            {isAdmin && !portal && (
-              <Link
-                to="/admin"
-                className="flex items-center gap-2 rounded-xl border border-border p-3 text-sm hover:bg-muted"
-              >
-                <ShieldCheck className="h-4 w-4 shrink-0 text-muted-foreground" />
-                Admin
-              </Link>
-            )}
-            <button
-              onClick={async () => {
-                await supabase.auth.signOut();
-                if (portal) nav({ to: "/portal/$slug", params: { slug: portal } });
-                else nav({ to: "/" });
-              }}
-              className="flex w-full items-center gap-2 rounded-xl border border-border p-3 text-left text-sm text-destructive hover:bg-destructive/5"
-            >
-              <LogOut className="h-4 w-4 shrink-0" />
-              Sign out
-            </button>
-          </div>
-        )}
-
-        {tab === "Preferences" && (
-          <div className="mx-auto mt-5 max-w-xl">
-            <CohortEmailPreferences />
-          </div>
-        )}
-
-        {tab === "Billing" && (
-          <div className="mx-auto mt-5 max-w-xl space-y-3">
-            <div className="rounded-xl border border-border p-4">
-              <p className="flex items-center gap-2 text-sm font-semibold">
-                <CreditCard className="h-4 w-4 text-primary" />
-                Free account
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                There's no subscription — paid courses are billed once, per course, via Stripe
-                Checkout when you enrol. Your purchased courses appear in{" "}
-                <Link to={portal ? "/portal/$slug" : "/courses"} params={{ slug: portal ?? "" }} search={portal ? { view: "learning" } : {}} className="font-semibold text-primary">
-                  My Learning
-                </Link>
-                .
-              </p>
-            </div>
-          </div>
-        )}
-
-        {tab === "Token Ledger" && (
-          <div className="mx-auto mt-5 max-w-xl">
-            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Sparkles className="h-4 w-4 text-primary" />
-              Your AI feature usage, by day.
-            </p>
-            <ul className="mt-3 space-y-2">
-              {usage.map((row, i) => (
-                <li
-                  key={i}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-border p-3 text-sm"
+        <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)} className="mt-5">
+          <SectionTabsList aria-label="Settings sections">
+            {TABS.map((t) => (
+              <SectionTabsTrigger key={t} value={t}>
+                {t}
+              </SectionTabsTrigger>
+            ))}
+          </SectionTabsList>
+          <TabsContent value={tab}>
+            {tab === "Profile" && (
+              <div className="mx-auto mt-5 max-w-xl space-y-4">
+                {profilePending && <p role="status">Loading profile…</p>}
+                {profileError && (
+                  <div role="alert">
+                    <p>Could not load your profile.</p>
+                    <Button variant="outline" onClick={() => void reloadProfile()}>
+                      Retry
+                    </Button>
+                  </div>
+                )}
+                <fieldset
+                  className="space-y-4"
+                  disabled={profilePending || profileError || savingAbout}
                 >
-                  <span className="min-w-0 truncate">{row.feature}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {new Date(row.usage_day).toLocaleDateString()}
-                  </span>
-                  <span className="shrink-0 font-semibold">{row.requests}</span>
-                </li>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="block space-y-1 text-xs font-medium">
+                      First name
+                      <Input
+                        value={about.firstName}
+                        onChange={(e) => setAbout({ ...about, firstName: e.target.value })}
+                        maxLength={60}
+                      />
+                    </label>
+                    <label className="block space-y-1 text-xs font-medium">
+                      Last name
+                      <Input
+                        value={about.lastName}
+                        onChange={(e) => setAbout({ ...about, lastName: e.target.value })}
+                        maxLength={60}
+                      />
+                    </label>
+                    <label className="block space-y-1 text-xs font-medium">
+                      Role
+                      <Input
+                        value={about.learnerRole}
+                        onChange={(e) => setAbout({ ...about, learnerRole: e.target.value })}
+                        maxLength={60}
+                      />
+                    </label>
+                  </div>
+                  <label className="block space-y-1 text-xs font-medium">
+                    Country
+                    <CountrySelect
+                      value={about.region}
+                      onChange={(e) => setAbout({ ...about, region: e.target.value })}
+                    />
+                  </label>
+                  <label className="block space-y-1 text-xs font-medium">
+                    About me
+                    <Textarea
+                      value={about.bio}
+                      onChange={(e) => setAbout({ ...about, bio: e.target.value })}
+                      placeholder="A short bio other learners and trainers will see"
+                      rows={4}
+                      maxLength={2000}
+                    />
+                  </label>
+                  <Button onClick={saveAbout} disabled={savingAbout} className="w-full sm:w-auto">
+                    {savingAbout ? "Saving…" : "Save changes"}
+                  </Button>
+                </fieldset>
+              </div>
+            )}
+
+            {tab === "Account" && (
+              <div className="mx-auto mt-5 max-w-xl space-y-3">
+                <div className="flex items-center gap-2 rounded-xl border border-border p-3 text-sm">
+                  <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 flex-1 truncate">{user?.email}</span>
+                </div>
+                {!portal && (
+                  <Link
+                    to="/developer"
+                    className="flex items-center gap-2 rounded-xl border border-border p-3 text-sm hover:bg-muted"
+                  >
+                    <KeyRound className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    API keys
+                  </Link>
+                )}
+                {isAdmin && !portal && (
+                  <Link
+                    to="/admin"
+                    className="flex items-center gap-2 rounded-xl border border-border p-3 text-sm hover:bg-muted"
+                  >
+                    <ShieldCheck className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    Admin
+                  </Link>
+                )}
+                <button
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    if (portal) nav({ to: "/portal/$slug", params: { slug: portal } });
+                    else nav({ to: "/" });
+                  }}
+                  className="flex w-full items-center gap-2 rounded-xl border border-border p-3 text-left text-sm text-destructive hover:bg-destructive/5"
+                >
+                  <LogOut className="h-4 w-4 shrink-0" />
+                  Sign out
+                </button>
+              </div>
+            )}
+
+            {tab === "Preferences" && (
+              <div className="mx-auto mt-5 max-w-xl">
+                <CohortEmailPreferences />
+              </div>
+            )}
+
+            {tab === "Billing" && (
+              <div className="mx-auto mt-5 max-w-xl space-y-3">
+                <div className="rounded-xl border border-border p-4">
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <CreditCard className="h-4 w-4 text-primary" />
+                    Free account
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    There's no subscription — paid courses are billed once, per course, via Stripe
+                    Checkout when you enrol. Your purchased courses appear in{" "}
+                    <Link
+                      to={portal ? "/portal/$slug" : "/courses"}
+                      params={{ slug: portal ?? "" }}
+                      search={portal ? { view: "learning" } : {}}
+                      className="font-semibold text-primary"
+                    >
+                      My Learning
+                    </Link>
+                    .
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {tab === "Token Ledger" &&
+              (isAdmin ? (
+                <div className="mt-5">
+                  <TokenLedger />
+                </div>
+              ) : (
+                <div className="mt-5 max-w-xl">
+                  <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    Your AI feature usage, by day.
+                  </p>
+                  <ul className="mt-3 space-y-2">
+                    {usage.map((row, i) => (
+                      <li
+                        key={i}
+                        className="flex items-center justify-between gap-2 rounded-lg border border-border p-3 text-sm"
+                      >
+                        <span className="min-w-0 truncate">{row.feature}</span>
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          {new Date(row.usage_day).toLocaleDateString()}
+                        </span>
+                        <span className="shrink-0 font-semibold">{row.requests}</span>
+                      </li>
+                    ))}
+                    {usage.length === 0 && (
+                      <p className="py-8 text-center text-sm text-muted-foreground">
+                        No AI usage yet.
+                      </p>
+                    )}
+                  </ul>
+                </div>
               ))}
-              {usage.length === 0 && (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  No AI usage yet.
-                </p>
-              )}
-            </ul>
-          </div>
-        )}
+          </TabsContent>
+        </Tabs>
       </Sheet>
     </Phone>
   );

@@ -184,6 +184,28 @@
   background-image: var(--gradient-accent);
 }
 
+:root {
+  --supporting-text-size: 13px;
+  --supporting-text-leading: 1.55;
+}
+
+p.text-muted-foreground,
+small.text-muted-foreground,
+[role="alertdialog"] .text-muted-foreground,
+.supporting-text {
+  font-size: var(--supporting-text-size);
+  line-height: var(--supporting-text-leading);
+}
+
+[role="alert"]:not(.sr-only):not([data-sonner-toast]) {
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 4px);
+  background: var(--card);
+  padding: 0.75rem 1rem;
+  font-size: var(--supporting-text-size);
+  line-height: var(--supporting-text-leading);
+}
+
 @media print {
   body * { visibility: hidden; }
   #certificate, #certificate * { visibility: visible; }

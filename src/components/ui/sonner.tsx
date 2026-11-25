@@ -7,17 +7,19 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       className="toaster group"
       toastOptions={{
+        unstyled: true,
         classNames: {
           toast:
-            "group toast rounded-2xl border border-navy bg-navy font-sans text-sm text-navy-foreground group-[.toaster]:shadow-lg",
-          description: "group-[.toast]:text-navy-foreground/80",
-          actionButton: "group-[.toast]:bg-navy-foreground/20 group-[.toast]:text-navy-foreground",
-          cancelButton: "group-[.toast]:bg-navy-foreground/10 group-[.toast]:text-navy-foreground",
-          success: "group-[.toast]:border-navy group-[.toast]:bg-navy group-[.toast]:text-navy-foreground",
-          error: "group-[.toast]:border-destructive group-[.toast]:bg-destructive group-[.toast]:text-destructive-foreground",
-          warning: "group-[.toast]:border-navy group-[.toast]:bg-navy group-[.toast]:text-navy-foreground",
-          info: "group-[.toast]:border-navy group-[.toast]:bg-navy group-[.toast]:text-navy-foreground",
-          closeButton: "group-[.toast]:border-navy-foreground/30 group-[.toast]:bg-navy group-[.toast]:text-navy-foreground",
+            "group toast flex w-full items-center gap-3 rounded-xl border border-border bg-card p-4 font-sans text-[13px] text-card-foreground shadow-lg",
+          title: "font-semibold leading-5",
+          description: "text-[13px] leading-5 text-muted-foreground",
+          actionButton: "rounded-md bg-primary px-3 py-1.5 text-primary-foreground",
+          cancelButton: "rounded-md border border-border bg-muted px-3 py-1.5 text-foreground",
+          success: "border-border [&_[data-icon]]:text-primary",
+          error: "border-destructive/40 [&_[data-icon]]:text-destructive",
+          warning: "border-amber-400/50 [&_[data-icon]]:text-amber-600",
+          info: "border-border [&_[data-icon]]:text-primary",
+          closeButton: "border-border bg-card text-muted-foreground",
         },
       }}
       {...props}

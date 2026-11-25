@@ -2,30 +2,39 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2, PiggyBank } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
-import { getLedgerSettings, getZarRate, listTokenLedger, saveLedgerSettings } from "@/lib/token-ledger.functions";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
+import {
+  getLedgerSettings,
+  getZarRate,
+  listTokenLedger,
+  saveLedgerSettings,
+} from "@/lib/token-ledger.functions";
 import { cn } from "@/lib/utils";
+import { friendlyError } from "@/lib/friendly-error";
 import {
   UNATTRIBUTED,
   currencyName,
   dayOf,
   getDisplayRate,
   userLabel,
+  estimateSavings,
   failureReasons,
+  productLabel,
   retailerLabel,
   totals,
   usd,
   num,
   type Row,
 } from "./token-ledger-shared";
-
-// ---------- exchange rate (dollars -> rand) ----------
-
-/** The live USD->ZAR rate, or null if it couldn't be fetched (the ledger then stays in dollars). */
 export function useZarRate() {
   const fn = useServerFn(getZarRate);
   return useQuery({
@@ -36,17 +45,15 @@ export function useZarRate() {
   });
 }
 
-// ---------- this month vs the budget ----------
-
 export function BudgetStrip() {
   const qc = useQueryClient();
   const settingsFn = useServerFn(getLedgerSettings);
   const saveFn = useServerFn(saveLedgerSettings);
   const ledgerFn = useServerFn(listTokenLedger);
-
-  // Month to date, independent of whatever date range is picked above (UTC, like the warning emails).
   const now = new Date();
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+    .toISOString()
+    .slice(0, 10);
   const today = now.toISOString().slice(0, 10);
   const month = useQuery({
     queryKey: ["token-ledger-month", monthStart],
@@ -54,7 +61,6 @@ export function BudgetStrip() {
     staleTime: 60_000,
   });
   const settings = useQuery({ queryKey: ["ledger-settings"], queryFn: () => settingsFn() });
-  // The budget is typed in rand when the rate is known; it is stored in dollars like every cost.
   const rate = useZarRate().data?.rate ?? null;
 
   const [budgetText, setBudgetText] = useState("");
@@ -74,10 +80,10 @@ export function BudgetStrip() {
   const budget = settings.data?.monthlyBudgetUsd ?? null;
   const alertAt = settings.data?.alertAtPercent ?? 80;
   const pct = budget ? (spend / budget) * 100 : 0;
-
-  // Simple straight-line forecast: month-to-date pace carried to the end of the month.
   const dayOfMonth = now.getUTCDate() + now.getUTCHours() / 24;
-  const daysInMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate();
+  const daysInMonth = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0),
+  ).getUTCDate();
   const forecast = dayOfMonth >= 1 ? (spend / dayOfMonth) * daysInMonth : null;
 
   async function save(): Promise<void> {
@@ -98,7 +104,7 @@ export function BudgetStrip() {
       await qc.invalidateQueries({ queryKey: ["ledger-settings"] });
       toast.success(value ? `Budget set to ${usd(value)} a month` : "Budget removed");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't save the budget");
+      toast.error(friendlyError(e, "Couldn't save the budget"));
     } finally {
       setSaving(false);
     }
@@ -108,13 +114,25 @@ export function BudgetStrip() {
   const warn = budget != null && !over && pct >= alertAt;
 
   return (
-    <div className={cn("rounded-md border bg-card p-3", over ? "border-destructive/50" : warn ? "border-amber-500/50" : "border-border")}>
+    <div
+      className={cn(
+        "rounded-md border bg-card p-3",
+        over ? "border-destructive/50" : warn ? "border-amber-500/50" : "border-border",
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">This month so far</p>
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            This month so far
+          </p>
           <p className="mt-1 font-mono text-base font-semibold tabular-nums">
             {month.isLoading ? "…" : usd(spend)}
-            {budget != null && <span className="text-xs font-normal text-muted-foreground"> of {usd(budget)} budget</span>}
+            {budget != null && (
+              <span className="text-xs font-normal text-muted-foreground">
+                {" "}
+                of {usd(budget)} budget
+              </span>
+            )}
           </p>
           {forecast != null && !month.isLoading && (
             <p className="mt-0.5 text-[11px] text-muted-foreground">
@@ -156,14 +174,22 @@ export function BudgetStrip() {
       {budget != null && (
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
           <div
-            className={cn("h-full rounded-full", over ? "bg-destructive" : warn ? "bg-amber-500" : "bg-primary")}
+            className={cn(
+              "h-full rounded-full",
+              over ? "bg-destructive" : warn ? "bg-amber-500" : "bg-primary",
+            )}
             style={{ width: `${Math.min(100, pct)}%` }}
           />
         </div>
       )}
 
       {(over || warn) && (
-        <p className={cn("mt-2 flex items-center gap-1.5 text-xs", over ? "text-destructive" : "text-amber-600")}>
+        <p
+          className={cn(
+            "mt-2 flex items-center gap-1.5 text-xs",
+            over ? "text-destructive" : "text-amber-600",
+          )}
+        >
           <AlertTriangle className="h-3.5 w-3.5" />
           {over
             ? `The monthly budget has been reached (${pct.toFixed(0)}%). Nothing is switched off.`
@@ -172,30 +198,52 @@ export function BudgetStrip() {
       )}
       {settings.data?.ready === false && (
         <p className="mt-2 text-[11px] text-muted-foreground">
-          Budgets need the <code className="rounded bg-muted px-1">ledger_settings</code> table — contact support if this persists.
+          Budget settings are unavailable. Contact support if this persists.
         </p>
       )}
       {settings.data?.ready && budget == null && (
         <p className="mt-2 text-[11px] text-muted-foreground">
-          Set a monthly budget to get a progress bar here and a warning when you reach the percentage you choose.
+          Set a monthly budget to get a progress bar here and a warning on this screen when you
+          reach the percentage you choose.
         </p>
       )}
     </div>
   );
 }
 
-// ---------- cost per day ----------
+export function SavingsCard({ rows }: { rows: Row[] }) {
+  const s = useMemo(() => estimateSavings(rows), [rows]);
+  return (
+    <div className="rounded-md border border-border bg-card p-3">
+      <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+        <PiggyBank className="h-3.5 w-3.5" /> Saved by reuse (estimate)
+      </p>
+      <p className="mt-1 font-mono text-base font-semibold tabular-nums text-emerald-600">
+        {usd(s.usd)}
+      </p>
+      <p className="mt-0.5 text-[11px] text-muted-foreground">
+        {num(s.photos)} photo{s.photos === 1 ? "" : "s"} and {num(s.passports)} passport
+        {s.passports === 1 ? "" : "s"} copied instead of paid for again.
+      </p>
+    </div>
+  );
+}
 
 export function DailyCostChart({ rows }: { rows: Row[] }) {
   const rate = getDisplayRate() ?? 1;
   const symbol = getDisplayRate() ? "R" : "$";
-  const dayConfig: ChartConfig = { cost: { label: `Cost (${currencyName()})`, color: "var(--primary)" } };
+  const dayConfig: ChartConfig = {
+    cost: { label: `Cost (${currencyName()})`, color: "var(--primary)" },
+  };
   const data = useMemo(() => {
     const byDay = new Map<string, number>();
-    for (const r of rows) byDay.set(dayOf(r.created_at), (byDay.get(dayOf(r.created_at)) ?? 0) + Number(r.cost_usd ?? 0));
+    for (const r of rows)
+      byDay.set(
+        dayOf(r.created_at),
+        (byDay.get(dayOf(r.created_at)) ?? 0) + Number(r.cost_usd ?? 0),
+      );
     const keys = Array.from(byDay.keys()).sort();
     if (!keys.length) return [];
-    // fill quiet days so a spike reads as a spike
     const out: { day: string; cost: number }[] = [];
     const cur = new Date(`${keys[0]}T00:00:00`);
     const end = new Date(`${keys[keys.length - 1]}T00:00:00`);
@@ -210,12 +258,25 @@ export function DailyCostChart({ rows }: { rows: Row[] }) {
   if (!data.length) return null;
   return (
     <div className="rounded-md border border-border bg-card p-3">
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Cost per day ({currencyName()})</p>
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+        Cost per day ({currencyName()})
+      </p>
       <ChartContainer config={dayConfig} className="mt-2 h-40 w-full">
         <BarChart data={data}>
           <CartesianGrid vertical={false} />
-          <XAxis dataKey="day" tickLine={false} axisLine={false} tickFormatter={(d: string) => d.slice(5)} minTickGap={16} />
-          <YAxis width={44} tickLine={false} axisLine={false} tickFormatter={(v: number) => `${symbol}${v}`} />
+          <XAxis
+            dataKey="day"
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(d: string) => d.slice(5)}
+            minTickGap={16}
+          />
+          <YAxis
+            width={44}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(v: number) => `${symbol}${v}`}
+          />
           <ChartTooltip content={<ChartTooltipContent />} />
           <Bar dataKey="cost" fill="var(--color-cost)" radius={3} />
         </BarChart>
@@ -224,7 +285,67 @@ export function DailyCostChart({ rows }: { rows: Row[] }) {
   );
 }
 
-// ---------- spend by retailer ----------
+export function TopProducts({ rows }: { rows: Row[] }) {
+  const { top, unattributed } = useMemo(() => {
+    const m = new Map<string, number>();
+    let un = 0;
+    for (const r of rows) {
+      const c = Number(r.cost_usd ?? 0);
+      const k = productLabel(r);
+      if (k === UNATTRIBUTED) un += c;
+      else m.set(k, (m.get(k) ?? 0) + c);
+    }
+    return {
+      top: Array.from(m.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10),
+      unattributed: un,
+    };
+  }, [rows]);
+
+  if (!top.length) {
+    return (
+      <div className="rounded-md border border-border bg-card p-3">
+        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          Most expensive products
+        </p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Product names appear here for calls made after the latest update; older calls are not
+          attributed.
+        </p>
+      </div>
+    );
+  }
+  const max = top[0]![1] || 1;
+  return (
+    <div className="rounded-md border border-border bg-card p-3">
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+        Most expensive products
+      </p>
+      <ul className="mt-2 space-y-1.5">
+        {top.map(([name, cost]) => (
+          <li key={name} className="text-xs">
+            <div className="flex items-center justify-between gap-3">
+              <span className="truncate">{name}</span>
+              <span className="shrink-0 font-mono tabular-nums">{usd(cost)}</span>
+            </div>
+            <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary/70"
+                style={{ width: `${(cost / max) * 100}%` }}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
+      {unattributed > 0 && (
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Not attributed to a product: {usd(unattributed)}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export function SpendByRetailer({ rows }: { rows: Row[] }) {
   const list = useMemo(() => {
@@ -254,12 +375,16 @@ export function SpendByRetailer({ rows }: { rows: Row[] }) {
             <div className="flex items-center justify-between gap-3">
               <span className="truncate">{name}</span>
               <span className="shrink-0 font-mono tabular-nums">
-                {usd(v.cost)} · {total > 0 ? `${((v.cost / total) * 100).toFixed(0)}%` : "—"} · {num(v.calls)} call{v.calls === 1 ? "" : "s"}
+                {usd(v.cost)} · {total > 0 ? `${((v.cost / total) * 100).toFixed(0)}%` : "—"} ·{" "}
+                {num(v.calls)} call{v.calls === 1 ? "" : "s"}
               </span>
             </div>
             <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-muted">
               <div
-                className={cn("h-full rounded-full", name === UNATTRIBUTED ? "bg-muted-foreground/40" : "bg-primary/70")}
+                className={cn(
+                  "h-full rounded-full",
+                  name === UNATTRIBUTED ? "bg-muted-foreground/40" : "bg-primary/70",
+                )}
                 style={{ width: `${(v.cost / max) * 100}%` }}
               />
             </div>
@@ -269,8 +394,6 @@ export function SpendByRetailer({ rows }: { rows: Row[] }) {
     </div>
   );
 }
-
-// ---------- spend by user, and which retailers it was for ----------
 
 export function SpendByUser({ rows }: { rows: Row[] }) {
   const list = useMemo(() => {
@@ -291,16 +414,29 @@ export function SpendByUser({ rows }: { rows: Row[] }) {
   if (!list.length) return null;
   return (
     <div className="rounded-md border border-border bg-card p-3">
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Spend by user</p>
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+        Spend by user and retailer
+      </p>
       <ul className="mt-2 space-y-2">
         {list.map(([name, v]) => (
           <li key={name} className="text-xs">
             <div className="flex items-center justify-between gap-3">
               <span className="truncate font-medium">{name}</span>
               <span className="shrink-0 font-mono tabular-nums">
-                {usd(v.cost)} · {total > 0 ? `${((v.cost / total) * 100).toFixed(0)}%` : "—"} · {num(v.calls)} call{v.calls === 1 ? "" : "s"}
+                {usd(v.cost)} · {total > 0 ? `${((v.cost / total) * 100).toFixed(0)}%` : "—"} ·{" "}
+                {num(v.calls)} call{v.calls === 1 ? "" : "s"}
               </span>
             </div>
+            <ul className="mt-0.5 space-y-0.5 pl-3 text-muted-foreground">
+              {Array.from(v.retailers.entries())
+                .sort((a, b) => b[1] - a[1])
+                .map(([ret, cost]) => (
+                  <li key={ret} className="flex items-center justify-between gap-3">
+                    <span className="truncate">{ret}</span>
+                    <span className="shrink-0 font-mono tabular-nums">{usd(cost)}</span>
+                  </li>
+                ))}
+            </ul>
           </li>
         ))}
       </ul>
@@ -308,15 +444,15 @@ export function SpendByUser({ rows }: { rows: Row[] }) {
   );
 }
 
-// ---------- why calls failed ----------
-
 export function FailureReasons({ rows }: { rows: Row[] }) {
   const reasons = useMemo(() => failureReasons(rows), [rows]);
   if (!reasons.length) return null;
   const haveMessages = reasons.some((r) => r.message);
   return (
     <div className="overflow-x-auto rounded-md border border-border bg-card">
-      <p className="border-b border-border px-4 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">Why calls failed</p>
+      <p className="border-b border-border px-4 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+        Why calls failed
+      </p>
       <table className="w-full text-xs">
         <thead className="border-b border-border text-left text-muted-foreground">
           <tr>
@@ -330,7 +466,9 @@ export function FailureReasons({ rows }: { rows: Row[] }) {
           {reasons.map((r) => (
             <tr key={`${r.operation}|${r.status}|${r.message}`}>
               <td className="px-4 py-2">{r.operation}</td>
-              <td className="px-4 py-2 font-mono">{r.status === 429 ? "429 · limit or credit" : r.status}</td>
+              <td className="px-4 py-2 font-mono">
+                {r.status === 429 ? "429 · limit or credit" : r.status}
+              </td>
               <td className="px-4 py-2 text-muted-foreground">{r.message || "—"}</td>
               <td className="px-4 py-2 text-right font-mono tabular-nums">{num(r.count)}</td>
             </tr>
@@ -339,7 +477,8 @@ export function FailureReasons({ rows }: { rows: Row[] }) {
       </table>
       {!haveMessages && (
         <p className="border-t border-border px-4 py-2 text-[11px] text-muted-foreground">
-          The service's own explanation is saved for failures from the latest update onwards; earlier failures only have the code.
+          The service's own explanation is saved for failures from the latest update onwards;
+          earlier failures only have the code.
         </p>
       )}
     </div>

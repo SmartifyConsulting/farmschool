@@ -125,7 +125,7 @@ function AdminOrganizations() {
       <Sheet wide>
         <CanvasHeading eyebrow="Admin" title="Organizations" />
         <AdminNav />
-        <div className="mx-auto max-w-4xl space-y-4 pb-10 pt-4">
+        <div className="max-w-4xl space-y-4 pb-10 pt-4">
           {!ready ? (
             <p className="text-sm text-muted-foreground">Checking permissions…</p>
           ) : !user ? (
@@ -196,6 +196,7 @@ function AdminOrganizations() {
                       <span className="font-semibold">{o.name}</span>
                     )}
                     <div className="flex flex-wrap items-center gap-3">
+                      <Button asChild size="sm" variant="outline"><Link to="/organizations/$id" params={{ id: o.id }}>Manage workspace</Link></Button>
                       <label className="flex items-center gap-2 text-sm">
                         Parent org
                         <select

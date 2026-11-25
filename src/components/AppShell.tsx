@@ -9,8 +9,8 @@ import {
   PenSquare,
   Mail,
   BarChart3,
-  Building2,
   Award,
+  Library,
 } from "lucide-react";
 import { type CSSProperties, type ReactNode } from "react";
 import logo from "@/assets/plusticity-logo.png";
@@ -23,7 +23,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
 import { CalendarLink } from "@/components/CalendarLink";
-import { BrandHome, LearningBrandContext, OrganizationLogo, useLearningBrand, useLearningBrandForPath } from "@/components/LearningBrand";
+import { COPYRIGHT_NOTICE } from "@/lib/site-copy";
+import {
+  BrandHome,
+  LearningBrandContext,
+  OrganizationLogo,
+  useLearningBrand,
+  useLearningBrandForPath,
+} from "@/components/LearningBrand";
 import { accessibleBrandColor } from "@/lib/learning-brand";
 import { readPortalSlug } from "@/lib/customer-portal";
 import {
@@ -59,52 +66,91 @@ export function useIsAdmin() {
 export function Phone({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const search = useRouterState({ select: (s) => s.location.searchStr });
-  const branding = useLearningBrandForPath(path, readPortalSlug(new URLSearchParams(search).get("portal")));
+  const branding = useLearningBrandForPath(
+    path,
+    readPortalSlug(new URLSearchParams(search).get("portal")),
+  );
   const { brand } = branding;
   const brandTone = brand ? accessibleBrandColor(brand.color).css : null;
-  const theme = brandTone ? { "--primary": brandTone, "--primary-foreground": "oklch(1 0 0)", "--ring": brandTone, "--gradient-accent": `linear-gradient(90deg, ${brandTone}, ${brandTone})` } as CSSProperties : undefined;
-  if (branding.portal && !brand) return (
-    <main className="grid min-h-screen place-items-center bg-muted p-5">
-      <section className="w-full max-w-lg space-y-4 rounded-2xl bg-card p-6" aria-busy={branding.isPending}>
-        {branding.isPending ? <p role="status">Loading training portal…</p> : branding.requiresSignIn ? <>
-          <h1 className="text-xl font-semibold">Sign in to continue</h1>
-          <Button asChild><Link to="/auth" search={{ portal: branding.portal }}>Sign in to your training portal</Link></Button>
-        </> : <>
-          <h1 className="text-xl font-semibold">Training portal unavailable</h1>
-          <p>This portal or course may be unavailable to your account. Contact your training manager to check your access.</p>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => branding.retry()}>Retry</Button>
-            <Button asChild variant="outline"><Link to="/portal/$slug" params={{ slug: branding.portal }}>Open portal home</Link></Button>
-          </div>
-        </>}
-      </section>
-    </main>
-  );
+  const theme = brandTone
+    ? ({
+        "--primary": brandTone,
+        "--primary-foreground": "oklch(1 0 0)",
+        "--ring": brandTone,
+        "--gradient-accent": `linear-gradient(90deg, ${brandTone}, ${brandTone})`,
+      } as CSSProperties)
+    : undefined;
+  if (branding.portal && !brand)
+    return (
+      <main className="grid min-h-screen place-items-center bg-muted p-5">
+        <section
+          className="w-full max-w-lg space-y-4 rounded-2xl bg-card p-6"
+          aria-busy={branding.isPending}
+        >
+          {branding.isPending ? (
+            <p role="status">Loading training portal…</p>
+          ) : branding.requiresSignIn ? (
+            <>
+              <h1 className="text-xl font-semibold">Sign in to continue</h1>
+              <Button asChild>
+                <Link to="/auth" search={{ portal: branding.portal }}>
+                  Sign in to your training portal
+                </Link>
+              </Button>
+            </>
+          ) : (
+            <>
+              <h1 className="text-xl font-semibold">Training portal unavailable</h1>
+              <p>
+                This portal or course may be unavailable to your account. Contact your training
+                manager to check your access.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" onClick={() => branding.retry()}>
+                  Retry
+                </Button>
+                <Button asChild variant="outline">
+                  <Link to="/portal/$slug" params={{ slug: branding.portal }}>
+                    Open portal home
+                  </Link>
+                </Button>
+              </div>
+            </>
+          )}
+        </section>
+      </main>
+    );
   return (
     <LearningBrandContext.Provider value={brand}>
-    <div style={theme} className="min-h-screen bg-muted md:pl-[240px]">
-      <DesktopSidebar />
-      <div className="relative mx-auto min-h-screen w-full max-w-md overflow-hidden bg-card pb-32 md:max-w-none md:pb-14">
-        {children}
-        <Footer />
-        <nav className="fixed bottom-10 left-1/2 z-20 flex w-[calc(100%-2rem)] max-w-[400px] -translate-x-1/2 items-center justify-around rounded-full bg-navy px-4 py-3 shadow-lg md:hidden">
-          {brand?.portalSlug ? <PortalNavigation slug={brand.portalSlug} mobile /> : tabs.map((t) => {
-            const active = path === t.to;
-            return (
-              <Link
-                key={t.to}
-                to={t.to}
-                aria-label={t.label}
-                className={`grid h-10 w-10 place-items-center rounded-full transition ${active ? "bg-navy-foreground/20 text-navy-foreground" : "text-navy-foreground"}`}
-              >
-                <t.icon className="h-5 w-5" />
-              </Link>
-            );
-          })}
-          <AvatarMenu mobile />
-        </nav>
+      <div style={theme} className="min-h-screen bg-muted md:pl-[240px]">
+        <DesktopSidebar />
+        <div className="relative mx-auto min-h-screen w-full max-w-md overflow-hidden bg-card pb-48 md:max-w-none md:pb-14">
+          {children}
+          <div className="fixed inset-x-0 bottom-0 z-20 md:contents">
+          <nav className="mx-auto mb-3 flex w-[calc(100%-2rem)] max-w-[400px] items-center justify-around rounded-full bg-navy px-4 py-3 shadow-lg md:hidden">
+            {brand?.portalSlug ? (
+              <PortalNavigation slug={brand.portalSlug} mobile />
+            ) : (
+              tabs.map((t) => {
+                const active = path === t.to;
+                return (
+                  <Link
+                    key={t.to}
+                    to={t.to}
+                    aria-label={t.label}
+                    className={`grid h-10 w-10 place-items-center rounded-full transition ${active ? "bg-navy-foreground/20 text-navy-foreground" : "text-navy-foreground"}`}
+                  >
+                    <t.icon className="h-5 w-5" />
+                  </Link>
+                );
+              })
+            )}
+            <AvatarMenu mobile />
+          </nav>
+          <Footer />
+          </div>
+        </div>
       </div>
-    </div>
     </LearningBrandContext.Provider>
   );
 }
@@ -113,23 +159,69 @@ function DesktopSidebar() {
   const path = useRouterState({ select: (state) => state.location.pathname });
   const brand = useLearningBrand();
   return (
-    <aside style={brand ? { backgroundColor: accessibleBrandColor(brand.color).css } : undefined} className="fixed inset-y-0 left-0 z-30 hidden w-[240px] flex-col overflow-y-auto bg-[#2765BC] px-4 py-6 text-white md:flex">
-      {brand ? <BrandHome brand={brand} className="flex shrink-0 justify-center px-1 pb-5"><OrganizationLogo key={brand.id + brand.logo} brand={brand} /></BrandHome> : <Link to="/" aria-label="Plusticity home" className="flex shrink-0 justify-center px-1 pb-5">
-        <img src={logo} alt="Plusticity" className="h-[173px] w-auto max-w-full rounded-lg object-contain" />
-      </Link>}
-      {brand && <BrandHome brand={brand} className="mb-3 break-words rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold">{brand.name} {brand.portalSlug ? "training" : "workspace"}</BrandHome>}
-      {brand?.portalSlug ? <nav aria-label="Portal navigation" className="space-y-2"><PortalNavigation slug={brand.portalSlug} /></nav> : <nav aria-label="Main navigation" className="space-y-2">
-        {[...tabs, { to: "/studio", icon: PenSquare, label: "Course Studio" } as const, { to: "/studio/reports", icon: BarChart3, label: "Reports" } as const, { to: "/organizations", icon: Building2, label: "Organizations" } as const].map((item) => {
-          const active = path === item.to || (item.to !== "/" && path.startsWith(item.to + "/") && !(item.to === "/studio" && path.startsWith("/studio/reports")));
-          return (
-            <Link key={item.to} to={item.to} aria-current={active ? "page" : undefined}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium transition-colors ${active ? "bg-white/15 font-semibold text-white" : "text-white/85 hover:bg-white/10 hover:text-white"}`}>
-              <item.icon aria-hidden="true" className="h-5 w-5 shrink-0" />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>}
+    <aside
+      style={brand ? { backgroundColor: accessibleBrandColor(brand.color).css } : undefined}
+      className="fixed inset-y-0 left-0 z-30 hidden w-[240px] flex-col overflow-y-auto bg-[#2765BC] px-4 py-6 text-white md:flex"
+    >
+      {brand ? (
+        <BrandHome brand={brand} className="flex shrink-0 justify-center px-1 pb-5">
+          <OrganizationLogo key={brand.id + brand.logo} brand={brand} />
+        </BrandHome>
+      ) : (
+        <Link
+          to="/"
+          aria-label="Plusticity home"
+          className="flex shrink-0 justify-center px-1 pb-5"
+        >
+          <img
+            src={logo}
+            alt="Plusticity"
+            className="h-[173px] w-auto max-w-full rounded-lg object-contain"
+          />
+        </Link>
+      )}
+      {brand && (
+        <BrandHome
+          brand={brand}
+          className="mb-3 break-words rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold"
+        >
+          {brand.name} {brand.portalSlug ? "training" : "workspace"}
+        </BrandHome>
+      )}
+      {brand?.portalSlug ? (
+        <nav aria-label="Portal navigation" className="space-y-2">
+          <PortalNavigation slug={brand.portalSlug} />
+        </nav>
+      ) : (
+        <nav aria-label="Main navigation" className="space-y-2">
+          {[
+            ...tabs,
+            { to: "/studio", icon: PenSquare, label: "Course Studio" } as const,
+            { to: "/studio/content-library", icon: Library, label: "My Content Library" } as const,
+            { to: "/studio/reports", icon: BarChart3, label: "Reports" } as const,
+          ].map((item) => {
+            const active =
+              path === item.to ||
+              (item.to !== "/" &&
+                path.startsWith(item.to + "/") &&
+                !(
+                  item.to === "/studio" &&
+                  (path.startsWith("/studio/reports") || path.startsWith("/studio/content-library"))
+                ));
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                aria-current={active ? "page" : undefined}
+                className={`flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium transition-colors ${active ? "bg-white/15 font-semibold text-white" : "text-white/85 hover:bg-white/10 hover:text-white"}`}
+              >
+                <item.icon aria-hidden="true" className="h-5 w-5 shrink-0" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
       <div className="mt-auto space-y-4 pt-8">
         <AvatarMenu />
         <AccountLinks />
@@ -138,12 +230,42 @@ function DesktopSidebar() {
   );
 }
 function PortalNavigation({ slug, mobile = false }: { slug: string; mobile?: boolean }) {
-  const location = useRouterState({ select: state => state.location });
+  const location = useRouterState({ select: (state) => state.location });
   const selected = new URLSearchParams(location.searchStr).get("view") ?? "learning";
-  return <>{([{ view: "learning", label: "My Learning", icon: BookOpen }, { view: "catalogue", label: "Catalogue", icon: Search }, { view: "certificates", label: "Certificates", icon: Award }, { view: "programs", label: "Programs", icon: LayoutGrid }] as const).map(item => {
-    const active = location.pathname.replace(/\/$/, "") === `/portal/${slug}` && selected === item.view;
-    return <Link key={item.view} to="/portal/$slug" params={{ slug }} search={{ view: item.view }} aria-label={item.label} aria-current={active ? "page" : undefined} title={item.label} className={mobile ? `grid h-10 w-10 place-items-center rounded-full text-navy-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${active ? "bg-navy-foreground/20" : ""}` : `flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${active ? "bg-white/15 font-semibold" : "hover:bg-white/10"}`}><item.icon aria-hidden="true" className="h-5 w-5 shrink-0" />{!mobile && item.label}</Link>;
-  })}</>;
+  return (
+    <>
+      {(
+        [
+          { view: "learning", label: "My Learning", icon: BookOpen },
+          { view: "catalogue", label: "Catalogue", icon: Search },
+          { view: "certificates", label: "Certificates", icon: Award },
+          { view: "programs", label: "Programs", icon: LayoutGrid },
+        ] as const
+      ).map((item) => {
+        const active =
+          location.pathname.replace(/\/$/, "") === `/portal/${slug}` && selected === item.view;
+        return (
+          <Link
+            key={item.view}
+            to="/portal/$slug"
+            params={{ slug }}
+            search={{ view: item.view }}
+            aria-label={item.label}
+            aria-current={active ? "page" : undefined}
+            title={item.label}
+            className={
+              mobile
+                ? `grid h-10 w-10 place-items-center rounded-full text-navy-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${active ? "bg-navy-foreground/20" : ""}`
+                : `flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${active ? "bg-white/15 font-semibold" : "hover:bg-white/10"}`
+            }
+          >
+            <item.icon aria-hidden="true" className="h-5 w-5 shrink-0" />
+            {!mobile && item.label}
+          </Link>
+        );
+      })}
+    </>
+  );
 }
 
 function AvatarMenu({
@@ -160,7 +282,13 @@ function AvatarMenu({
   const { data: prof } = useQuery({
     queryKey: ["avatar-profile", user?.id],
     enabled: !!user,
-    queryFn: async () => (await supabase.from("profiles" as never).select("first_name, last_name, full_name" as never).maybeSingle()).data as { first_name: string; last_name: string; full_name: string } | null,
+    queryFn: async () =>
+      (
+        await supabase
+          .from("profiles" as never)
+          .select("first_name, last_name, full_name" as never)
+          .maybeSingle()
+      ).data as { first_name: string; last_name: string; full_name: string } | null,
   });
   if (!ready || !user) return null;
   const firstLast = [prof?.first_name, prof?.last_name].filter(Boolean).join(" ").trim();
@@ -204,15 +332,18 @@ function AvatarMenu({
             </span>
             <span className="min-w-0">
               <span className="block truncate">{name}</span>
-              <span className="block truncate text-[11px] font-normal text-white/75">{user.email}</span>
+              <span className="block truncate text-[11px] font-normal text-white/75">
+                {user.email}
+              </span>
             </span>
           </button>
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" side={mobile || horizontal ? "bottom" : "top"}>
-        {!brand?.portalSlug && <DropdownMenuItem asChild><Link to="/organizations"><Building2 className="mr-2 h-4 w-4" />Organizations</Link></DropdownMenuItem>}
         <DropdownMenuItem asChild>
-          <Link to="/profile" search={brand?.portalSlug ? { portal: brand.portalSlug } : {}}>Profile</Link>
+          <Link to="/profile" search={brand?.portalSlug ? { portal: brand.portalSlug } : {}}>
+            Settings
+          </Link>
         </DropdownMenuItem>
         {isAdmin && !brand?.portalSlug && (
           <DropdownMenuItem asChild>
@@ -294,8 +425,20 @@ function DesktopTopAccount() {
   if (!user)
     return (
       <div className="flex gap-2">
-        <Link to="/auth" search={brand?.portalSlug ? { portal: brand.portalSlug } : {}} className="rounded-xl bg-muted px-3 py-2 text-sm font-semibold text-foreground">Sign in</Link>
-        <Link to="/auth" search={{ mode: "signup", ...(brand?.portalSlug ? { portal: brand.portalSlug } : {}) }} className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">Sign up</Link>
+        <Link
+          to="/auth"
+          search={brand?.portalSlug ? { portal: brand.portalSlug } : {}}
+          className="rounded-xl bg-muted px-3 py-2 text-sm font-semibold text-foreground"
+        >
+          Sign in
+        </Link>
+        <Link
+          to="/auth"
+          search={{ mode: "signup", ...(brand?.portalSlug ? { portal: brand.portalSlug } : {}) }}
+          className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
+        >
+          Sign up
+        </Link>
       </div>
     );
   return <AvatarMenu horizontal />;
@@ -307,20 +450,45 @@ export function Header({ children, wide = false }: { children?: ReactNode; wide?
     <header className="relative bg-card px-5 pb-4 pt-5 text-foreground md:contents">
       <div className="mx-auto max-w-[1760px]">
         <div className="flex flex-wrap items-center justify-between gap-3 md:hidden">
-          {brand ? <BrandHome brand={brand} className="min-w-0 max-w-[40%]"><OrganizationLogo key={brand.id + brand.logo} brand={brand} mobile /></BrandHome> : <Link to="/" aria-label="Home" className="shrink-0">
-            <img src={mobileLogo} alt="Plusticity" className="h-[55.89px] w-auto object-contain" />
-          </Link>}
+          {brand ? (
+            <BrandHome brand={brand} className="min-w-0 max-w-[40%]">
+              <OrganizationLogo key={brand.id + brand.logo} brand={brand} mobile />
+            </BrandHome>
+          ) : (
+            <Link to="/" aria-label="Home" className="shrink-0">
+              <img
+                src={mobileLogo}
+                alt="Plusticity"
+                className="h-[55.89px] w-auto object-contain"
+              />
+            </Link>
+          )}
           <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
-            {!brand?.portalSlug && <CalendarLink className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-foreground hover:bg-muted/75" />}
-            {!brand?.portalSlug && <NotificationBell className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-foreground hover:bg-muted/75" />}
+            {!brand?.portalSlug && (
+              <CalendarLink className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-foreground hover:bg-muted/75" />
+            )}
+            {!brand?.portalSlug && (
+              <NotificationBell className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-foreground hover:bg-muted/75" />
+            )}
             <LanguageSwitcher />
             <HeaderAction />
           </div>
         </div>
         <div className="hidden items-center justify-end gap-2 px-10 pt-5 md:flex">
-          {brand && <BrandHome brand={brand} className="mr-auto max-w-sm truncate text-sm font-semibold text-primary">{brand.name}</BrandHome>}
-          {!brand?.portalSlug && <CalendarLink className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-muted text-foreground hover:bg-muted/75" />}
-          {!brand?.portalSlug && <NotificationBell className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-muted text-foreground hover:bg-muted/75" />}
+          {brand && (
+            <BrandHome
+              brand={brand}
+              className="mr-auto max-w-sm truncate text-sm font-semibold text-primary"
+            >
+              {brand.name}
+            </BrandHome>
+          )}
+          {!brand?.portalSlug && (
+            <CalendarLink className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-muted text-foreground hover:bg-muted/75" />
+          )}
+          {!brand?.portalSlug && (
+            <NotificationBell className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-muted text-foreground hover:bg-muted/75" />
+          )}
           <LanguageSwitcher />
           <DesktopTopAccount />
         </div>
@@ -331,13 +499,26 @@ export function Header({ children, wide = false }: { children?: ReactNode; wide?
 }
 
 /** The page title block, placed in the white canvas (Sheet) rather than the gradient banner. */
-export function CanvasHeading({ eyebrow, title, titleColor }: { eyebrow?: string; title: string; titleColor?: string }) {
+export function CanvasHeading({
+  eyebrow,
+  title,
+  titleColor,
+}: {
+  eyebrow?: string;
+  title: string;
+  titleColor?: string;
+}) {
   return (
     <div className="mb-5 border-b border-border pb-4">
       {eyebrow && (
         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">{eyebrow}</p>
       )}
-      <h1 className="mt-1 font-sans text-3xl font-bold normal-case tracking-tight text-navy md:text-4xl" style={titleColor ? { color: titleColor } : undefined}>{title}</h1>
+      <h1
+        className="mt-1 font-sans text-3xl font-bold normal-case tracking-tight text-navy md:text-4xl"
+        style={titleColor ? { color: titleColor } : undefined}
+      >
+        {title}
+      </h1>
     </div>
   );
 }
@@ -356,9 +537,18 @@ export function SearchBox() {
 function Footer() {
   const brand = useLearningBrand();
   return (
-    <footer className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-card px-5 py-2 text-[11px] text-muted-foreground md:left-[240px] md:px-10">
+    <footer className="border-t border-border bg-card px-5 py-2 text-[11px] text-muted-foreground md:fixed md:inset-x-0 md:bottom-0 md:left-[240px] md:z-10 md:px-10">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-1 sm:flex-row sm:justify-between">
-        <p className="line-clamp-2 min-w-0 text-center sm:max-w-[55%] sm:truncate sm:text-left">{brand?.portalSlug ? brand.name : <>{brand && <span>{brand.name} · Powered by Plusticity · </span>}© 2026 Smartify Consulting (Pty) Ltd. All rights reserved.</>}</p>
+        <p className="line-clamp-2 min-w-0 text-center sm:max-w-[55%] sm:truncate sm:text-left">
+          {brand?.portalSlug ? (
+            brand.name
+          ) : (
+            <>
+              {brand && <span>{brand.name} · Powered by Plusticity · </span>}
+              {COPYRIGHT_NOTICE}
+            </>
+          )}
+        </p>
         <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-3">
           <Link to="/terms" className="hover:text-foreground">
             Terms and Conditions
@@ -376,6 +566,14 @@ function Footer() {
           <Link to="/developer" className="hover:text-foreground">
             API
           </Link>
+          <a
+            href="https://www.exchangerate-api.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-foreground"
+          >
+            Exchange rates
+          </a>
         </nav>
       </div>
     </footer>

@@ -1,5 +1,6 @@
 import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { CoursePrice } from "@/components/CoursePrice";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -276,7 +277,7 @@ function ClassPage() {
                   <Lock className="mx-auto h-6 w-6 text-muted-foreground" />
                   <p className="font-semibold">{prerequisiteLocked ? "Complete the prerequisite course first" : licenseLoading ? "Checking your course access…" : disputed ? "Your payment is under review" : enrollment?.payment_status === "refunded" ? "This purchase was refunded" : "This is a paid course"}</p>
                   <p className="text-sm text-muted-foreground">
-                    {prerequisiteLocked ? "This course unlocks after you earn the prerequisite certificate." : disputed ? "Course access is paused while the payment dispute is resolved. Please contact support for help." : `${formatPrice(course.price_cents, course.currency)} · one-time purchase`}
+                    {prerequisiteLocked ? "This course unlocks after you earn the prerequisite certificate." : disputed ? "Course access is paused while the payment dispute is resolved. Please contact support for help." : <><CoursePrice amount={course.price_cents} currency={course.currency} /> · one-time purchase</>}
                   </p>
                   {!prerequisiteLocked && !disputed && <Button
                     disabled={buying || !user || prerequisiteLoading || enrollmentLoading || licenseLoading}

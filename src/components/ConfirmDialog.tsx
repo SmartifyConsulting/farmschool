@@ -27,7 +27,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   return <Ctx.Provider value={confirm}>
     {children}
     <AlertDialog open={!!opts} onOpenChange={(o) => { if (!o) close(false); }}>
-      <AlertDialogContent className="max-w-[calc(100vw-2rem)] rounded-2xl sm:max-w-md">
+      <AlertDialogContent className="max-w-[calc(100vw-2rem)] rounded-xl bg-card sm:max-w-md">
         <AlertDialogHeader className="sm:text-left">
           <div className={`mx-auto mb-1 grid h-11 w-11 place-items-center rounded-full sm:mx-0 ${danger ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}><Icon className="h-5 w-5" aria-hidden="true" /></div>
           <AlertDialogTitle>{opts?.title}</AlertDialogTitle>

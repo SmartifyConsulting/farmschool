@@ -109,27 +109,33 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
     if (!org) return;
     mutate(
       () =>
-        supabase.rpc("save_organization", rpcArgs("save_organization", {
-          _organization: organizationId,
-          _name: name.trim(),
-          _welcome: welcome,
-          _color: color,
-          _logo: logo.trim() || null,
-          _expected: org.version,
-        })),
+        supabase.rpc(
+          "save_organization",
+          rpcArgs("save_organization", {
+            _organization: organizationId,
+            _name: name.trim(),
+            _welcome: welcome,
+            _color: color,
+            _logo: logo.trim() || null,
+            _expected: org.version,
+          }),
+        ),
       "Organization settings saved.",
     );
   };
   const saveDepartment = async () => {
     const saved = await mutate(
       () =>
-        supabase.rpc("save_organization_department", rpcArgs("save_organization_department", {
-          _organization: organizationId,
-          _department: department || newDepartmentId,
-          _name: departmentName.trim(),
-          _parent: parent || null,
-          _expected: departmentVersion,
-        })),
+        supabase.rpc(
+          "save_organization_department",
+          rpcArgs("save_organization_department", {
+            _organization: organizationId,
+            _department: department || newDepartmentId,
+            _name: departmentName.trim(),
+            _parent: parent || null,
+            _expected: departmentVersion,
+          }),
+        ),
       "Department saved.",
     );
     if (saved) {
@@ -154,15 +160,18 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
       return;
     const saved = await mutate(
       () =>
-        supabase.rpc("set_organization_member", rpcArgs("set_organization_member", {
-          _organization: organizationId,
-          _email: email.trim(),
-          _role: role,
-          _department: memberDepartment || null,
-          _manager: manager || null,
-          _job: job,
-          _expected: personVersion,
-        })),
+        supabase.rpc(
+          "set_organization_member",
+          rpcArgs("set_organization_member", {
+            _organization: organizationId,
+            _email: email.trim(),
+            _role: role,
+            _department: memberDepartment || null,
+            _manager: manager || null,
+            _job: job,
+            _expected: personVersion,
+          }),
+        ),
       "Workspace member saved.",
     );
     if (saved) {
@@ -240,13 +249,31 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
                 Switch organization
               </Link>
             </section>
-            {org.can_manage && <OrganizationTraining key={organizationId} organizationId={organizationId} />}
-            {org.can_manage && <OrganizationPortalSettings key={"portal:" + organizationId} organizationId={organizationId} />}
-            {org.can_manage && <OrganizationCertificateSettings key={"certificate:" + organizationId} organizationId={organizationId} />}
             {org.can_manage && (
-              <section className="space-y-3 rounded-xl border p-4">
+              <OrganizationTraining key={organizationId} organizationId={organizationId} />
+            )}
+            {org.can_manage && (
+              <OrganizationPortalSettings
+                key={"portal:" + organizationId}
+                organizationId={organizationId}
+              />
+            )}
+            {org.can_manage && (
+              <OrganizationCertificateSettings
+                key={"certificate:" + organizationId}
+                organizationId={organizationId}
+              />
+            )}
+            {org.can_manage && (
+              <section
+                id="organization-settings"
+                className="scroll-mt-6 space-y-3 rounded-xl border p-4"
+              >
                 <h2 className="font-semibold">Workspace branding</h2>
-                <p className="text-xs text-muted-foreground">If your customer portal is published, its public name, logo and colours update when you save branding.</p>
+                <p className="text-xs text-muted-foreground">
+                  If your customer portal is published, its public name, logo and colours update
+                  when you save branding.
+                </p>
                 <label className="block text-sm">
                   Name
                   <Input
@@ -293,8 +320,8 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
             ) : directory.isError ? (
               <p role="alert">Could not load your workspace directory.</p>
             ) : (
-              <>
-                <section className="space-y-3 rounded-xl border p-4">
+              <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+                <section className="min-w-0 space-y-2 rounded-xl border p-3">
                   <h2 className="font-semibold">Departments</h2>
                   {!directory.data.departments.length && <p>No departments yet.</p>}
                   {directory.data.departments.map((d) => (
@@ -303,7 +330,7 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
                     </p>
                   ))}
                   {org.can_manage && (
-                    <div className="space-y-3">
+                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
                       <select
                         className="w-full rounded border p-2"
                         aria-label="Edit department"
@@ -355,7 +382,7 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
                     </div>
                   )}
                 </section>
-                <section className="space-y-3 rounded-xl border p-4">
+                <section className="min-w-0 space-y-2 rounded-xl border p-3">
                   <h2 className="font-semibold">
                     {org.can_manage ? "Workspace members" : "My directory details"}
                   </h2>
@@ -369,22 +396,31 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
                     }}
                   />
                   {people.slice(page * 50, page * 50 + 50).map((p) => (
-                    <article key={p.user_id} className="space-y-2 rounded border p-3 text-sm">
-                      <p className="font-semibold">
-                        {p.full_name} ·{" "}
-                        {p.is_owner
-                          ? "Workspace owner"
-                          : p.role === "manager"
-                            ? "Workspace manager"
-                            : "Learner"}
-                      </p>
-                      <p>
-                        {p.job_title || "No job title"}
-                        {p.department_id
-                          ? ` · ${departmentPath(p.department_id, directory.data.departments)}`
-                          : ""}
-                      </p>
-                      {p.manager_id && <p>Reports to {p.manager_name || "Workspace member"}</p>}
+                    <article
+                      key={p.user_id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded border px-3 py-2 text-sm"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-semibold">
+                          {p.full_name} ·{" "}
+                          {p.is_owner
+                            ? "Workspace owner"
+                            : p.role === "manager"
+                              ? "Workspace manager"
+                              : "Learner"}
+                        </p>
+                        <p>
+                          {p.job_title}
+                          {p.department_id
+                            ? ` · ${departmentPath(p.department_id, directory.data.departments)}`
+                            : ""}
+                        </p>
+                        {p.manager_id && (
+                          <p className="text-xs text-muted-foreground">
+                            Reports to {p.manager_name || "Workspace member"}
+                          </p>
+                        )}
+                      </div>
                       {org.can_manage && (
                         <div className="flex flex-wrap gap-2">
                           <Button
@@ -417,8 +453,13 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
                       )}
                     </article>
                   ))}
-                  <div className="flex gap-3">
-                    <Button variant="outline" disabled={!page} onClick={() => setPage(page - 1)}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!page}
+                      onClick={() => setPage(page - 1)}
+                    >
                       Previous
                     </Button>
                     <span className="text-sm">
@@ -426,6 +467,7 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
                     </span>
                     <Button
                       variant="outline"
+                      size="sm"
                       disabled={(page + 1) * 50 >= people.length}
                       onClick={() => setPage(page + 1)}
                     >
@@ -433,8 +475,8 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
                     </Button>
                   </div>
                   {org.can_manage && (
-                    <div className="space-y-3 border-t pt-4">
-                      <h3 className="font-semibold">
+                    <div className="grid gap-3 border-t pt-3 sm:grid-cols-2">
+                      <h3 className="font-semibold sm:col-span-2">
                         {person ? "Edit member" : "Add registered member"}
                       </h3>
                       <label className="block text-sm">
@@ -497,11 +539,12 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
                             </option>
                           ))}
                       </select>
-                      <div className="flex gap-3">
-                        <Button disabled={busy || !email.trim()} onClick={savePerson}>
+                      <div className="flex flex-wrap gap-2 sm:col-span-2">
+                        <Button size="sm" disabled={busy || !email.trim()} onClick={savePerson}>
                           Save member
                         </Button>
                         <Button
+                          size="sm"
                           variant="outline"
                           disabled={busy}
                           onClick={() => {
@@ -520,7 +563,7 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
                     </div>
                   )}
                 </section>
-              </>
+              </div>
             )}
           </div>
         )}

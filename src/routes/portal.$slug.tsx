@@ -9,7 +9,7 @@ import { useCustomerPortal } from "@/hooks/useCustomerPortal";
 import { portalCourseReport, readPortalSlug } from "@/lib/customer-portal";
 import { pageMeta } from "@/lib/page-meta";
 import { supabase } from "@/integrations/supabase/client";
-import { formatPrice } from "@/lib/marketplace";
+import { CoursePrice } from "@/components/CoursePrice";
 import { CourseViewToggle, useCourseView } from "@/components/CourseViewToggle";
 import { PortalCertificates } from "@/components/PortalCertificates";
 import { PortalPrograms } from "@/components/PortalPrograms";
@@ -182,7 +182,7 @@ function PortalCourses({ slug, view }: { slug: string; view: "catalogue" | "lear
                     {course.assigned ? "Assigned · " : ""}
                     {course.certified ? "Certificate current · " : ""}
                     {course.price_cents > 0
-                      ? formatPrice(course.price_cents, course.currency)
+                      ? <CoursePrice amount={course.price_cents} currency={course.currency} />
                       : "Free training"}
                   </p>
                   <ProgressBar
