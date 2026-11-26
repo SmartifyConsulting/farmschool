@@ -218,6 +218,19 @@ export function youtubeVideo(value: string) {
     return null;
   }
 }
+/** Preserve directory/reference links from the source without accepting invented media links. */
+export function sourceLinksOnly(output: string, sources: string[]) {
+  const links = (text: string) =>
+    (text.match(/https?:\/\/[^\s<>"\])}]+/g) ?? []).map((value) => {
+      try {
+        return new URL(value.replace(/[.,;:*]+$/g, "")).href;
+      } catch {
+        return "invalid";
+      }
+    });
+  const allowed = new Set(sources.flatMap(links));
+  return links(output).every((link) => link !== "invalid" && allowed.has(link));
+}
 export function coverageProblems(
   topics: TrainingTopic[],
   units: SourceUnit[],

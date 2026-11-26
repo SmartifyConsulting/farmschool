@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { topicSchema } from "./training-design";
+import { topicSchema, sourceLinksOnly } from "./training-design";
 import { parseLessonSlides, slideBlockLocations } from "./lesson-slides";
 
 export const generateTrainingIllustration = createServerFn({ method: "POST" })
@@ -59,8 +59,11 @@ export const generateTrainingTopic = createServerFn({ method: "POST" })
           .min(1)
           .max(50),
       })
-    .refine(data=>data.topic.headings.length===data.topic.slides,"Plan one heading per slide.")
-    .refine(
+      .refine(
+        (data) => data.topic.headings.length === data.topic.slides,
+        "Plan one heading per slide.",
+      )
+      .refine(
         (data) => data.units.reduce((n, u) => n + u.text.length, 0) <= 30000,
         "Split this topic into smaller sections.",
       )
@@ -126,9 +129,16 @@ export const generateTrainingTopic = createServerFn({ method: "POST" })
     if (
       slides.length !== data.topic.slides ||
       body.length > data.budget + data.topic.slides * 180 ||
-      /https?:\/\/|<\/?(?:script|iframe|img)\b/i.test(body)
+      /<\/?(?:script|iframe|img)\b|(?:^|\n):::(?:image|video|hotspot|photo)\b/i.test(body)
     )
       throw new Error("The generated slides did not match the outline. Retry this topic.");
+    if (
+      !sourceLinksOnly(
+        body,
+        data.units.map((unit) => unit.text),
+      )
+    )
+      throw new Error("The topic introduced a link not present in its source. Retry this topic.");
     const kinds = new Set(slideBlockLocations(slides).map((item) => item.block.kind));
     if (
       data.topic.tools.some(

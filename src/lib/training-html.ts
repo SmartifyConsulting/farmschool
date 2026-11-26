@@ -6,10 +6,23 @@ export const htmlEscape = (text: string) =>
     /[&<>"']/g,
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
   );
-const prose = (text: string) =>
-  `<div class="prose">${htmlEscape(text)
-    .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/\n/g, "<br>")}</div>`;
+const prose = (text: string) => {
+  const inline = (value: string) =>
+    htmlEscape(value).replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+  return `<div class="prose">${text
+    .split(/\n\s*\n/)
+    .filter(Boolean)
+    .map((part) => {
+      const lines = part.trim().split("\n");
+      if (lines.every((line) => /^[-*]\s+/.test(line)))
+        return `<ul>${lines.map((line) => `<li>${inline(line.replace(/^[-*]\s+/, ""))}</li>`).join("")}</ul>`;
+      if (lines.every((line) => /^\d+[.)]\s+/.test(line)))
+        return `<ol>${lines.map((line) => `<li>${inline(line.replace(/^\d+[.)]\s+/, ""))}</li>`).join("")}</ol>`;
+      if (/^#{3,6}\s+/.test(part)) return `<h4>${inline(part.replace(/^#{3,6}\s+/, ""))}</h4>`;
+      return `<p>${inline(part).replace(/\n/g, "<br>")}</p>`;
+    })
+    .join("")}</div>`;
+};
 function blockHtml(block: SlideBlock): string {
   switch (block.kind) {
     case "text":

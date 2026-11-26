@@ -28,6 +28,7 @@ import {
   coverageProblems,
   TRAINING_TOOLS,
   TOOL_LABELS,
+  packageSchema,
   type TrainingTopic,
   type SourceUnit,
   type TopicResult,
@@ -71,8 +72,22 @@ export function MaterialProducer({
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [progress, setProgress] = useState("");
+  const [generationError, setGenerationError] = useState("");
   const [blanks, setBlanks] = useState<string[]>([]);
   const [legacy, setLegacy] = useState(false);
+  const [storedDraft, setStoredDraft] = useState<TrainingPackage | null>(null);
+  const draftKey = `plusticity-training-draft:${user?.id ?? "signed-out"}:${sources
+    .map((s) => s.id)
+    .sort()
+    .join(",")}`;
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      setStoredDraft(raw ? packageSchema.parse(JSON.parse(raw)) : null);
+    } catch {
+      setStoredDraft(null);
+    }
+  }, [draftKey]);
   const stopped = useRef(false);
   const attempt = useRef<{
     key: string;
@@ -197,6 +212,7 @@ export function MaterialProducer({
     )
       return;
     stopped.current = false;
+    setGenerationError("");
     setBusy(true);
     setDirty(true);
     try {
@@ -208,7 +224,18 @@ export function MaterialProducer({
             title,
             instruction,
             topic: t,
-            budget: Math.min(12000, Math.max(1200, Math.floor(75000 / topics.length))),
+            budget: Math.min(
+              12000,
+              Math.max(
+                1200,
+                Math.floor(75000 / topics.length),
+                Math.ceil(
+                  units
+                    .filter((u) => t.unitIds.includes(u.id))
+                    .reduce((n, u) => n + u.text.length, 0) * 1.5,
+                ),
+              ),
+            ),
             units: units.filter((u) => t.unitIds.includes(u.id)),
           },
         });
@@ -219,12 +246,12 @@ export function MaterialProducer({
         });
       }
     } catch (e) {
-      toast.error(
-        friendlyError(
-          e,
-          "Generation stopped. Finished topics are retained; retry remaining topics.",
-        ),
+      const message = friendlyError(
+        e,
+        "Generation stopped. Finished topics are retained; retry remaining topics.",
       );
+      setGenerationError(message);
+      toast.error(message);
     } finally {
       setBusy(false);
       setProgress("");
@@ -289,6 +316,72 @@ export function MaterialProducer({
     a.download = title.replace(/[^a-z0-9 -]/gi, "") + ".html";
     a.click();
     URL.revokeObjectURL(url);
+  };
+  const saveDraft = () => {
+    try {
+      const draft = packageSchema.parse(pkg);
+      localStorage.setItem(draftKey, JSON.stringify(draft));
+      setStoredDraft(draft);
+      toast.success("Draft saved in this browser. Reopen Transform on these sources to resume.");
+    } catch (e) {
+      toast.error(
+        friendlyError(
+          e,
+          "Complete the outline fields first, or download the HTML draft if browser storage is full.",
+        ),
+      );
+    }
+  };
+  const resumeDraft = async () => {
+    if (!storedDraft) return;
+    if (
+      dirty &&
+      !(await confirm({
+        title: "Resume the saved browser draft?",
+        description:
+          "Current unsaved edits will be replaced by the saved draft. Original sources and Completed files stay unchanged.",
+        confirmLabel: "Resume draft",
+      }))
+    )
+      return;
+    setTitle(storedDraft.title);
+    setInstruction(storedDraft.instruction);
+    setTopics(storedDraft.topics);
+    setResults(storedDraft.results);
+    cache.current = storedDraft.results;
+    setSelected(0);
+    setDirty(true);
+  };
+  const importDraft = async (file: File) => {
+    try {
+      if (file.size > 16000000) throw new Error("Choose a training draft smaller than 16 MB.");
+      const draft = readTrainingPackage(await file.text());
+      if (!draft) throw new Error("Choose an HTML training draft downloaded from Plusticity.");
+      const issues = outlineProblems(draft.topics, units);
+      if (issues.length)
+        throw new Error("This draft does not match the currently selected source files.");
+      if (
+        dirty &&
+        !(await confirm({
+          title: "Open this training draft?",
+          description:
+            "Current unsaved edits will be replaced. Original sources and Completed files stay unchanged.",
+          confirmLabel: "Open draft",
+        }))
+      )
+        return;
+      setTitle(draft.title);
+      setInstruction(draft.instruction);
+      setTopics(draft.topics);
+      setResults(draft.results);
+      cache.current = draft.results;
+      setSelected(0);
+      setDirty(true);
+      setStoredDraft(draft);
+      localStorage.setItem(draftKey, JSON.stringify(draft));
+    } catch (e) {
+      toast.error(friendlyError(e, "Could not open the training draft."));
+    }
   };
   const exportScorm = async () => {
     if (
@@ -814,6 +907,26 @@ export function MaterialProducer({
                 <Button variant="outline" onClick={download}>
                   Download HTML {problems.length ? "draft" : "slides"}
                 </Button>
+                <Button variant="outline" onClick={saveDraft}>
+                  Save progress in this browser
+                </Button>
+                <label className="block text-sm">
+                  Open downloaded HTML draft
+                  <Input
+                    type="file"
+                    accept=".html,text/html"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void importDraft(file);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                {storedDraft && (
+                  <Button variant="outline" onClick={() => void resumeDraft()}>
+                    Resume saved draft
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   disabled={!!problems.length}
@@ -832,6 +945,11 @@ export function MaterialProducer({
                 One AI request per topic. Images are uploaded or supplied by you; unavailable media
                 stays labelled as a placeholder. Saving does not publish a course.
               </p>
+              {generationError && (
+                <p role="alert" className="rounded-lg border p-3 text-sm">
+                  {generationError}
+                </p>
+              )}
             </fieldset>
             {busy && (
               <div role="status">

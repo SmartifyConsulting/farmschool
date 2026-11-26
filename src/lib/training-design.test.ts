@@ -7,6 +7,7 @@ import {
   topicKey,
   publicImage,
   youtubeVideo,
+  sourceLinksOnly,
   type TrainingPackage,
 } from "./training-design";
 import { trainingHtml, readTrainingPackage, trainingLessonBody } from "./training-html";
@@ -41,6 +42,18 @@ function completed() {
   } satisfies TrainingPackage;
 }
 describe("source-faithful training design", () => {
+  it("preserves real source-directory links but rejects invented links", () => {
+    expect(
+      sourceLinksOnly("Visit https://www.example.org/help/.", [
+        "Directory: https://www.example.org/help/",
+      ]),
+    ).toBe(true);
+    expect(
+      sourceLinksOnly("Visit https://invented.example/help", [
+        "Directory: https://www.example.org/help/",
+      ]),
+    ).toBe(false);
+  });
   it("creates a complete page-based outline for an 18-page PDF below the old chunk limit", () => {
     expect(units).toHaveLength(18);
     const topics = initialOutline(units);
