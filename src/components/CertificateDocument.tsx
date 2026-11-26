@@ -21,7 +21,7 @@ export function CertificateIssuer({ brand }: { brand: CertificateBrand }) {
           src={url}
           referrerPolicy="no-referrer"
           alt={brand.issuer_name + " logo"}
-          className="mx-auto max-h-36 max-w-full object-contain"
+          className="organization-logo mx-auto max-h-36 max-w-full rounded-lg p-2 object-contain"
           onError={() => setFailed(true)}
         />
       )}

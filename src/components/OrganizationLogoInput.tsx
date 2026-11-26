@@ -113,7 +113,7 @@ export function OrganizationLogoInput({
               <img
                 src={value}
                 alt="Organisation logo preview"
-                className="max-h-24 max-w-full object-contain"
+                className="organization-logo max-h-24 max-w-full rounded-md p-2 object-contain"
                 referrerPolicy="no-referrer"
               />
             ) : (

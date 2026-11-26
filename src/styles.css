@@ -189,6 +189,12 @@
   --supporting-text-leading: 1.55;
 }
 
+/* Organisation marks need a neutral surface regardless of the customer's theme. */
+.organization-logo {
+  background-color: #fff;
+  object-fit: contain;
+}
+
 p.text-muted-foreground,
 small.text-muted-foreground,
 [role="alertdialog"] .text-muted-foreground,

@@ -247,7 +247,7 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
                   <img
                     src={org.logo_url}
                     alt={org.name + " logo"}
-                    className="size-full object-contain"
+                    className="organization-logo size-full rounded-lg p-1 object-contain"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
