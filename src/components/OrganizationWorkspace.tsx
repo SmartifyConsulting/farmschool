@@ -262,13 +262,13 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
                   {org.welcome || "Learning and development"}
                 </p>
               </div>
-              <label className="shrink-0">
+              <label className="w-full shrink-0 sm:w-auto">
                 <span className="sr-only">Switch organisation workspace</span>
                 <select
                   aria-label="Switch organisation workspace"
                   value={organizationId}
                   disabled={busy || logoUploading}
-                  className="max-w-40 rounded-md border border-input bg-background p-2 text-sm"
+                  className="w-full max-w-full rounded-md border border-input bg-background p-2 text-sm sm:w-80"
                   onChange={(e) =>
                     void navigate({ to: "/organizations/$id", params: { id: e.target.value } })
                   }

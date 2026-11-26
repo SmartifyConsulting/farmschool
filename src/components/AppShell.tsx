@@ -180,12 +180,12 @@ function DesktopSidebar() {
           />
         </Link>
       )}
-      {brand && (
+      {brand?.portalSlug && (
         <BrandHome
           brand={brand}
           className="mb-3 break-words rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold"
         >
-          {brand.name} {brand.portalSlug ? "training" : "workspace"}
+          {brand.name} training
         </BrandHome>
       )}
       {brand?.portalSlug ? (
