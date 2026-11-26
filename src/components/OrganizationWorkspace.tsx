@@ -1,5 +1,5 @@
 import { rpcArgs } from "@/lib/rpc-args";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -17,8 +17,21 @@ import { OrganizationTraining } from "@/components/OrganizationTraining";
 import { OrganizationPortalSettings } from "@/components/OrganizationPortalSettings";
 import { OrganizationCertificateSettings } from "@/components/OrganizationCertificateSettings";
 
+import { Building2, ArrowLeft } from "lucide-react";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { SectionTabsList, SectionTabsTrigger } from "@/components/SectionTabs";
+import { OrganizationLogoInput } from "@/components/OrganizationLogoInput";
+import {
+  OrganizationTrainingMenu,
+  type WorkspaceTrainingSection,
+} from "@/components/OrganizationTrainingMenu";
+import { ProgramManager } from "@/components/ProgramManager";
+
 export function OrganizationWorkspace({ organizationId }: { organizationId: string }) {
   const { user, ready } = useAuth();
+  const navigate = useNavigate();
+  const [section, setSection] = useState<WorkspaceTrainingSection>("home");
+  const [logoUploading, setLogoUploading] = useState(false);
   const qc = useQueryClient();
   const confirm = useConfirm();
   const [busy, setBusy] = useState(false);
@@ -106,7 +119,7 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
     }
   };
   const saveBrand = () => {
-    if (!org) return;
+    if (!org || logoUploading) return;
     mutate(
       () =>
         supabase.rpc(
@@ -215,7 +228,7 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
     <Phone>
       <Header />
       <Sheet wide>
-        <CanvasHeading title={org?.name ?? "Organization workspace"} />
+        {!org && <CanvasHeading title="Organisation workspace" />}
         {!ready ? (
           <p>Checking sign-in…</p>
         ) : !user ? (
@@ -228,343 +241,434 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
           <p>This workspace is unavailable or your membership has ended.</p>
         ) : (
           <div className="space-y-5">
-            <section
-              className="space-y-3 rounded-xl border-t-4 p-5 shadow-sm"
-              style={{ borderTopColor: org.brand_color }}
-            >
-              {org.logo_url && (
-                <img
-                  src={org.logo_url}
-                  alt={org.name + " logo"}
-                  className="max-h-28 max-w-64 object-contain"
-                  referrerPolicy="no-referrer"
-                />
-              )}
-              <h2 className="text-xl font-semibold">Welcome to {org.name}</h2>
-              <p className="whitespace-pre-wrap">{org.welcome}</p>
-              <Link className="font-semibold text-primary underline" to="/courses">
-                Open my learning
-              </Link>
-              <Link className="ml-5 text-primary underline" to="/organizations">
-                Switch organization
-              </Link>
-            </section>
-            {org.can_manage && (
-              <OrganizationTraining key={organizationId} organizationId={organizationId} />
-            )}
-            {org.can_manage && (
-              <OrganizationPortalSettings
-                key={"portal:" + organizationId}
-                organizationId={organizationId}
-              />
-            )}
-            {org.can_manage && (
-              <OrganizationCertificateSettings
-                key={"certificate:" + organizationId}
-                organizationId={organizationId}
-              />
-            )}
-            {org.can_manage && (
-              <section
-                id="organization-settings"
-                className="scroll-mt-6 space-y-3 rounded-xl border p-4"
-              >
-                <h2 className="font-semibold">Workspace branding</h2>
-                <p className="text-xs text-muted-foreground">
-                  If your customer portal is published, its public name, logo and colours update
-                  when you save branding.
+            <header className="flex flex-wrap items-start gap-3 border-b border-border pb-5">
+              <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary/10">
+                {org.logo_url ? (
+                  <img
+                    src={org.logo_url}
+                    alt={org.name + " logo"}
+                    className="size-full object-contain"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <Building2 className="h-6 w-6 text-primary" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1 basis-48">
+                <h1 className="font-sans text-3xl font-bold normal-case tracking-tight text-navy md:text-4xl">
+                  {org.name}
+                </h1>
+                <p className="supporting-text whitespace-pre-wrap text-muted-foreground">
+                  {org.welcome || "Learning and development"}
                 </p>
-                <label className="block text-sm">
-                  Name
-                  <Input
-                    value={name}
-                    maxLength={200}
-                    disabled={busy}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                </label>
-                <label className="block text-sm">
-                  Welcome message
-                  <Textarea
-                    value={welcome}
-                    maxLength={5000}
-                    disabled={busy}
-                    onChange={(e) => setWelcome(e.target.value)}
-                  />
-                </label>
-                <label className="block text-sm">
-                  Brand accent
-                  <Input
-                    type="color"
-                    value={color}
-                    disabled={busy}
-                    onChange={(e) => setColor(e.target.value)}
-                  />
-                </label>
-                <label className="block text-sm">
-                  Logo address (HTTPS)
-                  <Input
-                    type="url"
-                    value={logo}
-                    disabled={busy}
-                    onChange={(e) => setLogo(e.target.value)}
-                  />
-                </label>
-                <Button disabled={busy || name.trim().length < 2} onClick={saveBrand}>
-                  Save branding
-                </Button>
-              </section>
-            )}
-            {directory.isPending ? (
-              <p>Loading directory…</p>
-            ) : directory.isError ? (
-              <p role="alert">Could not load your workspace directory.</p>
-            ) : (
-              <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-                <section className="min-w-0 space-y-2 rounded-xl border p-3">
-                  <h2 className="font-semibold">Departments</h2>
-                  {!directory.data.departments.length && <p>No departments yet.</p>}
-                  {directory.data.departments.map((d) => (
-                    <p className="text-sm" key={d.id}>
-                      {departmentPath(d.id, directory.data.departments)}
-                    </p>
+              </div>
+              <label className="shrink-0">
+                <span className="sr-only">Switch organisation workspace</span>
+                <select
+                  aria-label="Switch organisation workspace"
+                  value={organizationId}
+                  disabled={busy || logoUploading}
+                  className="max-w-40 rounded-md border border-input bg-background p-2 text-sm"
+                  onChange={(e) =>
+                    void navigate({ to: "/organizations/$id", params: { id: e.target.value } })
+                  }
+                >
+                  {orgs.data?.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
                   ))}
-                  {org.can_manage && (
-                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-                      <select
-                        className="w-full rounded border p-2"
-                        aria-label="Edit department"
-                        value={department}
-                        disabled={busy}
-                        onChange={(e) => {
-                          const d = directory.data.departments.find((d) => d.id === e.target.value);
-                          setDepartment(d?.id ?? "");
-                          setDepartmentVersion(d?.version ?? 0);
-                          setNewDepartmentId(crypto.randomUUID());
-                          setDepartmentName(d?.name ?? "");
-                          setParent(d?.parent_id ?? "");
-                        }}
-                      >
-                        <option value="">New department</option>
-                        {directory.data.departments.map((d) => (
-                          <option key={d.id} value={d.id}>
-                            {departmentPath(d.id, directory.data.departments)}
-                          </option>
-                        ))}
-                      </select>
-                      <Input
-                        aria-label="Department name"
-                        value={departmentName}
-                        maxLength={200}
-                        placeholder="Department name"
-                        disabled={busy}
-                        onChange={(e) => setDepartmentName(e.target.value)}
-                      />
-                      <select
-                        className="w-full rounded border p-2"
-                        aria-label="Parent department"
-                        value={parent}
-                        disabled={busy}
-                        onChange={(e) => setParent(e.target.value)}
-                      >
-                        <option value="">Top-level department</option>
-                        {directory.data.departments
-                          .filter((d) => d.id !== department)
-                          .map((d) => (
-                            <option key={d.id} value={d.id}>
-                              {departmentPath(d.id, directory.data.departments)}
-                            </option>
-                          ))}
-                      </select>
-                      <Button disabled={busy || !departmentName.trim()} onClick={saveDepartment}>
-                        Save department
-                      </Button>
-                    </div>
-                  )}
-                </section>
-                <section className="min-w-0 space-y-2 rounded-xl border p-3">
-                  <h2 className="font-semibold">
-                    {org.can_manage ? "Workspace members" : "My directory details"}
-                  </h2>
-                  <Input
-                    aria-label="Find workspace member"
-                    placeholder="Find a member"
-                    value={search}
-                    onChange={(e) => {
-                      setSearch(e.target.value);
-                      setPage(0);
-                    }}
+                </select>
+              </label>
+            </header>
+            <Tabs defaultValue="training">
+              <SectionTabsList aria-label="Organisation workspace sections">
+                <SectionTabsTrigger value="training">Training</SectionTabsTrigger>
+                <SectionTabsTrigger value="people">People</SectionTabsTrigger>
+                <SectionTabsTrigger value="settings">Settings</SectionTabsTrigger>
+              </SectionTabsList>
+              <TabsContent
+                value="training"
+                forceMount
+                className="space-y-4 data-[state=inactive]:hidden"
+              >
+                {section === "home" ? (
+                  <OrganizationTrainingMenu
+                    organizationId={organizationId}
+                    canManage={org.can_manage}
+                    onSelect={setSection}
                   />
-                  {people.slice(page * 50, page * 50 + 50).map((p) => (
-                    <article
-                      key={p.user_id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded border px-3 py-2 text-sm"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-semibold">
-                          {p.full_name} ·{" "}
-                          {p.is_owner
-                            ? "Workspace owner"
-                            : p.role === "manager"
-                              ? "Workspace manager"
-                              : "Learner"}
+                ) : org.can_manage ? (
+                  <>
+                    <Button variant="ghost" size="sm" onClick={() => setSection("home")}>
+                      <ArrowLeft className="h-4 w-4" />
+                      Back to training
+                    </Button>
+                    {section === "programs" ? (
+                      <ProgramManager
+                        key={organizationId}
+                        organizationId={organizationId}
+                        embedded
+                      />
+                    ) : (
+                      <OrganizationTraining
+                        key={organizationId + section}
+                        organizationId={organizationId}
+                        section={section}
+                      />
+                    )}
+                  </>
+                ) : null}
+                {!org.can_manage && (
+                  <Link
+                    to="/courses"
+                    className="inline-block text-sm font-semibold text-primary underline"
+                  >
+                    Open my learning
+                  </Link>
+                )}
+              </TabsContent>
+              <TabsContent
+                value="people"
+                forceMount
+                className="space-y-4 data-[state=inactive]:hidden"
+              >
+                {" "}
+                {directory.isPending ? (
+                  <p>Loading directory…</p>
+                ) : directory.isError ? (
+                  <p role="alert">Could not load your workspace directory.</p>
+                ) : (
+                  <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+                    <section className="min-w-0 space-y-2 rounded-xl border p-3">
+                      <h2 className="font-semibold">Departments</h2>
+                      {!directory.data.departments.length && <p>No departments yet.</p>}
+                      {directory.data.departments.map((d) => (
+                        <p className="text-sm" key={d.id}>
+                          {departmentPath(d.id, directory.data.departments)}
                         </p>
-                        <p>
-                          {p.job_title}
-                          {p.department_id
-                            ? ` · ${departmentPath(p.department_id, directory.data.departments)}`
-                            : ""}
-                        </p>
-                        {p.manager_id && (
-                          <p className="text-xs text-muted-foreground">
-                            Reports to {p.manager_name || "Workspace member"}
-                          </p>
-                        )}
-                      </div>
+                      ))}
                       {org.can_manage && (
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={busy || (p.is_owner && p.user_id !== user.id)}
-                            onClick={() => {
-                              setPerson(p.user_id);
-                              setPersonVersion(p.version);
-                              setEmail(p.email);
-                              setRole(p.role);
-                              setMemberDepartment(p.department_id ?? "");
-                              setManager(p.manager_id ?? "");
-                              setJob(p.job_title);
+                        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                          <select
+                            className="w-full rounded border p-2"
+                            aria-label="Edit department"
+                            value={department}
+                            disabled={busy}
+                            onChange={(e) => {
+                              const d = directory.data.departments.find(
+                                (d) => d.id === e.target.value,
+                              );
+                              setDepartment(d?.id ?? "");
+                              setDepartmentVersion(d?.version ?? 0);
+                              setNewDepartmentId(crypto.randomUUID());
+                              setDepartmentName(d?.name ?? "");
+                              setParent(d?.parent_id ?? "");
                             }}
                           >
-                            Edit member
+                            <option value="">New department</option>
+                            {directory.data.departments.map((d) => (
+                              <option key={d.id} value={d.id}>
+                                {departmentPath(d.id, directory.data.departments)}
+                              </option>
+                            ))}
+                          </select>
+                          <Input
+                            aria-label="Department name"
+                            value={departmentName}
+                            maxLength={200}
+                            placeholder="Department name"
+                            disabled={busy}
+                            onChange={(e) => setDepartmentName(e.target.value)}
+                          />
+                          <select
+                            className="w-full rounded border p-2"
+                            aria-label="Parent department"
+                            value={parent}
+                            disabled={busy}
+                            onChange={(e) => setParent(e.target.value)}
+                          >
+                            <option value="">Top-level department</option>
+                            {directory.data.departments
+                              .filter((d) => d.id !== department)
+                              .map((d) => (
+                                <option key={d.id} value={d.id}>
+                                  {departmentPath(d.id, directory.data.departments)}
+                                </option>
+                              ))}
+                          </select>
+                          <Button
+                            disabled={busy || !departmentName.trim()}
+                            onClick={saveDepartment}
+                          >
+                            Save department
                           </Button>
-                          {p.user_id !== user.id && !p.is_owner && (
+                        </div>
+                      )}
+                    </section>
+                    <section className="min-w-0 space-y-2 rounded-xl border p-3">
+                      <h2 className="font-semibold">
+                        {org.can_manage ? "Workspace members" : "My directory details"}
+                      </h2>
+                      <Input
+                        aria-label="Find workspace member"
+                        placeholder="Find a member"
+                        value={search}
+                        onChange={(e) => {
+                          setSearch(e.target.value);
+                          setPage(0);
+                        }}
+                      />
+                      {people.slice(page * 50, page * 50 + 50).map((p) => (
+                        <article
+                          key={p.user_id}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded border px-3 py-2 text-sm"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-semibold">
+                              {p.full_name} ·{" "}
+                              {p.is_owner
+                                ? "Workspace owner"
+                                : p.role === "manager"
+                                  ? "Workspace manager"
+                                  : "Learner"}
+                            </p>
+                            <p>
+                              {p.job_title}
+                              {p.department_id
+                                ? ` · ${departmentPath(p.department_id, directory.data.departments)}`
+                                : ""}
+                            </p>
+                            {p.manager_id && (
+                              <p className="text-xs text-muted-foreground">
+                                Reports to {p.manager_name || "Workspace member"}
+                              </p>
+                            )}
+                          </div>
+                          {org.can_manage && (
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={busy || (p.is_owner && p.user_id !== user.id)}
+                                onClick={() => {
+                                  setPerson(p.user_id);
+                                  setPersonVersion(p.version);
+                                  setEmail(p.email);
+                                  setRole(p.role);
+                                  setMemberDepartment(p.department_id ?? "");
+                                  setManager(p.manager_id ?? "");
+                                  setJob(p.job_title);
+                                }}
+                              >
+                                Edit member
+                              </Button>
+                              {p.user_id !== user.id && !p.is_owner && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={busy}
+                                  onClick={() => removePerson(p.user_id, p.version)}
+                                >
+                                  Remove member
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </article>
+                      ))}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={!page}
+                          onClick={() => setPage(page - 1)}
+                        >
+                          Previous
+                        </Button>
+                        <span className="text-sm">
+                          Page {page + 1} · {people.length} members
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={(page + 1) * 50 >= people.length}
+                          onClick={() => setPage(page + 1)}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                      {org.can_manage && (
+                        <div className="grid gap-3 border-t pt-3 sm:grid-cols-2">
+                          <h3 className="font-semibold sm:col-span-2">
+                            {person ? "Edit member" : "Add registered member"}
+                          </h3>
+                          <label className="block text-sm">
+                            Registered email
+                            <Input
+                              type="email"
+                              value={email}
+                              disabled={busy || !!person}
+                              onChange={(e) => setEmail(e.target.value)}
+                            />
+                          </label>
+                          <label className="block text-sm">
+                            Workspace role
+                            <select
+                              className="block w-full rounded border p-2"
+                              value={role}
+                              disabled={busy}
+                              onChange={(e) => setRole(e.target.value)}
+                            >
+                              <option value="learner">Learner</option>
+                              <option value="manager">Workspace manager</option>
+                            </select>
+                          </label>
+                          <label className="block text-sm">
+                            Job title
+                            <Input
+                              value={job}
+                              maxLength={200}
+                              disabled={busy}
+                              onChange={(e) => setJob(e.target.value)}
+                            />
+                          </label>
+                          <select
+                            className="w-full rounded border p-2"
+                            aria-label="Member department"
+                            value={memberDepartment}
+                            disabled={busy}
+                            onChange={(e) => setMemberDepartment(e.target.value)}
+                          >
+                            <option value="">No department</option>
+                            {directory.data.departments.map((d) => (
+                              <option key={d.id} value={d.id}>
+                                {departmentPath(d.id, directory.data.departments)}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            className="w-full rounded border p-2"
+                            aria-label="Reports to"
+                            value={manager}
+                            disabled={busy}
+                            onChange={(e) => setManager(e.target.value)}
+                          >
+                            <option value="">No reporting manager</option>
+                            {directory.data.people
+                              .filter((p) => p.user_id !== person)
+                              .map((p) => (
+                                <option key={p.user_id} value={p.user_id}>
+                                  {p.full_name}
+                                </option>
+                              ))}
+                          </select>
+                          <div className="flex flex-wrap gap-2 sm:col-span-2">
+                            <Button size="sm" disabled={busy || !email.trim()} onClick={savePerson}>
+                              Save member
+                            </Button>
                             <Button
                               size="sm"
                               variant="outline"
                               disabled={busy}
-                              onClick={() => removePerson(p.user_id, p.version)}
+                              onClick={() => {
+                                setPerson("");
+                                setPersonVersion(0);
+                                setEmail("");
+                                setRole("learner");
+                                setMemberDepartment("");
+                                setManager("");
+                                setJob("");
+                              }}
                             >
-                              Remove member
+                              New member
                             </Button>
-                          )}
+                          </div>
                         </div>
                       )}
-                    </article>
-                  ))}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={!page}
-                      onClick={() => setPage(page - 1)}
-                    >
-                      Previous
-                    </Button>
-                    <span className="text-sm">
-                      Page {page + 1} · {people.length} members
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={(page + 1) * 50 >= people.length}
-                      onClick={() => setPage(page + 1)}
-                    >
-                      Next
-                    </Button>
+                    </section>
                   </div>
-                  {org.can_manage && (
-                    <div className="grid gap-3 border-t pt-3 sm:grid-cols-2">
-                      <h3 className="font-semibold sm:col-span-2">
-                        {person ? "Edit member" : "Add registered member"}
-                      </h3>
-                      <label className="block text-sm">
-                        Registered email
-                        <Input
-                          type="email"
-                          value={email}
-                          disabled={busy || !!person}
-                          onChange={(e) => setEmail(e.target.value)}
-                        />
-                      </label>
-                      <label className="block text-sm">
-                        Workspace role
-                        <select
-                          className="block w-full rounded border p-2"
-                          value={role}
-                          disabled={busy}
-                          onChange={(e) => setRole(e.target.value)}
-                        >
-                          <option value="learner">Learner</option>
-                          <option value="manager">Workspace manager</option>
-                        </select>
-                      </label>
-                      <label className="block text-sm">
-                        Job title
-                        <Input
-                          value={job}
-                          maxLength={200}
-                          disabled={busy}
-                          onChange={(e) => setJob(e.target.value)}
-                        />
-                      </label>
-                      <select
-                        className="w-full rounded border p-2"
-                        aria-label="Member department"
-                        value={memberDepartment}
+                )}
+              </TabsContent>
+              <TabsContent
+                value="settings"
+                forceMount
+                className="space-y-4 data-[state=inactive]:hidden"
+              >
+                {org.can_manage && (
+                  <section
+                    id="organization-settings"
+                    className="scroll-mt-6 space-y-3 rounded-xl border p-4"
+                  >
+                    <h2 className="font-semibold">Workspace branding</h2>
+                    <p className="text-xs text-muted-foreground">
+                      If your customer portal is published, its public name, logo and colours update
+                      when you save branding.
+                    </p>
+                    <label className="block text-sm">
+                      Name
+                      <Input
+                        value={name}
+                        maxLength={200}
                         disabled={busy}
-                        onChange={(e) => setMemberDepartment(e.target.value)}
-                      >
-                        <option value="">No department</option>
-                        {directory.data.departments.map((d) => (
-                          <option key={d.id} value={d.id}>
-                            {departmentPath(d.id, directory.data.departments)}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        className="w-full rounded border p-2"
-                        aria-label="Reports to"
-                        value={manager}
+                        onChange={(e) => setName(e.target.value)}
+                      />
+                    </label>
+                    <label className="block text-sm">
+                      Welcome message
+                      <Textarea
+                        value={welcome}
+                        maxLength={5000}
                         disabled={busy}
-                        onChange={(e) => setManager(e.target.value)}
-                      >
-                        <option value="">No reporting manager</option>
-                        {directory.data.people
-                          .filter((p) => p.user_id !== person)
-                          .map((p) => (
-                            <option key={p.user_id} value={p.user_id}>
-                              {p.full_name}
-                            </option>
-                          ))}
-                      </select>
-                      <div className="flex flex-wrap gap-2 sm:col-span-2">
-                        <Button size="sm" disabled={busy || !email.trim()} onClick={savePerson}>
-                          Save member
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={busy}
-                          onClick={() => {
-                            setPerson("");
-                            setPersonVersion(0);
-                            setEmail("");
-                            setRole("learner");
-                            setMemberDepartment("");
-                            setManager("");
-                            setJob("");
-                          }}
-                        >
-                          New member
-                        </Button>
-                      </div>
+                        onChange={(e) => setWelcome(e.target.value)}
+                      />
+                    </label>
+                    <label className="block text-sm">
+                      Brand accent
+                      <Input
+                        type="color"
+                        value={color}
+                        disabled={busy}
+                        onChange={(e) => setColor(e.target.value)}
+                      />
+                    </label>
+                    <div className="space-y-2">
+                      <p className="text-sm">Organisation logo</p>
+                      <OrganizationLogoInput
+                        organizationId={organizationId}
+                        value={logo}
+                        onChange={setLogo}
+                        disabled={busy}
+                        onUploadingChange={setLogoUploading}
+                      />
                     </div>
-                  )}
-                </section>
-              </div>
-            )}
+                    <Button
+                      disabled={busy || logoUploading || name.trim().length < 2}
+                      onClick={saveBrand}
+                    >
+                      Save branding
+                    </Button>
+                  </section>
+                )}
+
+                {org.can_manage ? (
+                  <>
+                    <OrganizationPortalSettings
+                      key={"portal:" + organizationId}
+                      organizationId={organizationId}
+                    />
+                    <OrganizationCertificateSettings
+                      key={"certificate:" + organizationId}
+                      organizationId={organizationId}
+                    />
+                  </>
+                ) : (
+                  <p className="supporting-text text-muted-foreground">
+                    Workspace settings are managed by your organisation owner or workspace manager.
+                  </p>
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
         )}
       </Sheet>

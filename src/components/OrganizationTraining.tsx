@@ -27,7 +27,13 @@ const summarySchema = z.object({
   assigned_learner_courses: z.number(),
   verified_current: z.number(),
 });
-export function OrganizationTraining({ organizationId }: { organizationId: string }) {
+export function OrganizationTraining({
+  organizationId,
+  section,
+}: {
+  organizationId: string;
+  section?: "cohorts" | "progress";
+}) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const confirm = useConfirm();
@@ -253,313 +259,332 @@ export function OrganizationTraining({ organizationId }: { organizationId: strin
   };
   return (
     <section className="space-y-4 rounded-xl border p-4">
-      <h2 className="font-semibold">Organization learning</h2>
+      <h2 className="font-semibold">
+        {section === "progress"
+          ? "Learning progress"
+          : section === "cohorts"
+            ? "Cohorts"
+            : "Organization learning"}
+      </h2>
       {overview.isPending ? (
         <p>Loading training overview…</p>
       ) : overview.isError ? (
         <p role="alert">Could not load this organization's training.</p>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            {[
-              ["Members", overview.data.summary.members],
-              ["Private courses", overview.data.summary.private_courses],
-              ["Cohorts", overview.data.summary.cohorts],
-              ["Learner-course assignments", overview.data.summary.assigned_learner_courses],
-              ["Verified current certificates", overview.data.summary.verified_current],
-            ].map(([label, value]) => (
-              <p className="rounded border p-3 text-sm" key={label}>
-                {label}
-                <strong className="block text-xl">{value}</strong>
-              </p>
-            ))}
-          </div>
-          <Link className="block text-primary underline" to="/cohorts">
-            Open scoped course and program reports
-          </Link>
-          <Link
-            className="block text-primary underline"
-            to="/organizations/$id/notifications"
-            params={{ id: organizationId }}
-          >
-            Manage notification rules
-          </Link>
-          <Tabs defaultValue="cohorts">
-            <SectionTabsList aria-label="Organisation training sections">
-              <SectionTabsTrigger value="cohorts">Cohorts</SectionTabsTrigger>
-              <SectionTabsTrigger value="programs">Programs</SectionTabsTrigger>
-            </SectionTabsList>
-            <TabsContent value="programs" forceMount className="data-[state=inactive]:hidden">
-              <ProgramManager organizationId={organizationId} embedded />
-            </TabsContent>
-            <TabsContent value="cohorts" className="space-y-4">
-              <div className="flex flex-wrap gap-3">
-                <Input
-                  aria-label="New organization cohort name"
-                  placeholder="New cohort name"
-                  value={newName}
-                  maxLength={200}
-                  disabled={busy}
-                  onChange={(e) => setNewName(e.target.value)}
-                />
-                <Button disabled={busy || newName.trim().length < 2} onClick={create}>
-                  Create cohort
-                </Button>
-              </div>
-              <select
-                className="w-full rounded border p-2"
-                aria-label="Organization training cohort"
-                value={selected}
-                disabled={busy}
-                onChange={(e) => {
-                  setSelected(e.target.value);
-                  setMemberPage(0);
-                }}
-              >
-                <option value="">Choose a cohort</option>
-                {overview.data.cohorts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} · {c.member_count} members
-                  </option>
+          {section !== "cohorts" && (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                {[
+                  ["Members", overview.data.summary.members],
+                  ["Private courses", overview.data.summary.private_courses],
+                  ["Cohorts", overview.data.summary.cohorts],
+                  ["Learner-course assignments", overview.data.summary.assigned_learner_courses],
+                  ["Verified current certificates", overview.data.summary.verified_current],
+                ].map(([label, value]) => (
+                  <p className="rounded border p-3 text-sm" key={label}>
+                    {label}
+                    <strong className="block text-xl">{value}</strong>
+                  </p>
                 ))}
-              </select>
-              {selected && !current && <p>This cohort is unavailable in this organization.</p>}
-              {current && (
-                <div className="space-y-5">
-                  <section className="space-y-3 rounded border p-3">
-                    <h3 className="font-semibold">Cohort settings</h3>
-                    <label className="block text-sm">
-                      Name
+              </div>
+              <Link className="block text-primary underline" to="/cohorts">
+                Open scoped course and program reports
+              </Link>
+              <Link
+                className="block text-primary underline"
+                to="/organizations/$id/notifications"
+                params={{ id: organizationId }}
+              >
+                Manage notification rules
+              </Link>
+            </>
+          )}
+          {section !== "progress" && (
+            <Tabs defaultValue="cohorts">
+              {!section && (
+                <>
+                  <SectionTabsList aria-label="Organisation training sections">
+                    <SectionTabsTrigger value="cohorts">Cohorts</SectionTabsTrigger>
+                    <SectionTabsTrigger value="programs">Programs</SectionTabsTrigger>
+                  </SectionTabsList>
+                  <TabsContent value="programs" forceMount className="data-[state=inactive]:hidden">
+                    <ProgramManager organizationId={organizationId} embedded />
+                  </TabsContent>
+                </>
+              )}
+              <TabsContent value="cohorts" className="space-y-4">
+                <div className="flex flex-wrap gap-3">
+                  <Input
+                    aria-label="New organization cohort name"
+                    placeholder="New cohort name"
+                    value={newName}
+                    maxLength={200}
+                    disabled={busy}
+                    onChange={(e) => setNewName(e.target.value)}
+                  />
+                  <Button disabled={busy || newName.trim().length < 2} onClick={create}>
+                    Create cohort
+                  </Button>
+                </div>
+                <select
+                  className="w-full rounded border p-2"
+                  aria-label="Organization training cohort"
+                  value={selected}
+                  disabled={busy}
+                  onChange={(e) => {
+                    setSelected(e.target.value);
+                    setMemberPage(0);
+                  }}
+                >
+                  <option value="">Choose a cohort</option>
+                  {overview.data.cohorts.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} · {c.member_count} members
+                    </option>
+                  ))}
+                </select>
+                {selected && !current && <p>This cohort is unavailable in this organization.</p>}
+                {current && (
+                  <div className="space-y-5">
+                    <section className="space-y-3 rounded border p-3">
+                      <h3 className="font-semibold">Cohort settings</h3>
+                      <label className="block text-sm">
+                        Name
+                        <Input
+                          value={name}
+                          maxLength={200}
+                          disabled={busy}
+                          onChange={(e) => setName(e.target.value)}
+                        />
+                      </label>
+                      <label className="block text-sm">
+                        Seat limit (blank for no limit)
+                        <Input
+                          type="number"
+                          min={1}
+                          max={100000}
+                          value={seats}
+                          disabled={busy}
+                          onChange={(e) => setSeats(e.target.value)}
+                        />
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={autoFree}
+                          disabled={busy}
+                          onCheckedChange={(v) => setAutoFree(v === true)}
+                        />
+                        Automatically enrol members in assigned free courses
+                      </label>
+                      <Button disabled={busy || name.trim().length < 2} onClick={save}>
+                        Save cohort settings
+                      </Button>
+                    </section>
+                    <section className="space-y-3 rounded border p-3">
+                      <h3 className="font-semibold">Cohort members</h3>
                       <Input
-                        value={name}
-                        maxLength={200}
-                        disabled={busy}
-                        onChange={(e) => setName(e.target.value)}
+                        aria-label="Find organization member to add"
+                        placeholder="Find an organization member"
+                        value={peopleSearch}
+                        onChange={(e) => {
+                          setPeopleSearch(e.target.value);
+                          setLearner("");
+                        }}
                       />
-                    </label>
-                    <label className="block text-sm">
-                      Seat limit (blank for no limit)
+                      <select
+                        className="w-full rounded border p-2"
+                        aria-label="Organization member to add"
+                        value={learner}
+                        disabled={busy}
+                        onChange={(e) => setLearner(e.target.value)}
+                      >
+                        <option value="">Choose from the first 50 matching members</option>
+                        {people.data?.map((p) => (
+                          <option key={p.user_id} value={p.user_id}>
+                            {p.full_name}
+                          </option>
+                        ))}
+                      </select>
+                      {people.isError && <p role="alert">Could not load member choices.</p>}
+                      <Button disabled={busy || !learner} onClick={() => member(learner, true)}>
+                        Add to cohort
+                      </Button>
+                      {members.isPending ? (
+                        <p>Loading cohort members…</p>
+                      ) : members.isError ? (
+                        <p role="alert">Could not load cohort members.</p>
+                      ) : (
+                        <>
+                          {members.data.rows.map((p) => (
+                            <div
+                              key={p.user_id}
+                              className="flex items-center justify-between gap-3 text-sm"
+                            >
+                              <span>{p.full_name}</span>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={busy}
+                                onClick={() => member(p.user_id, false)}
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          ))}
+                          <div className="flex gap-3">
+                            <Button
+                              variant="outline"
+                              disabled={!memberPage}
+                              onClick={() => setMemberPage(memberPage - 1)}
+                            >
+                              Previous members
+                            </Button>
+                            <Button
+                              variant="outline"
+                              disabled={(memberPage + 1) * 50 >= members.data.count}
+                              onClick={() => setMemberPage(memberPage + 1)}
+                            >
+                              Next members
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </section>
+                    <section className="space-y-3 rounded border p-3">
+                      <h3 className="font-semibold">Assigned courses</h3>
                       <Input
-                        type="number"
-                        min={1}
-                        max={100000}
-                        value={seats}
-                        disabled={busy}
-                        onChange={(e) => setSeats(e.target.value)}
+                        aria-label="Find course for organization cohort"
+                        placeholder="Find a published course"
+                        value={courseSearch}
+                        onChange={(e) => {
+                          setCourseSearch(e.target.value);
+                          setCoursePage(0);
+                          setCourse("");
+                        }}
                       />
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={autoFree}
-                        disabled={busy}
-                        onCheckedChange={(v) => setAutoFree(v === true)}
-                      />
-                      Automatically enrol members in assigned free courses
-                    </label>
-                    <Button disabled={busy || name.trim().length < 2} onClick={save}>
-                      Save cohort settings
-                    </Button>
-                  </section>
-                  <section className="space-y-3 rounded border p-3">
-                    <h3 className="font-semibold">Cohort members</h3>
-                    <Input
-                      aria-label="Find organization member to add"
-                      placeholder="Find an organization member"
-                      value={peopleSearch}
-                      onChange={(e) => {
-                        setPeopleSearch(e.target.value);
-                        setLearner("");
-                      }}
-                    />
-                    <select
-                      className="w-full rounded border p-2"
-                      aria-label="Organization member to add"
-                      value={learner}
-                      disabled={busy}
-                      onChange={(e) => setLearner(e.target.value)}
-                    >
-                      <option value="">Choose from the first 50 matching members</option>
-                      {people.data?.map((p) => (
-                        <option key={p.user_id} value={p.user_id}>
-                          {p.full_name}
-                        </option>
-                      ))}
-                    </select>
-                    {people.isError && <p role="alert">Could not load member choices.</p>}
-                    <Button disabled={busy || !learner} onClick={() => member(learner, true)}>
-                      Add to cohort
-                    </Button>
-                    {members.isPending ? (
-                      <p>Loading cohort members…</p>
-                    ) : members.isError ? (
-                      <p role="alert">Could not load cohort members.</p>
-                    ) : (
-                      <>
-                        {members.data.rows.map((p) => (
-                          <div
-                            key={p.user_id}
-                            className="flex items-center justify-between gap-3 text-sm"
+                      {courses.isPending ? (
+                        <p>Loading course choices…</p>
+                      ) : courses.isError ? (
+                        <p role="alert">Could not load course choices.</p>
+                      ) : (
+                        <>
+                          <select
+                            className="w-full rounded border p-2"
+                            aria-label="Course to assign"
+                            value={course}
+                            disabled={busy}
+                            onChange={(e) => setCourse(e.target.value)}
                           >
-                            <span>{p.full_name}</span>
+                            <option value="">Choose a published course</option>
+                            {courses.data.rows.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.title}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="flex gap-3">
+                            <Button
+                              variant="outline"
+                              disabled={!coursePage}
+                              onClick={() => {
+                                setCoursePage(coursePage - 1);
+                                setCourse("");
+                              }}
+                            >
+                              Previous courses
+                            </Button>
+                            <Button
+                              variant="outline"
+                              disabled={(coursePage + 1) * 50 >= courses.data.count}
+                              onClick={() => {
+                                setCoursePage(coursePage + 1);
+                                setCourse("");
+                              }}
+                            >
+                              Next courses
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                      <label className="block text-sm">
+                        Course deadline (optional)
+                        <Input
+                          type="datetime-local"
+                          value={due}
+                          disabled={busy}
+                          onChange={(e) => setDue(e.target.value)}
+                        />
+                      </label>
+                      <Button disabled={busy || !course} onClick={() => assign(course, true)}>
+                        Assign course / update deadline
+                      </Button>
+                      {assignments.isPending ? (
+                        <p>Loading assignments…</p>
+                      ) : assignments.isError ? (
+                        <p role="alert">Could not load course assignments.</p>
+                      ) : (
+                        assignments.data?.map((a) => (
+                          <article
+                            className="space-y-2 rounded border p-3 text-sm"
+                            key={a.course_id}
+                          >
+                            <p>
+                              {a.title} · {a.published ? "Published" : "Currently unpublished"}
+                              {a.due_at ? ` · Due ${new Date(a.due_at).toLocaleDateString()}` : ""}
+                            </p>
                             <Button
                               size="sm"
                               variant="outline"
                               disabled={busy}
-                              onClick={() => member(p.user_id, false)}
+                              onClick={() => assign(a.course_id, false)}
                             >
-                              Remove
+                              End assignment
                             </Button>
-                          </div>
-                        ))}
-                        <div className="flex gap-3">
-                          <Button
-                            variant="outline"
-                            disabled={!memberPage}
-                            onClick={() => setMemberPage(memberPage - 1)}
-                          >
-                            Previous members
-                          </Button>
-                          <Button
-                            variant="outline"
-                            disabled={(memberPage + 1) * 50 >= members.data.count}
-                            onClick={() => setMemberPage(memberPage + 1)}
-                          >
-                            Next members
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                  </section>
-                  <section className="space-y-3 rounded border p-3">
-                    <h3 className="font-semibold">Assigned courses</h3>
-                    <Input
-                      aria-label="Find course for organization cohort"
-                      placeholder="Find a published course"
-                      value={courseSearch}
-                      onChange={(e) => {
-                        setCourseSearch(e.target.value);
-                        setCoursePage(0);
-                        setCourse("");
-                      }}
-                    />
-                    {courses.isPending ? (
-                      <p>Loading course choices…</p>
-                    ) : courses.isError ? (
-                      <p role="alert">Could not load course choices.</p>
-                    ) : (
-                      <>
-                        <select
-                          className="w-full rounded border p-2"
-                          aria-label="Course to assign"
-                          value={course}
-                          disabled={busy}
-                          onChange={(e) => setCourse(e.target.value)}
-                        >
-                          <option value="">Choose a published course</option>
-                          {courses.data.rows.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.title}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="flex gap-3">
-                          <Button
-                            variant="outline"
-                            disabled={!coursePage}
-                            onClick={() => {
-                              setCoursePage(coursePage - 1);
-                              setCourse("");
-                            }}
-                          >
-                            Previous courses
-                          </Button>
-                          <Button
-                            variant="outline"
-                            disabled={(coursePage + 1) * 50 >= courses.data.count}
-                            onClick={() => {
-                              setCoursePage(coursePage + 1);
-                              setCourse("");
-                            }}
-                          >
-                            Next courses
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                    <label className="block text-sm">
-                      Course deadline (optional)
-                      <Input
-                        type="datetime-local"
-                        value={due}
-                        disabled={busy}
-                        onChange={(e) => setDue(e.target.value)}
-                      />
-                    </label>
-                    <Button disabled={busy || !course} onClick={() => assign(course, true)}>
-                      Assign course / update deadline
-                    </Button>
-                    {assignments.isPending ? (
-                      <p>Loading assignments…</p>
-                    ) : assignments.isError ? (
-                      <p role="alert">Could not load course assignments.</p>
-                    ) : (
-                      assignments.data?.map((a) => (
-                        <article className="space-y-2 rounded border p-3 text-sm" key={a.course_id}>
-                          <p>
-                            {a.title} · {a.published ? "Published" : "Currently unpublished"}
-                            {a.due_at ? ` · Due ${new Date(a.due_at).toLocaleDateString()}` : ""}
-                          </p>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={busy}
-                            onClick={() => assign(a.course_id, false)}
-                          >
-                            End assignment
-                          </Button>
-                        </article>
-                      ))
-                    )}
-                  </section>
-                  <CohortAssignmentRules
-                    key={selected + ":rules"}
-                    cohortId={selected}
-                    organizationId={organizationId}
-                  />
-                  <CohortScheduledReports
-                    key={selected + ":reports"}
-                    cohortId={selected}
-                    organizationId={organizationId}
-                  />
-                  <CohortBillingManagers
-                    key={selected + ":billing"}
-                    cohortId={selected}
-                    organizationId={organizationId}
-                  />
-                  {current.can_bill && assignments.data && (
-                    <CohortLicenses
-                      key={selected}
+                          </article>
+                        ))
+                      )}
+                    </section>
+                    <CohortAssignmentRules
+                      key={selected + ":rules"}
                       cohortId={selected}
-                      courses={assignments.data
-                        .filter((a) => a.published && a.price_cents > 0)
-                        .map((a) => ({
-                          id: a.course_id,
-                          title: a.title,
-                          price_cents: a.price_cents,
-                          currency: a.currency,
-                        }))}
+                      organizationId={organizationId}
                     />
-                  )}
-                  {!current.can_bill && (
-                    <p className="text-sm">
-                      Paid licence management is limited to the organization owner, active cohort
-                      creator and appointed billing managers.
-                    </p>
-                  )}
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+                    <CohortScheduledReports
+                      key={selected + ":reports"}
+                      cohortId={selected}
+                      organizationId={organizationId}
+                    />
+                    <CohortBillingManagers
+                      key={selected + ":billing"}
+                      cohortId={selected}
+                      organizationId={organizationId}
+                    />
+                    {current.can_bill && assignments.data && (
+                      <CohortLicenses
+                        key={selected}
+                        cohortId={selected}
+                        courses={assignments.data
+                          .filter((a) => a.published && a.price_cents > 0)
+                          .map((a) => ({
+                            id: a.course_id,
+                            title: a.title,
+                            price_cents: a.price_cents,
+                            currency: a.currency,
+                          }))}
+                      />
+                    )}
+                    {!current.can_bill && (
+                      <p className="text-sm">
+                        Paid licence management is limited to the organization owner, active cohort
+                        creator and appointed billing managers.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          )}
         </>
       )}
     </section>
