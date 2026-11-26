@@ -124,7 +124,7 @@ export function parseBlocks(source: string | string[], depth = 0): SlideBlock[] 
     if (kind === "image") {
       const bodyLines = body.split("\n");
       const url = bodyLines[0]?.trim();
-      if (url && /^https:\/\//.test(url)) block = { kind, url, caption: bodyLines.slice(1).join("\n").trim() };
+      if (url && (/^https:\/\//.test(url) || (url.length <= 120000 && /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(url)))) block = { kind, url, caption: bodyLines.slice(1).join("\n").trim() };
     }
     if (kind === "video") {
       const bodyLines = body.split("\n").map((l) => l.trim()).filter(Boolean);

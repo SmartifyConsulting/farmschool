@@ -13,6 +13,7 @@ import { libraryFolderPath, type LibraryFile } from "@/lib/library-materials";
 import { matchesMaterialType, materialSector, type MaterialType } from "@/lib/library-materials";
 import { CATALOGUE_SECTORS } from "@/lib/catalogue-sectors";
 import { MaterialTypeFilters } from "@/components/MaterialTypeFilters";
+import { readTrainingPackage, trainingLessonBody } from "@/lib/training-html";
 
 export function LibraryMaterialPicker({
   courseId,
@@ -64,9 +65,18 @@ export function LibraryMaterialPicker({
           .from("studio-content")
           .download(attempt.path);
         if (error || !data) throw error ?? new Error("Could not read the Completed lesson.");
-        if (data.size > 1000000)
+        if (data.size > 16000000)
           throw new Error("This lesson is too large to reuse as an editable lesson.");
         body = await data.text();
+        if (/\.html$/i.test(file.original_file_name)) {
+          const pkg = readTrainingPackage(body);
+          if (!pkg) throw new Error("Choose a Plusticity training slide package.");
+          body = trainingLessonBody(pkg);
+        }
+        if (body.length > 100000)
+          throw new Error(
+            "Split this training into smaller lessons before copying it into the curriculum.",
+          );
       }
       const { data, error } = await supabase.rpc(
         "content_library_attach_to_draft" as never,
@@ -180,7 +190,7 @@ export function LibraryMaterialPicker({
                     >
                       Add file to draft
                     </Button>
-                    {stage === "produced" && /\.md$/i.test(file.original_file_name) && (
+                    {stage === "produced" && /\.(?:md|html)$/i.test(file.original_file_name) && (
                       <Button size="sm" disabled={busy} onClick={() => void reuse(file, true)}>
                         Add as lesson
                       </Button>

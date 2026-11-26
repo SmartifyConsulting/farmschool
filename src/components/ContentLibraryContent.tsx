@@ -25,6 +25,10 @@ import { toast } from "sonner";
 import { BulkCourseUpload } from "@/components/BulkCourseUpload";
 import { useLibraryMaterials } from "@/hooks/useLibraryMaterials";
 import { MaterialProducer } from "@/components/MaterialProducer";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { SlidePlayer } from "@/components/SlidePlayer";
+import { parseLessonSlides } from "@/lib/lesson-slides";
+import { trainingHtml, readTrainingPackage } from "@/lib/training-html";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { SectionTabsList, SectionTabsTrigger } from "@/components/SectionTabs";
 import {
@@ -78,6 +82,18 @@ export function ContentLibraryContent({
   const qc = useQueryClient();
   const confirm = useConfirm();
   const [search, setSearch] = useState("");
+  const [slidePreview, setSlidePreview] = useState<{ title: string; body: string } | null>(null);
+  const previewSlides = async (file: LibraryFile) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from("studio-content")
+        .download(file.storage_path);
+      if (error || !data || data.size > 16000000) throw new Error("Could not open these slides.");
+      setSlidePreview({ title: file.file_name, body: await data.text() });
+    } catch (error) {
+      toast.error(friendlyError(error, "Could not open the slides."));
+    }
+  };
   const [downloading, setDownloading] = useState<string | null>(null);
   const [folderPath, setFolderPath] = useState<{ id: string; name: string }[]>([]);
   const currentFolderId = folderPath.at(-1)?.id ?? null;
@@ -119,11 +135,11 @@ export function ContentLibraryContent({
         .from("studio-content")
         .download(file.storage_path);
       if (error || !data) throw error ?? new Error("Could not open this output.");
-      if (data.size > 1000000) throw new Error("This output is too large for the lesson editor.");
+      if (data.size > 16000000) throw new Error("This output is too large for the lesson editor.");
       setProducer({
         sources,
         initialBody: await data.text(),
-        initialTitle: file.file_name.replace(/\.md$/i, ""),
+        initialTitle: file.file_name.replace(/\.(?:md|html)$/i, ""),
       });
     } catch (error) {
       toast.error(friendlyError(error, "Could not open an editable copy."));
@@ -663,15 +679,26 @@ export function ContentLibraryContent({
                                 Transform
                               </Button>
                             )}
-                            {stage === "produced" && /\.md$/i.test(file.original_file_name) && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => void editCopy(file)}
-                              >
-                                Edit copy
-                              </Button>
-                            )}
+                            {stage === "produced" &&
+                              /\.(?:md|html)$/i.test(file.original_file_name) && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => void previewSlides(file)}
+                                >
+                                  View slides
+                                </Button>
+                              )}
+                            {stage === "produced" &&
+                              /\.(?:md|html)$/i.test(file.original_file_name) && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => void editCopy(file)}
+                                >
+                                  Edit copy
+                                </Button>
+                              )}
                             <select
                               aria-label={`Sector for ${file.file_name}`}
                               className="max-w-full rounded-md border bg-background p-1.5 text-[13px]"
@@ -719,7 +746,7 @@ export function ContentLibraryContent({
                               ) : (
                                 <Download className="h-4 w-4" />
                               )}
-                              Open
+                              Download
                             </Button>
                             <Button
                               size="icon"
@@ -764,8 +791,44 @@ export function ContentLibraryContent({
               }}
             />
           )}
+          {slidePreview && (
+            <Dialog
+              open
+              onOpenChange={(open) => {
+                if (!open) setSlidePreview(null);
+              }}
+            >
+              <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-6xl">
+                <DialogTitle>{slidePreview.title}</DialogTitle>
+                <LibrarySlidePreview body={slidePreview.body} />
+              </DialogContent>
+            </Dialog>
+          )}
         </>
       )}
     </>
   );
+}
+
+function LibrarySlidePreview({ body }: { body: string }) {
+  try {
+    const pkg = readTrainingPackage(body);
+    return pkg ? (
+      <iframe
+        title="Completed HTML slides"
+        sandbox="allow-scripts"
+        referrerPolicy="no-referrer"
+        className="h-[75vh] w-full rounded-lg border"
+        srcDoc={trainingHtml(pkg)}
+      />
+    ) : (
+      <SlidePlayer slides={parseLessonSlides(body)} />
+    );
+  } catch {
+    return (
+      <p role="alert">
+        This slide package could not be read. Its original file remains available to download.
+      </p>
+    );
+  }
 }
