@@ -189,9 +189,9 @@
   --supporting-text-leading: 1.55;
 }
 
-/* Organisation marks need a neutral surface regardless of the customer's theme. */
+/* Preserve transparent organisation marks across customer themes. */
 .organization-logo {
-  background-color: #fff;
+  background-color: transparent;
   object-fit: contain;
 }
 

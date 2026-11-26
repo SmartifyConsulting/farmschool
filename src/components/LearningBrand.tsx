@@ -73,8 +73,8 @@ export function OrganizationLogo({
       referrerPolicy="no-referrer"
       className={
         mobile
-          ? "organization-logo max-h-14 max-w-full rounded bg-white p-1 object-contain"
-          : "organization-logo max-h-36 max-w-full rounded-lg bg-white p-2 object-contain"
+          ? "organization-logo max-h-14 max-w-full rounded p-1 object-contain"
+          : "organization-logo max-h-36 max-w-full rounded-lg p-2 object-contain"
       }
     />
   ) : (

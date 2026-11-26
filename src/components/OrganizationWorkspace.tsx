@@ -242,7 +242,7 @@ export function OrganizationWorkspace({ organizationId }: { organizationId: stri
         ) : (
           <div className="space-y-5">
             <header className="flex flex-wrap items-start gap-3 border-b border-border pb-5">
-              <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary/10">
+              <div className={`flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl ${org.logo_url ? "bg-transparent" : "bg-primary/10"}`}>
                 {org.logo_url ? (
                   <img
                     src={org.logo_url}
