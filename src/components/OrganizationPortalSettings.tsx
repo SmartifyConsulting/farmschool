@@ -65,7 +65,7 @@ function PortalEditor({
   const qc = useQueryClient();
   const [slug, setSlug] = useState(initial?.slug ?? "");
   const [enabled, setEnabled] = useState(initial?.enabled ?? false);
-  const [agricultureOnly, setAgricultureOnly] = useState(initial?.agriculture_only ?? false);
+  const agricultureOnly = initial?.agriculture_only ?? false;
   const [message, setMessage] = useState(
     initial?.public_message ?? "Sign in to access your training.",
   );
@@ -134,11 +134,6 @@ function PortalEditor({
           onChange={(event) => setMessage(event.target.value)}
         />
       </label>
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={agricultureOnly} disabled={busy} onChange={event => setAgricultureOnly(event.target.checked)} />
-        Agriculture training only, including published public agriculture courses
-      </label>
-      <p className="text-xs text-muted-foreground">This uses the course's classified topic. Unknown and other-industry topics are excluded. Content must still be reviewed and accurately classified before publishing.</p>
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
