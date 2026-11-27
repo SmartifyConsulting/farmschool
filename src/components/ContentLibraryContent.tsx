@@ -35,17 +35,11 @@ import {
 } from "@/lib/library-materials";
 import { friendlyError } from "@/lib/friendly-error";
 import { CATALOGUE_SECTORS } from "@/lib/catalogue-sectors";
-import { MaterialTypeFilters } from "@/components/MaterialTypeFilters";
 import { AutoCategoriseButton } from "@/components/AutoCategoriseButton";
 import { LibraryCourses } from "@/components/LibraryCourses";
 import type { LibraryCourseStage } from "@/lib/library-course-stage";
 import { lessonMaterialFolders, producedMaterialStatus } from "@/lib/lesson-material-folders";
-import {
-  materialSector,
-  matchesMaterialType,
-  sectorKeywords,
-  type MaterialType,
-} from "@/lib/library-materials";
+import { materialSector, sectorKeywords } from "@/lib/library-materials";
 
 type ContentFile = LibraryFile;
 type FolderRow = LibraryFolder;
@@ -106,7 +100,6 @@ export function ContentLibraryContent({
   } = useLibraryMaterials();
   const [lessonId, setLessonId] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
-  const [fileType, setFileType] = useState<MaterialType>("All");
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const [uploadSector, setUploadSector] = useState("Uncategorised");
   const [producer, setProducer] = useState<{
@@ -163,7 +156,6 @@ export function ContentLibraryContent({
   const visibleLessons = lessonFolders.filter((folder) => {
     const members = [...folder.sources, ...folder.outputs];
     return (
-      members.some((file) => matchesMaterialType(file, fileType)) &&
       (!selectedSector ||
         members.some((file) => materialSector(file, files, derivations) === selectedSector)) &&
       (search.trim()
@@ -298,7 +290,6 @@ export function ContentLibraryContent({
             Each lesson folder keeps its raw sources and produced versions together. Draft and
             Completed describe preparation status; Completed does not mean published.
           </p>
-          <MaterialTypeFilters value={fileType} onChange={setFileType} />
           <div className="mb-4 flex flex-wrap items-end gap-3">
             <Input
               aria-label="Search lesson folders and files"
