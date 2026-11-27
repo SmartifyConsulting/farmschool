@@ -9,12 +9,21 @@ export type AutosaveStore = {
   backup: (copy: RecoveryCopy) => Promise<void>;
 };
 
+// PostgreSQL JSONB may reorder keys. Compare content rather than transport key order.
+const serialize = (state: WorkspaceState) =>
+  JSON.stringify(state, (_key, value: unknown) =>
+    value && typeof value === "object" && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)))
+      : value,
+  );
+
 /** Serialized, compare-and-set saves. A failed or conflicting write never replaces remote work. */
 export class StudioAutosave {
   revision: number | null = null;
   state: WorkspaceState | null = null;
   status: SaveStatus = "loading";
   private saved = "";
+  private lastStaged = "";
   private timer: ReturnType<typeof setTimeout> | undefined;
   private writing: Promise<void> | null = null;
   private localWrites: Promise<void> = Promise.resolve();
@@ -39,7 +48,7 @@ export class StudioAutosave {
     try {
       const remote = await this.store.load();
       this.revision = remote?.revision ?? null;
-      this.saved = remote ? JSON.stringify(remote.state) : "";
+      this.saved = remote ? serialize(remote.state) : "";
       if (recovery?.dirty && recovery.revision !== this.revision) {
         this.state = recovery.state;
         this.localSafe = true;
@@ -66,8 +75,9 @@ export class StudioAutosave {
   }
   stage(state: WorkspaceState) {
     if (!this.active) return;
-    const value = JSON.stringify(state);
-    if (this.state && JSON.stringify(this.state) === value && this.status === "saved") return;
+    const value = serialize(state);
+    if (this.lastStaged === value) return;
+    this.lastStaged = value;
     this.state = state;
     const pending = value !== this.saved;
     this.localSafe = false;
@@ -95,12 +105,11 @@ export class StudioAutosave {
     clearTimeout(this.timer);
     if (this.writing) {
       await this.writing;
-      if (this.status !== "conflict" && this.state && JSON.stringify(this.state) !== this.saved)
+      if (this.status !== "conflict" && this.state && serialize(this.state) !== this.saved)
         return this.flush();
       return;
     }
-    if (!this.state || this.status === "conflict" || JSON.stringify(this.state) === this.saved)
-      return;
+    if (!this.state || this.status === "conflict" || serialize(this.state) === this.saved) return;
     const state = this.state;
     this.emit("saving");
     this.writing = (async () => {
@@ -112,15 +121,15 @@ export class StudioAutosave {
           return;
         }
         this.revision = saved.revision;
-        this.saved = JSON.stringify(state);
+        this.saved = serialize(state);
         const current = this.state!;
         await this.store.backup({
           state: current,
           revision: this.revision,
-          dirty: JSON.stringify(current) !== this.saved,
+          dirty: serialize(current) !== this.saved,
         });
         this.localSafe = true;
-        this.emit(JSON.stringify(current) === this.saved ? "saved" : "saving", saved.updated_at);
+        this.emit(serialize(current) === this.saved ? "saved" : "saving", saved.updated_at);
       } catch {
         this.emit(this.localSafe ? "offline" : "error");
       }
@@ -131,7 +140,7 @@ export class StudioAutosave {
       this.active &&
       this.status === "saving" &&
       this.state &&
-      JSON.stringify(this.state) !== this.saved
+      serialize(this.state) !== this.saved
     )
       this.timer = setTimeout(() => {
         void this.flush();
@@ -143,7 +152,8 @@ export class StudioAutosave {
       throw new Error("The saved workspace is unavailable. Keep or download your recovery copy.");
     this.revision = remote.revision;
     this.state = remote.state;
-    this.saved = JSON.stringify(remote.state);
+    this.saved = serialize(remote.state);
+    this.lastStaged = this.saved;
     await this.store.backup({ state: remote.state, revision: remote.revision, dirty: false });
     this.localSafe = true;
     this.emit("saved", remote.updated_at);

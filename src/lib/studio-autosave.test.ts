@@ -41,6 +41,22 @@ const row = (title: string, revision = 1): WorkspaceRow => ({
 });
 afterEach(() => vi.useRealTimers());
 describe("working workspace autosave", () => {
+  it("ignores JSONB key ordering and repeated render snapshots", async () => {
+    const f = fixture({
+      state: { nested: { b: 2, a: 1 }, title: "Saved" },
+      revision: 4,
+      updated_at: "now",
+    });
+    const editor = new StudioAutosave(f.store, () => {});
+    await editor.load();
+    editor.stage({ title: "Saved", nested: { a: 1, b: 2 } });
+    await editor.flush();
+    expect(f.store.save).not.toHaveBeenCalled();
+    editor.stage({ nested: { b: 2, a: 1 }, title: "Saved" });
+    await editor.flush();
+    expect(f.store.save).not.toHaveBeenCalled();
+    editor.dispose();
+  });
   it("does not write a blank initial state over saved work", async () => {
     const f = fixture(row("Saved"));
     const editor = new StudioAutosave(f.store, () => {});
