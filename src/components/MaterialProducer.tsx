@@ -12,6 +12,19 @@ import { learningBlueprint } from "@/lib/course-methodology";
 import { LearningBlueprintSelector } from "@/components/LearningBlueprintSelector";
 import { DesignReferenceAttachments } from "@/components/DesignReferenceAttachments";
 import { designReferencesSchema, type DesignReference } from "@/lib/design-reference";
+import { CourseDesignerWizard } from "@/components/CourseDesignerWizard";
+import { CourseAssessmentConstraints } from "@/components/CourseAssessmentConstraints";
+import { CourseDesignReview } from "@/components/CourseDesignReview";
+import { planCourseDesign } from "@/lib/course-design-plan.functions";
+import {
+  courseDesignPlanSchema,
+  designerChoicesSchema,
+  designerDefaults,
+  topicsFromDesignPlan,
+  validateCourseDesignPlan,
+  type CourseDesignPlan,
+  type DesignerChoices,
+} from "@/lib/course-design-plan";
 import { StudioWorkspace, StudioSaveStatus } from "@/components/StudioWorkspace";
 import { StudioSourceReference } from "@/components/StudioSourceReference";
 import { useStudioAutosave } from "@/hooks/useStudioAutosave";
@@ -64,6 +77,8 @@ export function MaterialProducer({
   initialInstruction,
   initialSourceMode = "legacy",
   initialDesignReferences = [],
+  initialDesignerChoices,
+  initialAutoPlan = false,
   workspace,
   onClose,
   onSaved,
@@ -75,6 +90,8 @@ export function MaterialProducer({
   initialInstruction?: string | undefined;
   initialSourceMode?: "studio" | "legacy";
   initialDesignReferences?: DesignReference[];
+  initialDesignerChoices?: DesignerChoices | undefined;
+  initialAutoPlan?: boolean;
   workspace?: {
     id: string;
     scope: "personal" | "admin";
@@ -95,6 +112,14 @@ export function MaterialProducer({
   const [designReferences, setDesignReferences] =
     useState<DesignReference[]>(initialDesignReferences);
   const [referenceBusy, setReferenceBusy] = useState(false);
+  const [designerChoices, setDesignerChoices] = useState<DesignerChoices>(
+    initialDesignerChoices ?? designerDefaults,
+  );
+  const [designPlan, setDesignPlan] = useState<CourseDesignPlan | null>(null);
+  const [planning, setPlanning] = useState(false);
+  const [planningRequestId, setPlanningRequestId] = useState("");
+  const [autoPlan, setAutoPlan] = useState(initialAutoPlan);
+  const runPlan = useServerFn(planCourseDesign);
   const generate = useServerFn(generateTrainingTopic);
   const illustrate = useServerFn(generateTrainingIllustration);
   const findVideo = useServerFn(searchYouTubeVideo);
@@ -161,26 +186,63 @@ export function MaterialProducer({
     name: string;
   } | null>(null);
   const restoredPackage = useRef<TrainingPackage | null>(null);
+  const resources =
+    designPlan?.coverage
+      .filter((item) => item.disposition === "resource")
+      .flatMap((item) => {
+        const unit = units.find((unit) => unit.id === item.unitId);
+        return unit
+          ? [
+              {
+                title: `${unit.file} · page ${unit.page}`.slice(0, 300),
+                text: unit.text,
+                reference: `${unit.file} · page ${unit.page}`,
+              },
+            ]
+          : [];
+      }) ?? [];
+  const workspaceSnapshot = {
+    kind: "material",
+    title,
+    sourceIds: sources.map((source) => source.id),
+    scope: workspace?.scope ?? "personal",
+    sourceMode,
+    introduction,
+    designReferences,
+    folderId,
+    package: {
+      version: 1,
+      title,
+      instruction,
+      topics,
+      results,
+      sourceMode,
+      introduction,
+      resources,
+      ...(designPlan ? { designPlan, designerChoices } : {}),
+    },
+    includeImages,
+    includeVideos,
+    generationError,
+    designerChoices,
+    designPlan,
+    planningRequestId,
+    autoPlan,
+  };
   const autosave = useStudioAutosave({
     id: workspace?.id ?? sources[0]!.id,
     userId: user?.id,
     enabled: !!workspace,
     canSave: !loading,
-    state: {
-      kind: "material",
-      title,
-      sourceIds: sources.map((source) => source.id),
-      scope: workspace?.scope ?? "personal",
-      sourceMode,
-      introduction,
-      designReferences,
-      folderId,
-      package: { version: 1, title, instruction, topics, results, sourceMode, introduction },
-      includeImages,
-      includeVideos,
-      generationError,
-    },
+    state: workspaceSnapshot,
     restore: (snapshot) => {
+      if (typeof snapshot["autoPlan"] === "boolean") setAutoPlan(snapshot["autoPlan"]);
+      if (snapshot["designerChoices"])
+        setDesignerChoices(designerChoicesSchema.parse(snapshot["designerChoices"]));
+      if (snapshot["designPlan"])
+        setDesignPlan(courseDesignPlanSchema.parse(snapshot["designPlan"]));
+      if (typeof snapshot["planningRequestId"] === "string")
+        setPlanningRequestId(snapshot["planningRequestId"]);
       if (typeof snapshot["generationError"] === "string")
         setGenerationError(snapshot["generationError"]);
       if (snapshot["designReferences"])
@@ -280,6 +342,8 @@ export function MaterialProducer({
     results,
     sourceMode,
     introduction,
+    resources,
+    ...(designPlan ? { designPlan, designerChoices } : {}),
   };
   const rebuildStudioOutline = async () => {
     if (!user || busy || autosave.status === "conflict") return;
@@ -301,19 +365,140 @@ export function MaterialProducer({
         initialInstruction: instruction,
         sourceMode: "studio",
         designReferences,
+        designerChoices,
       });
       await navigate({
         to: "/studio/materials/$projectId",
         params: { projectId },
-        search: { step: "outline", topic: "" },
+        search: { step: "setup", topic: "" },
       });
     } catch (error) {
       toast.error(friendlyError(error, "Could not create the corrected version."));
     }
   };
-  const problems = coverageProblems(topics, units, results, instruction);
+  const problems = coverageProblems(
+    topics,
+    units,
+    results,
+    instruction,
+    designPlan?.coverage
+      .filter((item) => item.disposition === "resource")
+      .map((item) => item.unitId),
+  );
   if (blanks.length)
     problems.unshift("Replace or OCR pages with little readable text before completion.");
+  const applyDesignPlan = (plan: CourseDesignPlan) => {
+    const verified = validateCourseDesignPlan(plan, units);
+    setDesignPlan(verified);
+    setTopics(topicsFromDesignPlan(verified, designerChoices, units));
+    setTitle(verified.title);
+    setIntroduction(verified.introduction);
+    setGenerationError("");
+    setDirty(true);
+    setOutlineEditing(false);
+    selectStep("outline");
+  };
+  const buildAIOutline = async () => {
+    if (planning || busy || loading || !autosave.ready) return;
+    if (sourceMode !== "studio" || Object.keys(cache.current).length) {
+      await rebuildStudioOutline();
+      return;
+    }
+    const parsed = designerChoicesSchema.safeParse(designerChoices);
+    if (!parsed.success) {
+      setGenerationError("Complete your course choices before planning.");
+      return;
+    }
+    const requestId = crypto.randomUUID();
+    setPlanningRequestId(requestId);
+    setPlanning(true);
+    setAutoPlan(false);
+    setGenerationError("");
+    try {
+      await autosave.checkpoint({
+        ...workspaceSnapshot,
+        planningRequestId: requestId,
+        autoPlan: false,
+      });
+      const plan = await runPlan({
+        data: { requestId, sourceKind: "library", choices: parsed.data, units, designReferences },
+      });
+      applyDesignPlan(plan);
+    } catch (error) {
+      setGenerationError(
+        friendlyError(
+          error,
+          "The outline could not be planned. Your choices and sources are retained.",
+        ),
+      );
+    } finally {
+      setPlanning(false);
+    }
+  };
+  const buildAIOutlineRef = useRef(buildAIOutline);
+  buildAIOutlineRef.current = buildAIOutline;
+  const applyDesignPlanRef = useRef(applyDesignPlan);
+  applyDesignPlanRef.current = applyDesignPlan;
+  const planningUserId = user?.id;
+  useEffect(() => {
+    if (autoPlan && !loading && autosave.ready && !planning && !designPlan && units.length)
+      void buildAIOutlineRef.current();
+  }, [autoPlan, loading, autosave.ready, planning, designPlan, units.length]);
+  useEffect(() => {
+    if (
+      !planningRequestId ||
+      designPlan ||
+      planning ||
+      loading ||
+      !autosave.ready ||
+      !planningUserId
+    )
+      return;
+    let cancelled = false;
+    const started = Date.now();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const recover = async () => {
+      const file = await supabase.storage
+        .from("studio-content")
+        .download(`${planningUserId}/course-design-plans/${planningRequestId}.json`);
+      if (cancelled) return;
+      if (file.data) {
+        try {
+          const saved = JSON.parse(await file.data.text()) as {
+            status: string;
+            plan?: unknown;
+            message?: string;
+          };
+          if (cancelled) return;
+          if (saved.status === "complete") {
+            applyDesignPlanRef.current(courseDesignPlanSchema.parse(saved.plan));
+            return;
+          }
+          if (saved.status === "failed") {
+            setGenerationError(saved.message || "Planning stopped. Your choices are retained.");
+            return;
+          }
+        } catch {
+          setGenerationError(
+            "The saved outline could not be recovered. Your source material is retained.",
+          );
+          return;
+        }
+      }
+      if (Date.now() - started > 180000) {
+        setGenerationError(
+          "The planning attempt has not returned a saved outline. Your choices and source files are retained; you can try a new planning attempt.",
+        );
+        return;
+      }
+      timer = setTimeout(() => void recover(), 5000);
+    };
+    void recover();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [planningRequestId, designPlan, planning, loading, autosave.ready, planningUserId]);
   const change = (patch: Partial<TrainingTopic>) => {
     if (patch.unitIds)
       patch.references = patch.unitIds.map((id) => {
@@ -334,7 +519,7 @@ export function MaterialProducer({
     setDirty(true);
   };
   const close = async () => {
-    if (busy) return;
+    if (busy || planning) return;
     if (workspace) {
       await autosave.flush();
       onClose();
@@ -354,7 +539,12 @@ export function MaterialProducer({
     onClose();
   };
   const run = async (only?: string | string[]) => {
-    if (busy || referenceBusy || loading || error) return;
+    if (busy || planning || referenceBusy || loading || error) return;
+    if (sourceMode === "studio" && !designPlan) {
+      selectStep("setup");
+      setGenerationError("Build the AI course outline in the setup wizard first.");
+      return;
+    }
     if (!autosave.ready || autosave.loadError || autosave.status === "conflict") return;
     const issues = generationProblems(topics, units, only);
     if (issues.length) {
@@ -396,6 +586,7 @@ export function MaterialProducer({
               title,
               instruction,
               designReferences,
+              ...(designPlan ? { designerChoices } : {}),
               topic: t,
               budget: Math.min(
                 12000,
@@ -781,7 +972,12 @@ export function MaterialProducer({
         setDirty(true);
       }}
       locked={
-        busy || loading || !autosave.ready || !!autosave.loadError || autosave.status === "conflict"
+        planning ||
+        busy ||
+        loading ||
+        !autosave.ready ||
+        !!autosave.loadError ||
+        autosave.status === "conflict"
       }
       breadcrumb={
         <>
@@ -797,6 +993,7 @@ export function MaterialProducer({
       }
       saveStatus={workspace ? <StudioSaveStatus autosave={autosave} /> : undefined}
       steps={[
+        { id: "setup", label: "Course setup" },
         { id: "outline", label: "Outline" },
         { id: "slides", label: "Slides and media" },
         { id: "review", label: "Coverage review" },
@@ -1047,9 +1244,48 @@ export function MaterialProducer({
       ) : error ? (
         <p role="alert">{error}</p>
       ) : (
-        <fieldset disabled={busy || autosave.status === "conflict"} className="min-w-0">
+        <fieldset disabled={busy || planning || autosave.status === "conflict"} className="min-w-0">
           <Tabs value={step} onValueChange={selectStep}>
+            <TabsContent value="setup">
+              <CourseDesignerWizard
+                value={designerChoices}
+                onChange={(value) => {
+                  setDesignerChoices(value);
+                  setDesignPlan(null);
+                }}
+                references={designReferences}
+                onReferencesChange={setDesignReferences}
+                onPlan={() => void buildAIOutline()}
+                busy={planning || busy}
+                error={generationError}
+                extraQuestions={{
+                  4: (
+                    <CourseAssessmentConstraints
+                      sourceFidelity={designerChoices.sourceFidelity ?? ""}
+                      criteria={designerChoices.assessmentCriteria ?? []}
+                      onChange={(value) =>
+                        setDesignerChoices((old) => ({
+                          ...old,
+                          sourceFidelity: value.sourceFidelity,
+                          assessmentCriteria: value.criteria,
+                        }))
+                      }
+                    />
+                  ),
+                }}
+                sourceSummary={`${sources.length} source file${sources.length === 1 ? "" : "s"} · ${units.length} cleaned source sections. The AI will consolidate these into a teaching outline; page count does not determine module count.`}
+              />
+            </TabsContent>
             <TabsContent value="outline" className="space-y-3">
+              {sourceMode === "studio" && !designPlan && (
+                <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+                  <p className="supporting-text">
+                    This is the cleaned source map. It has not yet been transformed into an
+                    AI-designed course outline.
+                  </p>
+                  <Button onClick={() => selectStep("setup")}>Continue course setup</Button>
+                </div>
+              )}
               {sourceMode === "legacy" && (
                 <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
                   <p className="supporting-text">
@@ -1070,6 +1306,7 @@ export function MaterialProducer({
                 <TrainingOutlinePreview
                   title={title}
                   introduction={introduction}
+                  plan={designPlan}
                   topics={topics}
                   units={units}
                   onSelect={(id) => setSelected(topics.findIndex((topic) => topic.id === id))}
@@ -1341,6 +1578,7 @@ export function MaterialProducer({
               )}
             </TabsContent>
             <TabsContent value="review" className="space-y-3">
+              {designPlan && <CourseDesignReview plan={designPlan} choices={designerChoices} />}
               <p className="supporting-text">
                 Assignment checks detect structural gaps. Compare slides with the source for factual
                 accuracy and complete teaching coverage; AI claims alone are insufficient.

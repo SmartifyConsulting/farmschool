@@ -1,6 +1,13 @@
 import { z } from "zod";
 import { parseLessonSlides, slideBlockLocations } from "./lesson-slides";
 import { LEARNING_BLUEPRINT_IDS, learningBlueprint } from "./course-methodology";
+import {
+  courseDesignPlanSchema,
+  designerChoicesSchema,
+  instructionalDesignSchema,
+  type CourseDesignPlan,
+  type DesignerChoices,
+} from "./course-design-plan";
 
 export const TRAINING_TOOLS = [
   "explanation",
@@ -26,7 +33,7 @@ export type SourceUnit = {
   file: string;
   page: number;
   text: string;
-  pages?: number[];
+  pages?: number[] | undefined;
 };
 export const topicSchema = z.object({
   id: z.string().min(1).max(100),
@@ -45,6 +52,7 @@ export const topicSchema = z.object({
   mediaReviewed: z.boolean().default(false),
   mediaPlan: z.string().max(1000).default(""),
   methodology: z.enum([...LEARNING_BLUEPRINT_IDS, "custom"]).optional(),
+  instructionalDesign: instructionalDesignSchema.optional(),
 });
 export type TrainingTopic = z.infer<typeof topicSchema>;
 export type TopicResult = { key: string; body: string; reviewed: boolean };
@@ -56,6 +64,9 @@ export type TrainingPackage = {
   results: Record<string, TopicResult>;
   sourceMode?: "studio" | "legacy" | undefined;
   introduction?: string | undefined;
+  designPlan?: CourseDesignPlan | undefined;
+  designerChoices?: DesignerChoices | undefined;
+  resources?: { title: string; text: string; reference: string }[] | undefined;
 };
 export const packageSchema = z.object({
   version: z.literal(1),
@@ -63,6 +74,18 @@ export const packageSchema = z.object({
   instruction: z.string().max(1000),
   sourceMode: z.enum(["studio", "legacy"]).optional(),
   introduction: z.string().max(1000).optional(),
+  designPlan: courseDesignPlanSchema.optional(),
+  designerChoices: designerChoicesSchema.optional(),
+  resources: z
+    .array(
+      z.object({
+        title: z.string().max(300),
+        text: z.string().max(6500),
+        reference: z.string().max(600),
+      }),
+    )
+    .max(2000)
+    .optional(),
   topics: z.array(topicSchema).max(250),
   results: z.record(
     z.string(),
@@ -168,6 +191,7 @@ export function topicKey(topic: TrainingTopic, units: SourceUnit[], instruction:
     instruction,
     units.filter((unit) => topic.unitIds.includes(unit.id)).map((unit) => [unit.id, unit.text]),
     ...(topic.methodology ? [topic.methodology] : []),
+    ...(topic.instructionalDesign ? [topic.instructionalDesign] : []),
   ]);
   // Local invalidation marker, never an authentication or cryptographic token.
   let hash = 2166136261;
@@ -232,10 +256,14 @@ export function generationProblems(
     problems.push("Use readable or OCR-processed source pages for the selected topics first.");
   return [...new Set(problems)];
 }
-export function outlineProblems(topics: TrainingTopic[], units: SourceUnit[]) {
+export function outlineProblems(
+  topics: TrainingTopic[],
+  units: SourceUnit[],
+  resourceIds: string[] = [],
+) {
   const problems = [...outlineStructureProblems(topics), ...topicProblems(topics, units)];
   for (const unit of units)
-    if (!topics.some((topic) => topic.unitIds.includes(unit.id)))
+    if (!resourceIds.includes(unit.id) && !topics.some((topic) => topic.unitIds.includes(unit.id)))
       problems.push(`Unassigned source: ${unit.file}, page ${unit.page}.`);
   return [...new Set(problems)];
 }
@@ -288,8 +316,9 @@ export function coverageProblems(
   units: SourceUnit[],
   results: Record<string, TopicResult>,
   instruction: string,
+  resourceIds: string[] = [],
 ) {
-  const problems = outlineProblems(topics, units);
+  const problems = outlineProblems(topics, units, resourceIds);
   for (const topic of topics) {
     const result = results[topic.id];
     if (!result || result.key !== topicKey(topic, units, instruction)) {

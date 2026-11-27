@@ -1,18 +1,21 @@
 import { Button } from "@/components/ui/button";
 import { trainingOutlineGroups } from "@/lib/studio-training-outline";
 import type { SourceUnit, TrainingTopic } from "@/lib/training-design";
+import type { CourseDesignPlan } from "@/lib/course-design-plan";
 export function TrainingOutlinePreview({
   title,
   introduction,
   topics,
   units,
   onSelect,
+  plan,
 }: {
   title: string;
   introduction: string;
   topics: TrainingTopic[];
   units: SourceUnit[];
   onSelect: (id: string) => void;
+  plan?: CourseDesignPlan | null;
 }) {
   return (
     <section aria-label="Course outline overview" className="space-y-4">
@@ -31,7 +34,12 @@ export function TrainingOutlinePreview({
             </span>
             <div className="min-w-0 flex-1">
               <h3 className="font-semibold">{group.title.replace(/^\d+[.)]\s*/, "")}</h3>
-              <p className="supporting-text mt-1">Estimated {group.minutes} min</p>
+              <p className="supporting-text mt-1">
+                Estimated{" "}
+                {plan?.modules.find((module) => module.title === group.title)?.minutes ??
+                  group.minutes}{" "}
+                min
+              </p>
               <ul className="mt-2 list-disc space-y-1 pl-4 text-sm">
                 {group.topics.map((topic) => (
                   <li key={topic.id}>
@@ -55,8 +63,8 @@ export function TrainingOutlinePreview({
         </p>
       )}
       <p className="supporting-text text-muted-foreground">
-        Times are estimates from source length and practice activities. Select a lesson to edit its
-        outline.
+        Times are estimates for the planned learning and practice activities. Select a lesson to
+        edit its outline.
       </p>
     </section>
   );

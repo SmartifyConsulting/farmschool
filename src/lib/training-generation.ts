@@ -28,8 +28,14 @@ export function trainingGenerationPlan(
     .map((topic) => ({
       topic,
       slides: results[topic.id]?.key !== topicKey(topic, units, instruction),
-      image: media.images && !topic.image,
-      video: media.videos && !topic.video,
+      image:
+        media.images &&
+        !topic.image &&
+        (!topic.instructionalDesign || topic.instructionalDesign.mediaType === "image"),
+      video:
+        media.videos &&
+        !topic.video &&
+        (!topic.instructionalDesign || topic.instructionalDesign.mediaType === "video"),
     }))
     .filter((task) => task.slides || task.image || task.video);
 }
@@ -65,7 +71,6 @@ export async function runTrainingGeneration(
   for (const [index, task] of tasks.entries()) {
     let topic = task.topic;
     const status = `${index + 1} of ${tasks.length}: ${topic.title}`;
-    if (actions.stopped()) break;
     if (actions.stopped()) break;
     try {
       if (task.image) {

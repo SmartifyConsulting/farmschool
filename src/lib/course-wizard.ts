@@ -1,11 +1,16 @@
 import { z } from "zod";
 import { DEFAULT_PASS_MARK, PASS_MARKS } from "@/lib/studio";
 import { DEFAULT_COURSE_METHODOLOGY, LEARNING_BLUEPRINT_IDS } from "./course-methodology";
+import { courseDesignPlanSchema, designerChoicesSchema } from "./course-design-plan";
+import { designReferencesSchema } from "./design-reference";
 
 export const courseWizardInput = z.object({
   topic: z.string().trim().min(10).max(1000),
   learningBlueprint: z.enum(LEARNING_BLUEPRINT_IDS).optional(),
-  audience: z.string().trim().min(3).max(200),
+  designPlan: courseDesignPlanSchema.optional(),
+  designerChoices: designerChoicesSchema.optional(),
+  designReferences: designReferencesSchema.optional(),
+  audience: z.string().trim().min(3).max(300),
   lessonCount: z.number().int().min(2).max(8),
   level: z.enum(["Beginner", "Intermediate", "Advanced"]),
   language: z.string().trim().min(2).max(60),
@@ -30,7 +35,7 @@ export const courseWizardInput = z.object({
     .max(6)
     .optional(),
   /** Extracted text from an optional uploaded document — when present, the outline is grounded in it instead of written from the topic alone. */
-  sourceText: z.string().trim().max(60000).optional(),
+  sourceText: z.string().trim().max(1000000).optional(),
   sourceName: z.string().trim().max(200).optional(),
 });
 
@@ -69,7 +74,7 @@ export type CourseWizardDraft = z.infer<typeof courseWizardDraft>;
 export const wizardDefaults: CourseWizardInput = {
   learningBlueprint: DEFAULT_COURSE_METHODOLOGY,
   topic: "",
-  audience: "Smallholder farmers",
+  audience: "People who need to apply this material in their work",
   lessonCount: 4,
   level: "Beginner",
   language: "English",

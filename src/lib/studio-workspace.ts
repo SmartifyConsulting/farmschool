@@ -2,6 +2,7 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import type { LibraryFile } from "./library-materials";
 import { designReferencesSchema, type DesignReference } from "./design-reference";
+import { designerChoicesSchema, type DesignerChoices } from "./course-design-plan";
 
 export const materialProjectSchema = z
   .object({
@@ -15,11 +16,13 @@ export const materialProjectSchema = z
     initialInstruction: z.string().max(1000).optional(),
     sourceMode: z.enum(["studio", "legacy"]).optional(),
     designReferences: designReferencesSchema.default([]),
+    designerChoices: designerChoicesSchema.optional(),
+    autoPlan: z.boolean().optional(),
   })
   .passthrough();
 export async function createMaterialWorkspace(
   user: string,
-  sources: LibraryFile[],
+  sources: Pick<LibraryFile, "id" | "file_name">[],
   options: {
     scope: "personal" | "admin";
     folderId: string | null;
@@ -28,6 +31,8 @@ export async function createMaterialWorkspace(
     initialInstruction?: string;
     sourceMode?: "studio" | "legacy";
     designReferences?: DesignReference[];
+    designerChoices?: DesignerChoices;
+    autoPlan?: boolean;
   },
 ) {
   const id = crypto.randomUUID();

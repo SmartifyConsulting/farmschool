@@ -12,7 +12,7 @@ import { friendlyError } from "@/lib/friendly-error";
 
 export const Route = createFileRoute("/studio/materials/$projectId")({
   validateSearch: (input: Record<string, unknown>) => ({
-    step: ["outline", "slides", "review", "preview"].includes(String(input["step"]))
+    step: ["setup", "outline", "slides", "review", "preview"].includes(String(input["step"]))
       ? String(input["step"])
       : "outline",
     topic: typeof input["topic"] === "string" ? input["topic"].slice(0, 100) : "",
@@ -85,6 +85,8 @@ function MaterialWorkspace() {
           initialInstruction={project.data.state.initialInstruction}
           initialSourceMode={project.data.state.sourceMode ?? "legacy"}
           initialDesignReferences={project.data.state.designReferences}
+          initialDesignerChoices={project.data.state.designerChoices}
+          initialAutoPlan={project.data.state.autoPlan ?? false}
           workspace={{
             id: projectId,
             scope: project.data.state.scope,

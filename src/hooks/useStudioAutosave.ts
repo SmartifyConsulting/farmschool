@@ -83,6 +83,17 @@ export function useStudioAutosave({
     savedAt,
     loadError,
     flush: () => engine.current?.flush(),
+    checkpoint: async (snapshot: WorkspaceState) => {
+      if (!engine.current) throw Error("Wait for the saved workspace to open before planning.");
+      engine.current.stage(snapshot);
+      await engine.current.flush();
+      if (
+        engine.current.status === "conflict" ||
+        engine.current.status === "error" ||
+        engine.current.status === "offline"
+      )
+        throw Error("Save this workspace successfully before starting a new AI request.");
+    },
     retry: () => {
       if (loadError) setRetry((value) => value + 1);
       else void engine.current?.flush();

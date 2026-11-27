@@ -1,3 +1,19 @@
+import { CourseDesignerWizard } from "@/components/CourseDesignerWizard";
+import { CourseAssessmentConstraints } from "@/components/CourseAssessmentConstraints";
+import { TrainingOutlinePreview } from "@/components/TrainingOutlinePreview";
+import { CourseDesignReview } from "@/components/CourseDesignReview";
+import {
+  designerDefaults,
+  topicsFromDesignPlan,
+  type DesignerChoices,
+  type CourseDesignPlan,
+} from "@/lib/course-design-plan";
+import { planCourseDesign } from "@/lib/course-design-plan.functions";
+import { sourceUnits, type SourceUnit } from "@/lib/training-design";
+import { createMaterialWorkspace } from "@/lib/studio-workspace";
+import { detectContentFileType } from "@/lib/studio-content";
+import { useAuth } from "@/hooks/useLearning";
+import type { DesignReference } from "@/lib/design-reference";
 import { LearningBlueprintSelector } from "@/components/LearningBlueprintSelector";
 import { DEFAULT_COURSE_METHODOLOGY, LEARNING_BLUEPRINT_IDS } from "@/lib/course-methodology";
 import { useEffect, useRef, useState } from "react";
@@ -57,10 +73,138 @@ export function CourseWizard() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const confirm = useConfirm();
+  const { user } = useAuth();
+  const [designerOptions, setDesignerOptions] = useState<DesignerChoices>(designerDefaults);
+  const [references, setReferences] = useState<DesignReference[]>([]);
+  const [coursePlan, setCoursePlan] = useState<CourseDesignPlan | null>(null);
+  const [planning, setPlanning] = useState(false);
+  const [planUnits, setPlanUnits] = useState<SourceUnit[]>([]);
+  const sourceFile = useRef<File | null>(null);
+  const sourceSaved = useRef<{ id: string; registered: boolean } | null>(null);
+  const runPlanner = useServerFn(planCourseDesign);
+  const choices: DesignerChoices = {
+    ...designerOptions,
+    goal: input.topic,
+    audience: input.audience,
+    language: input.language,
+    tone: input.tone,
+    blueprint: input.learningBlueprint ?? DEFAULT_COURSE_METHODOLOGY,
+    country: input.country ?? "",
+    level: input.level,
+    sourceFidelity: input.sourceFidelity ?? "",
+    assessmentCriteria: input.rubricCriteria ?? [],
+  };
+  const changeChoices = (value: DesignerChoices) => {
+    setDesignerOptions(value);
+    setInput((old) => ({
+      ...old,
+      topic: value.goal,
+      audience: value.audience,
+      language: value.language,
+      tone: value.tone,
+      learningBlueprint: value.blueprint,
+      lessonLength: value.depth === "Balanced" ? "Standard" : value.depth,
+    }));
+  };
+  const planOutline = async () => {
+    if (planning || busy || extracting || !user) return;
+    setPlanning(true);
+    setError("");
+    try {
+      if (sourceFile.current) {
+        const file = sourceFile.current;
+        const saved = sourceSaved.current ?? { id: crypto.randomUUID(), registered: false };
+        sourceSaved.current = saved;
+        if (!saved.registered) {
+          const path =
+            user.id +
+            "/library/course-sources/" +
+            saved.id +
+            "/" +
+            file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+          const upload = await supabase.storage.from("studio-content").upload(path, file, {
+            contentType: file.type || "application/octet-stream",
+            upsert: true,
+          });
+          if (upload.error) throw upload.error;
+          const inserted = await supabase.from("content_library_files" as never).insert({
+            id: saved.id,
+            author_id: user.id,
+            file_name: file.name,
+            original_file_name: file.name,
+            file_type: detectContentFileType(file.name),
+            storage_path: path,
+            size_bytes: file.size,
+            material_stage: "raw",
+          } as never);
+          if (inserted.error) throw inserted.error;
+          saved.registered = true;
+        }
+        const files = await supabase
+          .from("content_library_files" as never)
+          .select("id,file_name" as never)
+          .eq("id", saved.id)
+          .single();
+        if (files.error) throw files.error;
+        const projectId = await createMaterialWorkspace(
+          user.id,
+          [{ id: saved.id, file_name: file.name }],
+          {
+            scope: "personal",
+            folderId: null,
+            designerChoices: choices,
+            designReferences: references,
+            sourceMode: "studio",
+            autoPlan: true,
+            ...(input.sourceFidelity ? { initialInstruction: input.sourceFidelity } : {}),
+          },
+        );
+        await nav({
+          to: "/studio/materials/$projectId",
+          params: { projectId },
+          search: { step: "setup", topic: "" },
+        });
+        setOpen(false);
+        sourceFile.current = null;
+        sourceSaved.current = null;
+        setInput(wizardDefaults);
+        return;
+      }
+      const units = sourceUnits(crypto.randomUUID(), "Course brief", [
+        { page: 1, text: input.sourceText || choices.goal },
+      ]);
+      setPlanUnits(units);
+      const plan = await runPlanner({
+        data: {
+          requestId: crypto.randomUUID(),
+          sourceKind: input.sourceText ? "author-text" : "topic",
+          maxLessons: 8,
+          choices,
+          units,
+          designReferences: references,
+        },
+      });
+      setCoursePlan(plan);
+      setInput((old) => ({
+        ...old,
+        lessonCount: plan.modules.reduce((count, module) => count + module.lessons.length, 0),
+        designPlan: plan,
+        designerChoices: choices,
+        designReferences: references,
+      }));
+    } catch (error) {
+      setError(
+        friendlyError(error, "Could not build the course outline. Your choices are retained."),
+      );
+    } finally {
+      setPlanning(false);
+    }
+  };
+
   useEffect(() => () => controller.current?.abort(), []);
 
   const close = async () => {
-    if (saving) return;
+    if (saving || planning) return;
     if (
       (busy || draft) &&
       !(await confirm({
@@ -83,15 +227,24 @@ export function CourseWizard() {
     setError("");
     try {
       const pages = await extractDocument(file);
-      const sourceText = pages
-        .map((p) => p.text)
-        .join("\n\n")
-        .slice(0, 60000);
+      const sourceText = pages.map((p) => p.text).join("\n\n");
       if (!sourceText.trim()) {
         setError("Couldn't read any text from that file.");
         return;
       }
-      setInput((prev) => ({ ...prev, sourceText, sourceName: file.name }));
+      if (sourceText.length > 1000000)
+        throw Error(
+          "This source exceeds 1,000,000 characters. Split it into related source documents.",
+        );
+      sourceFile.current = file;
+      sourceSaved.current = null;
+      setCoursePlan(null);
+      setInput((prev) => ({
+        ...prev,
+        topic: prev.topic || "Create a concise training course from " + file.name,
+        sourceText,
+        sourceName: file.name,
+      }));
     } catch (err) {
       setError(friendlyError(err, "Couldn't read that file. Try a PDF, DOCX, TXT or MD file."));
     } finally {
@@ -213,356 +366,169 @@ export function CourseWizard() {
             <DialogDescription>
               {draft
                 ? "Unpublished · trainer review required"
-                : "Your OpenAI account · draft course"}
+                : "Choose your goals, build an outline, then generate an editable course"}
             </DialogDescription>
           </DialogHeader>
           {!draft && (
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                void generate();
-              }}
-              className="space-y-5"
-            >
-              <div className="space-y-2">
-                <Label htmlFor="wizard-topic">What should the course teach?</Label>
-                <Textarea
-                  id="wizard-topic"
-                  value={input.topic}
-                  onChange={(e) => setInput({ ...input, topic: e.target.value })}
-                  placeholder="Composting for smallholder farmers: building a pile, maintaining it, and using finished compost safely"
-                  maxLength={1000}
-                  rows={4}
-                  disabled={busy}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Source document (optional)</Label>
-                {input.sourceName ? (
-                  <div className="flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm">
-                    <FileUp className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className="min-w-0 flex-1 truncate">{input.sourceName}</span>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      aria-label="Remove attached document"
-                      disabled={busy}
-                      onClick={() =>
-                        setInput((prev) => ({
-                          ...prev,
-                          sourceText: undefined,
-                          sourceName: undefined,
-                        }))
-                      }
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={busy || extracting}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    {extracting ? (
-                      <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" />
-                    ) : (
-                      <FileUp className="h-4 w-4" />
-                    )}
-                    {extracting
-                      ? "Reading…"
-                      : "Upload a PDF, DOCX, TXT or MD to build the outline from"}
-                  </Button>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,.docx,.txt,.md"
-                  className="hidden"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) void attachFile(file);
-                    event.target.value = "";
+            <div className="space-y-4">
+              {!coursePlan ? (
+                <CourseDesignerWizard
+                  value={choices}
+                  onChange={changeChoices}
+                  references={references}
+                  onReferencesChange={setReferences}
+                  onPlan={() => void planOutline()}
+                  busy={busy || planning || extracting}
+                  error={error}
+                  extraQuestions={{
+                    0: (
+                      <label className="block text-sm">
+                        Level
+                        <select
+                          className="mt-1 w-full rounded-md border bg-background p-2"
+                          value={input.level}
+                          onChange={(event) =>
+                            setInput((old) => ({
+                              ...old,
+                              level: event.target.value as CourseWizardInput["level"],
+                            }))
+                          }
+                        >
+                          {["Beginner", "Intermediate", "Advanced"].map((level) => (
+                            <option key={level}>{level}</option>
+                          ))}
+                        </select>
+                      </label>
+                    ),
+                    2: (
+                      <label className="block text-sm">
+                        Country / region (optional)
+                        <Input
+                          value={input.country ?? ""}
+                          maxLength={100}
+                          onChange={(event) =>
+                            setInput((old) => ({ ...old, country: event.target.value }))
+                          }
+                        />
+                      </label>
+                    ),
+                    4: (
+                      <details className="space-y-3 rounded-lg border p-3">
+                        <summary className="cursor-pointer text-sm font-medium">
+                          Assessment and source constraints
+                        </summary>
+                        <label className="block text-sm">
+                          Final quiz pass mark
+                          <select
+                            className="mt-1 w-full rounded-md border bg-background p-2"
+                            value={input.passMark}
+                            onChange={(event) =>
+                              setInput((old) => ({ ...old, passMark: Number(event.target.value) }))
+                            }
+                          >
+                            {PASS_MARKS.map((mark) => (
+                              <option key={mark} value={mark}>
+                                {mark}%
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <CourseAssessmentConstraints
+                          sourceFidelity={input.sourceFidelity ?? ""}
+                          criteria={input.rubricCriteria ?? []}
+                          onChange={(value) =>
+                            setInput((old) => ({
+                              ...old,
+                              sourceFidelity: value.sourceFidelity,
+                              rubricCriteria: value.criteria,
+                            }))
+                          }
+                        />
+                        <label className="flex gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={input.webSearch ?? false}
+                            disabled={!!sourceFile.current}
+                            onChange={(event) =>
+                              setInput((old) => ({ ...old, webSearch: event.target.checked }))
+                            }
+                          />
+                          Allow web research for a topic-based course
+                        </label>
+                      </details>
+                    ),
                   }}
-                />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="wizard-audience">Learners</Label>
-                  <Input
-                    id="wizard-audience"
-                    value={input.audience}
-                    onChange={(e) => setInput({ ...input, audience: e.target.value })}
-                    maxLength={200}
-                    disabled={busy}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="wizard-language">Language</Label>
-                  <Input
-                    id="wizard-language"
-                    value={input.language}
-                    onChange={(e) => setInput({ ...input, language: e.target.value })}
-                    maxLength={60}
-                    disabled={busy}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="wizard-level">Level</Label>
-                  <Select
-                    value={input.level}
-                    onValueChange={(level) =>
-                      setInput({ ...input, level: level as CourseWizardInput["level"] })
-                    }
-                    disabled={busy}
-                  >
-                    <SelectTrigger id="wizard-level">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["Beginner", "Intermediate", "Advanced"].map((level) => (
-                        <SelectItem key={level} value={level}>
-                          {level}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="wizard-count">Reading lessons</Label>
-                  <Input
-                    id="wizard-count"
-                    type="number"
-                    min={2}
-                    max={8}
-                    value={input.lessonCount}
-                    onChange={(e) => setInput({ ...input, lessonCount: Number(e.target.value) })}
-                    disabled={busy}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="wizard-pass">Final quiz pass mark</Label>
-                  <Select
-                    value={String(input.passMark)}
-                    onValueChange={(n) => setInput({ ...input, passMark: Number(n) })}
-                    disabled={busy}
-                  >
-                    <SelectTrigger id="wizard-pass">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PASS_MARKS.map((mark) => (
-                        <SelectItem key={mark} value={String(mark)}>
-                          {mark}%
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="wizard-country">Country / region (optional)</Label>
-                  <Input
-                    id="wizard-country"
-                    placeholder="e.g. South Africa"
-                    value={input.country ?? ""}
-                    onChange={(e) => setInput({ ...input, country: e.target.value })}
-                    maxLength={100}
-                    disabled={busy}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="wizard-tone">Tone of voice</Label>
-                  <Select
-                    value={input.tone}
-                    onValueChange={(tone) =>
-                      setInput({ ...input, tone: tone as CourseWizardInput["tone"] })
-                    }
-                    disabled={busy}
-                  >
-                    <SelectTrigger id="wizard-tone">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["Plain and practical", "Formal", "Conversational and encouraging"].map(
-                        (tone) => (
-                          <SelectItem key={tone} value={tone}>
-                            {tone}
-                          </SelectItem>
-                        ),
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="wizard-length">Lesson length</Label>
-                  <Select
-                    value={input.lessonLength}
-                    onValueChange={(lessonLength) =>
-                      setInput({
-                        ...input,
-                        lessonLength: lessonLength as CourseWizardInput["lessonLength"],
-                      })
-                    }
-                    disabled={busy}
-                  >
-                    <SelectTrigger id="wizard-length">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["Concise", "Standard", "In-depth"].map((length) => (
-                        <SelectItem key={length} value={length}>
-                          {length}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <fieldset disabled={busy}>
-                <LearningBlueprintSelector
-                  value={input.learningBlueprint ?? DEFAULT_COURSE_METHODOLOGY}
-                  onChange={(value) => {
-                    if (LEARNING_BLUEPRINT_IDS.some((id) => id === value))
-                      setInput({
-                        ...input,
-                        learningBlueprint: value as (typeof LEARNING_BLUEPRINT_IDS)[number],
-                      });
-                  }}
-                />
-              </fieldset>
-              <Label className="flex items-start gap-3 text-sm leading-relaxed">
-                <input
-                  type="checkbox"
-                  checked={input.webSearch ?? false}
-                  disabled={busy}
-                  onChange={(e) => setInput({ ...input, webSearch: e.target.checked })}
-                  className="mt-1 shrink-0 accent-primary"
-                />
-                Let the AI search the web for current facts and figures (off by default — relies
-                only on its own training knowledge)
-              </Label>
-              <div className="space-y-2">
-                <Label htmlFor="wizard-fidelity">Keep word-for-word / leave out (optional)</Label>
-                <Textarea
-                  id="wizard-fidelity"
-                  placeholder={
-                    'e.g. "Keep every number, deadline and pass mark exactly as given. Leave out the 2019 pricing section."'
+                  sourceSummary={
+                    input.sourceName
+                      ? "Source: " + input.sourceName
+                      : "Create a course from your goal, or attach your factual source document."
                   }
-                  value={input.sourceFidelity ?? ""}
-                  onChange={(e) => setInput({ ...input, sourceFidelity: e.target.value })}
-                  maxLength={500}
-                  rows={2}
-                  disabled={busy}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Assessment criteria (optional)</Label>
-                {(input.rubricCriteria ?? []).map((item, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <Input
-                      aria-label={`Criterion ${i + 1}`}
-                      value={item.criterion}
-                      maxLength={200}
-                      disabled={busy}
-                      onChange={(e) =>
-                        setInput({
-                          ...input,
-                          rubricCriteria: (input.rubricCriteria ?? []).map((c, ci) =>
-                            ci === i ? { ...c, criterion: e.target.value } : c,
-                          ),
-                        })
-                      }
-                    />
-                    <Label className="flex shrink-0 items-center gap-1.5 text-xs font-normal">
+                  sourceInput={
+                    <div className="space-y-2 rounded-lg border p-3">
                       <input
-                        type="checkbox"
-                        checked={item.mustPass}
-                        disabled={busy}
-                        onChange={(e) =>
-                          setInput({
-                            ...input,
-                            rubricCriteria: (input.rubricCriteria ?? []).map((c, ci) =>
-                              ci === i ? { ...c, mustPass: e.target.checked } : c,
-                            ),
-                          })
-                        }
-                        className="accent-primary"
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".pdf,.docx,.pptx,.txt,.md"
+                        className="sr-only"
+                        aria-label="Attach source document"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (file) void attachFile(file);
+                          event.target.value = "";
+                        }}
                       />
-                      Must-pass
-                    </Label>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      aria-label={`Remove criterion ${i + 1}`}
-                      disabled={busy}
-                      onClick={() =>
-                        setInput({
-                          ...input,
-                          rubricCriteria: (input.rubricCriteria ?? []).filter((_, ci) => ci !== i),
-                        })
-                      }
-                    >
-                      <X className="h-3.5 w-3.5" />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={extracting || busy || planning}
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <FileUp />
+                        Attach source document
+                      </Button>
+                      <p className="supporting-text">
+                        PDF, Word, PowerPoint or text. Design example files and images can be
+                        attached in the Style and references step.
+                      </p>
+                      {input.sourceName && <p className="text-sm">{input.sourceName}</p>}
+                    </div>
+                  }
+                />
+              ) : (
+                <>
+                  <TrainingOutlinePreview
+                    plan={coursePlan}
+                    title={coursePlan.title}
+                    introduction={coursePlan.introduction}
+                    topics={topicsFromDesignPlan(coursePlan, choices, planUnits)}
+                    units={planUnits}
+                    onSelect={() => {}}
+                  />
+                  <CourseDesignReview plan={coursePlan} choices={choices} />
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button variant="outline" disabled={busy} onClick={() => setCoursePlan(null)}>
+                      Back to course choices
                     </Button>
+                    <Button disabled={busy} onClick={() => void generate()}>
+                      {busy ? "Generating…" : "Generate complete course"}
+                    </Button>
+                    <span role="status" className="supporting-text">
+                      {progress}
+                    </span>
+                    {busy && (
+                      <Button variant="outline" onClick={() => controller.current?.abort()}>
+                        Stop
+                      </Button>
+                    )}
                   </div>
-                ))}
-                {(input.rubricCriteria?.length ?? 0) < 6 && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() =>
-                      setInput({
-                        ...input,
-                        rubricCriteria: [
-                          ...(input.rubricCriteria ?? []),
-                          { criterion: "", mustPass: false },
-                        ],
-                      })
-                    }
-                  >
-                    Add criterion
-                  </Button>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-3 pt-2">
-                {busy ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => controller.current?.abort()}
-                  >
-                    <Square className="h-4 w-4" />
-                    Stop
-                  </Button>
-                ) : (
-                  <Button type="submit">
-                    <Sparkles className="h-4 w-4" />
-                    Generate course draft
-                  </Button>
-                )}
-                <span
-                  role="status"
-                  className="flex items-center gap-2 text-sm text-muted-foreground"
-                >
-                  {busy && (
-                    <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+                  {error && (
+                    <p role="alert" className="text-sm text-destructive">
+                      {error}
+                    </p>
                   )}
-                  {progress}
-                </span>
-              </div>
-              {log.length > 1 && (
-                <ol className="space-y-1 rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-                  {log.slice(0, -1).map((line, i) => (
-                    <li key={i}>{line}</li>
-                  ))}
-                </ol>
+                </>
               )}
-            </form>
+            </div>
           )}
           {draft && (
             <div className="space-y-5">

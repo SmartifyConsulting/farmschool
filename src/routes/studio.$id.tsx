@@ -9,6 +9,13 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { StudioWorkspace, StudioSaveStatus } from "@/components/StudioWorkspace";
 import { StudioSourceReference } from "@/components/StudioSourceReference";
 import { useStudioAutosave } from "@/hooks/useStudioAutosave";
+import { CourseDesignReview } from "@/components/CourseDesignReview";
+import {
+  courseDesignPlanSchema,
+  designerChoicesSchema,
+  type CourseDesignPlan,
+  type DesignerChoices,
+} from "@/lib/course-design-plan";
 import { reorderIndexedValues } from "@/lib/studio-workspace";
 import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link, useNavigate, type SearchSchemaInput } from "@tanstack/react-router";
@@ -504,6 +511,8 @@ function Editor() {
   const [learningBlueprint, setLearningBlueprint] = useState<LearningBlueprintId>(
     DEFAULT_COURSE_METHODOLOGY,
   );
+  const [courseDesignPlan, setCourseDesignPlan] = useState<CourseDesignPlan | null>(null);
+  const [designerChoices, setDesignerChoices] = useState<DesignerChoices | null>(null);
   const [factoryStep, setFactoryStep] = useState(
     Math.min(2, Math.max(0, Number(workspaceSearch.stage) || 0)),
   );
@@ -2130,6 +2139,8 @@ function Editor() {
     enabled: workspaceEnabled,
     state: {
       kind: "course",
+      designPlan: courseDesignPlan,
+      designerChoices,
       learningBlueprint,
       title: form.title,
       form,
@@ -2155,6 +2166,10 @@ function Editor() {
       )
         setLearningBlueprint(value["learningBlueprint"] as LearningBlueprintId);
       if (value["kind"] !== "course") return;
+      const savedPlan = courseDesignPlanSchema.safeParse(value["designPlan"]);
+      const savedChoices = designerChoicesSchema.safeParse(value["designerChoices"]);
+      if (savedPlan.success) setCourseDesignPlan(savedPlan.data);
+      if (savedChoices.success) setDesignerChoices(savedChoices.data);
       if (value["form"] && typeof value["form"] === "object") setForm(value["form"] as typeof form);
       if (
         value["draft"] === null ||
@@ -2323,6 +2338,9 @@ function Editor() {
         }
         settings={
           <>
+            {courseDesignPlan && designerChoices && (
+              <CourseDesignReview plan={courseDesignPlan} choices={designerChoices} />
+            )}
             <fieldset disabled={course.published || workspaceLocked} className="min-w-0 space-y-6">
               <LearningBlueprintSelector
                 value={learningBlueprint}

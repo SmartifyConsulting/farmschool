@@ -142,7 +142,7 @@ export function ContentLibraryContent({
       await navigate({
         to: "/studio/materials/$projectId",
         params: { projectId },
-        search: { step: "outline", topic: "" },
+        search: { step: options.initialBody ? "outline" : "setup", topic: "" },
       });
     } catch (error) {
       toast.error(friendlyError(error, "Could not open a saved training workspace."));

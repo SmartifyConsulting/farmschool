@@ -116,6 +116,19 @@ export function trainingHtml(
     0,
     pages.findIndex((page) => page.topic.id === options.topic),
   );
+  const retained = (pkg.resources ?? [])
+    .map(
+      (resource) =>
+        `<details><summary>${htmlEscape(resource.title)} · supporting resource</summary><p>${htmlEscape(resource.reference)}</p>${prose(resource.text)}</details>`,
+    )
+    .join("");
+  const retrieval = (pkg.designPlan?.retrieval ?? [])
+    .map(
+      (item) =>
+        `<details><summary>Day ${item.day}: ${htmlEscape(item.question)}</summary>${prose(item.answer)}</details>`,
+    )
+    .join("");
+  const extras = `${retained ? `<section aria-label="Supporting resources"><h2>Supporting resources</h2><p>Reference material retained from the source; this is separate from taught lessons.</p>${retained}</section>` : ""}${retrieval ? `<section aria-label="Follow-up practice"><h2>Follow-up practice</h2><p>Return to these ungraded questions at the suggested intervals. Reminders are not scheduled automatically.</p>${retrieval}</section>` : ""}`;
   const json = JSON.stringify(pkg)
     .replace(/</g, "\\u003c")
     .replace(/>/g, "\\u003e")
@@ -138,7 +151,7 @@ ${options.embedded ? ".training-layout{display:block}.training-outline{display:n
     )
     .join(
       "",
-    )}<nav><button type="button" id="previous">Previous</button><p id="position" role="status"></p><button type="button" class="primary" id="next">Next</button></nav></main></div><footer>© 2026 127.0.0.1 Digital. All rights reserved.</footer><script type="application/json" id="plusticity-training">${json}</script><script>
+    )}<nav><button type="button" id="previous">Previous</button><p id="position" role="status"></p><button type="button" class="primary" id="next">Next</button></nav>${extras}</main></div><footer>© 2026 127.0.0.1 Digital. All rights reserved.</footer><script type="application/json" id="plusticity-training">${json}</script><script>
 (()=>{const pages=[...document.querySelectorAll('article.slide')];let index=0;const outline=document.getElementById('outline');const move=n=>{if(!pages.length)return;index=Math.max(0,Math.min(pages.length-1,n));pages.forEach((p,i)=>p.hidden=i!==index);outline.value=String(index);document.querySelectorAll('[data-slide]').forEach(button=>{if(Number(button.dataset.slide)===index)button.setAttribute('aria-current','step');else button.removeAttribute('aria-current');});document.getElementById('progress').value=index+1;document.getElementById('position').textContent='Slide '+(index+1)+' of '+pages.length;document.getElementById('previous').disabled=index===0;document.getElementById('next').disabled=index===pages.length-1;};document.getElementById('previous').onclick=()=>move(index-1);document.getElementById('next').onclick=()=>move(index+1);outline.onchange=()=>move(Number(outline.value));document.querySelectorAll('[data-slide]').forEach(button=>button.onclick=()=>move(Number(button.dataset.slide)));document.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;if(e.key==='ArrowRight')move(index+1);if(e.key==='ArrowLeft')move(index-1)});document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{const root=b.closest('.tabset');root.querySelectorAll('[role=tab]').forEach((t,i)=>t.setAttribute('aria-selected',String(i===Number(b.dataset.tab))));root.querySelectorAll('[role=tabpanel]').forEach((p,i)=>p.hidden=i!==Number(b.dataset.tab));});document.querySelectorAll('[data-video]').forEach(b=>b.onclick=()=>{const frame=document.createElement('iframe');frame.title='Training video';frame.src='https://www.youtube-nocookie.com/embed/'+b.dataset.video;frame.allowFullscreen=true;b.replaceWith(frame);});document.querySelectorAll('[data-check]').forEach(b=>b.onclick=()=>{const group=b.closest('fieldset');const correct=[...group.querySelectorAll('input')].every(i=>i.checked===(i.dataset.correct==='true'));group.querySelector('.feedback').textContent=correct?'Correct. Review the explanation below.':'Review your choices and the source-supported explanation below.';});move(${firstSlide})})();
 </script></body></html>`;
 }
@@ -152,10 +165,21 @@ export function readTrainingPackage(html: string): TrainingPackage | null {
   return packageSchema.parse(JSON.parse(json));
 }
 export function trainingLessonBody(pkg: TrainingPackage) {
-  return pkg.topics
-    .map(
-      (topic) =>
-        `# ${topic.module}\n\n${pkg.results[topic.id]?.body ?? ""}${topic.image && publicImage(topic.image) ? `\n\n:::image\n${topic.image}\n${topic.alt} · ${topic.attribution}\n:::` : ""}${topic.video && youtubeVideo(topic.video) ? `\n\n:::video\n${topic.video}\n:::` : ""}`,
-    )
-    .join("\n\n");
+  return (
+    pkg.topics
+      .map(
+        (topic) =>
+          `# ${topic.module}\n\n${pkg.results[topic.id]?.body ?? ""}${topic.image && publicImage(topic.image) ? `\n\n:::image\n${topic.image}\n${topic.alt} · ${topic.attribution}\n:::` : ""}${topic.video && youtubeVideo(topic.video) ? `\n\n:::video\n${topic.video}\n:::` : ""}`,
+      )
+      .join("\n\n") +
+    (pkg.resources ?? [])
+      .map((resource) => `\n\n## Supporting resource: ${resource.title}\n\n${resource.text}`)
+      .join("") +
+    (pkg.designPlan?.retrieval ?? [])
+      .map(
+        (item) =>
+          `\n\n## Follow-up practice · Day ${item.day}\n\n:::flip\n${item.question}\n---\n${item.answer}\n:::`,
+      )
+      .join("")
+  );
 }
