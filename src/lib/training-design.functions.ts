@@ -5,6 +5,7 @@ import { topicSchema, sourceLinksOnly } from "./training-design";
 import { parseLessonSlides, slideBlockLocations } from "./lesson-slides";
 import { learningBlueprintInstruction } from "./course-methodology";
 import { designReferencesSchema } from "./design-reference";
+import { slideToolProblems } from "./training-slide-tools";
 import { designerChoicesSchema, courseDesignPlanSchema } from "./course-design-plan";
 
 export const generateTrainingIllustration = createServerFn({ method: "POST" })
@@ -138,6 +139,9 @@ export const generateTrainingTopic = createServerFn({ method: "POST" })
                 designRequirements:
                   "Use the selected language and tone. Teach the mapped measurable objectives, provide the planned activity with feedback and aligned assessment, and apply the accessibility, cognitive-load and multimedia guidance. Do not claim that a knowledge check establishes practical competency.",
                 outline: data.topic,
+                slideTools: data.topic.slideTools,
+                slideToolInstructions:
+                  "When slideTools is supplied, each array controls the corresponding slide: include every selected interactive tool on that slide and no unselected interactive tools. Explanation and scenario choices guide prose. Do not move a selected tool to a different slide.",
                 instruction: data.instruction,
                 sources: data.units,
                 designReferences: data.designReferences.map((reference) => ({
@@ -184,5 +188,7 @@ export const generateTrainingTopic = createServerFn({ method: "POST" })
       )
     )
       throw new Error("A planned learning component was missing. Retry this topic.");
+    const toolProblems = slideToolProblems(data.topic, body);
+    if (toolProblems.length) throw Error(toolProblems[0]);
     return { body };
   });

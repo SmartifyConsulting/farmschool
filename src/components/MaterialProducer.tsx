@@ -1,4 +1,5 @@
 import { TrainingOutlineEditor } from "@/components/TrainingOutlineEditor";
+import { defaultSlideTools, toolsFromEditedBody } from "@/lib/training-slide-tools";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -6,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { studioTrainingOutline } from "@/lib/studio-training-outline";
+import { studioTrainingOutline, trainingOutlineGroups } from "@/lib/studio-training-outline";
 import { TrainingOutlinePreview } from "@/components/TrainingOutlinePreview";
 import { createMaterialWorkspace } from "@/lib/studio-workspace";
 import { learningBlueprint } from "@/lib/course-methodology";
@@ -33,7 +34,8 @@ import { useStudioAutosave } from "@/hooks/useStudioAutosave";
 import { recoverableTrainingPackage } from "@/lib/training-workspace-recovery";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { SectionTabsList, SectionTabsTrigger } from "@/components/SectionTabs";
-import { BlockListEditor } from "@/components/BlockListEditor";
+import { VisualTrainingEditor } from "@/components/VisualTrainingEditor";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useAuth } from "@/hooks/useLearning";
 import { supabase } from "@/integrations/supabase/client";
@@ -149,6 +151,7 @@ export function MaterialProducer({
         topics.findIndex((topic) => topic.id === workspace.topic),
       )
     : localSelected;
+  const [unveilAfterPlan, setUnveilAfterPlan] = useState(initialAutoPlan);
   const [localStep, setLocalStep] = useState("outline");
   const step = workspace?.step ?? localStep;
   const selectStep = (next: string) => {
@@ -534,12 +537,34 @@ export function MaterialProducer({
       setDirty(true);
     }
   };
+  const editTrainingBody = (body: string) => {
+    if (!topic || !result) return;
+    const nextTopic = { ...topic, ...toolsFromEditedBody(topic, body) };
+    const current = result.key === topicKey(topic, units, instruction);
+    setTopics((old) => old.map((item) => (item.id === topic.id ? nextTopic : item)));
+    updateResult(topic.id, {
+      body,
+      reviewed: false,
+      ...(current ? { key: topicKey(nextTopic, units, instruction) } : {}),
+    });
+  };
   const updateResult = (id: string, patch: Partial<TopicResult>) => {
     const next = { ...cache.current, [id]: { ...cache.current[id]!, ...patch } };
     cache.current = next;
     setResults(next);
     setDirty(true);
   };
+  const selectStepRef = useRef(selectStep);
+  selectStepRef.current = selectStep;
+  const unveilReady =
+    unveilAfterPlan && !!designPlan && !planning && !loading && autosave.ready && topics.length > 0;
+  const runRef = useRef<() => Promise<void>>(async () => {});
+  useEffect(() => {
+    if (!unveilReady) return;
+    setUnveilAfterPlan(false);
+    selectStepRef.current("slides");
+    void runRef.current();
+  }, [unveilReady]);
   const close = async () => {
     if (busy || planning) return;
     if (workspace) {
@@ -603,6 +628,14 @@ export function MaterialProducer({
         stopped: () => stopped.current,
         progress: setProgress,
         slides: async (t) => {
+          const requestTopic = {
+            ...t,
+            slideTools: t.slideTools ?? defaultSlideTools(t.headings, t.tools),
+          };
+          topicsRef.current = topicsRef.current.map((item) =>
+            item.id === t.id ? requestTopic : item,
+          );
+          setTopics(topicsRef.current);
           const output = await generate({
             data: {
               title,
@@ -619,7 +652,7 @@ export function MaterialProducer({
                     },
                   }
                 : {}),
-              topic: t,
+              topic: requestTopic,
               budget: Math.min(
                 12000,
                 Math.max(
@@ -636,7 +669,7 @@ export function MaterialProducer({
             },
           });
           updateResult(t.id, {
-            key: topicKey(t, units, instruction),
+            key: topicKey(requestTopic, units, instruction),
             body: output.body,
             reviewed: false,
           });
@@ -863,6 +896,7 @@ export function MaterialProducer({
     const bytes = Uint8Array.from(atob(output.base64), (c) => c.charCodeAt(0));
     return trainingImage(new File([bytes], "illustration.png", { type: "image/png" }));
   };
+  runRef.current = () => run();
   const createIllustration = async () => {
     if (!topic || busy) return;
     if (
@@ -942,60 +976,83 @@ export function MaterialProducer({
           Generate selected ({bulkTopics.length})
         </Button>
       )}
-      <nav aria-label="Training outline" className="space-y-1">
-        {topics
-          .map((item, index) => ({ item, index }))
-          .filter(({ item }) =>
+      <nav aria-label="Training outline" className="space-y-4">
+        {trainingOutlineGroups(topics, []).map((group, moduleIndex) => {
+          const visible = group.topics.filter((item) =>
             (item.module + " " + item.title).toLowerCase().includes(topicSearch.toLowerCase()),
-          )
-          .map(({ item, index }) => (
-            <div
-              key={item.id}
-              className={
-                "flex items-start gap-2 rounded-md border p-2 " +
-                (selected === index ? "border-primary bg-primary/10" : "")
-              }
-              draggable={
-                !busy && autosave.ready && !autosave.loadError && autosave.status !== "conflict"
-              }
-              onDragStart={(event) => event.dataTransfer.setData("text/plain", item.id)}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={(event) => {
-                event.preventDefault();
-                reorderTopic(
-                  topics.findIndex((t) => t.id === event.dataTransfer.getData("text/plain")),
-                  index,
-                );
-              }}
-            >
-              <input
-                type="checkbox"
-                aria-label={"Select topic " + item.title}
-                checked={bulkTopics.includes(item.id)}
-                onChange={(event) =>
-                  setBulkTopics((old) =>
-                    event.target.checked ? [...old, item.id] : old.filter((id) => id !== item.id),
-                  )
-                }
-                className="mt-1"
-              />
-              <button
-                type="button"
-                aria-current={selected === index ? "step" : undefined}
-                className="min-w-0 flex-1 break-words text-left text-sm"
-                onClick={() => setSelected(index)}
-              >
-                {index + 1}. {item.title}
-                <span className="supporting-text block text-muted-foreground">
-                  {results[item.id]?.key === topicKey(item, units, instruction)
-                    ? results[item.id]?.reviewed
-                      ? "Reviewed"
-                      : "Generated · Needs review"
-                    : "Draft"}
+          );
+          if (!visible.length) return null;
+          return (
+            <section key={group.title} aria-label={group.title} className="space-y-2">
+              <h3 className="flex items-start gap-2 text-sm font-semibold">
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded bg-primary text-xs text-primary-foreground">
+                  {String(moduleIndex + 1).padStart(2, "0")}
                 </span>
-              </button>
-            </div>
-          ))}
+                <span>{group.title.replace(/^\d+[.)]\s*/, "")}</span>
+              </h3>
+              <div className="ml-3 space-y-1 border-l pl-2">
+                {visible.map((item) => {
+                  const index = topics.indexOf(item);
+                  return (
+                    <div
+                      key={item.id}
+                      className={
+                        "flex items-start gap-2 rounded-md px-2 py-1.5 " +
+                        (selected === index ? "bg-primary/10 ring-1 ring-primary/30" : "")
+                      }
+                      draggable={
+                        !busy &&
+                        autosave.ready &&
+                        !autosave.loadError &&
+                        autosave.status !== "conflict"
+                      }
+                      onDragStart={(event) => event.dataTransfer.setData("text/plain", item.id)}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        reorderTopic(
+                          topics.findIndex(
+                            (t) => t.id === event.dataTransfer.getData("text/plain"),
+                          ),
+                          index,
+                        );
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        aria-label={"Select topic " + item.title}
+                        checked={bulkTopics.includes(item.id)}
+                        onChange={(event) =>
+                          setBulkTopics((old) =>
+                            event.target.checked
+                              ? [...old, item.id]
+                              : old.filter((id) => id !== item.id),
+                          )
+                        }
+                        className="mt-1"
+                      />
+                      <button
+                        type="button"
+                        aria-current={selected === index ? "step" : undefined}
+                        className="min-w-0 flex-1 break-words text-left text-sm"
+                        onClick={() => setSelected(index)}
+                      >
+                        {item.title.replace(/^\d+(?:\.\d+)*[.)]?\s+/, "")}
+                        <span className="supporting-text block text-muted-foreground">
+                          {results[item.id]?.key === topicKey(item, units, instruction)
+                            ? results[item.id]?.reviewed
+                              ? "Reviewed"
+                              : "Generated · Needs review"
+                            : "Draft"}
+                        </span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })}
       </nav>
       <p className="supporting-text text-muted-foreground">
         Drag topics to reorder. Move up/down controls are also available in Outline.
@@ -1033,7 +1090,7 @@ export function MaterialProducer({
       steps={[
         { id: "setup", label: "Course setup" },
         { id: "outline", label: "Outline" },
-        { id: "slides", label: "Slides and media" },
+        { id: "slides", label: "Training editor" },
         { id: "review", label: "Coverage review" },
         { id: "preview", label: "Preview" },
       ]}
@@ -1284,48 +1341,74 @@ export function MaterialProducer({
       ) : (
         <fieldset disabled={busy || planning || autosave.status === "conflict"} className="min-w-0">
           <Tabs value={step} onValueChange={selectStep}>
+            <Dialog
+              open={step === "setup"}
+              onOpenChange={(open) => {
+                if (!open && !planning && !busy) selectStep(designPlan ? "slides" : "outline");
+              }}
+            >
+              <DialogContent
+                className="max-h-[90vh] max-w-3xl overflow-y-auto"
+                onInteractOutside={(e) => e.preventDefault()}
+                onEscapeKeyDown={(e) => {
+                  if (planning || busy) e.preventDefault();
+                }}
+              >
+                <DialogTitle>Course setup</DialogTitle>
+                <DialogDescription>
+                  Complete each step, then open your outline and training workspace. Your choices
+                  are saved.
+                </DialogDescription>
+                <fieldset disabled={busy || planning || autosave.status === "conflict"}>
+                  <CourseDesignerWizard
+                    units={units}
+                    prefill={prefill}
+                    autoPrefill={
+                      sourceMode === "studio" &&
+                      !designPlan &&
+                      !Object.keys(results).length &&
+                      !autoPlan
+                    }
+                    onPrefill={async (next) => {
+                      setPrefill(next);
+                      if (next.status === "pending" && next.requestId !== prefill?.requestId)
+                        await autosave.checkpoint({ ...workspaceSnapshot, prefill: next });
+                    }}
+                    value={designerChoices}
+                    onChange={(value) => {
+                      setDesignerChoices(value);
+                      setDesignPlan(null);
+                    }}
+                    references={designReferences}
+                    onReferencesChange={setDesignReferences}
+                    onPlan={() => {
+                      setUnveilAfterPlan(true);
+                      void buildAIOutline();
+                    }}
+                    busy={planning || busy}
+                    error={generationError}
+                    extraQuestions={{
+                      4: (
+                        <CourseAssessmentConstraints
+                          sourceFidelity={designerChoices.sourceFidelity ?? ""}
+                          criteria={designerChoices.assessmentCriteria ?? []}
+                          onChange={(value) =>
+                            setDesignerChoices((old) => ({
+                              ...old,
+                              sourceFidelity: value.sourceFidelity,
+                              assessmentCriteria: value.criteria,
+                            }))
+                          }
+                        />
+                      ),
+                    }}
+                    sourceSummary={`${sources.length} source file${sources.length === 1 ? "" : "s"} · ${units.length} cleaned source sections. The AI will consolidate these into a teaching outline; page count does not determine module count.`}
+                  />
+                </fieldset>
+              </DialogContent>
+            </Dialog>
             <TabsContent value="setup">
-              <CourseDesignerWizard
-                units={units}
-                prefill={prefill}
-                autoPrefill={
-                  sourceMode === "studio" &&
-                  !designPlan &&
-                  !Object.keys(results).length &&
-                  !autoPlan
-                }
-                onPrefill={async (next) => {
-                  setPrefill(next);
-                  if (next.status === "pending" && next.requestId !== prefill?.requestId)
-                    await autosave.checkpoint({ ...workspaceSnapshot, prefill: next });
-                }}
-                value={designerChoices}
-                onChange={(value) => {
-                  setDesignerChoices(value);
-                  setDesignPlan(null);
-                }}
-                references={designReferences}
-                onReferencesChange={setDesignReferences}
-                onPlan={() => void buildAIOutline()}
-                busy={planning || busy}
-                error={generationError}
-                extraQuestions={{
-                  4: (
-                    <CourseAssessmentConstraints
-                      sourceFidelity={designerChoices.sourceFidelity ?? ""}
-                      criteria={designerChoices.assessmentCriteria ?? []}
-                      onChange={(value) =>
-                        setDesignerChoices((old) => ({
-                          ...old,
-                          sourceFidelity: value.sourceFidelity,
-                          assessmentCriteria: value.criteria,
-                        }))
-                      }
-                    />
-                  ),
-                }}
-                sourceSummary={`${sources.length} source file${sources.length === 1 ? "" : "s"} · ${units.length} cleaned source sections. The AI will consolidate these into a teaching outline; page count does not determine module count.`}
-              />
+              <Button onClick={() => selectStep("setup")}>Open course setup</Button>
             </TabsContent>
             <TabsContent value="outline" className="space-y-3">
               {sourceMode === "studio" && !designPlan && (
@@ -1410,6 +1493,23 @@ export function MaterialProducer({
                   Add topic
                 </Button>
               </div>
+              <div className="flex justify-end border-t pt-3">
+                <Button
+                  disabled={sourceMode === "studio" && !designPlan}
+                  onClick={() => {
+                    selectStep("slides");
+                    if (
+                      topics.some(
+                        (t) =>
+                          !results[t.id] || results[t.id]!.key !== topicKey(t, units, instruction),
+                      )
+                    )
+                      void run();
+                  }}
+                >
+                  Next: Open training
+                </Button>
+              </div>
             </TabsContent>
             <TabsContent value="slides" className="space-y-3">
               {topic && (
@@ -1418,9 +1518,10 @@ export function MaterialProducer({
                     Generate this topic
                   </Button>
                   {result ? (
-                    <BlockListEditor
+                    <VisualTrainingEditor
+                      key={topic.id}
                       value={result.body}
-                      onChange={(body) => updateResult(topic.id, { body, reviewed: false })}
+                      onChange={editTrainingBody}
                       lessonTitle={topic.title}
                     />
                   ) : (
@@ -1428,89 +1529,94 @@ export function MaterialProducer({
                       Generate this topic to create its editable slides and learning components.
                     </p>
                   )}
-                  <label className="block text-sm">
-                    Illustration / video plan
-                    <Textarea
-                      value={topic.mediaPlan}
-                      maxLength={1000}
-                      onChange={(e) => change({ mediaPlan: e.target.value })}
-                    />
-                  </label>
-                  <Button variant="outline" onClick={() => void createIllustration()}>
-                    Generate illustration with AI
-                  </Button>
-                  <label className="block text-sm">
-                    Upload illustration
-                    <Input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) void uploadImage(f);
-                        e.target.value = "";
-                      }}
-                    />
-                  </label>
-                  <label className="block text-sm">
-                    Or HTTPS image URL
-                    <Input
-                      value={topic.image.startsWith("data:") ? "" : topic.image}
-                      placeholder={
-                        topic.image.startsWith("data:")
-                          ? "Uploaded illustration attached"
-                          : "https://…"
-                      }
-                      onChange={(e) => change({ image: e.target.value, mediaReviewed: false })}
-                    />
-                  </label>
-                  {topic.image && (
-                    <>
-                      <img
-                        src={topic.image}
-                        alt={topic.alt || "Illustration awaiting alternative text"}
-                        className="max-h-48 max-w-full rounded-lg"
+                  <details className="space-y-3 rounded-lg border p-3">
+                    <summary className="cursor-pointer text-sm font-medium">
+                      Supporting images and videos
+                    </summary>
+                    <label className="block text-sm">
+                      Illustration / video plan
+                      <Textarea
+                        value={topic.mediaPlan}
+                        maxLength={1000}
+                        onChange={(e) => change({ mediaPlan: e.target.value })}
                       />
-                      <Button
-                        variant="outline"
-                        onClick={() => change({ image: "", mediaReviewed: false })}
-                      >
-                        Remove illustration
-                      </Button>
-                    </>
-                  )}
-                  <label className="block text-sm">
-                    Image alternative text / caption
-                    <Input
-                      value={topic.alt}
-                      maxLength={500}
-                      onChange={(e) => change({ alt: e.target.value, mediaReviewed: false })}
-                    />
-                  </label>
-                  <label className="block text-sm">
-                    Relevant YouTube video URL
-                    <Input
-                      value={topic.video}
-                      onChange={(e) => change({ video: e.target.value, mediaReviewed: false })}
-                    />
-                  </label>
-                  <label className="block text-sm">
-                    Media source / attribution / permission
-                    <Input
-                      value={topic.attribution}
-                      maxLength={1000}
-                      onChange={(e) =>
-                        change({ attribution: e.target.value, mediaReviewed: false })
-                      }
-                    />
-                  </label>
-                  <label className="flex gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={topic.mediaReviewed}
-                      onChange={(e) => change({ mediaReviewed: e.target.checked })}
-                    />
-                    I checked media relevance, accuracy, permission and available video captions.
-                  </label>
+                    </label>
+                    <Button variant="outline" onClick={() => void createIllustration()}>
+                      Generate illustration with AI
+                    </Button>
+                    <label className="block text-sm">
+                      Upload illustration
+                      <Input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) void uploadImage(f);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                    <label className="block text-sm">
+                      Or HTTPS image URL
+                      <Input
+                        value={topic.image.startsWith("data:") ? "" : topic.image}
+                        placeholder={
+                          topic.image.startsWith("data:")
+                            ? "Uploaded illustration attached"
+                            : "https://…"
+                        }
+                        onChange={(e) => change({ image: e.target.value, mediaReviewed: false })}
+                      />
+                    </label>
+                    {topic.image && (
+                      <>
+                        <img
+                          src={topic.image}
+                          alt={topic.alt || "Illustration awaiting alternative text"}
+                          className="max-h-48 max-w-full rounded-lg"
+                        />
+                        <Button
+                          variant="outline"
+                          onClick={() => change({ image: "", mediaReviewed: false })}
+                        >
+                          Remove illustration
+                        </Button>
+                      </>
+                    )}
+                    <label className="block text-sm">
+                      Image alternative text / caption
+                      <Input
+                        value={topic.alt}
+                        maxLength={500}
+                        onChange={(e) => change({ alt: e.target.value, mediaReviewed: false })}
+                      />
+                    </label>
+                    <label className="block text-sm">
+                      Relevant YouTube video URL
+                      <Input
+                        value={topic.video}
+                        onChange={(e) => change({ video: e.target.value, mediaReviewed: false })}
+                      />
+                    </label>
+                    <label className="block text-sm">
+                      Media source / attribution / permission
+                      <Input
+                        value={topic.attribution}
+                        maxLength={1000}
+                        onChange={(e) =>
+                          change({ attribution: e.target.value, mediaReviewed: false })
+                        }
+                      />
+                    </label>
+                    <label className="flex gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={topic.mediaReviewed}
+                        onChange={(e) => change({ mediaReviewed: e.target.checked })}
+                      />
+                      I checked media relevance, accuracy, permission and available video captions.
+                    </label>
+                  </details>
                 </>
               )}
             </TabsContent>

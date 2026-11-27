@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SlidePlayer } from "@/components/SlidePlayer";
 import { BlockListEditor } from "@/components/BlockListEditor";
+import { VisualTrainingEditor } from "@/components/VisualTrainingEditor";
 import { BlockAIContext } from "@/components/BlockAI";
 import { lessonContentKey, parseLessonSlides, splitLessonSource } from "@/lib/lesson-slides";
 
@@ -48,10 +49,10 @@ export function SlideEditor({
               Add blocks to your lesson or split a block into columns. Save the lesson to keep your
               changes.
             </p>
-            <BlockListEditor
+            <VisualTrainingEditor
               value={content}
               onChange={change}
-              courseId={courseId}
+              maxLength={limit}
               lessonTitle={lessonTitle}
             />
             <Button
@@ -65,6 +66,17 @@ export function SlideEditor({
               <Plus />
               Add slide
             </Button>
+            <details className="space-y-2">
+              <summary className="cursor-pointer text-sm">
+                Advanced block tools and AI assistance
+              </summary>
+              <BlockListEditor
+                value={content}
+                onChange={change}
+                courseId={courseId}
+                lessonTitle={lessonTitle}
+              />
+            </details>
             <details className="space-y-2">
               <summary className="cursor-pointer text-sm">Edit Markdown source</summary>
               <Textarea

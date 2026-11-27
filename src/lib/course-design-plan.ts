@@ -5,6 +5,7 @@ import {
   learningBlueprint,
 } from "./course-methodology";
 import type { SourceUnit, TrainingTopic } from "./training-design";
+import { defaultSlideTools } from "./training-slide-tools";
 export const BLOOM_LEVELS = [
   "remember",
   "understand",
@@ -302,6 +303,12 @@ export function topicsFromDesignPlan(
         ] as TrainingTopic["tools"],
         slides: blueprint.stages.length,
         headings: blueprint.stages.map((stage) => `${stage}: ${lesson.title}`.slice(0, 160)),
+        slideTools: defaultSlideTools(
+          blueprint.stages.map((stage) => `${stage}: ${lesson.title}`.slice(0, 160)),
+          [
+            ...new Set([...blueprint.tools, ...(lesson.media === "diagram" ? ["columns"] : [])]),
+          ] as TrainingTopic["tools"],
+        ),
         image: "",
         alt: "",
         video: "",

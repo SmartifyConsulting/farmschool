@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { learningBlueprint } from "@/lib/course-methodology";
+import { slideToolsFor, changeSlideTool } from "@/lib/training-slide-tools";
 import {
   TRAINING_TOOLS,
   TOOL_LABELS,
@@ -94,6 +95,7 @@ export function TrainingOutlineEditor({
                 if (Number.isInteger(slides) && slides >= 2 && slides <= 12)
                   onChange({
                     slides,
+                    slideTools: Array.from({ length: slides }, (_, i) => slideToolsFor(topic, i)),
                     headings: Array.from(
                       { length: slides },
                       (_, i) => topic.headings[i] ?? `${topic.title} — part ${i + 1}`.slice(0, 160),
@@ -108,24 +110,58 @@ export function TrainingOutlineEditor({
             const stage = stages[i] && heading.startsWith(stages[i] + ":") ? stages[i] : null;
             const value = stage ? heading.slice(stage.length + 1).trimStart() : heading;
             return (
-              <li key={i} className="flex items-center gap-3 py-1.5">
-                <span className="w-6 shrink-0 text-center text-xs text-muted-foreground">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                {stage && <span className="w-20 shrink-0 text-sm font-medium">{stage}</span>}
-                <Input
-                  aria-label={`Slide ${i + 1} title`}
-                  value={value}
-                  maxLength={stage ? 160 - stage.length - 2 : 160}
-                  className="h-8 border-transparent bg-transparent shadow-none hover:border-input focus:border-input"
-                  onChange={(e) =>
-                    onChange({
-                      headings: topic.headings.map((old, n) =>
-                        n === i ? (stage ? `${stage}: ${e.target.value}` : e.target.value) : old,
-                      ),
-                    })
-                  }
-                />
+              <li key={i} className="py-2">
+                <div className="flex items-center gap-3">
+                  <span className="w-6 shrink-0 text-center text-xs text-muted-foreground">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  {stage && <span className="w-20 shrink-0 text-sm font-medium">{stage}</span>}
+                  <Input
+                    aria-label={`Slide ${i + 1} title`}
+                    value={value}
+                    maxLength={stage ? 160 - stage.length - 2 : 160}
+                    className="h-8 border-transparent bg-transparent shadow-none hover:border-input focus:border-input"
+                    onChange={(e) =>
+                      onChange({
+                        headings: topic.headings.map((old, n) =>
+                          n === i ? (stage ? `${stage}: ${e.target.value}` : e.target.value) : old,
+                        ),
+                      })
+                    }
+                  />
+                </div>
+                <fieldset
+                  aria-label={`Learning tools for slide ${i + 1}`}
+                  className="ml-9 mt-1 flex flex-wrap gap-x-3 gap-y-1"
+                >
+                  {TRAINING_TOOLS.map((tool) => (
+                    <label
+                      key={tool}
+                      title={TOOL_LABELS[tool]}
+                      className="flex items-center gap-1.5 text-xs"
+                    >
+                      <input
+                        aria-label={`Slide ${i + 1}: ${TOOL_LABELS[tool]}`}
+                        type="checkbox"
+                        checked={slideToolsFor(topic, i).includes(tool)}
+                        onChange={(e) =>
+                          onChange(changeSlideTool(topic, i, tool, e.target.checked))
+                        }
+                      />
+                      {
+                        {
+                          explanation: "Explanation",
+                          columns: "Diagram",
+                          flip: "Flip cards",
+                          tabs: "Tabs",
+                          checklist: "Checklist",
+                          scenario: "Scenario",
+                          quizcheck: "Knowledge check",
+                        }[tool]
+                      }
+                    </label>
+                  ))}
+                </fieldset>
               </li>
             );
           })}
@@ -133,32 +169,18 @@ export function TrainingOutlineEditor({
       </section>
       <details className="rounded-lg border p-3">
         <summary className="cursor-pointer text-sm font-medium">
-          Details · {topic.tools.length} learning tools · {topic.unitIds.length} source sections
+          Source material and lesson options · {topic.unitIds.length} section
+          {topic.unitIds.length === 1 ? "" : "s"}
         </summary>
         <div className="mt-4 space-y-4">
-          <fieldset>
-            <legend className="mb-2 text-sm font-semibold">Learning tools</legend>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {TRAINING_TOOLS.map((tool) => (
-                <label key={tool} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={topic.tools.includes(tool)}
-                    onChange={(e) =>
-                      onChange({
-                        tools: e.target.checked
-                          ? [...topic.tools, tool]
-                          : topic.tools.filter((t) => t !== tool),
-                      })
-                    }
-                  />
-                  {TOOL_LABELS[tool]}
-                </label>
-              ))}
-            </div>
-          </fieldset>
           <fieldset className="space-y-2 border-t pt-3">
-            <legend className="text-sm font-semibold">Assigned sources</legend>
+            <legend className="text-sm font-semibold">Source material for this lesson</legend>
+            <p className="supporting-text text-muted-foreground">
+              The AI uses these parts of your original document for this lesson. Assignments are
+              prepared automatically; adjust them only to correct a mismatch. Section numbers
+              identify extracted text chunks. Word files may show the same page number for several
+              sections.
+            </p>
             <Input
               aria-label="Find source sections"
               placeholder="Find a source section or page"

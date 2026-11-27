@@ -65,7 +65,11 @@ describe("saved AI outline planning", () => {
     const plan = {
       ...validPlan(),
       courseSetup: {
-        choices: { ...designerDefaults, audience: "Staff using the reporting procedure" },
+        choices: {
+          ...designerDefaults,
+          goal: "Apply the confidential reporting procedure accurately.",
+          audience: "Staff using the reporting procedure",
+        },
         findings: SETUP_FIELDS.map((field) => ({
           field,
           basis: field === "goal" ? "document" : "recommendation",
@@ -87,6 +91,32 @@ describe("saved AI outline planning", () => {
     const f = fixture(true, { inferSetup: true });
     generate.mockResolvedValueOnce({ output: validPlan() });
     await expect(f.call()).rejects.toThrow("setup");
+  });
+  it("rejects generic placeholders instead of claiming to infer a document-specific setup", async () => {
+    const f = fixture(true, { inferSetup: true });
+    generate.mockResolvedValueOnce({
+      output: {
+        ...validPlan(),
+        courseSetup: {
+          choices: {
+            ...designerDefaults,
+            goal: "Create a complete, concise training course from the supplied material.",
+            audience: "People who need to apply this material in their work",
+          },
+          findings: SETUP_FIELDS.map((field) => ({
+            field,
+            basis: "recommendation",
+            explanation: "A recommendation based on the supplied source.",
+            unitIds: [],
+            quote: "",
+          })),
+        },
+      },
+    });
+    await expect(f.call()).rejects.toThrow("generic setup placeholders");
+    await expect(f.call()).rejects.toThrow();
+    expect(generate).toHaveBeenCalledOnce();
+    expect(f.rpc).toHaveBeenCalledOnce();
   });
   it("rejects another author's source before storage or quota use", async () => {
     const f = fixture(false);

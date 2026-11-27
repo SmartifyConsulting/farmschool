@@ -184,6 +184,49 @@ export function SlidePlayer({
   );
 }
 
+export function LessonBlockPreview({ block }: { block: SlideBlock }) {
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  if (block.kind === "photo")
+    return (
+      <aside className="rounded-lg border p-3 text-sm">
+        Practical task: {block.prompt}. Evidence submission is available in an enrolled Plusticity
+        lesson.
+      </aside>
+    );
+  if (block.kind === "image" && (!block.url || block.url.includes("example.com")))
+    return (
+      <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+        Choose an image in Edit.
+      </div>
+    );
+  if (
+    (block.kind === "video" && (!block.url || block.url.includes("example.com"))) ||
+    (block.kind === "hotspot" && (!block.image || block.image.includes("example.com")))
+  )
+    return (
+      <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+        Choose the media in Edit.
+      </div>
+    );
+  return (
+    <Block
+      block={block}
+      checked={(item) => checked.has(String(item))}
+      toggle={(item) =>
+        setChecked((old) => {
+          const next = new Set(old);
+          const key = String(item);
+          if (next.has(key)) next.delete(key);
+          else next.add(key);
+          return next;
+        })
+      }
+      lessonId={undefined}
+      blockIndex={0}
+      isTrainer={false}
+    />
+  );
+}
 function Block({
   block,
   checked,

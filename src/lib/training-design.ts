@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { parseLessonSlides, slideBlockLocations } from "./lesson-slides";
 import { LEARNING_BLUEPRINT_IDS, learningBlueprint } from "./course-methodology";
+import { slideToolProblems } from "./training-slide-tools";
+import { MAX_TRAINING_BODY } from "./visual-training-editor";
 import {
   courseDesignPlanSchema,
   designerChoicesSchema,
@@ -43,6 +45,10 @@ export const topicSchema = z.object({
   unitIds: z.array(z.string().min(1).max(160)).min(1).max(50),
   references: z.array(z.string().max(400)).max(50).default([]),
   tools: z.array(z.enum(TRAINING_TOOLS)).min(2).max(7),
+  slideTools: z
+    .array(z.array(z.enum(TRAINING_TOOLS)).max(7))
+    .max(12)
+    .optional(),
   slides: z.number().int().min(2).max(12),
   headings: z.array(z.string().trim().min(1).max(160)).min(2).max(12),
   image: z.string().max(120000).default(""),
@@ -89,7 +95,11 @@ export const packageSchema = z.object({
   topics: z.array(topicSchema).max(250),
   results: z.record(
     z.string(),
-    z.object({ key: z.string().max(1500000), body: z.string().max(100000), reviewed: z.boolean() }),
+    z.object({
+      key: z.string().max(1500000),
+      body: z.string().max(MAX_TRAINING_BODY),
+      reviewed: z.boolean(),
+    }),
   ),
 });
 
@@ -192,6 +202,7 @@ export function topicKey(topic: TrainingTopic, units: SourceUnit[], instruction:
     units.filter((unit) => topic.unitIds.includes(unit.id)).map((unit) => [unit.id, unit.text]),
     ...(topic.methodology ? [topic.methodology] : []),
     ...(topic.instructionalDesign ? [topic.instructionalDesign] : []),
+    ...(topic.slideTools ? [topic.slideTools] : []),
   ]);
   // Local invalidation marker, never an authentication or cryptographic token.
   let hash = 2166136261;
@@ -220,6 +231,8 @@ function topicProblems(topics: TrainingTopic[], units: SourceUnit[]) {
       );
     if (topic.headings.length !== topic.slides)
       problems.push(`Plan a heading for every slide in ${topic.title}.`);
+    if (topic.slideTools && topic.slideTools.length !== topic.slides)
+      problems.push(`Choose learning tools for every slide in ${topic.title}.`);
     if (!topicSchema.safeParse(topic).success)
       problems.push(
         `Complete the headings, objective, tools and slide count for ${topic.title || "this topic"}.`,
@@ -337,6 +350,7 @@ export function coverageProblems(
     )
       problems.push(`Restore the planned learning components for ${topic.title}.`);
     if (!result.reviewed) problems.push(`Review source coverage and accuracy for ${topic.title}.`);
+    problems.push(...slideToolProblems(topic, result.body));
     if (topic.image && (!publicImage(topic.image) || !topic.alt.trim()))
       problems.push(`Add a valid image and alternative text for ${topic.title}.`);
     if (topic.video && !youtubeVideo(topic.video))
