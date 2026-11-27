@@ -235,16 +235,26 @@ export function CourseDesignerWizard({
         )}
         {step === 2 && (
           <>
-            <label className="block text-sm">
-              Describe the training output you want (optional)
-              <Textarea
-                value={value.outputPreferences ?? ""}
-                maxLength={1000}
-                rows={3}
-                placeholder="For example: use worked examples, relevant videos and simple diagrams. Leave blank for the foundation design."
-                onChange={(event) => change("outputPreferences", event.target.value)}
-              />
-            </label>
+            <div className="space-y-1">
+              <label htmlFor="course-output-preferences" className="block text-sm">
+                Describe the training output you want (optional)
+              </label>
+              <DesignReferenceAttachments
+                value={references}
+                onChange={onReferencesChange}
+                onBusyChange={setAttaching}
+              >
+                <Textarea
+                  id="course-output-preferences"
+                  value={value.outputPreferences ?? ""}
+                  maxLength={1000}
+                  rows={3}
+                  className="pb-12"
+                  placeholder="For example: use worked examples, relevant videos and simple diagrams. Leave blank for the foundation design."
+                  onChange={(event) => change("outputPreferences", event.target.value)}
+                />
+              </DesignReferenceAttachments>
+            </div>
             <label className="block text-sm">
               Tone
               <select
@@ -336,15 +346,6 @@ export function CourseDesignerWizard({
             ? "Your document analysis already prepared this outline. Continuing reuses it without another AI request."
             : "Your choices or references changed. Building the updated outline uses another request from the existing allowance."}
         </p>
-      )}
-      {step === 2 && (
-        <fieldset disabled={busy}>
-          <DesignReferenceAttachments
-            value={references}
-            onChange={onReferencesChange}
-            onBusyChange={setAttaching}
-          />
-        </fieldset>
       )}
       {(error || validation) && (
         <p role="alert" className="text-sm text-destructive">

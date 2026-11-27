@@ -116,6 +116,7 @@ export function ContentLibraryContent({
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const [uploadSector, setUploadSector] = useState("Uncategorised");
   const [outputBriefs, setOutputBriefs] = useState<Record<string, string>>({});
+  const [briefAttaching, setBriefAttaching] = useState(false);
   const [briefReferences, setBriefReferences] = useState<Record<string, DesignReference[]>>({});
   const navigate = useNavigate();
   const openingWorkspace = useRef(false);
@@ -584,32 +585,34 @@ export function ContentLibraryContent({
                         What would you like from this training?{" "}
                         <span className="font-normal text-muted-foreground">(optional)</span>
                       </label>
-                      <Textarea
-                        id="training-output-brief"
-                        value={outputBriefs[activeLesson.id] ?? ""}
-                        onChange={(event) =>
-                          setOutputBriefs((old) => ({
-                            ...old,
-                            [activeLesson.id]: event.target.value,
-                          }))
+                      <DesignReferenceAttachments
+                        onBusyChange={setBriefAttaching}
+                        value={briefReferences[activeLesson.id] ?? []}
+                        onChange={(references) =>
+                          setBriefReferences((old) => ({ ...old, [activeLesson.id]: references }))
                         }
-                        maxLength={TRAINING_BRIEF_MAX}
-                        className="min-h-36"
-                        placeholder="For example: use more videos and illustrations, include practical scenarios, explain the steps in more detail, or keep the language simple for beginners."
-                      />
+                      >
+                        <Textarea
+                          id="training-output-brief"
+                          value={outputBriefs[activeLesson.id] ?? ""}
+                          onChange={(event) =>
+                            setOutputBriefs((old) => ({
+                              ...old,
+                              [activeLesson.id]: event.target.value,
+                            }))
+                          }
+                          maxLength={TRAINING_BRIEF_MAX}
+                          className="min-h-36 pb-12"
+                          placeholder="For example: use more videos and illustrations, include practical scenarios, explain the steps in more detail, or keep the language simple for beginners."
+                        />
+                      </DesignReferenceAttachments>
                       <p className="supporting-text text-muted-foreground">
                         Leave this blank to generate the foundation from your source material. Add
                         preferences for depth, examples, visuals or video emphasis. You can review
                         the outline and media choices before generating.
                       </p>
-                      <DesignReferenceAttachments
-                        value={briefReferences[activeLesson.id] ?? []}
-                        onChange={(references) =>
-                          setBriefReferences((old) => ({ ...old, [activeLesson.id]: references }))
-                        }
-                      />
                       <Button
-                        disabled={!activeLesson.sources.every(canTransform)}
+                        disabled={briefAttaching || !activeLesson.sources.every(canTransform)}
                         onClick={() => startTransformation(activeLesson.sources)}
                       >
                         {activeLesson.outputs.length

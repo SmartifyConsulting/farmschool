@@ -1217,22 +1217,27 @@ export function MaterialProducer({
               Little readable text: {blanks.join("; ")}. Replace or OCR these pages first.
             </p>
           )}
-          <label className="block text-sm">
-            Generation instructions
-            <Textarea
-              value={instruction}
-              maxLength={1000}
-              onChange={(e) => {
-                setInstruction(e.target.value);
-                setDirty(true);
-              }}
-            />
-          </label>
-          <DesignReferenceAttachments
-            value={designReferences}
-            onChange={setDesignReferences}
-            onBusyChange={setReferenceBusy}
-          />
+          <div className="space-y-1">
+            <label htmlFor="material-generation-instructions" className="block text-sm">
+              Generation instructions
+            </label>
+            <DesignReferenceAttachments
+              value={designReferences}
+              onChange={setDesignReferences}
+              onBusyChange={setReferenceBusy}
+            >
+              <Textarea
+                id="material-generation-instructions"
+                className="pb-12"
+                value={instruction}
+                maxLength={1000}
+                onChange={(e) => {
+                  setInstruction(e.target.value);
+                  setDirty(true);
+                }}
+              />
+            </DesignReferenceAttachments>
+          </div>
           <h2 className="text-sm font-semibold">Exports and recovery</h2>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={download}>
