@@ -42,12 +42,30 @@ function completed() {
   } satisfies TrainingPackage;
 }
 describe("source-faithful training design", () => {
-  it("uses the workspace outline in embedded preview while exports retain their own outline",()=>{
-    const pkg=completed();
-    const embedded=trainingHtml(pkg,true,{embedded:true,topic:pkg.topics[1]!.id});
+  it("requires review and valid media for manually added webparts before Completed", () => {
+    const pkg = completed();
+    const topic = pkg.topics[0]!;
+    pkg.results[topic.id]!.body +=
+      "\n\n:::image\nhttps://cdn.example.org/training.jpg\nA safe workplace demonstration\n:::";
+    expect(coverageProblems(pkg.topics, units, pkg.results, "teach")).toContain(
+      `Confirm media relevance, rights and attribution for ${topic.title}.`,
+    );
+    topic.mediaReviewed = true;
+    topic.attribution = "Trainer-owned demonstration image";
+    expect(coverageProblems(pkg.topics, units, pkg.results, "teach")).not.toContain(
+      `Confirm media relevance, rights and attribution for ${topic.title}.`,
+    );
+    pkg.results[topic.id]!.body += "\n\n:::video\nhttps://127.0.0.1/video.mp4\n:::";
+    expect(coverageProblems(pkg.topics, units, pkg.results, "teach")).toContain(
+      `Choose a valid video for ${topic.title}.`,
+    );
+  });
+  it("uses the workspace outline in embedded preview while exports retain their own outline", () => {
+    const pkg = completed();
+    const embedded = trainingHtml(pkg, true, { embedded: true, topic: pkg.topics[1]!.id });
     expect(embedded).toContain(".training-outline{display:none}.outline-jump{display:block}");
     expect(embedded).not.toContain("move(0)})();");
-    expect(trainingHtml(pkg,true)).toContain("move(0)})();");
+    expect(trainingHtml(pkg, true)).toContain("move(0)})();");
   });
   it("preserves real source-directory links but rejects invented links", () => {
     expect(
@@ -113,7 +131,7 @@ describe("source-faithful training design", () => {
     expect(coverageProblems(pkg.topics, units, pkg.results, "teach")).toEqual([]);
   });
   it("rejects script/SVG image payloads and fabricated video domains", () => {
-    expect(publicImage("javascript:alert(1)")).toBe(false);
+    expect(publicImage("https://127.0.0.1/video.mp4")).toBe(false);
     expect(publicImage("data:image/svg+xml,<svg onload=alert(1)>")).toBe(false);
     expect(youtubeVideo("https://youtube.com.evil.test/watch?v=dQw4w9WgXcQ")).toBeNull();
     expect(youtubeVideo("https://www.youtube.com/watch?v=dQw4w9WgXcQ")).toBe("dQw4w9WgXcQ");
@@ -156,3 +174,4 @@ describe("source-faithful training design", () => {
     expect(readTrainingPackage(html)).toEqual(pkg);
   });
 });
+

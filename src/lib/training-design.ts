@@ -343,6 +343,29 @@ export function coverageProblems(
     const kinds = new Set(
       slideBlockLocations(parseLessonSlides(result.body)).map((item) => item.block.kind),
     );
+    const parts = slideBlockLocations(parseLessonSlides(result.body)).map((item) => item.block);
+    const inlineMedia = parts.some(
+      (part) =>
+        ["image", "video", "hotspot"].includes(part.kind) ||
+        (part.kind === "facts" && part.items.some((item) => item.image)),
+    );
+    for (const part of parts) {
+      if (part.kind === "image" && (!publicImage(part.url) || !part.caption.trim()))
+        problems.push(`Add a valid image and alternative text for ${topic.title}.`);
+      if (part.kind === "hotspot" && !publicImage(part.image))
+        problems.push(`Add a valid hotspot image for ${topic.title}.`);
+      if (
+        part.kind === "facts" &&
+        part.items.some((item) => item.image && !publicImage(item.image))
+      )
+        problems.push(`Add a valid supporting image for ${topic.title}.`);
+      if (
+        part.kind === "video" &&
+        !youtubeVideo(part.url) &&
+        !(publicImage(part.url) && /\.(mp4|webm|m4v)(?:[?#]|$)/i.test(part.url))
+      )
+        problems.push(`Choose a valid video for ${topic.title}.`);
+    }
     if (
       topic.tools.some(
         (tool) => !["explanation", "scenario"].includes(tool) && !kinds.has(tool as never),
@@ -355,7 +378,10 @@ export function coverageProblems(
       problems.push(`Add a valid image and alternative text for ${topic.title}.`);
     if (topic.video && !youtubeVideo(topic.video))
       problems.push(`Choose a valid YouTube video for ${topic.title}.`);
-    if ((topic.image || topic.video) && (!topic.mediaReviewed || !topic.attribution.trim()))
+    if (
+      (topic.image || topic.video || inlineMedia) &&
+      (!topic.mediaReviewed || !topic.attribution.trim())
+    )
       problems.push(`Confirm media relevance, rights and attribution for ${topic.title}.`);
   }
   return [...new Set(problems)];

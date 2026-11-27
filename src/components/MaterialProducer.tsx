@@ -539,7 +539,7 @@ export function MaterialProducer({
   };
   const editTrainingBody = (body: string) => {
     if (!topic || !result) return;
-    const nextTopic = { ...topic, ...toolsFromEditedBody(topic, body) };
+    const nextTopic = { ...topic, ...toolsFromEditedBody(topic, body), mediaReviewed: false };
     const current = result.key === topicKey(topic, units, instruction);
     setTopics((old) => old.map((item) => (item.id === topic.id ? nextTopic : item)));
     updateResult(topic.id, {
