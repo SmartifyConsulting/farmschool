@@ -1,6 +1,50 @@
 import type { TrainingTopic } from "./training-design";
-import { parseLessonSlides, slideBlockLocations } from "./lesson-slides";
+import {
+  parseLessonSlides,
+  slideBlockLocations,
+  splitLessonSource,
+  type SlideBlock,
+} from "./lesson-slides";
+import { serializeTrainingSlides } from "./visual-training-editor";
 type Tool = TrainingTopic["tools"][number];
+function plainPart(block: SlideBlock): string {
+  if ("body" in block) return block.body;
+  if (block.kind === "flip") return `${block.front}\n\n${block.back}`;
+  if (block.kind === "tabs" || block.kind === "accordion")
+    return block.items.map((item) => `### ${item.label}\n${item.body}`).join("\n\n");
+  if (block.kind === "checklist") return block.items.map((item) => `- ${item}`).join("\n");
+  if (block.kind === "columns")
+    return block.columns
+      .map((column, i) => `### ${i + 1}\n${column.map(plainPart).join("\n\n")}`)
+      .join("\n\n");
+  if (block.kind === "quizcheck")
+    return block.items
+      .map(
+        (item) =>
+          `${item.question}\n${item.options.map((option, i) => `${i + 1}. ${option}`).join("\n")}\n\nSuggested response: ${item.correctIndices.map((i) => item.options[i]).join("; ")}${item.hint ? `\n${item.hint}` : ""}`,
+      )
+      .join("\n\n");
+  return "";
+}
+/** Keep unsolicited widgets' teaching, examples and feedback without activating an unselected tool. */
+export function conformTrainingSlideTools(topic: TrainingTopic, body: string): string {
+  if (!topic.slideTools) return body;
+  const interactive: Tool[] = ["columns", "flip", "tabs", "checklist", "quizcheck"];
+  const slides = parseLessonSlides(body);
+  for (const [i, slide] of slides.entries()) {
+    const selected = topic.slideTools[i] ?? [];
+    const normalize = (blocks: SlideBlock[]): SlideBlock[] =>
+      blocks.map((block) => {
+        const next =
+          block.kind === "columns" ? { ...block, columns: block.columns.map(normalize) } : block;
+        return interactive.includes(next.kind as Tool) && !selected.includes(next.kind as Tool)
+          ? { kind: "text", body: plainPart(next), fenced: true }
+          : next;
+      });
+    slide.blocks = normalize(slide.blocks);
+  }
+  return serializeTrainingSlides(slides) + splitLessonSource(body).footer;
+}
 export function defaultSlideTools(headings: string[], tools: Tool[]): Tool[][] {
   const rows: Tool[][] = headings.map(() => []);
   for (const tool of tools) {

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { initialOutline, sourceUnits, topicKey } from "./training-design";
 import {
+  conformTrainingSlideTools,
   defaultSlideTools,
   changeSlideTool,
   slideToolProblems,
@@ -15,6 +16,33 @@ const topic = {
   headings: ["Learn: Rules", "See: Example", "Apply: Practice", "Reflect: Why", "Confirm: Check"],
 };
 describe("per-slide learning tools", () => {
+  it("preserves unsolicited widget content as prose while leaving selected tools interactive", () => {
+    const planned = {
+      ...topic,
+      tools: ["explanation", "columns", "scenario", "quizcheck"] as typeof topic.tools,
+      slideTools: [
+        ["explanation"],
+        ["columns"],
+        ["scenario"],
+        [],
+        ["quizcheck"],
+      ] as (typeof topic.tools)[],
+    };
+    const quiz =
+      ":::quizcheck\n### What should happen?\nA*: Report promptly\nA: Wait\nH: Follow the procedure.\n:::";
+    const body = topic.headings
+      .map(
+        (h, i) =>
+          `## ${h}\nTeaching instructions.${i === 1 ? "\n\n:::columns\nFirst\n---col---\nSecond\n:::" : ""}${i === 2 || i === 4 ? "\n\n" + quiz : ""}`,
+      )
+      .join("\n\n");
+    const normalized = conformTrainingSlideTools(planned, body);
+    expect(slideToolProblems(planned, normalized)).toEqual([]);
+    expect(normalized).toContain("Suggested response: Report promptly");
+    expect(normalized).toContain("Follow the procedure.");
+    expect(normalized.match(/:::quizcheck/g)).toHaveLength(1);
+    expect(normalized).toContain(":::columns");
+  });
   it("places tools in the intended methodology stage rather than every slide", () => {
     expect(
       defaultSlideTools(topic.headings, [
