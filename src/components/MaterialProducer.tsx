@@ -42,12 +42,14 @@ import { searchYouTubeVideo } from "@/lib/youtube-search.functions";
 import { trainingGenerationPlan, runTrainingGeneration } from "@/lib/training-generation";
 import { trainingImage } from "@/lib/training-image";
 import { DRAFT_MATERIAL_PREFIX } from "@/lib/lesson-material-folders";
+import { FOUNDATION_TRAINING_INSTRUCTION } from "@/lib/training-brief";
 
 export function MaterialProducer({
   sources,
   folderId,
   initialBody,
   initialTitle,
+  initialInstruction,
   onClose,
   onSaved,
 }: {
@@ -55,6 +57,7 @@ export function MaterialProducer({
   folderId: string | null;
   initialBody?: string | undefined;
   initialTitle?: string | undefined;
+  initialInstruction?: string | undefined;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -67,7 +70,7 @@ export function MaterialProducer({
   const [includeVideos, setIncludeVideos] = useState(true);
   const [title, setTitle] = useState(initialTitle ?? sources[0]!.file_name.replace(/\.[^.]+$/, ""));
   const [instruction, setInstruction] = useState(
-    "Teach every source topic. Preserve procedures, exceptions and responsibilities. Use varied learning components. Mark scenarios as hypothetical.",
+    initialInstruction ?? FOUNDATION_TRAINING_INSTRUCTION,
   );
   const [units, setUnits] = useState<SourceUnit[]>([]);
   const [topics, setTopics] = useState<TrainingTopic[]>([]);
@@ -131,7 +134,7 @@ export function MaterialProducer({
           setLegacy(!!initialBody && !saved);
           if (saved) {
             setTitle(saved.title);
-            setInstruction(saved.instruction);
+            setInstruction(initialInstruction ?? saved.instruction);
             setResults(saved.results);
             cache.current = saved.results;
           }
@@ -146,7 +149,7 @@ export function MaterialProducer({
       cancelled = true;
       stopped.current = true;
     };
-  }, [sources, initialBody]);
+  }, [sources, initialBody, initialInstruction]);
   const topic = topics[selected];
   const result = topic ? results[topic.id] : undefined;
   const pkg: TrainingPackage = { version: 1, title, instruction, topics, results };

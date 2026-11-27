@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useLearning";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -40,6 +41,7 @@ import { AutoCategoriseButton } from "@/components/AutoCategoriseButton";
 import { LibraryCourses } from "@/components/LibraryCourses";
 import type { LibraryCourseStage } from "@/lib/library-course-stage";
 import { pairedLibraryMaterials, producedMaterialStatus } from "@/lib/lesson-material-folders";
+import { instructionForTrainingBrief, TRAINING_BRIEF_MAX } from "@/lib/training-brief";
 import {
   materialSector,
   matchesMaterialType,
@@ -111,10 +113,12 @@ export function ContentLibraryContent({
   const [fileType, setFileType] = useState<MaterialType>("All");
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const [uploadSector, setUploadSector] = useState("Uncategorised");
+  const [outputBriefs, setOutputBriefs] = useState<Record<string, string>>({});
   const [producer, setProducer] = useState<{
     sources: LibraryFile[];
     initialBody?: string;
     initialTitle?: string;
+    initialInstruction?: string;
   } | null>(null);
   useEffect(() => {
     setProducer(null);
@@ -123,6 +127,7 @@ export function ContentLibraryContent({
     setSelectedSector(null);
     setSearch("");
     setLessonId(null);
+    setOutputBriefs({});
   }, [user?.id, initialStage, scope]);
   const editCopy = async (file: LibraryFile) => {
     try {
@@ -162,6 +167,15 @@ export function ContentLibraryContent({
   };
   const lessonFolders = pairedLibraryMaterials(files, derivations);
   const activeLesson = lessonFolders.find((folder) => folder.id === lessonId);
+  const startTransformation = (sources: LibraryFile[]) => {
+    if (!sources.length) return;
+    setProducer({
+      sources,
+      initialInstruction: instructionForTrainingBrief(
+        sources.length === 1 ? outputBriefs[sources[0]!.id] : "",
+      ),
+    });
+  };
   const visibleLessons = lessonFolders.filter((folder) => {
     const members = [...folder.sources, ...folder.outputs];
     return (
@@ -300,59 +314,63 @@ export function ContentLibraryContent({
         </p>
       ) : (
         <>
-          <p className="supporting-text text-muted-foreground mb-4">
-            Each raw file is paired with its produced versions. Reuse the original to create another
-            version. Completed does not mean published.
-          </p>
-          <MaterialTypeFilters value={fileType} onChange={setFileType} />
-          <div className="mb-4 flex flex-wrap items-end gap-3">
-            <Input
-              aria-label="Search raw and produced material"
-              placeholder="Search raw and produced material"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="max-w-md"
-            />
-            <label className="block text-sm">
-              Industry / sector
-              <select
-                className="ml-2 max-w-full rounded-md border bg-background p-2"
-                value={selectedSector ?? ""}
-                onChange={(e) => {
-                  setSelectedSector(e.target.value || null);
-                  setLessonId(null);
-                }}
-              >
-                <option value="">All sectors</option>
-                {CATALOGUE_SECTORS.map((sector) => (
-                  <option key={sector}>{sector}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <section className="mb-3 space-y-2 rounded-lg border p-2" aria-label="Upload content">
-            <h2 className="text-sm font-semibold">Upload raw material</h2>
-            {!selectedSector && (
-              <label className="block text-sm">
-                Sector for new uploads
-                <select
-                  className="ml-2 max-w-full rounded-md border bg-background p-2"
-                  value={uploadSector}
-                  onChange={(e) => setUploadSector(e.target.value)}
-                >
-                  {CATALOGUE_SECTORS.map((sector) => (
-                    <option key={sector}>{sector}</option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <BulkCourseUpload
-              compact
-              requireAdmin={false}
-              sector={selectedSector ?? uploadSector}
-              folderId={currentFolderId}
-            />
-          </section>
+          {!activeLesson && (
+            <>
+              <p className="supporting-text text-muted-foreground mb-4">
+                Each raw file is paired with its produced versions. Reuse the original to create
+                another version. Completed does not mean published.
+              </p>
+              <MaterialTypeFilters value={fileType} onChange={setFileType} />
+              <div className="mb-4 flex flex-wrap items-end gap-3">
+                <Input
+                  aria-label="Search raw and produced material"
+                  placeholder="Search raw and produced material"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="max-w-md"
+                />
+                <label className="block text-sm">
+                  Industry / sector
+                  <select
+                    className="ml-2 max-w-full rounded-md border bg-background p-2"
+                    value={selectedSector ?? ""}
+                    onChange={(e) => {
+                      setSelectedSector(e.target.value || null);
+                      setLessonId(null);
+                    }}
+                  >
+                    <option value="">All sectors</option>
+                    {CATALOGUE_SECTORS.map((sector) => (
+                      <option key={sector}>{sector}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <section className="mb-3 space-y-2 rounded-lg border p-2" aria-label="Upload content">
+                <h2 className="text-sm font-semibold">Upload raw material</h2>
+                {!selectedSector && (
+                  <label className="block text-sm">
+                    Sector for new uploads
+                    <select
+                      className="ml-2 max-w-full rounded-md border bg-background p-2"
+                      value={uploadSector}
+                      onChange={(e) => setUploadSector(e.target.value)}
+                    >
+                      {CATALOGUE_SECTORS.map((sector) => (
+                        <option key={sector}>{sector}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <BulkCourseUpload
+                  compact
+                  requireAdmin={false}
+                  sector={selectedSector ?? uploadSector}
+                  folderId={currentFolderId}
+                />
+              </section>
+            </>
+          )}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <nav aria-label="Library folders" className="flex flex-wrap items-center gap-2 text-sm">
               <button
@@ -513,182 +531,210 @@ export function ContentLibraryContent({
             <p role="status">Loading raw and produced material…</p>
           ) : activeLesson ? (
             <section className="space-y-5" aria-label="Raw and produced material details">
-              <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setLessonId(null);
-                    setSelected([]);
-                  }}
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back to material list
-                </Button>
-                <h2 className="text-lg font-semibold">{activeLesson.title}</h2>
-                <span className="rounded-full bg-muted px-3 py-1 text-sm">
-                  {activeLesson.status}
-                </span>
-              </div>
-              <p className="supporting-text text-muted-foreground">
-                All sources and versions are shown here, including files of other types than the
-                current filter.
-              </p>
               {[
                 { title: "Raw material", members: activeLesson.sources },
                 { title: "Produced material", members: activeLesson.outputs },
-              ].map((section) => (
-                <section key={section.title} className="space-y-3" aria-label={section.title}>
-                  <h3 className="font-semibold">{section.title}</h3>
-                  {!section.members.length && (
-                    <p className="supporting-text text-muted-foreground">
-                      {section.title === "Raw material"
-                        ? "No raw source is linked to this older output. Existing files have not been matched by name."
-                        : "Not started — transform the raw material to create a Draft or Completed version."}
-                    </p>
-                  )}
-                  {section.members.map((file) => {
-                    const raw = file.material_stage === "raw";
-                    const Icon = TYPE_ICON[file.file_type] ?? FileText;
-                    return (
-                      <article
-                        key={file.id}
-                        className="flex flex-wrap items-start gap-3 rounded-lg border p-3"
+              ].map((section, sectionIndex) => (
+                <div key={section.title} className="space-y-5">
+                  {sectionIndex === 1 && activeLesson.sources.length > 0 && (
+                    <section
+                      className="space-y-3 rounded-lg border p-4"
+                      aria-label="AI training brief"
+                    >
+                      <label
+                        htmlFor="training-output-brief"
+                        className="block text-sm font-semibold"
                       >
-                        {raw && canTransform(file) && (
-                          <input
-                            type="checkbox"
-                            className="mt-1"
-                            aria-label={"Select " + file.file_name}
-                            checked={selected.includes(file.id)}
-                            onChange={(e) =>
-                              setSelected((old) =>
-                                e.target.checked
-                                  ? [...old, file.id]
-                                  : old.filter((id) => id !== file.id),
-                              )
-                            }
-                          />
-                        )}
-                        <Icon className="mt-1 h-5 w-5 shrink-0 text-muted-foreground" />
-                        <div className="min-w-0 flex-1 basis-52">
-                          <h4 className="break-words text-sm font-semibold">{file.file_name}</h4>
-                          <p className="supporting-text text-muted-foreground">
-                            {raw ? "Original source — retained" : producedMaterialStatus(file)} ·{" "}
-                            {formatSize(file.size_bytes)} ·{" "}
-                            {new Date(file.created_at).toLocaleDateString()}
-                          </p>
-                          {file.description && (
-                            <p className="supporting-text text-muted-foreground break-words">
-                              {file.description.replace(/^\[Plusticity draft\] /, "")}
+                        What would you like from this training?{" "}
+                        <span className="font-normal text-muted-foreground">(optional)</span>
+                      </label>
+                      <Textarea
+                        id="training-output-brief"
+                        value={outputBriefs[activeLesson.id] ?? ""}
+                        onChange={(event) =>
+                          setOutputBriefs((old) => ({
+                            ...old,
+                            [activeLesson.id]: event.target.value,
+                          }))
+                        }
+                        maxLength={TRAINING_BRIEF_MAX}
+                        className="min-h-36"
+                        placeholder="For example: use more videos and illustrations, include practical scenarios, explain the steps in more detail, or keep the language simple for beginners."
+                      />
+                      <p className="supporting-text text-muted-foreground">
+                        Leave this blank to generate the foundation from your source material. Add
+                        preferences for depth, examples, visuals or video emphasis. You can review
+                        the outline and media choices before generating.
+                      </p>
+                      <Button
+                        disabled={!activeLesson.sources.every(canTransform)}
+                        onClick={() => startTransformation(activeLesson.sources)}
+                      >
+                        {activeLesson.outputs.length
+                          ? "Create another training version"
+                          : "Start transformation"}
+                      </Button>
+                    </section>
+                  )}
+                  <section className="space-y-3" aria-label={section.title}>
+                    <h3 className="text-sm font-semibold">
+                      {section.title === "Raw material" ? (
+                        <>
+                          Source file{" "}
+                          <span className="font-normal text-muted-foreground">(Raw material)</span>
+                        </>
+                      ) : (
+                        section.title
+                      )}
+                    </h3>
+                    {!section.members.length && (
+                      <div className="rounded-lg border p-4">
+                        <p className="supporting-text text-muted-foreground">
+                          {section.title === "Raw material"
+                            ? "No raw source is linked to this older output. Existing files have not been matched by name."
+                            : "Not started — transform the raw material to create a Draft or Completed version."}
+                        </p>
+                      </div>
+                    )}
+                    {section.members.map((file) => {
+                      const raw = file.material_stage === "raw";
+                      const Icon = TYPE_ICON[file.file_type] ?? FileText;
+                      return (
+                        <article
+                          key={file.id}
+                          className="flex flex-wrap items-start gap-3 rounded-lg border p-3"
+                        >
+                          <Icon className="mt-1 h-5 w-5 shrink-0 text-muted-foreground" />
+                          <div className="min-w-0 flex-1 basis-52">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h4 className="break-words text-sm font-semibold">
+                                {file.file_name}
+                              </h4>
+                              {raw && (
+                                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                                  {activeLesson.status}
+                                </span>
+                              )}
+                            </div>
+                            <p className="supporting-text text-muted-foreground">
+                              {raw ? "Original source — retained" : producedMaterialStatus(file)} ·{" "}
+                              {formatSize(file.size_bytes)} ·{" "}
+                              {new Date(file.created_at).toLocaleDateString()}
                             </p>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {raw && canTransform(file) && (
+                            {file.description && (
+                              <p className="supporting-text text-muted-foreground break-words">
+                                {file.description.replace(/^\[Plusticity draft\] /, "")}
+                              </p>
+                            )}
+                          </div>
+                          <div className="order-3 flex flex-wrap gap-2">
+                            {raw && canTransform(file) && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => startTransformation([file])}
+                              >
+                                Transform
+                              </Button>
+                            )}
+                            {!raw && /\.(?:md|html)$/i.test(file.original_file_name) && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => void previewSlides(file)}
+                                >
+                                  View slides
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => void editCopy(file)}
+                                >
+                                  {producedMaterialStatus(file) === "Draft"
+                                    ? "Continue draft"
+                                    : "Edit copy"}
+                                </Button>
+                              </>
+                            )}
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => setProducer({ sources: [file] })}
+                              disabled={downloading === file.id}
+                              onClick={() => void download(file)}
                             >
-                              Transform
+                              <Download className="h-4 w-4" />
+                              Download
                             </Button>
-                          )}
-                          {!raw && /\.(?:md|html)$/i.test(file.original_file_name) && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => void previewSlides(file)}
-                              >
-                                View slides
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => void editCopy(file)}
-                              >
-                                {producedMaterialStatus(file) === "Draft"
-                                  ? "Continue draft"
-                                  : "Edit copy"}
-                              </Button>
-                            </>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={downloading === file.id}
-                            onClick={() => void download(file)}
-                          >
-                            <Download className="h-4 w-4" />
-                            Download
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            aria-label={"Rename " + file.file_name}
-                            onClick={() => {
-                              setRenaming({ type: "file", id: file.id });
-                              setRenameValue(file.file_name);
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-destructive"
-                            aria-label={"Delete " + file.file_name}
-                            onClick={() => void deleteFile(file)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <div className="flex w-full flex-wrap gap-3">
-                          <label className="text-sm">
-                            Sector
-                            <select
-                              aria-label={"Sector for " + file.file_name}
-                              className="ml-2 max-w-full rounded-md border bg-background p-1.5"
-                              value={materialSector(file, files, derivations)}
-                              onChange={(e) => void updateSector(file, e.target.value)}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              aria-label={"Rename " + file.file_name}
+                              onClick={() => {
+                                setRenaming({ type: "file", id: file.id });
+                                setRenameValue(file.file_name);
+                              }}
                             >
-                              {CATALOGUE_SECTORS.map((sector) => (
-                                <option key={sector}>{sector}</option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="text-sm">
-                            Folder
-                            <select
-                              className="ml-2 rounded-md border bg-background p-1.5"
-                              aria-label={"Move " + file.file_name}
-                              value={file.folder_id ?? ""}
-                              onChange={(e) => void moveFile(file, e.target.value)}
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-destructive"
+                              aria-label={"Delete " + file.file_name}
+                              onClick={() => void deleteFile(file)}
                             >
-                              <option value="">Root</option>
-                              {allFolders.map((folder) => (
-                                <option key={folder.id} value={folder.id}>
-                                  {libraryFolderPath(folder.id, allFolders)}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </section>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="order-2 flex flex-wrap items-center gap-2">
+                            <label className="text-sm">
+                              Sector
+                              <select
+                                aria-label={"Sector for " + file.file_name}
+                                className="ml-2 max-w-full rounded-md border bg-background p-1.5"
+                                value={materialSector(file, files, derivations)}
+                                onChange={(e) => void updateSector(file, e.target.value)}
+                              >
+                                {CATALOGUE_SECTORS.map((sector) => (
+                                  <option key={sector}>{sector}</option>
+                                ))}
+                              </select>
+                            </label>
+                            {allFolders.length > 0 && (
+                              <label className="text-sm">
+                                Folder
+                                <select
+                                  className="ml-2 rounded-md border bg-background p-1.5"
+                                  aria-label={"Move " + file.file_name}
+                                  value={file.folder_id ?? ""}
+                                  onChange={(e) => void moveFile(file, e.target.value)}
+                                >
+                                  <option value="">Root</option>
+                                  {allFolders.map((folder) => (
+                                    <option key={folder.id} value={folder.id}>
+                                      {libraryFolderPath(folder.id, allFolders)}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            )}
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </section>
+                </div>
               ))}
               {!!selected.length && (
                 <div className="flex flex-wrap gap-2">
                   <Button
                     onClick={() =>
-                      setProducer({
-                        sources: files.filter(
+                      startTransformation(
+                        files.filter(
                           (file) => selected.includes(file.id) && file.material_stage === "raw",
                         ),
-                      })
+                      )
                     }
                   >
                     Transform selected ({selected.length})
@@ -849,7 +895,7 @@ export function ContentLibraryContent({
                                 size="sm"
                                 variant="outline"
                                 title="Create a new produced version linked to this original"
-                                onClick={() => setProducer({ sources: row.sources })}
+                                onClick={() => startTransformation(row.sources)}
                               >
                                 {row.outputs.length ? "Reuse" : "Transform"}
                               </Button>
@@ -884,11 +930,11 @@ export function ContentLibraryContent({
                     size="sm"
                     disabled={selected.length > 20}
                     onClick={() =>
-                      setProducer({
-                        sources: files.filter(
+                      startTransformation(
+                        files.filter(
                           (file) => selected.includes(file.id) && file.material_stage === "raw",
                         ),
-                      })
+                      )
                     }
                   >
                     Transform selected ({selected.length})
@@ -906,6 +952,7 @@ export function ContentLibraryContent({
               sources={producer.sources}
               initialBody={producer.initialBody}
               initialTitle={producer.initialTitle}
+              initialInstruction={producer.initialInstruction}
               folderId={currentFolderId}
               onClose={() => setProducer(null)}
               onSaved={() => {
