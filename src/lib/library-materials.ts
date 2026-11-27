@@ -76,7 +76,7 @@ export type LibraryFile = {
   keywords: string[];
   classification: string;
 };
-export type LibraryFolder = { id: string; name: string; parent_id: string | null };
+export type LibraryFolder = { id: string; name: string; parent_id: string | null; color?: string };
 export type Derivation = { raw_file_id: string; produced_file_id: string };
 export const libraryColumns =
   "id,file_name,original_file_name,file_type,storage_path,size_bytes,description,created_at,folder_id,material_stage,keywords,classification";

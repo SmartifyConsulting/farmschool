@@ -39,7 +39,7 @@ import { MaterialTypeFilters } from "@/components/MaterialTypeFilters";
 import { AutoCategoriseButton } from "@/components/AutoCategoriseButton";
 import { LibraryCourses } from "@/components/LibraryCourses";
 import type { LibraryCourseStage } from "@/lib/library-course-stage";
-import { lessonMaterialFolders, producedMaterialStatus } from "@/lib/lesson-material-folders";
+import { pairedLibraryMaterials, producedMaterialStatus } from "@/lib/lesson-material-folders";
 import {
   materialSector,
   matchesMaterialType,
@@ -94,6 +94,8 @@ export function ContentLibraryContent({
   const currentFolderId = folderPath.at(-1)?.id ?? null;
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [newFolderColor, setNewFolderColor] = useState("#eab308");
+  const [renameColor, setRenameColor] = useState("#eab308");
   const [renaming, setRenaming] = useState<{ type: "folder" | "file"; id: string } | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
@@ -158,7 +160,7 @@ export function ContentLibraryContent({
       refresh();
     }
   };
-  const lessonFolders = lessonMaterialFolders(files, derivations);
+  const lessonFolders = pairedLibraryMaterials(files, derivations);
   const activeLesson = lessonFolders.find((folder) => folder.id === lessonId);
   const visibleLessons = lessonFolders.filter((folder) => {
     const members = [...folder.sources, ...folder.outputs];
@@ -182,6 +184,7 @@ export function ContentLibraryContent({
       author_id: user.id,
       parent_id: currentFolderId,
       name: newFolderName.trim(),
+      color: newFolderColor,
     } as never);
     if (error) {
       toast.error("Could not create this folder.");
@@ -197,7 +200,10 @@ export function ContentLibraryContent({
     const column = renaming.type === "folder" ? "name" : "file_name";
     const { error } = await supabase
       .from(table as never)
-      .update({ [column]: renameValue.trim() } as never)
+      .update({
+        [column]: renameValue.trim(),
+        ...(renaming.type === "folder" ? { color: renameColor } : {}),
+      } as never)
       .eq("id", renaming.id);
     if (error) {
       toast.error("Could not rename this.");
@@ -211,18 +217,18 @@ export function ContentLibraryContent({
       tone: "danger",
       title: "Delete this folder?",
       confirmLabel: "Delete folder",
-      description: `"${folder.name}" and any subfolders will be deleted. Raw files and produced versions move to the root and keep their source links, status and sector.`,
+      description: `Only the "${folder.name}" container will be removed. Its files and subfolders move to its parent. Raw material, produced versions, source links and status are retained.`,
     });
     if (!ok) return;
-    const { error } = await supabase
-      .from("content_library_folders" as never)
-      .delete()
-      .eq("id", folder.id);
+    const { error } = await supabase.rpc(
+      "delete_library_folder" as never,
+      { _folder: folder.id } as never,
+    );
     if (error) {
       toast.error("Could not delete this folder.");
       return;
     }
-    toast.success("Folder deleted.");
+    toast.success("Folder removed. Files, subfolders and source links retained.");
     refresh();
   };
   const deleteFile = async (file: ContentFile) => {
@@ -295,14 +301,14 @@ export function ContentLibraryContent({
       ) : (
         <>
           <p className="supporting-text text-muted-foreground mb-4">
-            Each lesson folder keeps its raw sources and produced versions together. Draft and
-            Completed describe preparation status; Completed does not mean published.
+            Each raw file is paired with its produced versions. Reuse the original to create another
+            version. Completed does not mean published.
           </p>
           <MaterialTypeFilters value={fileType} onChange={setFileType} />
           <div className="mb-4 flex flex-wrap items-end gap-3">
             <Input
-              aria-label="Search lesson folders and files"
-              placeholder="Search lesson folders and files"
+              aria-label="Search raw and produced material"
+              placeholder="Search raw and produced material"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="max-w-md"
@@ -324,7 +330,7 @@ export function ContentLibraryContent({
               </select>
             </label>
           </div>
-          <section className="mb-5 space-y-3 rounded-lg border p-3" aria-label="Upload content">
+          <section className="mb-3 space-y-2 rounded-lg border p-2" aria-label="Upload content">
             <h2 className="text-sm font-semibold">Upload raw material</h2>
             {!selectedSector && (
               <label className="block text-sm">
@@ -341,6 +347,7 @@ export function ContentLibraryContent({
               </label>
             )}
             <BulkCourseUpload
+              compact
               requireAdmin={false}
               sector={selectedSector ?? uploadSector}
               folderId={currentFolderId}
@@ -356,7 +363,7 @@ export function ContentLibraryContent({
                   setSelected([]);
                 }}
               >
-                All lessons
+                All material
               </button>
               {folderPath.map((f, i) => (
                 <span key={f.id}>
@@ -418,6 +425,16 @@ export function ContentLibraryContent({
                 className="max-w-xs"
                 placeholder="Folder name"
               />
+              <label className="flex items-center gap-2 text-sm">
+                Folder colour
+                <Input
+                  type="color"
+                  aria-label="New folder colour"
+                  value={newFolderColor}
+                  onChange={(event) => setNewFolderColor(event.target.value)}
+                  className="h-8 w-12 p-1"
+                />
+              </label>
               <Button size="sm" disabled={!newFolderName.trim()} onClick={createFolder}>
                 Create folder
               </Button>
@@ -441,6 +458,18 @@ export function ContentLibraryContent({
                 onChange={(e) => setRenameValue(e.target.value)}
                 className="max-w-md"
               />
+              {renaming.type === "folder" && (
+                <label className="flex items-center gap-2 text-sm">
+                  Folder colour
+                  <Input
+                    type="color"
+                    aria-label="Edit folder colour"
+                    value={renameColor}
+                    onChange={(event) => setRenameColor(event.target.value)}
+                    className="h-8 w-12 p-1"
+                  />
+                </label>
+              )}
               <Button size="sm" disabled={!renameValue.trim()} onClick={saveRename}>
                 Save name
               </Button>
@@ -452,9 +481,9 @@ export function ContentLibraryContent({
           {libraryError ? (
             <p role="alert">Could not load your complete library. Refresh to try again.</p>
           ) : isLoading ? (
-            <p role="status">Loading lesson folders…</p>
+            <p role="status">Loading raw and produced material…</p>
           ) : activeLesson ? (
-            <section className="space-y-5" aria-label="Lesson folder contents">
+            <section className="space-y-5" aria-label="Raw and produced material details">
               <div className="flex flex-wrap items-center gap-3">
                 <Button
                   size="sm"
@@ -465,7 +494,7 @@ export function ContentLibraryContent({
                   }}
                 >
                   <ArrowLeft className="h-4 w-4" />
-                  Back to lesson folders
+                  Back to material list
                 </Button>
                 <h2 className="text-lg font-semibold">{activeLesson.title}</h2>
                 <span className="rounded-full bg-muted px-3 py-1 text-sm">
@@ -643,119 +672,187 @@ export function ContentLibraryContent({
             </section>
           ) : (
             <>
-              <div
-                className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
-                aria-label="Lesson folders"
-              >
-                {!search.trim() &&
-                  folders.map((folder) => (
-                    <article
+              {!search.trim() && !!folders.length && (
+                <div className="mb-3 divide-y rounded-lg border" aria-label="Library folders list">
+                  {folders.map((folder) => (
+                    <div
                       key={folder.id}
-                      className="rounded-xl border border-yellow-200 bg-yellow-50 p-4"
+                      className="flex flex-wrap items-center gap-2 px-3 py-2"
+                      style={{ backgroundColor: (folder.color ?? "#eab308") + "0d" }}
                     >
                       <button
-                        className="flex w-full items-center gap-3 text-left"
+                        className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm font-medium"
                         onClick={() =>
                           setFolderPath([...folderPath, { id: folder.id, name: folder.name }])
                         }
                       >
-                        <Folder className="h-9 w-9 shrink-0 fill-yellow-300 text-yellow-500" />
-                        <span className="break-words font-semibold">{folder.name}</span>
-                      </button>
-                      <div className="mt-2 flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          aria-label={"Rename " + folder.name}
-                          onClick={() => {
-                            setRenaming({ type: "folder", id: folder.id });
-                            setRenameValue(folder.name);
+                        <Folder
+                          className="h-5 w-5 shrink-0"
+                          style={{
+                            color: folder.color ?? "#eab308",
+                            fill: (folder.color ?? "#eab308") + "55",
                           }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          aria-label={"Delete " + folder.name}
-                          onClick={() => void deleteFolder(folder)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </article>
-                  ))}
-                {visibleLessons.map((folder) => (
-                  <article
-                    key={folder.id}
-                    className="space-y-3 rounded-xl border border-yellow-200 bg-yellow-50 p-4"
-                  >
-                    <button
-                      className="flex w-full flex-col gap-3 text-left"
-                      onClick={() => {
-                        setLessonId(folder.id);
-                        setSelected([]);
-                      }}
-                    >
-                      <div className="flex w-full items-start gap-3">
-                        <Folder className="h-9 w-9 shrink-0 fill-yellow-300 text-yellow-500" />
-                        <h2 className="min-w-0 break-words text-sm font-semibold">
-                          {folder.title}
-                        </h2>
-                      </div>
-                      <span
-                        className={
-                          "rounded-full px-2 py-1 text-xs " +
-                          (folder.status === "Completed"
-                            ? "bg-emerald-100 text-emerald-900"
-                            : folder.status === "Draft"
-                              ? "bg-amber-100 text-amber-900"
-                              : "bg-muted text-muted-foreground")
-                        }
-                      >
-                        {folder.status}
-                      </span>
-                      <p className="supporting-text text-muted-foreground">
-                        {folder.sources.length} raw source{folder.sources.length === 1 ? "" : "s"} ·{" "}
-                        {
-                          folder.outputs.filter((file) => producedMaterialStatus(file) === "Draft")
-                            .length
-                        }{" "}
-                        drafts ·{" "}
-                        {
-                          folder.outputs.filter(
-                            (file) => producedMaterialStatus(file) === "Completed",
-                          ).length
-                        }{" "}
-                        completed
-                      </p>
-                    </button>
-                    {folder.sources.filter(canTransform).map((file) => (
-                      <label
-                        key={file.id}
-                        className="flex items-start gap-2 border-t border-yellow-200 pt-2 text-sm"
-                      >
-                        <input
-                          type="checkbox"
-                          className="mt-1"
-                          checked={selected.includes(file.id)}
-                          onChange={(event) =>
-                            setSelected((old) =>
-                              event.target.checked
-                                ? [...new Set([...old, file.id])]
-                                : old.filter((id) => id !== file.id),
-                            )
-                          }
                         />
-                        Select {file.file_name} for transformation
-                      </label>
+                        <span className="break-words">{folder.name}</span>
+                      </button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={"Edit folder " + folder.name}
+                        onClick={() => {
+                          setRenaming({ type: "folder", id: folder.id });
+                          setRenameValue(folder.name);
+                          setRenameColor(folder.color ?? "#eab308");
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={"Delete folder " + folder.name}
+                        onClick={() => void deleteFolder(folder)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="mb-3 overflow-x-auto rounded-lg border">
+                <table
+                  className="w-full min-w-[680px] text-left text-sm"
+                  aria-label="Raw material and produced training"
+                >
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="w-8 p-2">
+                        <span className="sr-only">Select</span>
+                      </th>
+                      <th className="px-3 py-2 font-medium">Raw material</th>
+                      <th className="px-3 py-2 font-medium">Produced training</th>
+                      <th className="px-3 py-2 font-medium">Latest status</th>
+                      <th className="px-3 py-2 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {visibleLessons.map((row) => (
+                      <tr key={row.id} className="align-top">
+                        <td className="p-2">
+                          {row.sources[0] && canTransform(row.sources[0]) && (
+                            <input
+                              type="checkbox"
+                              aria-label={"Select " + row.sources[0].file_name}
+                              checked={selected.includes(row.sources[0].id)}
+                              onChange={(event) =>
+                                setSelected((old) =>
+                                  event.target.checked
+                                    ? [...new Set([...old, row.sources[0]!.id])]
+                                    : old.filter((id) => id !== row.sources[0]!.id),
+                                )
+                              }
+                            />
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          <button
+                            className="text-left font-medium text-primary hover:underline"
+                            onClick={() => {
+                              setLessonId(row.id);
+                              setSelected([]);
+                            }}
+                          >
+                            {row.sources[0]?.file_name ?? "Original source not linked"}
+                          </button>
+                          {row.sources[0] && (
+                            <p className="supporting-text text-muted-foreground">
+                              {formatSize(row.sources[0].size_bytes)}
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          {row.outputs.length ? (
+                            <ul className="space-y-1">
+                              {row.outputs.map((output) => (
+                                <li key={output.id} className="flex flex-wrap items-center gap-x-2">
+                                  <button
+                                    className="text-left text-primary hover:underline"
+                                    onClick={() =>
+                                      /\.(?:md|html)$/i.test(output.original_file_name)
+                                        ? void previewSlides(output)
+                                        : void download(output)
+                                    }
+                                  >
+                                    {output.file_name}
+                                  </button>
+                                  <span className="supporting-text text-muted-foreground">
+                                    {producedMaterialStatus(output)}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <span className="supporting-text text-muted-foreground">
+                              No produced version yet
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span
+                            className={
+                              "whitespace-nowrap rounded-full px-2 py-0.5 text-xs " +
+                              (row.status === "Completed"
+                                ? "bg-emerald-100 text-emerald-900"
+                                : row.status === "Draft"
+                                  ? "bg-amber-100 text-amber-900"
+                                  : "bg-muted text-muted-foreground")
+                            }
+                          >
+                            {row.status}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex flex-wrap gap-1">
+                            {row.sources[0] && canTransform(row.sources[0]) && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                title="Create a new produced version linked to this original"
+                                onClick={() => setProducer({ sources: row.sources })}
+                              >
+                                {row.outputs.length ? "Reuse" : "Transform"}
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setLessonId(row.id);
+                                setSelected([]);
+                              }}
+                            >
+                              Manage
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
                     ))}
-                  </article>
-                ))}
+                    {!visibleLessons.length && (
+                      <tr>
+                        <td colSpan={5} className="px-3 py-4 supporting-text text-muted-foreground">
+                          No material matches these filters. Upload a raw file to start.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
               {!!selected.length && (
-                <div className="mb-4 flex flex-wrap gap-2">
+                <div className="mb-3 flex flex-wrap gap-2">
                   <Button
+                    size="sm"
                     disabled={selected.length > 20}
                     onClick={() =>
                       setProducer({
@@ -765,23 +862,12 @@ export function ContentLibraryContent({
                       })
                     }
                   >
-                    Transform selected sources ({selected.length})
+                    Transform selected ({selected.length})
                   </Button>
-                  <Button variant="outline" onClick={() => setSelected([])}>
+                  <Button size="sm" variant="ghost" onClick={() => setSelected([])}>
                     Clear selection
                   </Button>
-                  {selected.length > 20 && (
-                    <p className="supporting-text">
-                      Choose at most 20 raw source files per transformation.
-                    </p>
-                  )}
                 </div>
-              )}
-              {!visibleLessons.length && !folders.length && (
-                <p className="supporting-text text-muted-foreground">
-                  No lesson folders match these filters. Upload raw material to start a lesson
-                  folder.
-                </p>
               )}
               <LibraryCourses scope={scope} search={search} sector={selectedSector} />
             </>
@@ -840,7 +926,7 @@ function LibrarySlidePreview({ body }: { body: string }) {
         )}
       />
     ) : (
-      <SlidePlayer slides={parseLessonSlides(body)} />
+      <SlidePlayer slides={parseLessonSlides(body)} outline />
     );
   } catch {
     return (

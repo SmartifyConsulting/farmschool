@@ -12,44 +12,36 @@ export type LessonMaterialFolder = {
   outputs: LibraryFile[];
   status: "Not started" | ProducedStatus;
 };
-/** Only saved derivations join a source to an output; names never establish ownership or lineage. */
-export function lessonMaterialFolders(
+/** A source reused for several outputs stays one row; shared outputs appear beside each source. */
+export function pairedLibraryMaterials(
   files: LibraryFile[],
   links: Derivation[],
 ): LessonMaterialFolder[] {
-  const remaining = new Map(files.map((f) => [f.id, f]));
-  const groups: LessonMaterialFolder[] = [];
-  for (const seed of files) {
-    if (!remaining.has(seed.id)) continue;
-    const members: LibraryFile[] = [];
-    const queue = [seed];
-    while (queue.length) {
-      const file = queue.shift()!;
-      if (!remaining.delete(file.id)) continue;
-      members.push(file);
-      queue.push(
-        ...linkedMaterials(file.id, file.material_stage, files, links).filter((f) =>
-          remaining.has(f.id),
-        ),
-      );
-    }
-    const sources = members
-      .filter((f) => f.material_stage === "raw")
-      .sort((a, b) => a.id.localeCompare(b.id));
-    const outputs = members
-      .filter((f) => f.material_stage === "produced")
-      .sort((a, b) => b.created_at.localeCompare(a.created_at) || a.id.localeCompare(b.id));
-    const first = sources[0] ?? outputs[0]!;
-    groups.push({
-      id: first.id,
-      title: (outputs[0]?.file_name ?? first.file_name).replace(
-        /\.(?:pdf|docx?|txt|md|html)$/i,
-        "",
-      ),
-      sources,
-      outputs,
-      status: outputs[0] ? producedMaterialStatus(outputs[0]) : "Not started",
+  const rows = files
+    .filter((file) => file.material_stage === "raw")
+    .map((source) => {
+      const outputs = linkedMaterials(source.id, "raw", files, links)
+        .filter((file) => file.material_stage === "produced")
+        .sort((a, b) => b.created_at.localeCompare(a.created_at) || a.id.localeCompare(b.id));
+      return {
+        id: source.id,
+        title: source.file_name,
+        sources: [source],
+        outputs,
+        status: outputs[0] ? producedMaterialStatus(outputs[0]) : ("Not started" as const),
+      };
     });
-  }
-  return groups.sort((a, b) => a.title.localeCompare(b.title));
+  const linked = new Set(rows.flatMap((row) => row.outputs.map((file) => file.id)));
+  return [
+    ...rows,
+    ...files
+      .filter((file) => file.material_stage === "produced" && !linked.has(file.id))
+      .map((file) => ({
+        id: file.id,
+        title: file.file_name,
+        sources: [],
+        outputs: [file],
+        status: producedMaterialStatus(file),
+      })),
+  ].sort((a, b) => a.title.localeCompare(b.title));
 }

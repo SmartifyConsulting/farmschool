@@ -318,8 +318,8 @@ export function MaterialProducer({
       if (registered.data !== out.id) throw new Error("Save not confirmed. Retry this output.");
       toast.success(
         asDraft
-          ? "Draft saved in its lesson folder. Raw sources and earlier versions are preserved."
-          : "Completed material saved in its lesson folder. Raw sources and earlier versions are preserved.",
+          ? "Draft saved beside its raw material. Original sources and earlier versions are preserved."
+          : "Completed material saved beside its raw material. Original sources and earlier versions are preserved.",
       );
       onSaved();
     } catch (e) {
@@ -962,7 +962,7 @@ export function MaterialProducer({
                   Save progress in this browser
                 </Button>
                 <Button variant="outline" disabled={!title.trim()} onClick={() => void save(true)}>
-                  Save Draft to lesson folder
+                  Save Draft to Library
                 </Button>
                 <label className="block text-sm">
                   Open downloaded HTML draft

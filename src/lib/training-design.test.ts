@@ -133,4 +133,19 @@ describe("source-faithful training design", () => {
     expect(body).toContain(":::video");
     expect(body).not.toContain("<script");
   });
+  it("exports a linked sidebar outline with every generated slide and pending topics", () => {
+    const pkg = completed();
+    delete pkg.results[pkg.topics.at(-1)!.id];
+    pkg.topics[0]!.module = "<script>unsafe</script>";
+    const html = trainingHtml(pkg, true);
+    expect(html).toContain('<aside class="training-outline">');
+    expect(html).toContain('<nav aria-label="Training outline">');
+    expect(html.match(/data-slide="\d+"/g)).toHaveLength(51);
+    expect(html).toContain('data-slide="50"');
+    expect(html).toContain("Slides not generated yet");
+    expect(html).toContain("&lt;script&gt;unsafe&lt;/script&gt;");
+    expect(html).not.toContain("<script>unsafe</script>");
+    expect(html).toContain("button.onclick=()=>move(Number(button.dataset.slide))");
+    expect(readTrainingPackage(html)).toEqual(pkg);
+  });
 });

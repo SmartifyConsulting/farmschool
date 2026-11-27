@@ -34,7 +34,7 @@ export function useLibraryMaterials(enabled = true) {
         await readAllPages(
           supabase
             .from("content_library_folders" as never)
-            .select("id,name,parent_id" as never, { count: "exact" })
+            .select("id,name,parent_id,color" as never, { count: "exact" })
             .eq("author_id", user!.id)
             .order("name")
             .order("id"),

@@ -42,6 +42,7 @@ export function SlidePlayer({
   saving,
   lessonId,
   isTrainer,
+  outline = false,
 }: {
   slides: LessonSlide[];
   storageKey?: string;
@@ -51,6 +52,7 @@ export function SlidePlayer({
   /** Needed only when a slide has a photo block, to scope the evidence upload/review. */
   lessonId?: string;
   isTrainer?: boolean;
+  outline?: boolean;
 }) {
   const [state, setState] = useState(() => restore(storageKey, slides.length));
   const gesture = useRef<{ x: number; y: number } | null>(null);
@@ -72,7 +74,7 @@ export function SlidePlayer({
   if (!slide) return <p className="text-sm text-muted-foreground">No slides yet.</p>;
   const allSeen = state.seen.length === slides.length;
   const locations = slideBlockLocations(slides);
-  return (
+  const player = (
     <section className="space-y-3" aria-label="Lesson slides">
       <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
         <p role="status">
@@ -121,7 +123,9 @@ export function SlidePlayer({
             lessonId={lessonId}
             blockIndex={practicalTaskIndex(slides, state.index, i)}
             isTrainer={!!isTrainer}
-            nestedIndex={(ci, bi) => locations.find((item) => item.path === `${state.index}:${i}:${ci}:${bi}`)!.taskIndex}
+            nestedIndex={(ci, bi) =>
+              locations.find((item) => item.path === `${state.index}:${i}:${ci}:${bi}`)!.taskIndex
+            }
             checked={(item) => state.checked.includes([state.index, i, item].join(":"))}
             toggle={(item) => {
               const key = [state.index, i, item].join(":");
@@ -153,6 +157,31 @@ export function SlidePlayer({
       </div>
     </section>
   );
+  return outline ? (
+    <div className="grid items-start gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+      <aside className="max-h-[70vh] overflow-y-auto rounded-lg border p-3 md:sticky md:top-0">
+        <h2 className="mb-2 text-sm font-semibold">Training outline</h2>
+        <nav aria-label="Training outline" className="space-y-1">
+          {slides.map((slide, index) => (
+            <button
+              key={index}
+              type="button"
+              aria-current={state.index === index ? "step" : undefined}
+              className={`block w-full rounded-md px-2 py-1.5 text-left text-sm ${state.index === index ? "bg-primary/10 font-semibold text-primary" : "hover:bg-muted"}`}
+              onClick={() =>
+                update({ ...state, index, seen: [...new Set([...state.seen, index])] })
+              }
+            >
+              {index + 1}. {slide.title || "Slide " + (index + 1)}
+            </button>
+          ))}
+        </nav>
+      </aside>
+      <div className="min-w-0">{player}</div>
+    </div>
+  ) : (
+    player
+  );
 }
 
 function Block({
@@ -182,7 +211,8 @@ function Block({
       const current = p[qi] ?? new Set<number>();
       if (multi) {
         const next = new Set(current);
-        if (next.has(oi)) next.delete(oi); else next.add(oi);
+        if (next.has(oi)) next.delete(oi);
+        else next.add(oi);
         return { ...p, [qi]: next };
       }
       return { ...p, [qi]: new Set([oi]) };
@@ -224,21 +254,36 @@ function Block({
   if (block.kind === "image")
     return (
       <figure className="space-y-1">
-        <img src={block.url} alt={block.caption || ""} className="w-full rounded-xl border border-border object-cover" />
-        {block.caption && <figcaption className="text-xs text-muted-foreground">{block.caption}</figcaption>}
+        <img
+          src={block.url}
+          alt={block.caption || ""}
+          className="w-full rounded-xl border border-border object-cover"
+        />
+        {block.caption && (
+          <figcaption className="text-xs text-muted-foreground">{block.caption}</figcaption>
+        )}
       </figure>
     );
   if (block.kind === "video") {
     const youTubeId = block.youtube ? extractYouTubeId(block.url) : null;
-    if (block.youtube && !youTubeId) return <p className="text-xs text-destructive">This video link couldn't be read.</p>;
-    return <InteractiveVideoPlayer kind={block.youtube ? "youtube" : "file"} src={block.youtube ? youTubeId! : block.url} interactions={block.interactions} />;
+    if (block.youtube && !youTubeId)
+      return <p className="text-xs text-destructive">This video link couldn't be read.</p>;
+    return (
+      <InteractiveVideoPlayer
+        kind={block.youtube ? "youtube" : "file"}
+        src={block.youtube ? youTubeId! : block.url}
+        interactions={block.interactions}
+      />
+    );
   }
   if (block.kind === "facts")
     return (
       <div className="grid gap-2 sm:grid-cols-3">
         {block.items.map((item, i) => (
           <div key={i} className="space-y-1.5 rounded-xl border border-border bg-card p-3">
-            {item.image && <img src={item.image} alt="" className="h-24 w-full rounded-lg object-cover" />}
+            {item.image && (
+              <img src={item.image} alt="" className="h-24 w-full rounded-lg object-cover" />
+            )}
             <p className="text-sm font-semibold">{item.claim}</p>
             <p className="text-xs text-muted-foreground">{item.evidence}</p>
           </div>
@@ -255,8 +300,12 @@ function Block({
           const revealed = quizChecked[qi] ?? false;
           return (
             <div key={qi} className="space-y-2">
-              <p className="text-sm font-medium">{qi + 1}. {item.question}</p>
-              <p className="text-xs text-muted-foreground">{multi ? "Select every correct answer." : "Select the correct answer."}</p>
+              <p className="text-sm font-medium">
+                {qi + 1}. {item.question}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {multi ? "Select every correct answer." : "Select the correct answer."}
+              </p>
               <div className="space-y-1.5">
                 {item.options.map((option, oi) => {
                   const isPicked = picks.has(oi);
@@ -269,10 +318,13 @@ function Block({
                       disabled={revealed}
                       className={
                         "flex w-full items-center gap-2 rounded-lg border p-2 text-left text-sm " +
-                        (revealed && isCorrect ? "border-primary bg-primary/10"
-                          : revealed && isPicked ? "border-destructive bg-destructive/10"
-                          : isPicked ? "border-primary/50 bg-primary/5"
-                          : "border-border bg-card")
+                        (revealed && isCorrect
+                          ? "border-primary bg-primary/10"
+                          : revealed && isPicked
+                            ? "border-destructive bg-destructive/10"
+                            : isPicked
+                              ? "border-primary/50 bg-primary/5"
+                              : "border-border bg-card")
                       }
                     >
                       {option}
@@ -282,18 +334,31 @@ function Block({
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {!revealed && (
-                  <Button type="button" size="sm" disabled={!picks.size} onClick={() => setQuizChecked((p) => ({ ...p, [qi]: true }))}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!picks.size}
+                    onClick={() => setQuizChecked((p) => ({ ...p, [qi]: true }))}
+                  >
                     Check answer
                   </Button>
                 )}
                 {item.hint && !hintShown[qi] && !revealed && (
-                  <Button type="button" size="sm" variant="ghost" onClick={() => setHintShown((p) => ({ ...p, [qi]: true }))}>
-                    <Lightbulb className="h-3.5 w-3.5" />Show hint
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setHintShown((p) => ({ ...p, [qi]: true }))}
+                  >
+                    <Lightbulb className="h-3.5 w-3.5" />
+                    Show hint
                   </Button>
                 )}
               </div>
               {item.hint && hintShown[qi] && !revealed && (
-                <p className="rounded-md bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-400">{item.hint}</p>
+                <p className="rounded-md bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-400">
+                  {item.hint}
+                </p>
               )}
             </div>
           );
@@ -303,13 +368,25 @@ function Block({
   }
   if (block.kind === "columns")
     return (
-      <div className={`grid min-w-0 gap-3 ${block.columns.length === 2 ? "md:grid-cols-2" : block.columns.length === 4 ? "lg:grid-cols-4 md:grid-cols-2" : "lg:grid-cols-3"}`}>
+      <div
+        className={`grid min-w-0 gap-3 ${block.columns.length === 2 ? "md:grid-cols-2" : block.columns.length === 4 ? "lg:grid-cols-4 md:grid-cols-2" : "lg:grid-cols-3"}`}
+      >
         {block.columns.map((blocks, ci) => (
-          <div key={ci} className="min-w-0 space-y-3 break-words rounded-lg border border-border bg-card p-3">
-            {blocks.map((child, bi) => <Block key={bi} block={child} lessonId={lessonId} isTrainer={isTrainer}
-              blockIndex={nestedIndex?.(ci, bi) ?? blockIndex}
-              checked={(item) => checked([ci, bi, item].join(":"))}
-              toggle={(item) => toggle([ci, bi, item].join(":"))} />)}
+          <div
+            key={ci}
+            className="min-w-0 space-y-3 break-words rounded-lg border border-border bg-card p-3"
+          >
+            {blocks.map((child, bi) => (
+              <Block
+                key={bi}
+                block={child}
+                lessonId={lessonId}
+                isTrainer={isTrainer}
+                blockIndex={nestedIndex?.(ci, bi) ?? blockIndex}
+                checked={(item) => checked([ci, bi, item].join(":"))}
+                toggle={(item) => toggle([ci, bi, item].join(":"))}
+              />
+            ))}
           </div>
         ))}
       </div>

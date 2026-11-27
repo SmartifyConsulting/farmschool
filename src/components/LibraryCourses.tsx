@@ -34,7 +34,6 @@ export function LibraryCourses({
   const confirm = useConfirm();
   const progress = useServerFn(progressLibraryCourse);
   const [busy, setBusy] = useState<string | null>(null);
-  const [opened, setOpened] = useState<string | null>(null);
   const courses = useQuery({
     queryKey: ["library-courses", scope, user?.id],
     enabled: !!user,
@@ -131,7 +130,7 @@ export function LibraryCourses({
         <>
           <p className="supporting-text text-muted-foreground">
             {!stage
-              ? "Older course imports keep their own folder and preparation status. Raw files without saved source links stay in their separate lesson folders."
+              ? "Existing course imports are listed separately; source links are not inferred from names."
               : stage === "raw"
                 ? "These imports have no saved lessons yet. Their source files remain below when available."
                 : stage === "drafts"
@@ -149,21 +148,14 @@ export function LibraryCourses({
                     : "No empty course imports."}
             </p>
           )}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="divide-y rounded-lg border">
             {records.map((course) => {
               const courseStage = libraryCourseStage(course);
               const stage = courseStage;
               return (
-                <article
-                  key={course.id}
-                  className="space-y-3 rounded-xl border border-yellow-200 bg-yellow-50 p-4"
-                >
-                  <button
-                    className="flex w-full items-start gap-3 text-left"
-                    aria-expanded={opened === course.id}
-                    onClick={() => setOpened(opened === course.id ? null : course.id)}
-                  >
-                    <Folder className="h-9 w-9 shrink-0 fill-yellow-300 text-yellow-500" />
+                <article key={course.id} className="flex flex-wrap items-center gap-2 px-3 py-2">
+                  <div className="flex min-w-0 flex-1 basis-64 items-start gap-2 text-left">
+                    <Folder className="h-5 w-5 shrink-0 fill-yellow-300 text-yellow-500" />
                     <div className="min-w-0 flex-1">
                       <h3 className="break-words text-sm font-semibold">{course.title}</h3>
                       <p className="supporting-text text-muted-foreground">
@@ -177,7 +169,7 @@ export function LibraryCourses({
                               : "Not generated"}
                       </p>
                       <span
-                        className={`mt-2 inline-block rounded-full px-2 py-1 text-xs ${stage === "produced" ? "bg-emerald-100 text-emerald-900" : stage === "drafts" ? "bg-amber-100 text-amber-900" : "bg-muted text-muted-foreground"}`}
+                        className={`inline-block rounded-full px-2 py-0.5 text-xs ${stage === "produced" ? "bg-emerald-100 text-emerald-900" : stage === "drafts" ? "bg-amber-100 text-amber-900" : "bg-muted text-muted-foreground"}`}
                       >
                         {stage === "produced"
                           ? "Completed"
@@ -186,47 +178,41 @@ export function LibraryCourses({
                             : "Not started"}
                       </span>
                     </div>
-                  </button>
-                  {opened === course.id && (
-                    <div className="flex flex-wrap gap-2 border-t border-yellow-200 pt-3">
-                      <p className="supporting-text text-muted-foreground w-full">
-                        Original uploads remain in their lesson folders above. This course view does
-                        not infer source links from file names.
-                      </p>
-                      <Button asChild variant="outline" size="sm">
-                        <Link to="/studio/$id" params={{ id: course.id }}>
-                          {course.published
-                            ? "View course"
-                            : stage === "raw"
-                              ? "Continue import"
-                              : "Edit and review"}
-                        </Link>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button asChild variant="outline" size="sm">
+                      <Link to="/studio/$id" params={{ id: course.id }}>
+                        {course.published
+                          ? "View course"
+                          : stage === "raw"
+                            ? "Continue import"
+                            : "Edit and review"}
+                      </Link>
+                    </Button>
+                    {stage === "drafts" && (
+                      <Button
+                        size="sm"
+                        disabled={!!busy}
+                        onClick={() => void change(course, "complete")}
+                      >
+                        Mark Completed
                       </Button>
-                      {stage === "drafts" && (
-                        <Button
-                          size="sm"
-                          disabled={!!busy}
-                          onClick={() => void change(course, "complete")}
-                        >
-                          Mark Completed
-                        </Button>
-                      )}
-                      {stage === "produced" && !course.published && (
-                        <Button
-                          size="sm"
-                          disabled={!!busy}
-                          onClick={() => void change(course, "publish")}
-                        >
-                          Publish to Catalogue
-                        </Button>
-                      )}
-                      {stage === "produced" && course.published && (
-                        <Button asChild size="sm" variant="outline">
-                          <Link to="/search">Open Catalogue</Link>
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                    )}
+                    {stage === "produced" && !course.published && (
+                      <Button
+                        size="sm"
+                        disabled={!!busy}
+                        onClick={() => void change(course, "publish")}
+                      >
+                        Publish to Catalogue
+                      </Button>
+                    )}
+                    {stage === "produced" && course.published && (
+                      <Button asChild size="sm" variant="outline">
+                        <Link to="/search">Open Catalogue</Link>
+                      </Button>
+                    )}
+                  </div>
                 </article>
               );
             })}

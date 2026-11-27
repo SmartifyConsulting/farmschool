@@ -44,10 +44,12 @@ export function BulkCourseUpload({
   requireAdmin = true,
   sector = "Uncategorised",
   folderId = null,
+  compact = false,
 }: {
   requireAdmin?: boolean;
   sector?: string;
   folderId?: string | null;
+  compact?: boolean;
 }) {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -207,11 +209,13 @@ export function BulkCourseUpload({
     );
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Upload source documents, images and videos. SCORM .zips upload as packages; PDFs and
-        documents are saved as reusable content files you can attach to a lesson later.
-      </p>
+    <div className={compact ? "space-y-2" : "space-y-4"}>
+      {!compact && (
+        <p className="text-sm text-muted-foreground">
+          Upload source documents, images and videos. SCORM .zips upload as packages; PDFs and
+          documents are saved as reusable content files you can attach to a lesson later.
+        </p>
+      )}
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -224,15 +228,18 @@ export function BulkCourseUpload({
           const files = Array.from(e.dataTransfer.files);
           if (files.length) void processFiles(files);
         }}
-        className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-10 text-center ${dragging ? "border-primary bg-primary/5" : "border-border"}`}
+        className={`flex ${compact ? "flex-wrap gap-3 rounded-lg p-3 sm:justify-start" : "flex-col gap-2 rounded-xl p-10"} items-center justify-center border-2 border-dashed text-center ${dragging ? "border-primary bg-primary/5" : "border-border"}`}
       >
-        <Upload className="h-8 w-8 text-muted-foreground" />
-        <p className="text-sm font-medium">Drag and drop files here</p>
-        <p className="text-xs text-muted-foreground">
-          PDF, Word, text, images, videos or SCORM .zip
-        </p>
+        <Upload className={`${compact ? "h-5 w-5" : "h-8 w-8"} shrink-0 text-muted-foreground`} />
+        <div className={compact ? "min-w-0 flex-1 text-left" : ""}>
+          <p className="text-sm font-medium">Drag and drop files here</p>
+          <p className="supporting-text text-muted-foreground">
+            PDF, Word, text, images, videos or SCORM .zip
+          </p>
+        </div>
         <Button
           type="button"
+          size={compact ? "sm" : "default"}
           variant="outline"
           disabled={busy}
           onClick={() => inputRef.current?.click()}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DRAFT_MATERIAL_PREFIX,
-  lessonMaterialFolders,
+  pairedLibraryMaterials,
   producedMaterialStatus,
 } from "./lesson-material-folders";
 import type { LibraryFile } from "./library-materials";
@@ -27,9 +27,9 @@ function file(
     ...extra,
   };
 }
-describe("lesson material folders", () => {
+describe("paired raw and produced material", () => {
   it("keeps unrelated same-name files separate instead of guessing lineage", () => {
-    const groups = lessonMaterialFolders(
+    const groups = pairedLibraryMaterials(
       [file("raw-a", "raw"), file("raw-b", "raw"), file("output", "produced")],
       [],
     );
@@ -48,16 +48,18 @@ describe("lesson material folders", () => {
       file("completed", "produced", { created_at: "2026-11-27T10:00:00Z" }),
     ];
     const before = JSON.stringify(files);
-    const groups = lessonMaterialFolders(files, [
+    const groups = pairedLibraryMaterials(files, [
       { raw_file_id: "raw-a", produced_file_id: "draft" },
       { raw_file_id: "raw-b", produced_file_id: "draft" },
       { raw_file_id: "raw-a", produced_file_id: "completed" },
     ]);
-    expect(groups).toHaveLength(1);
-    expect(groups[0]?.sources).toHaveLength(2);
+    expect(groups).toHaveLength(2);
+    expect(groups[0]?.sources).toHaveLength(1);
     expect(groups[0]?.outputs.map((output) => output.id)).toEqual(["completed", "draft"]);
     expect(groups[0]?.status).toBe("Completed");
     expect(groups[0]?.id).toBe("raw-a");
+    expect(groups[1]?.sources[0]?.id).toBe("raw-b");
+    expect(groups[1]?.outputs.map((output) => output.id)).toEqual(["draft"]);
     expect(JSON.stringify(files)).toBe(before);
   });
   it("shows a newer draft without hiding previously completed material", () => {
@@ -69,7 +71,7 @@ describe("lesson material folders", () => {
         created_at: "2026-11-27T11:00:00Z",
       }),
     ];
-    const group = lessonMaterialFolders(files, [
+    const group = pairedLibraryMaterials(files, [
       { raw_file_id: "raw", produced_file_id: "old-complete" },
       { raw_file_id: "raw", produced_file_id: "new-draft" },
     ])[0]!;
@@ -78,7 +80,7 @@ describe("lesson material folders", () => {
     expect(group.sources[0]?.id).toBe("raw");
   });
   it("ignores dangling links and duplicate links without losing visible files", () => {
-    const groups = lessonMaterialFolders(
+    const groups = pairedLibraryMaterials(
       [file("raw", "raw"), file("output", "produced")],
       [
         { raw_file_id: "missing", produced_file_id: "output" },
