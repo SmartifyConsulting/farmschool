@@ -1,6 +1,6 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Download,
@@ -22,7 +22,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { toast } from "sonner";
 import { BulkCourseUpload } from "@/components/BulkCourseUpload";
 import { useLibraryMaterials } from "@/hooks/useLibraryMaterials";
-import { MaterialProducer } from "@/components/MaterialProducer";
+import { createMaterialWorkspace } from "@/lib/studio-workspace";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { SlidePlayer } from "@/components/SlidePlayer";
 import { parseLessonSlides } from "@/lib/lesson-slides";
@@ -114,14 +114,35 @@ export function ContentLibraryContent({
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const [uploadSector, setUploadSector] = useState("Uncategorised");
   const [outputBriefs, setOutputBriefs] = useState<Record<string, string>>({});
-  const [producer, setProducer] = useState<{
-    sources: LibraryFile[];
-    initialBody?: string;
-    initialTitle?: string;
-    initialInstruction?: string;
-  } | null>(null);
+  const navigate = useNavigate();
+  const openingWorkspace = useRef(false);
+  const [launching, setLaunching] = useState(false);
+  const openWorkspace = async (
+    sources: LibraryFile[],
+    options: { initialBody?: string; initialTitle?: string; initialInstruction?: string },
+  ) => {
+    if (!user || openingWorkspace.current) return;
+    openingWorkspace.current = true;
+    setLaunching(true);
+    try {
+      const projectId = await createMaterialWorkspace(user.id, sources, {
+        scope,
+        folderId: currentFolderId,
+        ...options,
+      });
+      await navigate({
+        to: "/studio/materials/$projectId",
+        params: { projectId },
+        search: { step: "outline", topic: "" },
+      });
+    } catch (error) {
+      toast.error(friendlyError(error, "Could not open a saved training workspace."));
+    } finally {
+      openingWorkspace.current = false;
+      setLaunching(false);
+    }
+  };
   useEffect(() => {
-    setProducer(null);
     setSelected([]);
     setFolderPath([]);
     setSelectedSector(null);
@@ -138,8 +159,7 @@ export function ContentLibraryContent({
         .download(file.storage_path);
       if (error || !data) throw error ?? new Error("Could not open this output.");
       if (data.size > 16000000) throw new Error("This output is too large for the lesson editor.");
-      setProducer({
-        sources,
+      await openWorkspace(sources, {
         initialBody: await data.text(),
         initialTitle: file.file_name.replace(/\.(?:md|html)$/i, ""),
       });
@@ -169,8 +189,7 @@ export function ContentLibraryContent({
   const activeLesson = lessonFolders.find((folder) => folder.id === lessonId);
   const startTransformation = (sources: LibraryFile[]) => {
     if (!sources.length) return;
-    setProducer({
-      sources,
+    void openWorkspace(sources, {
       initialInstruction: instructionForTrainingBrief(
         sources.length === 1 ? outputBriefs[sources[0]!.id] : "",
       ),
@@ -370,6 +389,11 @@ export function ContentLibraryContent({
                 />
               </section>
             </>
+          )}
+          {launching && (
+            <p role="status" className="supporting-text">
+              Opening your saved Course Studio workspace…
+            </p>
           )}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <nav aria-label="Library folders" className="flex flex-wrap items-center gap-2 text-sm">
@@ -946,23 +970,6 @@ export function ContentLibraryContent({
               )}
               <LibraryCourses scope={scope} search={search} sector={selectedSector} />
             </>
-          )}
-          {producer && (
-            <MaterialProducer
-              sources={producer.sources}
-              initialBody={producer.initialBody}
-              initialTitle={producer.initialTitle}
-              initialInstruction={producer.initialInstruction}
-              folderId={currentFolderId}
-              onClose={() => setProducer(null)}
-              onSaved={() => {
-                const id = [...producer.sources].sort((a, b) => a.id.localeCompare(b.id))[0]?.id;
-                setLessonId(id ?? null);
-                setProducer(null);
-                setSelected([]);
-                refresh();
-              }}
-            />
           )}
           {slidePreview && (
             <Dialog

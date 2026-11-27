@@ -11,8 +11,10 @@ import {
   BarChart3,
   Award,
   Library,
+  PanelLeft,
 } from "lucide-react";
-import { type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
+import { isStudioEditorPath } from "@/lib/studio-workspace";
 import logo from "@/assets/plusticity-logo.png";
 import mobileLogo from "@/assets/plusticity-logo-navy.png";
 import { useBookmarks, useAuth } from "@/hooks/useLearning";
@@ -65,6 +67,9 @@ export function useIsAdmin() {
 
 export function Phone({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const studioMode = isStudioEditorPath(path);
+  const [studioNavExpanded, setStudioNavExpanded] = useState(false);
+  const compact = studioMode && !studioNavExpanded;
   const search = useRouterState({ select: (s) => s.location.searchStr });
   const branding = useLearningBrandForPath(
     path,
@@ -122,32 +127,44 @@ export function Phone({ children }: { children: ReactNode }) {
     );
   return (
     <LearningBrandContext.Provider value={brand}>
-      <div style={theme} className="min-h-screen bg-muted md:pl-[240px]">
-        <DesktopSidebar />
-        <div className="relative mx-auto min-h-screen w-full max-w-md overflow-hidden bg-card pb-48 md:max-w-none md:pb-14">
+      <div
+        style={theme}
+        className={`min-h-screen bg-muted ${compact ? "md:pl-16" : "md:pl-[240px]"}`}
+      >
+        <DesktopSidebar
+          compact={compact}
+          onToggle={studioMode ? () => setStudioNavExpanded((value) => !value) : undefined}
+        />
+        <div
+          className={
+            studioMode
+              ? "relative mx-auto h-dvh w-full overflow-hidden bg-card"
+              : "relative mx-auto min-h-screen w-full max-w-md overflow-hidden bg-card pb-48 md:max-w-none md:pb-14"
+          }
+        >
           {children}
           <div className="fixed inset-x-0 bottom-0 z-20 md:contents">
-          <nav className="mx-auto mb-3 flex w-[calc(100%-2rem)] max-w-[400px] items-center justify-around rounded-full bg-navy px-4 py-3 shadow-lg md:hidden">
-            {brand?.portalSlug ? (
-              <PortalNavigation slug={brand.portalSlug} mobile />
-            ) : (
-              tabs.map((t) => {
-                const active = path === t.to;
-                return (
-                  <Link
-                    key={t.to}
-                    to={t.to}
-                    aria-label={t.label}
-                    className={`grid h-10 w-10 place-items-center rounded-full transition ${active ? "bg-navy-foreground/20 text-navy-foreground" : "text-navy-foreground"}`}
-                  >
-                    <t.icon className="h-5 w-5" />
-                  </Link>
-                );
-              })
-            )}
-            <AvatarMenu mobile />
-          </nav>
-          <Footer />
+            <nav className="mx-auto mb-3 flex w-[calc(100%-2rem)] max-w-[400px] items-center justify-around rounded-full bg-navy px-4 py-3 shadow-lg md:hidden">
+              {brand?.portalSlug ? (
+                <PortalNavigation slug={brand.portalSlug} mobile />
+              ) : (
+                tabs.map((t) => {
+                  const active = path === t.to;
+                  return (
+                    <Link
+                      key={t.to}
+                      to={t.to}
+                      aria-label={t.label}
+                      className={`grid h-10 w-10 place-items-center rounded-full transition ${active ? "bg-navy-foreground/20 text-navy-foreground" : "text-navy-foreground"}`}
+                    >
+                      <t.icon className="h-5 w-5" />
+                    </Link>
+                  );
+                })
+              )}
+              <AvatarMenu mobile />
+            </nav>
+            {!studioMode && <Footer />}
           </div>
         </div>
       </div>
@@ -155,17 +172,34 @@ export function Phone({ children }: { children: ReactNode }) {
   );
 }
 
-function DesktopSidebar() {
+function DesktopSidebar({
+  compact = false,
+  onToggle,
+}: {
+  compact?: boolean;
+  onToggle?: (() => void) | undefined;
+}) {
   const path = useRouterState({ select: (state) => state.location.pathname });
   const brand = useLearningBrand();
   return (
     <aside
       style={brand ? { backgroundColor: accessibleBrandColor(brand.color).css } : undefined}
-      className="fixed inset-y-0 left-0 z-30 hidden w-[240px] flex-col overflow-y-auto bg-[#2765BC] px-4 py-6 text-white md:flex"
+      className={`fixed inset-y-0 left-0 z-30 hidden flex-col overflow-y-auto bg-[#2765BC] text-white md:flex ${compact ? "w-16 px-2 py-3" : "w-[240px] px-4 py-6"}`}
     >
+      {onToggle && (
+        <Button
+          size="icon"
+          variant="ghost"
+          aria-label={compact ? "Expand app navigation" : "Collapse app navigation"}
+          className="mb-3 self-center text-white hover:bg-white/15 hover:text-white"
+          onClick={onToggle}
+        >
+          <PanelLeft />
+        </Button>
+      )}
       {brand ? (
         <BrandHome brand={brand} className="flex shrink-0 justify-center px-1 pb-5">
-          <OrganizationLogo key={brand.id + brand.logo} brand={brand} />
+          <OrganizationLogo key={brand.id + brand.logo} brand={brand} mobile={compact} />
         </BrandHome>
       ) : (
         <Link
@@ -176,11 +210,11 @@ function DesktopSidebar() {
           <img
             src={logo}
             alt="Plusticity"
-            className="h-[173px] w-auto max-w-full rounded-lg object-contain"
+            className={`${compact ? "h-10" : "h-[173px]"} w-auto max-w-full rounded-lg object-contain`}
           />
         </Link>
       )}
-      {brand?.portalSlug && (
+      {brand?.portalSlug && !compact && (
         <BrandHome
           brand={brand}
           className="mb-3 break-words rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold"
@@ -190,7 +224,7 @@ function DesktopSidebar() {
       )}
       {brand?.portalSlug ? (
         <nav aria-label="Portal navigation" className="space-y-2">
-          <PortalNavigation slug={brand.portalSlug} />
+          <PortalNavigation slug={brand.portalSlug} mobile={compact} />
         </nav>
       ) : (
         <nav aria-label="Main navigation" className="space-y-2">
@@ -212,19 +246,21 @@ function DesktopSidebar() {
               <Link
                 key={item.to}
                 to={item.to}
+                aria-label={item.label}
+                title={compact ? item.label : undefined}
                 aria-current={active ? "page" : undefined}
-                className={`flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium transition-colors ${active ? "bg-white/15 font-semibold text-white" : "text-white/85 hover:bg-white/10 hover:text-white"}`}
+                className={`flex items-center rounded-xl py-3 text-[15px] font-medium transition-colors ${compact ? "justify-center px-2" : "gap-3 px-4"} ${active ? "bg-white/15 font-semibold text-white" : "text-white/85 hover:bg-white/10 hover:text-white"}`}
               >
                 <item.icon aria-hidden="true" className="h-5 w-5 shrink-0" />
-                {item.label}
+                <span className={compact ? "sr-only" : undefined}>{item.label}</span>
               </Link>
             );
           })}
         </nav>
       )}
       <div className="mt-auto space-y-4 pt-8">
-        <AvatarMenu />
-        <AccountLinks />
+        <AvatarMenu mobile={compact} />
+        {!compact && <AccountLinks />}
       </div>
     </aside>
   );

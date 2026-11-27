@@ -1,9 +1,19 @@
 import { rpcArgs } from "@/lib/rpc-args";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { StudioWorkspace, StudioSaveStatus } from "@/components/StudioWorkspace";
+import { StudioSourceReference } from "@/components/StudioSourceReference";
+import { useStudioAutosave } from "@/hooks/useStudioAutosave";
+import { reorderIndexedValues } from "@/lib/studio-workspace";
 import { friendlyError } from "@/lib/friendly-error";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, type SearchSchemaInput } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { generateCourseOutlineWithAI, generateMethodSuggestions, generateCourseTopic, TONE_OPTIONS, type PolishTone } from "@/lib/studio-ai.functions";
+import {
+  generateCourseOutlineWithAI,
+  generateMethodSuggestions,
+  generateCourseTopic,
+  TONE_OPTIONS,
+  type PolishTone,
+} from "@/lib/studio-ai.functions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -69,7 +79,12 @@ import {
   type CourseThemeName,
   type ColorOverrides,
 } from "@/lib/course-theme";
-import { COURSE_FONTS, COURSE_FONT_NAMES, DENSITY_SCALE, type FontSettings } from "@/lib/course-font";
+import {
+  COURSE_FONTS,
+  COURSE_FONT_NAMES,
+  DENSITY_SCALE,
+  type FontSettings,
+} from "@/lib/course-font";
 import type { LayoutSettings } from "@/lib/course-layout";
 import { FormattedLesson } from "@/components/FormattedLesson";
 import { SlideEditor } from "@/components/SlideEditor";
@@ -361,6 +376,13 @@ function SourceActivity({
 }
 
 export const Route = createFileRoute("/studio/$id")({
+  remountDeps: ({ params }) => params.id,
+  validateSearch: (input: Record<string, unknown> & SearchSchemaInput) => ({
+    view: typeof input["view"] === "string" ? input["view"].slice(0, 30) : "import",
+    lesson: typeof input["lesson"] === "string" ? input["lesson"].slice(0, 100) : "",
+    stage: typeof input["stage"] === "string" ? input["stage"].slice(0, 1) : "",
+    topic: typeof input["topic"] === "string" ? input["topic"].slice(0, 6) : "",
+  }),
   head: () => ({
     meta: [
       { title: "Edit course — Plusticity Studio" },
@@ -452,9 +474,12 @@ type Screen = string;
 
 function Editor() {
   const { id } = Route.useParams();
-  const [screen, setScreen] = useState<Screen>("import");
+  const workspaceSearch = Route.useSearch();
+  const [screen, setScreen] = useState<Screen>(workspaceSearch.view);
   const [designTab, setDesignTab] = useState<"auto" | "manual">("auto");
-  const [selectedLesson, setSelectedLesson] = useState<string | null>(null);
+  const [selectedLesson, setSelectedLesson] = useState<string | null>(
+    workspaceSearch.lesson || null,
+  );
   const [changeNote, setChangeNote] = useState("");
   const [reviewingLessons, setReviewingLessons] = useState(false);
   const { user, ready: authReady } = useAuth();
@@ -470,15 +495,39 @@ function Editor() {
       return data as unknown as { status: string } | null;
     },
   });
-  const [factoryStep, setFactoryStep] = useState(0);
+  const [factoryStep, setFactoryStep] = useState(
+    Math.min(2, Math.max(0, Number(workspaceSearch.stage) || 0)),
+  );
   const [outlineOpen, setOutlineOpen] = useState(true);
   const [collapsedOutlineModules, setCollapsedOutlineModules] = useState<Set<string>>(new Set());
-  const [outlineFocus, setOutlineFocus] = useState<{ index: number; token: number } | null>(null);
+  const [outlineFocus, setOutlineFocus] = useState<{ index: number; token: number } | null>({
+    index: Math.max(0, Number(workspaceSearch.topic) || 0),
+    token: 0,
+  });
+  const [workspaceTopicSearch, setWorkspaceTopicSearch] = useState("");
+  const [bulkOutline, setBulkOutline] = useState<number[]>([]);
+  const workspaceRestored = useRef(false);
+  const [legacyDesignReady, setLegacyDesignReady] = useState(false);
+  const [formReady, setFormReady] = useState(false);
+  const formInitialized = useRef(false);
   const [showExtractedText, setShowExtractedText] = useState(false);
   const [firstContentPage, setFirstContentPage] = useState(1);
   const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
   const qc = useQueryClient();
   const nav = useNavigate();
+  useEffect(() => {
+    void nav({
+      to: "/studio/$id",
+      params: { id },
+      search: {
+        view: screen,
+        lesson: selectedLesson ?? "",
+        topic: String(outlineFocus?.index ?? 0),
+        stage: String(factoryStep),
+      },
+      replace: true,
+    });
+  }, [screen, selectedLesson, outlineFocus?.index, factoryStep, id, nav]);
   const confirm = useConfirm();
   const { data: course, isLoading } = useQuery({
     queryKey: ["studio-course", id],
@@ -516,7 +565,9 @@ function Editor() {
   const [readingFile, setReadingFile] = useState(false);
   const [localOcr, setLocalOcr] = useState(false);
   const [extractionProgress, setExtractionProgress] = useState("");
-  const [recognizedPages, setRecognizedPages] = useState<{ page: number; confidence: number }[]>([]);
+  const [recognizedPages, setRecognizedPages] = useState<{ page: number; confidence: number }[]>(
+    [],
+  );
   const [lowTextPages, setLowTextPages] = useState<number[]>([]);
   const extractionController = useRef<AbortController | null>(null);
   useEffect(() => () => extractionController.current?.abort(), []);
@@ -524,7 +575,13 @@ function Editor() {
   type LessonPreview = {
     lessonTitle: string;
     lessonSummary: string;
-    questions: { question: string; options: string[]; correctIndex: number; sourceQuote: string; hint: string | null }[];
+    questions: {
+      question: string;
+      options: string[];
+      correctIndex: number;
+      sourceQuote: string;
+      hint: string | null;
+    }[];
     droppedUnsupportedQuestions: number;
   };
   const [aiDraft, setAiDraft] = useState<LessonPreview | null>(null);
@@ -573,7 +630,13 @@ function Editor() {
     videoQueries?: string[];
     steps?: string[];
     scenarios?: string[];
-    quiz?: { question: string; options: string[]; correctIndex: number; sourceQuote: string; hint?: string | null };
+    quiz?: {
+      question: string;
+      options: string[];
+      correctIndex: number;
+      sourceQuote: string;
+      hint?: string | null;
+    };
     activities?: string;
     facts?: { claim: string; evidence: string }[];
   };
@@ -594,7 +657,12 @@ function Editor() {
     setSuggestLoading(index);
     try {
       const result = await runGenerateMethodSuggestions({
-        data: { title: lesson.title, sourceText: lesson.body.slice(0, 12000), methods, ...(webSearch ? { webSearch } : {}) },
+        data: {
+          title: lesson.title,
+          sourceText: lesson.body.slice(0, 12000),
+          methods,
+          ...(webSearch ? { webSearch } : {}),
+        },
       });
       const suggestions: MethodSuggestions = {
         ...(result.illustrated != null ? { illustrated: result.illustrated } : {}),
@@ -763,6 +831,7 @@ function Editor() {
         setSourceText(row.source_text);
         setSourcePages(Array.isArray(row.source_pages) ? row.source_pages : null);
         if (row.draft?.lessons && Array.isArray(row.draft.lessons)) {
+          setLegacyDesignReady(false);
           setDraft(row.draft);
           const firstPage = row.draft.lessons.flatMap((lesson) =>
             lesson.sourceRefs.map((ref) => ref.page),
@@ -770,7 +839,7 @@ function Editor() {
           if (firstPage.length) setFirstContentPage(Math.min(...firstPage));
           // A manual uploaded at course creation is already analyzed —
           // land on Review & approve instead of an empty Upload step.
-          setFactoryStep((current) => (current === 0 ? 1 : current));
+          if (!workspaceSearch.stage) setFactoryStep((current) => (current === 0 ? 1 : current));
         }
       }
       setCloudDraftEnabled(true);
@@ -782,44 +851,7 @@ function Editor() {
       cancelled = true;
     };
   }, [id]);
-  useEffect(() => {
-    if (!cloudDraftReady || !cloudDraftEnabled || !restoredDesign || course?.published) return;
-    setCloudSaveStatus("pending");
-    let cancelled = false;
-    const timer = setTimeout(async () => {
-      if (cancelled) return;
-      setCloudSaveStatus("saving");
-      const { error } = await sourceDraftTable().upsert(
-        {
-          course_id: id,
-          source_name: sourceName,
-          source_text: sourceText,
-          source_pages: sourcePages,
-          draft,
-        } as never,
-        { onConflict: "course_id" },
-      );
-      if (cancelled) return;
-      if (error) {
-        setCloudSaveStatus("error");
-        toast.error(friendlyError(error, "Cloud draft autosave failed. Please try again."));
-      } else setCloudSaveStatus("saved");
-    }, 1500);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [
-    id,
-    cloudDraftReady,
-    cloudDraftEnabled,
-    restoredDesign,
-    sourceName,
-    sourceText,
-    sourcePages,
-    draft,
-    course?.published,
-  ]);
+  // Legacy source drafts are read once; all working saves now use revision checks.
 
   const lessonKey = (
     index: number,
@@ -853,12 +885,17 @@ function Editor() {
   });
 
   useEffect(() => {
-    if (!draft?.lessons.length) return;
+    if (workspaceRestored.current) return;
+    if (!draft?.lessons.length) {
+      setLegacyDesignReady(true);
+      return;
+    }
     let cancelled = false;
     const restore = async () => {
       const { data, error } = await designTable().select("*").eq("course_id", id);
-      if (cancelled) return;
+      if (cancelled || workspaceRestored.current) return;
       if (error) {
+        setLegacyDesignReady(true);
         toast.error(
           friendlyError(error, "Could not load saved learning designs. Please try again."),
         );
@@ -883,6 +920,7 @@ function Editor() {
       setDesignChoices(choices);
       setDesignApproved(approved);
       setDesignRationale(rationale);
+      setLegacyDesignReady(true);
     };
     void restore();
     return () => {
@@ -1117,7 +1155,11 @@ function Editor() {
     setTopicLoading(true);
     try {
       const r = await runGenerateTopic({
-        data: { title: form.title, description: form.description, industry: courseIndustry(form.category) },
+        data: {
+          title: form.title,
+          description: form.description,
+          industry: courseIndustry(form.category),
+        },
       });
       setNewTopic(r.topic);
       setForm((f) => ({ ...f, category: courseIndustry(f.category) + " / " + r.topic }));
@@ -1128,7 +1170,8 @@ function Editor() {
     }
   };
   useEffect(() => {
-    if (course) {
+    if (course && !formInitialized.current) {
+      formInitialized.current = true;
       // Older generated schemas omit this optional course-design metadata.
       const designCourse = course as typeof course & {
         illustration_guide?: Partial<IllustrationGuide> | null;
@@ -1166,6 +1209,7 @@ function Editor() {
         font_settings: designCourse.font_settings ?? {},
         layout_settings: designCourse.layout_settings ?? {},
       });
+      setFormReady(true);
     }
   }, [course]);
   const { data: prereqOptions = [] } = useQuery({
@@ -1202,9 +1246,13 @@ function Editor() {
       const pages = await extractDocument(file, {
         ocr: localOcr,
         signal: controller.signal,
-        onProgress: (page, total, recognizing) => setExtractionProgress(`${recognizing ? "Recognizing scanned" : "Reading"} page ${page} of ${total}…`),
-        onRecognized: (page, confidence) => setRecognizedPages(previous => [...previous, { page, confidence }]),
-        onLowTextPage: page => setLowTextPages(previous => [...previous, page]),
+        onProgress: (page, total, recognizing) =>
+          setExtractionProgress(
+            `${recognizing ? "Recognizing scanned" : "Reading"} page ${page} of ${total}…`,
+          ),
+        onRecognized: (page, confidence) =>
+          setRecognizedPages((previous) => [...previous, { page, confidence }]),
+        onLowTextPage: (page) => setLowTextPages((previous) => [...previous, page]),
       });
       const text = pages.map((page) => page.text).join("\n\n");
       if (!text.trim()) throw new Error("This file has no readable text.");
@@ -1257,9 +1305,17 @@ function Editor() {
   const runGenerateOutlineWithAI = useServerFn(generateCourseOutlineWithAI);
   const [aiOutlineLoading, setAiOutlineLoading] = useState(false);
   const generateOutlineWithAI = async () => {
-    const pages = sourcePages ?? (sourceText.trim()
-      ? [{ sourceId: (sourceName || "Pasted source").trim() || "Pasted source", page: 1, text: sourceText }]
-      : null);
+    const pages =
+      sourcePages ??
+      (sourceText.trim()
+        ? [
+            {
+              sourceId: (sourceName || "Pasted source").trim() || "Pasted source",
+              page: 1,
+              text: sourceText,
+            },
+          ]
+        : null);
     if (!pages || aiOutlineLoading) {
       if (!pages) toast.error("Upload or paste a manual first.");
       return;
@@ -1273,16 +1329,30 @@ function Editor() {
         mod.lessons.map((lesson) => ({
           title: lesson.title.slice(0, 120),
           body: lesson.body,
-          sourceRefs: (lesson.sourcePages.length ? lesson.sourcePages : [pages[0]!.page]).map((page) => ({
-            sourceId: pages.find((p) => p.page === page)?.sourceId ?? pages[0]!.sourceId,
-            page,
-          })),
+          sourceRefs: (lesson.sourcePages.length ? lesson.sourcePages : [pages[0]!.page]).map(
+            (page) => ({
+              sourceId: pages.find((p) => p.page === page)?.sourceId ?? pages[0]!.sourceId,
+              page,
+            }),
+          ),
           reviewRequired: true as const,
           module: mod.title.slice(0, 120),
         })),
       );
-      if (!lessons.length) { toast.error("The AI assistant didn't return any lessons."); return; }
-      setDraft({ title: form.title || course?.title || "Course", lessons, status: "draft", warnings: result.truncated ? ["Part of the manual could not be processed (it exceeded the AI pass limit, or one pass failed) — check the outline covers everything, and rebuild if a section is missing."] : [] });
+      if (!lessons.length) {
+        toast.error("The AI assistant didn't return any lessons.");
+        return;
+      }
+      setDraft({
+        title: form.title || course?.title || "Course",
+        lessons,
+        status: "draft",
+        warnings: result.truncated
+          ? [
+              "Part of the manual could not be processed (it exceeded the AI pass limit, or one pass failed) — check the outline covers everything, and rebuild if a section is missing.",
+            ]
+          : [],
+      });
       setDesignChoices({});
       setDesignApproved({});
       setDesignRationale({});
@@ -1296,16 +1366,36 @@ function Editor() {
   };
   const reviseOutline = (nextLessons: DraftCourse["lessons"]) => {
     if (!draft || course?.published) return;
+    const remap = <T,>(values: Record<number, T>, unchangedOnly = false) =>
+      Object.fromEntries(
+        nextLessons.flatMap((lesson, index) => {
+          const unchanged = draft.lessons.indexOf(lesson);
+          const previous =
+            unchanged >= 0 ? unchanged : nextLessons.length === draft.lessons.length ? index : -1;
+          return previous >= 0 &&
+            (!unchangedOnly || unchanged >= 0) &&
+            Object.hasOwn(values, previous)
+            ? [[index, values[previous]!]]
+            : [];
+        }),
+      );
     setDraft({ ...draft, lessons: nextLessons });
-    setDesignChoices({});
-    setDesignApproved({});
-    setDesignRationale({});
+    setDesignChoices(remap(designChoices));
+    setDesignApproved(remap(designApproved, true));
+    setDesignRationale(remap(designRationale));
+    setLessonPreviews(remap(lessonPreviews));
+    setMethodSuggestions(remap(methodSuggestions));
     setAiDraft(null);
     setBatchDrafts([]);
   };
   /** Inserts one reviewed outline lesson into the course right now, as a real slide lesson — the
    * per-slide text is whatever the trainer previewed and adjusted, not re-generated here. */
-  const commitLessonToCourse = async (lessonIndex: number, lesson: DraftLesson, slideTexts: string[], preview: LessonPagePreview) => {
+  const commitLessonToCourse = async (
+    lessonIndex: number,
+    lesson: DraftLesson,
+    slideTexts: string[],
+    preview: LessonPagePreview,
+  ) => {
     if (!draft || course?.published) return;
     try {
       let moduleId: string | null = null;
@@ -1326,17 +1416,24 @@ function Editor() {
         }
       }
       /** Renders the media a trainer attached to one slide's formats (illustrated/visual image, video with pause points, fact cards) as the `:::kind ... :::` fenced blocks SlidePlayer understands — the only point where this preview-stage media reaches a published lesson. */
-      const mediaBlockForRef = (ref: { source: "delivery" | "method"; id: string }): string | null => {
+      const mediaBlockForRef = (ref: {
+        source: "delivery" | "method";
+        id: string;
+      }): string | null => {
         if (ref.source !== "method") return null;
-        if ((ref.id === "illustrated" || ref.id === "visual") ) {
+        if (ref.id === "illustrated" || ref.id === "visual") {
           const url = ref.id === "illustrated" ? lesson.illustratedMediaUrl : lesson.visualMediaUrl;
-          const kind = ref.id === "illustrated" ? lesson.illustratedMediaKind : lesson.visualMediaKind;
+          const kind =
+            ref.id === "illustrated" ? lesson.illustratedMediaKind : lesson.visualMediaKind;
           if (!url) return null;
           return kind === "video" ? `:::video\n${url}\n:::` : `:::image\n${url}\n:::`;
         }
         if (ref.id === "video" && lesson.videoMediaUrl && lesson.videoMediaKind) {
           const points = (lesson.videoInteractions ?? [])
-            .map((p) => `${Math.floor(p.atSeconds / 60)}:${String(Math.floor(p.atSeconds % 60)).padStart(2, "0")} ${p.note}`)
+            .map(
+              (p) =>
+                `${Math.floor(p.atSeconds / 60)}:${String(Math.floor(p.atSeconds % 60)).padStart(2, "0")} ${p.note}`,
+            )
             .join("\n");
           return `:::video\n${lesson.videoMediaUrl}${points ? `\n${points}` : ""}\n:::`;
         }
@@ -1352,7 +1449,11 @@ function Editor() {
             .join("\n");
           return `:::hotspot\n${lesson.hotspotImage}\n${points}\n:::`;
         }
-        if (ref.id === "columns" && lesson.columns && lesson.columns.filter((c) => c.trim()).length >= 2) {
+        if (
+          ref.id === "columns" &&
+          lesson.columns &&
+          lesson.columns.filter((c) => c.trim()).length >= 2
+        ) {
           return `:::columns\n${lesson.columns.filter((c) => c.trim()).join("\n---col---\n")}\n:::`;
         }
         return null;
@@ -1363,19 +1464,30 @@ function Editor() {
        * order, so earlier paragraphs cite earlier pages and later ones cite later pages. This is a real
        * approximation, not an AI-verified per-sentence citation — close, not exact. */
       const sortedPages = [...new Set(lesson.sourceRefs.map((r) => r.page))].sort((a, b) => a - b);
-      const slideParagraphs = slideTexts.map((text) => text.split(/\n{2,}/).filter((p) => p.trim()));
+      const slideParagraphs = slideTexts.map((text) =>
+        text.split(/\n{2,}/).filter((p) => p.trim()),
+      );
       const totalParagraphs = slideParagraphs.reduce((n, ps) => n + ps.length, 0);
       let paraIndex = 0;
       const citeNextParagraph = (paragraph: string): string => {
         if (!sortedPages.length || !totalParagraphs) return paragraph;
-        const page = sortedPages[Math.min(sortedPages.length - 1, Math.floor((paraIndex / totalParagraphs) * sortedPages.length))];
+        const page =
+          sortedPages[
+            Math.min(
+              sortedPages.length - 1,
+              Math.floor((paraIndex / totalParagraphs) * sortedPages.length),
+            )
+          ];
         paraIndex++;
         return `${paragraph}\n\nSource: page ${page}`;
       };
       const slidesBody = slideParagraphs
         .map((paragraphs, i) => {
           const refs = lesson.slideKinds?.[i] ?? [];
-          const media = refs.map(mediaBlockForRef).filter((b): b is string => !!b).join("\n\n");
+          const media = refs
+            .map(mediaBlockForRef)
+            .filter((b): b is string => !!b)
+            .join("\n\n");
           const citedText = paragraphs.map(citeNextParagraph).join("\n\n");
           return `## Slide ${i + 1}\n\n${citedText}${media ? `\n\n${media}` : ""}`;
         })
@@ -1383,7 +1495,12 @@ function Editor() {
       const knowledgeCheck = preview.questions.length
         ? "\n\n## Knowledge check\n\n:::quizcheck\n" +
           preview.questions
-            .map((q) => `### ${q.question}\n` + q.options.map((o, j) => `${j === q.correctIndex ? "A*" : "A"}: ${o}`).join("\n") + (q.hint ? `\nH: ${q.hint}` : ""))
+            .map(
+              (q) =>
+                `### ${q.question}\n` +
+                q.options.map((o, j) => `${j === q.correctIndex ? "A*" : "A"}: ${o}`).join("\n") +
+                (q.hint ? `\nH: ${q.hint}` : ""),
+            )
             .join("\n") +
           "\n:::"
         : "";
@@ -1394,7 +1511,9 @@ function Editor() {
         lesson.sourceRefs.map((ref) => ref.sourceId + ", page " + ref.page).join("; ") +
         "\nReview required before publishing.";
       if (body.length > 20000) {
-        toast.error("This lesson exceeds the 20,000-character limit. Split it into smaller lessons first.");
+        toast.error(
+          "This lesson exceeds the 20,000-character limit. Split it into smaller lessons first.",
+        );
         return;
       }
       const start = lessons?.length ?? 0;
@@ -1512,7 +1631,10 @@ function Editor() {
     if (!draft?.lessons.length || batchRunning || aiLoading || course?.published) return;
     const candidates = draft.lessons
       .map((lesson, index) => ({ lesson, index }))
-      .filter(({ lesson }) => lesson.body.length >= 100)
+      .filter(
+        ({ lesson, index }) =>
+          lesson.body.length >= 100 && (!bulkOutline.length || bulkOutline.includes(index)),
+      )
       .slice(0, 5);
     if (!candidates.length) {
       toast.error("No lessons with enough source text (100 characters).");
@@ -1802,16 +1924,25 @@ function Editor() {
   const modules = groupLessonsIntoModules(lessons ?? [], studioModules ?? []);
   const draftGroups = draft ? groupDraftLessons(draft.lessons) : [];
   /** Groups the AI-detected draft outline by `lesson.module`, in reading order, for the sidebar preview. */
-  const draftOutline: { title: string; items: { lesson: DraftCourse["lessons"][number]; index: number }[] }[] = [];
+  const draftOutline: {
+    title: string;
+    items: { lesson: DraftCourse["lessons"][number]; index: number }[];
+  }[] = [];
   if (draft) {
     for (const [index, lesson] of draft.lessons.entries()) {
       const title = lesson.module ?? "Introduction";
       const last = draftOutline.at(-1);
-      const group = last && last.title === title ? last : (() => {
-        const next = { title, items: [] as { lesson: DraftCourse["lessons"][number]; index: number }[] };
-        draftOutline.push(next);
-        return next;
-      })();
+      const group =
+        last && last.title === title
+          ? last
+          : (() => {
+              const next = {
+                title,
+                items: [] as { lesson: DraftCourse["lessons"][number]; index: number }[],
+              };
+              draftOutline.push(next);
+              return next;
+            })();
       group.items.push({ lesson, index });
     }
   }
@@ -1971,6 +2102,108 @@ function Editor() {
     nav({ to: "/studio" });
   };
 
+  const workspaceEnabled =
+    !!user &&
+    course?.author_id === user.id &&
+    !course.published &&
+    formReady &&
+    cloudDraftReady &&
+    restoredDesign &&
+    legacyDesignReady;
+  const workspaceSave = useStudioAutosave({
+    id,
+    userId: user?.id,
+    courseId: id,
+    enabled: workspaceEnabled,
+    state: {
+      kind: "course",
+      title: form.title,
+      form,
+      draft,
+      sourceText,
+      sourceName,
+      sourcePages,
+      designChoices,
+      designApproved,
+      designRationale,
+      lessonPreviews,
+      methodSuggestions,
+      batchDrafts,
+      aiDraft,
+      firstContentPage,
+      contentTone,
+    },
+    restore: (value) => {
+      workspaceRestored.current = true;
+      if (value["kind"] !== "course") return;
+      if (value["form"] && typeof value["form"] === "object") setForm(value["form"] as typeof form);
+      if (
+        value["draft"] === null ||
+        (value["draft"] &&
+          typeof value["draft"] === "object" &&
+          Array.isArray((value["draft"] as DraftCourse).lessons))
+      )
+        setDraft(value["draft"] as DraftCourse | null);
+      if (typeof value["sourceText"] === "string") setSourceText(value["sourceText"]);
+      if (typeof value["sourceName"] === "string") setSourceName(value["sourceName"]);
+      if (Array.isArray(value["sourcePages"])) setSourcePages(value["sourcePages"] as SourcePage[]);
+      if (value["designChoices"]) setDesignChoices(value["designChoices"] as typeof designChoices);
+      if (value["designApproved"])
+        setDesignApproved(value["designApproved"] as typeof designApproved);
+      if (value["designRationale"])
+        setDesignRationale(value["designRationale"] as typeof designRationale);
+      if (value["lessonPreviews"])
+        setLessonPreviews(value["lessonPreviews"] as typeof lessonPreviews);
+      if (value["methodSuggestions"])
+        setMethodSuggestions(value["methodSuggestions"] as typeof methodSuggestions);
+      if (Array.isArray(value["batchDrafts"]))
+        setBatchDrafts(value["batchDrafts"] as typeof batchDrafts);
+      if (value["aiDraft"] === null || (value["aiDraft"] && typeof value["aiDraft"] === "object"))
+        setAiDraft(value["aiDraft"] as typeof aiDraft);
+      if (typeof value["firstContentPage"] === "number")
+        setFirstContentPage(value["firstContentPage"]);
+      if (typeof value["contentTone"] === "string")
+        setContentTone(value["contentTone"] as PolishTone);
+      if (value["draft"] && !workspaceSearch.stage && workspaceSearch.view === "import")
+        setFactoryStep(1);
+    },
+  });
+  useEffect(() => {
+    if (workspaceEnabled && workspaceSave.ready) workspaceRestored.current = true;
+  }, [workspaceEnabled, workspaceSave.ready]);
+  const workspaceLocked =
+    !course?.published &&
+    (!workspaceEnabled ||
+      !workspaceSave.ready ||
+      !!workspaceSave.loadError ||
+      workspaceSave.status === "conflict");
+  const moveOutline = (from: number, to: number) => {
+    if (
+      !draft ||
+      course?.published ||
+      workspaceLocked ||
+      from === to ||
+      from < 0 ||
+      to < 0 ||
+      from >= draft.lessons.length ||
+      to >= draft.lessons.length
+    )
+      return;
+    const next = [...draft.lessons];
+    const [moved] = next.splice(from, 1);
+    if (!moved) return;
+    next.splice(to, 0, moved);
+    setDraft({ ...draft, lessons: next });
+    setDesignChoices(reorderIndexedValues(designChoices, from, to, next.length));
+    setDesignRationale(reorderIndexedValues(designRationale, from, to, next.length));
+    setLessonPreviews(reorderIndexedValues(lessonPreviews, from, to, next.length));
+    setMethodSuggestions(reorderIndexedValues(methodSuggestions, from, to, next.length));
+    // Approval keys contain the position. Reordered lessons must be reviewed again.
+    setDesignApproved({});
+    setBulkOutline([]);
+    setOutlineFocus({ index: to, token: Date.now() });
+  };
+
   if (isLoading || !authReady)
     return (
       <Phone>
@@ -2007,450 +2240,320 @@ function Editor() {
     );
   return (
     <Phone>
-      <Header />
-      <Sheet wide>
-        <div className="mb-5 space-y-3">
-          <CanvasHeading eyebrow={course.published ? "Published" : "Draft"} title="Course editor" />
-          <div className="flex flex-wrap gap-2">
-            <Link
-              to={(course as unknown as { library_scope?: string }).library_scope === "admin" ? "/admin/external-content" : "/studio"}
-              search={(course as unknown as { library_scope?: string }).library_scope === "admin" ? { tab: "drafts" } : {}}
-              className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs"
+      <StudioWorkspace
+        title={form.title}
+        onTitleChange={(title) => setForm((f) => ({ ...f, title }))}
+        locked={course.published || workspaceLocked}
+        breadcrumb={<Link to="/studio">Course Studio / {course.title}</Link>}
+        saveStatus={
+          course.published ? (
+            <span className="supporting-text">Published · read-only</span>
+          ) : (
+            <StudioSaveStatus autosave={workspaceSave} />
+          )
+        }
+        steps={[
+          { id: "setup", label: "Setup" },
+          { id: "outline", label: "Outline" },
+          { id: "editing", label: "Editing" },
+          { id: "generate", label: "Generate & import" },
+          { id: "publish", label: "Review & publish" },
+        ]}
+        step={
+          screen === "publish"
+            ? "publish"
+            : screen === "lesson"
+              ? "editing"
+              : screen === "import"
+                ? factoryStep === 0
+                  ? "setup"
+                  : factoryStep === 1
+                    ? "outline"
+                    : "generate"
+                : "editing"
+        }
+        onStepChange={(step) => {
+          if (step === "publish") setScreen("publish");
+          else if (step === "editing" && lessons?.length) {
+            setSelectedLesson(selectedLesson ?? lessons[0]!.id);
+            setScreen("lesson");
+          } else {
+            setScreen("import");
+            setDesignTab("auto");
+            setFactoryStep(step === "setup" ? 0 : step === "generate" ? 2 : 1);
+          }
+        }}
+        actions={
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={workspaceLocked}
+              onClick={() => {
+                setScreen("import");
+                setDesignTab("auto");
+                setFactoryStep(2);
+              }}
             >
-              <ArrowLeft className="h-3 w-3" />
-              {(course as unknown as { library_scope?: string }).library_scope === "admin" ? "Admin Library" : "All my courses"}
-            </Link>
-            {course.published && (
-              <Link
-                to="/learning-activities/$courseId"
-                params={{ courseId: id }}
-                className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs"
-              >
-                Learner activities
-              </Link>
-            )}
-            <Link
-              to="/class/$id"
-              params={{ id }}
-              className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs"
-              title="Opens exactly what a learner sees — draft lessons included, since you're the author"
-            >
-              <Eye className="h-3 w-3" />
-              Switch to learner view
-            </Link>
-          </div>
-        </div>
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
-          <div className="min-w-0">
-            <h2 className="break-words text-xl font-semibold">{course.title}</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              v1.{course.version_number - 1} ·{" "}
-              {course.published
-                ? "Published"
-                : course.revision_of
-                  ? "Draft revision · published course unchanged"
-                  : "Draft"}
-            </p>
-          </div>
-          <StudioCourseActions course={course} onChanged={refresh} hidePrivacy />
-        </div>
-        <div className="grid min-w-0 gap-6 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
-          <aside className="min-w-0 border-b border-border pb-4 lg:border-b-0 lg:border-r lg:pr-5">
-            <nav
-              aria-label="Course workspace"
-              className="grid grid-cols-2 gap-1.5 lg:grid-cols-1 lg:gap-1"
-            >
-              {[
-                { key: "overview", label: "Course details" },
-                { key: "import", label: "Course Design" },
-                { key: "content", label: "Content Library" },
-                { key: "performance", label: "Performance" },
-                { key: "history", label: "Version history" },
-                { key: "publish", label: "Review & publish" },
-              ].map((item) =>
-                item.key === "import" && draft && draft.lessons.length ? (
-                  <div key={item.key} className="contents">
-                    <button
-                      type="button"
-                      className={`flex h-auto min-h-9 w-full items-center justify-start gap-1.5 whitespace-normal rounded-md px-4 py-2 text-left text-sm font-medium ${screen === item.key ? "bg-secondary text-secondary-foreground" : "hover:bg-accent hover:text-accent-foreground"}`}
-                      onClick={() => {
-                        setScreen(item.key);
-                        setOutlineOpen((v) => !v);
-                      }}
+              Generate
+            </Button>
+            <Button size="sm" disabled={workspaceLocked} onClick={() => setScreen("publish")}>
+              Review & publish
+            </Button>
+          </>
+        }
+        settings={
+          <>
+            <fieldset disabled={course.published || workspaceLocked} className="min-w-0 space-y-6">
+              <section className="space-y-4 border-b border-border pb-6">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="font-semibold">Course details</h2>
+                  <label className="flex items-center gap-2 text-xs font-medium">
+                    Content style
+                    <select
+                      aria-label="Content style"
+                      value={contentTone}
+                      onChange={(e) => setContentTone(e.target.value as PolishTone)}
+                      className="rounded-md border border-input bg-background px-2 py-1.5 text-xs"
                     >
-                      <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${outlineOpen ? "" : "-rotate-90"}`} />
-                      {item.label}
-                    </button>
-                    {outlineOpen && (
-                      <div className="col-span-2 ml-2 space-y-2 border-l border-border pl-2 lg:col-span-1">
-                        <div className="mt-2 flex items-center justify-between">
-                          <h4 className="text-xs font-semibold text-muted-foreground">Course outline</h4>
-                          <span className="text-xs text-muted-foreground">
-                            {Object.values(designApproved).filter(Boolean).length}/{draft.lessons.length} approved
-                          </span>
-                        </div>
-                        <div className="max-h-72 space-y-1 overflow-y-auto lg:max-h-[65vh]">
-                          {draftOutline.map((group) => {
-                            const goToLesson = (index: number) => {
-                              setScreen("import");
-                              setFactoryStep(1);
-                              setOutlineFocus({ index, token: Date.now() });
-                            };
-                            const lessonList = (
-                              <div className="space-y-0.5 border-l border-border pl-2">
-                                {group.items.map(({ lesson, index }) => (
-                                  <button
-                                    type="button"
-                                    key={index}
-                                    onClick={() => goToLesson(index)}
-                                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent hover:text-accent-foreground"
-                                  >
-                                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-secondary text-[10px] font-semibold text-secondary-foreground">
-                                      {index + 1}
-                                    </span>
-                                    <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
-                                    {designApproved[index] && (
-                                      <Check className="h-3 w-3 shrink-0 text-primary" />
-                                    )}
-                                  </button>
-                                ))}
-                              </div>
-                            );
-                            if (group.title === "Introduction") return <div key={group.title} className="space-y-0.5">{lessonList}</div>;
-                            const collapsed = collapsedOutlineModules.has(group.title);
-                            return (
-                              <div key={group.title} className="space-y-0.5">
-                                <div className="flex w-full items-center gap-1.5 px-1 py-1 text-left text-xs font-bold text-primary">
-                                  <button
-                                    type="button"
-                                    aria-label={collapsed ? `Expand ${group.title}` : `Collapse ${group.title}`}
-                                    className="shrink-0"
-                                    onClick={() =>
-                                      setCollapsedOutlineModules((prev) => {
-                                        const next = new Set(prev);
-                                        if (next.has(group.title)) next.delete(group.title);
-                                        else next.add(group.title);
-                                        return next;
-                                      })
-                                    }
-                                  >
-                                    <ChevronDown className={`h-3 w-3 transition-transform ${collapsed ? "-rotate-90" : ""}`} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="flex min-w-0 flex-1 items-center gap-1.5 text-left hover:underline"
-                                    onClick={() => goToLesson(group.items[0]!.index)}
-                                  >
-                                    <FolderOpen className="h-3.5 w-3.5 shrink-0" />
-                                    <span className="min-w-0 truncate">{group.title}</span>
-                                  </button>
-                                </div>
-                                {!collapsed && lessonList}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <Button
-                    key={item.key}
-                    variant={screen === item.key ? "secondary" : "ghost"}
-                    className="h-auto min-h-9 justify-start whitespace-normal text-left"
-                    onClick={() => setScreen(item.key)}
-                  >
-                    {item.label}
-                  </Button>
-                ),
-              )}
-            </nav>
-          </aside>
-          <main className="min-w-0 space-y-6">
-            {course.published && (
-              <div className="flex flex-wrap items-center justify-between gap-3 border-l-4 border-primary bg-muted p-4">
-                <p className="text-sm">
-                  This published version is read-only. Create a draft revision to make changes.
-                </p>
-                <StudioCourseActions course={course} onChanged={refresh} revisionOnly />
-              </div>
-            )}
-            {screen === "history" && (
-              <StudioVersions
-                courseId={course.revision_of ?? id}
-                onOpened={(newId) => nav({ to: "/studio/$id", params: { id: newId } })}
-              />
-            )}
-            {screen === "lesson" &&
-              (() => {
-                const lesson = lessons?.find((l) => l.id === selectedLesson);
-                if (!lesson)
-                  return (
-                    <p className="py-10 text-muted-foreground">
-                      Select a lesson from the curriculum, or add a new one.
-                    </p>
-                  );
-                const index = lessons?.findIndex((l) => l.id === lesson.id) ?? 0;
-                return (
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h2 className="font-semibold">Lesson editor</h2>
-                      <select
-                        aria-label="Lesson module"
-                        value={lesson.module_id ?? ""}
-                        disabled={course.published}
-                        onChange={(e) => assignLessonToModule(lesson.id, e.target.value || null)}
-                        className="max-w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      >
-                        <option value="">Unassigned lessons</option>
-                        {studioModules?.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.title}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={index === 0 || course.published}
-                        onClick={() => reorderLesson(lesson.id, -1)}
-                      >
-                        <ArrowUp className="h-4 w-4" />
-                        Move up
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={index === (lessons?.length ?? 0) - 1 || course.published}
-                        onClick={() => reorderLesson(lesson.id, 1)}
-                      >
-                        <ArrowDown className="h-4 w-4" />
-                        Move down
-                      </Button>
-                    </div>
-                    <LessonEditor
-                      key={lesson.id}
-                      lesson={lesson}
-                      index={index}
-                      link={videoLinks.find((v) => v.lesson_id === lesson.id)}
-                      onChange={() => {
-                        refresh();
-                        void refetchLinks();
-                      }}
-                      courseId={id}
-                      sourceText={
-                        lessons
-                          ?.slice(0, index)
-                          .reverse()
-                          .find((l) => l.kind !== "quiz")?.body ?? ""
-                      }
-                      readOnly={course.published}
+                      {TONE_OPTIONS.map((t) => (
+                        <option key={t.value} value={t.value}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div className="grid gap-4 rounded-lg border border-border p-3 sm:grid-cols-[1fr_19.5rem]">
+                  <div className="space-y-2">
+                    <Input
+                      value={form.title}
+                      onChange={(e) => setForm({ ...form, title: e.target.value })}
+                      aria-label="Title"
+                      maxLength={120}
+                      placeholder="Title"
                     />
-                  </div>
-                );
-              })()}
-            {screen === "overview" && (
-              <fieldset disabled={course.published} className="min-w-0 space-y-6">
-                <section className="space-y-4 border-b border-border pb-6">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h2 className="font-semibold">Course details</h2>
-                    <label className="flex items-center gap-2 text-xs font-medium">
-                      Content style
+                    <div className="flex items-start gap-1">
+                      <Textarea
+                        value={form.description}
+                        onChange={(e) => setForm({ ...form, description: e.target.value })}
+                        placeholder="What will learners gain from this course?"
+                        rows={autoRows(form.description, 3)}
+                        maxLength={4000}
+                        className="resize-none"
+                      />
+                      <PolishButton
+                        courseId={id}
+                        title={form.title}
+                        text={form.description}
+                        onText={(t) => setForm((f) => ({ ...f, description: t }))}
+                        tone={contentTone}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium">Prerequisites</label>
+                      <p className="text-xs text-muted-foreground">
+                        Require a learner to finish another published course first.
+                      </p>
                       <select
-                        aria-label="Content style"
-                        value={contentTone}
-                        onChange={(e) => setContentTone(e.target.value as PolishTone)}
-                        className="rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+                        value={form.prerequisite_course_id}
+                        onChange={(e) =>
+                          setForm({ ...form, prerequisite_course_id: e.target.value })
+                        }
+                        className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+                        aria-label="Prerequisite course"
                       >
-                        {TONE_OPTIONS.map((t) => (
-                          <option key={t.value} value={t.value}>
-                            {t.label}
+                        <option value="">None</option>
+                        {prereqOptions.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.title}
                           </option>
                         ))}
                       </select>
-                    </label>
-                  </div>
-                  <div className="grid gap-4 rounded-lg border border-border p-3 sm:grid-cols-[1fr_19.5rem]">
-                    <div className="space-y-2">
-                      <Input
-                        value={form.title}
-                        onChange={(e) => setForm({ ...form, title: e.target.value })}
-                        aria-label="Title"
-                        maxLength={120}
-                        placeholder="Title"
-                      />
+                    </div>
+                    <label className="block space-y-1 text-xs font-medium">
+                      Target Audience
                       <div className="flex items-start gap-1">
                         <Textarea
-                          value={form.description}
-                          onChange={(e) => setForm({ ...form, description: e.target.value })}
-                          placeholder="What will learners gain from this course?"
-                          rows={autoRows(form.description, 3)}
-                          maxLength={4000}
+                          value={form.target_audience}
+                          onChange={(e) => setForm({ ...form, target_audience: e.target.value })}
+                          placeholder="Ideal audience & market profile"
+                          rows={autoRows(form.target_audience, 2)}
+                          maxLength={2000}
                           className="resize-none"
                         />
                         <PolishButton
                           courseId={id}
                           title={form.title}
-                          text={form.description}
-                          onText={(t) => setForm((f) => ({ ...f, description: t }))}
+                          text={form.target_audience}
+                          onText={(t) => setForm((f) => ({ ...f, target_audience: t }))}
                           tone={contentTone}
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium">Prerequisites</label>
-                        <p className="text-xs text-muted-foreground">
-                          Require a learner to finish another published course first.
-                        </p>
-                        <select
-                          value={form.prerequisite_course_id}
-                          onChange={(e) =>
-                            setForm({ ...form, prerequisite_course_id: e.target.value })
-                          }
-                          className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
-                          aria-label="Prerequisite course"
-                        >
-                          <option value="">None</option>
-                          {prereqOptions.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.title}
-                            </option>
-                          ))}
-                        </select>
+                    </label>
+                    <label className="block space-y-1 text-xs font-medium">
+                      Value Proposition
+                      <div className="flex items-start gap-1">
+                        <Textarea
+                          value={form.value_proposition}
+                          onChange={(e) => setForm({ ...form, value_proposition: e.target.value })}
+                          placeholder="Value of certification / qualification"
+                          rows={autoRows(form.value_proposition, 2)}
+                          maxLength={2000}
+                          className="resize-none"
+                        />
+                        <PolishButton
+                          courseId={id}
+                          title={form.title}
+                          text={form.value_proposition}
+                          onText={(t) => setForm((f) => ({ ...f, value_proposition: t }))}
+                          tone={contentTone}
+                        />
                       </div>
+                    </label>
+                    <label className="block space-y-1 text-xs font-medium">
+                      Outcomes & Timeline
+                      <div className="flex items-start gap-1">
+                        <Textarea
+                          value={form.outcomes_timeline}
+                          onChange={(e) => setForm({ ...form, outcomes_timeline: e.target.value })}
+                          placeholder="Key learning outcomes & program duration"
+                          rows={autoRows(form.outcomes_timeline, 2)}
+                          maxLength={2000}
+                          className="resize-none"
+                        />
+                        <PolishButton
+                          courseId={id}
+                          title={form.title}
+                          text={form.outcomes_timeline}
+                          onText={(t) => setForm((f) => ({ ...f, outcomes_timeline: t }))}
+                          tone={contentTone}
+                        />
+                      </div>
+                    </label>
+                    <fieldset className="space-y-2 rounded-md border border-border p-3">
+                      <legend className="px-1 text-xs font-semibold text-muted-foreground">
+                        AI Tutor
+                      </legend>
                       <label className="block space-y-1 text-xs font-medium">
-                        Target Audience
-                        <div className="flex items-start gap-1">
-                          <Textarea
-                            value={form.target_audience}
-                            onChange={(e) => setForm({ ...form, target_audience: e.target.value })}
-                            placeholder="Ideal audience & market profile"
-                            rows={autoRows(form.target_audience, 2)}
-                            maxLength={2000}
-                            className="resize-none"
-                          />
-                          <PolishButton
-                            courseId={id}
-                            title={form.title}
-                            text={form.target_audience}
-                            onText={(t) => setForm((f) => ({ ...f, target_audience: t }))}
-                            tone={contentTone}
-                          />
-                        </div>
+                        Name
+                        <Input
+                          value={form.ai_tutor_name}
+                          onChange={(e) => setForm({ ...form, ai_tutor_name: e.target.value })}
+                          placeholder={`AI ${courseIndustry(form.category) === "Agriculture" ? form.category : form.category.split(" / ").slice(1).join(" / ")} Advisor`}
+                          maxLength={100}
+                        />
                       </label>
                       <label className="block space-y-1 text-xs font-medium">
-                        Value Proposition
-                        <div className="flex items-start gap-1">
-                          <Textarea
-                            value={form.value_proposition}
-                            onChange={(e) => setForm({ ...form, value_proposition: e.target.value })}
-                            placeholder="Value of certification / qualification"
-                            rows={autoRows(form.value_proposition, 2)}
-                            maxLength={2000}
-                            className="resize-none"
-                          />
-                          <PolishButton
-                            courseId={id}
-                            title={form.title}
-                            text={form.value_proposition}
-                            onText={(t) => setForm((f) => ({ ...f, value_proposition: t }))}
-                            tone={contentTone}
-                          />
-                        </div>
+                        Welcome message
+                        <Textarea
+                          value={form.ai_tutor_welcome}
+                          onChange={(e) => setForm({ ...form, ai_tutor_welcome: e.target.value })}
+                          placeholder="Shown as the tutor's first message, before the learner asks anything"
+                          rows={autoRows(form.ai_tutor_welcome, 2)}
+                          maxLength={500}
+                          className="resize-none"
+                        />
                       </label>
                       <label className="block space-y-1 text-xs font-medium">
-                        Outcomes & Timeline
-                        <div className="flex items-start gap-1">
-                          <Textarea
-                            value={form.outcomes_timeline}
-                            onChange={(e) => setForm({ ...form, outcomes_timeline: e.target.value })}
-                            placeholder="Key learning outcomes & program duration"
-                            rows={autoRows(form.outcomes_timeline, 2)}
-                            maxLength={2000}
-                            className="resize-none"
-                          />
-                          <PolishButton
-                            courseId={id}
-                            title={form.title}
-                            text={form.outcomes_timeline}
-                            onText={(t) => setForm((f) => ({ ...f, outcomes_timeline: t }))}
-                            tone={contentTone}
-                          />
-                        </div>
+                        Custom instructions
+                        <Textarea
+                          value={form.ai_tutor_instructions}
+                          onChange={(e) =>
+                            setForm({ ...form, ai_tutor_instructions: e.target.value })
+                          }
+                          placeholder="A tone or persona for the tutor to follow, within the existing safety rules"
+                          rows={autoRows(form.ai_tutor_instructions, 2)}
+                          maxLength={500}
+                          className="resize-none"
+                        />
                       </label>
-                      <fieldset className="space-y-2 rounded-md border border-border p-3">
-                        <legend className="px-1 text-xs font-semibold text-muted-foreground">AI Tutor</legend>
-                        <label className="block space-y-1 text-xs font-medium">
-                          Name
+                      <label className="block space-y-1 text-xs font-medium">
+                        Icon
+                        <CoverImageInput
+                          value={form.ai_tutor_icon_url}
+                          onChange={(url) => setForm({ ...form, ai_tutor_icon_url: url })}
+                        />
+                      </label>
+                    </fieldset>
+                    <fieldset className="space-y-2 rounded-md border border-border p-3">
+                      <legend className="px-1 text-xs font-semibold text-muted-foreground">
+                        Listen mode — custom pronunciation
+                      </legend>
+                      <p className="text-[11px] text-muted-foreground">
+                        Applied only to spoken audio, never shown to the reader — e.g. "SCORM" →
+                        "score-um".
+                      </p>
+                      {form.pronunciation_dictionary.map((entry, i) => (
+                        <div key={i} className="flex items-center gap-1">
                           <Input
-                            value={form.ai_tutor_name}
-                            onChange={(e) => setForm({ ...form, ai_tutor_name: e.target.value })}
-                            placeholder={`AI ${courseIndustry(form.category) === "Agriculture" ? form.category : form.category.split(" / ").slice(1).join(" / ")} Advisor`}
-                            maxLength={100}
+                            aria-label={`Term ${i + 1}`}
+                            placeholder="Term"
+                            value={entry.term}
+                            onChange={(e) =>
+                              setForm({
+                                ...form,
+                                pronunciation_dictionary: form.pronunciation_dictionary.map(
+                                  (p, pi) => (pi === i ? { ...p, term: e.target.value } : p),
+                                ),
+                              })
+                            }
+                            className="h-8 text-xs"
                           />
-                        </label>
-                        <label className="block space-y-1 text-xs font-medium">
-                          Welcome message
-                          <Textarea
-                            value={form.ai_tutor_welcome}
-                            onChange={(e) => setForm({ ...form, ai_tutor_welcome: e.target.value })}
-                            placeholder="Shown as the tutor's first message, before the learner asks anything"
-                            rows={autoRows(form.ai_tutor_welcome, 2)}
-                            maxLength={500}
-                            className="resize-none"
+                          <Input
+                            aria-label={`Spoken as ${i + 1}`}
+                            placeholder="Spoken as"
+                            value={entry.replacement}
+                            onChange={(e) =>
+                              setForm({
+                                ...form,
+                                pronunciation_dictionary: form.pronunciation_dictionary.map(
+                                  (p, pi) => (pi === i ? { ...p, replacement: e.target.value } : p),
+                                ),
+                              })
+                            }
+                            className="h-8 text-xs"
                           />
-                        </label>
-                        <label className="block space-y-1 text-xs font-medium">
-                          Custom instructions
-                          <Textarea
-                            value={form.ai_tutor_instructions}
-                            onChange={(e) => setForm({ ...form, ai_tutor_instructions: e.target.value })}
-                            placeholder="A tone or persona for the tutor to follow, within the existing safety rules"
-                            rows={autoRows(form.ai_tutor_instructions, 2)}
-                            maxLength={500}
-                            className="resize-none"
-                          />
-                        </label>
-                        <label className="block space-y-1 text-xs font-medium">
-                          Icon
-                          <CoverImageInput
-                            value={form.ai_tutor_icon_url}
-                            onChange={(url) => setForm({ ...form, ai_tutor_icon_url: url })}
-                          />
-                        </label>
-                      </fieldset>
-                      <fieldset className="space-y-2 rounded-md border border-border p-3">
-                        <legend className="px-1 text-xs font-semibold text-muted-foreground">Listen mode — custom pronunciation</legend>
-                        <p className="text-[11px] text-muted-foreground">Applied only to spoken audio, never shown to the reader — e.g. "SCORM" → "score-um".</p>
-                        {form.pronunciation_dictionary.map((entry, i) => (
-                          <div key={i} className="flex items-center gap-1">
-                            <Input
-                              aria-label={`Term ${i + 1}`}
-                              placeholder="Term"
-                              value={entry.term}
-                              onChange={(e) => setForm({ ...form, pronunciation_dictionary: form.pronunciation_dictionary.map((p, pi) => (pi === i ? { ...p, term: e.target.value } : p)) })}
-                              className="h-8 text-xs"
-                            />
-                            <Input
-                              aria-label={`Spoken as ${i + 1}`}
-                              placeholder="Spoken as"
-                              value={entry.replacement}
-                              onChange={(e) => setForm({ ...form, pronunciation_dictionary: form.pronunciation_dictionary.map((p, pi) => (pi === i ? { ...p, replacement: e.target.value } : p)) })}
-                              className="h-8 text-xs"
-                            />
-                            <button type="button" aria-label={`Remove ${entry.term || `row ${i + 1}`}`} onClick={() => setForm({ ...form, pronunciation_dictionary: form.pronunciation_dictionary.filter((_, pi) => pi !== i) })} className="text-muted-foreground hover:text-destructive">
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        ))}
-                        <Button type="button" size="sm" variant="outline" onClick={() => setForm({ ...form, pronunciation_dictionary: [...form.pronunciation_dictionary, { term: "", replacement: "" }] })}>
-                          Add term
-                        </Button>
-                      </fieldset>
-                      <fieldset className="space-y-2 rounded-md border border-border p-3">
-                        <legend className="px-1 text-xs font-semibold text-muted-foreground">Colors</legend>
-                        {([
+                          <button
+                            type="button"
+                            aria-label={`Remove ${entry.term || `row ${i + 1}`}`}
+                            onClick={() =>
+                              setForm({
+                                ...form,
+                                pronunciation_dictionary: form.pronunciation_dictionary.filter(
+                                  (_, pi) => pi !== i,
+                                ),
+                              })
+                            }
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setForm({
+                            ...form,
+                            pronunciation_dictionary: [
+                              ...form.pronunciation_dictionary,
+                              { term: "", replacement: "" },
+                            ],
+                          })
+                        }
+                      >
+                        Add term
+                      </Button>
+                    </fieldset>
+                    <fieldset className="space-y-2 rounded-md border border-border p-3">
+                      <legend className="px-1 text-xs font-semibold text-muted-foreground">
+                        Colors
+                      </legend>
+                      {(
+                        [
                           ["bodyText", "Body text color"],
                           ["link", "Link color"],
                           ["bannerBg", "Lesson banner color"],
@@ -2459,942 +2562,1886 @@ function Editor() {
                           ["pageBg", "Page background color"],
                           ["pageText", "Page text color"],
                           ["headingColor", "Heading color"],
-                        ] as [keyof ColorOverrides, string][]).map(([key, label]) => (
-                          <div key={key} className="flex items-center justify-between gap-2 text-xs">
-                            <label htmlFor={`color-${key}`} className="font-medium">{label}</label>
-                            <div className="flex items-center gap-1">
-                              {form.color_overrides[key] && (
-                                <button type="button" aria-label={`Reset ${label}`} onClick={() => setForm({ ...form, color_overrides: { ...form.color_overrides, [key]: undefined } })} className="text-muted-foreground hover:text-destructive">
-                                  <X className="h-3.5 w-3.5" />
-                                </button>
-                              )}
-                              <input
-                                id={`color-${key}`}
-                                type="color"
-                                value={form.color_overrides[key] || "#000000"}
-                                onChange={(e) => setForm({ ...form, color_overrides: { ...form.color_overrides, [key]: e.target.value } })}
-                                className="h-7 w-10 rounded border border-input bg-background"
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </fieldset>
-                      <fieldset className="space-y-2 rounded-md border border-border p-3">
-                        <legend className="px-1 text-xs font-semibold text-muted-foreground">Font</legend>
-                        <label className="block space-y-1 text-xs font-medium">
-                          Heading font
-                          <select
-                            value={form.font_settings.headingFont ?? ""}
-                            onChange={(e) => setForm({ ...form, font_settings: e.target.value ? { ...form.font_settings, headingFont: e.target.value } : (() => { const { headingFont: _drop, ...rest } = form.font_settings; return rest; })() })}
-                            className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-                          >
-                            {COURSE_FONT_NAMES.map((n) => <option key={n} value={n === "system" ? "" : n}>{COURSE_FONTS[n].label}</option>)}
-                          </select>
-                        </label>
-                        <label className="block space-y-1 text-xs font-medium">
-                          Body font
-                          <select
-                            value={form.font_settings.bodyFont ?? ""}
-                            onChange={(e) => setForm({ ...form, font_settings: e.target.value ? { ...form.font_settings, bodyFont: e.target.value } : (() => { const { bodyFont: _drop, ...rest } = form.font_settings; return rest; })() })}
-                            className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-                          >
-                            {COURSE_FONT_NAMES.map((n) => <option key={n} value={n === "system" ? "" : n}>{COURSE_FONTS[n].label}</option>)}
-                          </select>
-                        </label>
-                        <div className="space-y-1">
-                          <p className="text-xs font-medium">Text size</p>
-                          <div className="flex gap-1">
-                            {(Object.keys(DENSITY_SCALE) as (keyof typeof DENSITY_SCALE)[]).map((d) => (
-                              <Button key={d} type="button" size="sm" variant={(form.font_settings.density || "standard") === d ? "default" : "outline"} onClick={() => setForm({ ...form, font_settings: { ...form.font_settings, density: d } })}>
-                                {DENSITY_SCALE[d].label}
-                              </Button>
-                            ))}
+                        ] as [keyof ColorOverrides, string][]
+                      ).map(([key, label]) => (
+                        <div key={key} className="flex items-center justify-between gap-2 text-xs">
+                          <label htmlFor={`color-${key}`} className="font-medium">
+                            {label}
+                          </label>
+                          <div className="flex items-center gap-1">
+                            {form.color_overrides[key] && (
+                              <button
+                                type="button"
+                                aria-label={`Reset ${label}`}
+                                onClick={() =>
+                                  setForm({
+                                    ...form,
+                                    color_overrides: { ...form.color_overrides, [key]: undefined },
+                                  })
+                                }
+                                className="text-muted-foreground hover:text-destructive"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            <input
+                              id={`color-${key}`}
+                              type="color"
+                              value={form.color_overrides[key] || "#000000"}
+                              onChange={(e) =>
+                                setForm({
+                                  ...form,
+                                  color_overrides: {
+                                    ...form.color_overrides,
+                                    [key]: e.target.value,
+                                  },
+                                })
+                              }
+                              className="h-7 w-10 rounded border border-input bg-background"
+                            />
                           </div>
                         </div>
-                      </fieldset>
-                      <fieldset className="space-y-2 rounded-md border border-border p-3">
-                        <legend className="px-1 text-xs font-semibold text-muted-foreground">Layout</legend>
-                        <label className="flex items-center justify-between gap-2 text-xs font-medium">
-                          Full width
-                          <input
-                            type="checkbox"
-                            checked={!!form.layout_settings.fullWidth}
-                            onChange={(e) => setForm({ ...form, layout_settings: { ...form.layout_settings, fullWidth: e.target.checked } })}
-                            className="accent-primary"
-                          />
-                        </label>
-                        <label className="block space-y-1 text-xs font-medium">
-                          Content width: {form.layout_settings.contentWidth ?? 100}%
-                          <input
-                            type="range"
-                            min={30}
-                            max={100}
-                            value={form.layout_settings.contentWidth ?? 100}
-                            onChange={(e) => setForm({ ...form, layout_settings: { ...form.layout_settings, contentWidth: Number(e.target.value) } })}
-                            className="w-full"
-                          />
-                        </label>
-                        <div className="space-y-1">
-                          <p className="text-xs font-medium">Align content</p>
-                          <div className="flex gap-1">
-                            {(["left", "center", "right"] as const).map((a) => (
-                              <Button key={a} type="button" size="sm" variant={(form.layout_settings.align || "center") === a ? "default" : "outline"} onClick={() => setForm({ ...form, layout_settings: { ...form.layout_settings, align: a } })}>
-                                {a[0]!.toUpperCase() + a.slice(1)}
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                        <label className="block space-y-1 text-xs font-medium">
-                          Spacing (px): {form.layout_settings.spacing ?? 0}
-                          <input
-                            type="range"
-                            min={0}
-                            max={80}
-                            value={form.layout_settings.spacing ?? 0}
-                            onChange={(e) => setForm({ ...form, layout_settings: { ...form.layout_settings, spacing: Number(e.target.value) } })}
-                            className="w-full"
-                          />
-                        </label>
-                      </fieldset>
-                    </div>
-                    <div className="min-w-0 space-y-3">
-                      <div>
-                        <label className="block text-xs font-medium">Cover image</label>
-                        <div className="mt-1">
-                          <CoverImageInput
-                            value={form.cover_url}
-                            onChange={(url) => setForm({ ...form, cover_url: url })}
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium">Industry</label>
+                      ))}
+                    </fieldset>
+                    <fieldset className="space-y-2 rounded-md border border-border p-3">
+                      <legend className="px-1 text-xs font-semibold text-muted-foreground">
+                        Font
+                      </legend>
+                      <label className="block space-y-1 text-xs font-medium">
+                        Heading font
                         <select
-                          value={courseIndustry(form.category)}
-                          onChange={(e) => {
-                            const selected = e.target.value;
+                          value={form.font_settings.headingFont ?? ""}
+                          onChange={(e) =>
                             setForm({
                               ...form,
-                              category:
-                                selected === "Agriculture"
-                                  ? "Farm Management"
-                                  : selected + " / General",
-                            });
-                            setNewTopic("");
-                          }}
-                          className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
-                          aria-label="Industry"
+                              font_settings: e.target.value
+                                ? { ...form.font_settings, headingFont: e.target.value }
+                                : (() => {
+                                    const { headingFont: _drop, ...rest } = form.font_settings;
+                                    return rest;
+                                  })(),
+                            })
+                          }
+                          className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
                         >
-                          {INDUSTRIES.map((name) => (
-                            <option key={name} value={name}>
-                              {name}
+                          {COURSE_FONT_NAMES.map((n) => (
+                            <option key={n} value={n === "system" ? "" : n}>
+                              {COURSE_FONTS[n].label}
                             </option>
                           ))}
                         </select>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <div className="flex items-center justify-between gap-1">
-                            <label className="block text-xs font-medium">Topic</label>
-                            {courseIndustry(form.category) !== "Agriculture" && (
+                      </label>
+                      <label className="block space-y-1 text-xs font-medium">
+                        Body font
+                        <select
+                          value={form.font_settings.bodyFont ?? ""}
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              font_settings: e.target.value
+                                ? { ...form.font_settings, bodyFont: e.target.value }
+                                : (() => {
+                                    const { bodyFont: _drop, ...rest } = form.font_settings;
+                                    return rest;
+                                  })(),
+                            })
+                          }
+                          className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+                        >
+                          {COURSE_FONT_NAMES.map((n) => (
+                            <option key={n} value={n === "system" ? "" : n}>
+                              {COURSE_FONTS[n].label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium">Text size</p>
+                        <div className="flex gap-1">
+                          {(Object.keys(DENSITY_SCALE) as (keyof typeof DENSITY_SCALE)[]).map(
+                            (d) => (
                               <Button
+                                key={d}
                                 type="button"
-                                size="icon"
-                                variant="ghost"
-                                className="h-5 w-5"
-                                title="Suggest with AI"
-                                aria-label="Suggest topic with AI"
-                                disabled={topicLoading || !form.title.trim()}
-                                onClick={() => void generateTopic()}
+                                size="sm"
+                                variant={
+                                  (form.font_settings.density || "standard") === d
+                                    ? "default"
+                                    : "outline"
+                                }
+                                onClick={() =>
+                                  setForm({
+                                    ...form,
+                                    font_settings: { ...form.font_settings, density: d },
+                                  })
+                                }
                               >
-                                <RefreshCw className={`h-3 w-3 ${topicLoading ? "animate-spin" : ""}`} />
+                                {DENSITY_SCALE[d].label}
                               </Button>
-                            )}
-                          </div>
-                          {courseIndustry(form.category) === "Agriculture" ? (
-                            <select
-                              value={STUDIO_CATEGORIES.includes(form.category) ? form.category : ""}
-                              onChange={(e) => setForm({ ...form, category: e.target.value })}
-                              className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
-                              aria-label="Topic"
-                            >
-                              {!STUDIO_CATEGORIES.includes(form.category) && (
-                                <option value="">Select a topic</option>
-                              )}
-                              {STUDIO_CATEGORIES.map((c) => (
-                                <option key={c}>{c}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <Input
-                              value={newTopic || form.category.split(" / ").slice(1).join(" / ")}
-                              onChange={(e) => {
-                                setNewTopic(e.target.value);
-                                setForm({
-                                  ...form,
-                                  category: courseIndustry(form.category) + " / " + e.target.value,
-                                });
-                              }}
-                              aria-label="Topic"
-                              placeholder="e.g. Patient care, Retail operations"
-                              maxLength={100}
-                              className="mt-1 h-8 text-xs"
-                            />
+                            ),
                           )}
                         </div>
-                        <div>
-                          <label className="block text-xs font-medium">Level</label>
+                      </div>
+                    </fieldset>
+                    <fieldset className="space-y-2 rounded-md border border-border p-3">
+                      <legend className="px-1 text-xs font-semibold text-muted-foreground">
+                        Layout
+                      </legend>
+                      <label className="flex items-center justify-between gap-2 text-xs font-medium">
+                        Full width
+                        <input
+                          type="checkbox"
+                          checked={!!form.layout_settings.fullWidth}
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              layout_settings: {
+                                ...form.layout_settings,
+                                fullWidth: e.target.checked,
+                              },
+                            })
+                          }
+                          className="accent-primary"
+                        />
+                      </label>
+                      <label className="block space-y-1 text-xs font-medium">
+                        Content width: {form.layout_settings.contentWidth ?? 100}%
+                        <input
+                          type="range"
+                          min={30}
+                          max={100}
+                          value={form.layout_settings.contentWidth ?? 100}
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              layout_settings: {
+                                ...form.layout_settings,
+                                contentWidth: Number(e.target.value),
+                              },
+                            })
+                          }
+                          className="w-full"
+                        />
+                      </label>
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium">Align content</p>
+                        <div className="flex gap-1">
+                          {(["left", "center", "right"] as const).map((a) => (
+                            <Button
+                              key={a}
+                              type="button"
+                              size="sm"
+                              variant={
+                                (form.layout_settings.align || "center") === a
+                                  ? "default"
+                                  : "outline"
+                              }
+                              onClick={() =>
+                                setForm({
+                                  ...form,
+                                  layout_settings: { ...form.layout_settings, align: a },
+                                })
+                              }
+                            >
+                              {a[0]!.toUpperCase() + a.slice(1)}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                      <label className="block space-y-1 text-xs font-medium">
+                        Spacing (px): {form.layout_settings.spacing ?? 0}
+                        <input
+                          type="range"
+                          min={0}
+                          max={80}
+                          value={form.layout_settings.spacing ?? 0}
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              layout_settings: {
+                                ...form.layout_settings,
+                                spacing: Number(e.target.value),
+                              },
+                            })
+                          }
+                          className="w-full"
+                        />
+                      </label>
+                    </fieldset>
+                  </div>
+                  <div className="min-w-0 space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium">Cover image</label>
+                      <div className="mt-1">
+                        <CoverImageInput
+                          value={form.cover_url}
+                          onChange={(url) => setForm({ ...form, cover_url: url })}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium">Industry</label>
+                      <select
+                        value={courseIndustry(form.category)}
+                        onChange={(e) => {
+                          const selected = e.target.value;
+                          setForm({
+                            ...form,
+                            category:
+                              selected === "Agriculture"
+                                ? "Farm Management"
+                                : selected + " / General",
+                          });
+                          setNewTopic("");
+                        }}
+                        className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+                        aria-label="Industry"
+                      >
+                        {INDUSTRIES.map((name) => (
+                          <option key={name} value={name}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <div className="flex items-center justify-between gap-1">
+                          <label className="block text-xs font-medium">Topic</label>
+                          {courseIndustry(form.category) !== "Agriculture" && (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-5 w-5"
+                              title="Suggest with AI"
+                              aria-label="Suggest topic with AI"
+                              disabled={topicLoading || !form.title.trim()}
+                              onClick={() => void generateTopic()}
+                            >
+                              <RefreshCw
+                                className={`h-3 w-3 ${topicLoading ? "animate-spin" : ""}`}
+                              />
+                            </Button>
+                          )}
+                        </div>
+                        {courseIndustry(form.category) === "Agriculture" ? (
                           <select
-                            value={form.level}
-                            onChange={(e) => setForm({ ...form, level: e.target.value })}
+                            value={STUDIO_CATEGORIES.includes(form.category) ? form.category : ""}
+                            onChange={(e) => setForm({ ...form, category: e.target.value })}
                             className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
-                            aria-label="Level"
+                            aria-label="Topic"
                           >
-                            {["Beginner", "Intermediate", "Advanced"].map((c) => (
+                            {!STUDIO_CATEGORIES.includes(form.category) && (
+                              <option value="">Select a topic</option>
+                            )}
+                            {STUDIO_CATEGORIES.map((c) => (
                               <option key={c}>{c}</option>
                             ))}
                           </select>
-                        </div>
+                        ) : (
+                          <Input
+                            value={newTopic || form.category.split(" / ").slice(1).join(" / ")}
+                            onChange={(e) => {
+                              setNewTopic(e.target.value);
+                              setForm({
+                                ...form,
+                                category: courseIndustry(form.category) + " / " + e.target.value,
+                              });
+                            }}
+                            aria-label="Topic"
+                            placeholder="e.g. Patient care, Retail operations"
+                            maxLength={100}
+                            className="mt-1 h-8 text-xs"
+                          />
+                        )}
                       </div>
                       <div>
-                        <label className="block text-xs font-medium">Theme</label>
-                        <div
-                          className="mt-1 flex flex-wrap gap-1.5"
-                          role="radiogroup"
-                          aria-label="Course theme"
-                        >
-                          {COURSE_THEME_NAMES.map((name) => (
-                            <button
-                              key={name}
-                              type="button"
-                              role="radio"
-                              aria-checked={form.theme === name}
-                              aria-label={COURSE_THEMES[name].label}
-                              onClick={() => setForm({ ...form, theme: name })}
-                              className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${form.theme === name ? "border-foreground" : "border-transparent"}`}
-                              style={{ backgroundColor: COURSE_THEMES[name].primary }}
-                            >
-                              {form.theme === name && (
-                                <Check
-                                  className="h-3 w-3"
-                                  style={{ color: COURSE_THEMES[name].primaryForeground }}
-                                />
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium">Illustration guide</label>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Decide the visual style and any recurring characters once, before designing lessons, so every illustrated explanation stays consistent — no continuity errors.
-                        </p>
+                        <label className="block text-xs font-medium">Level</label>
                         <select
-                          aria-label="Illustration style"
-                          value={form.illustration_guide.style}
-                          onChange={(e) =>
-                            setForm((f) => ({ ...f, illustration_guide: { ...f.illustration_guide, style: e.target.value } }))
-                          }
+                          value={form.level}
+                          onChange={(e) => setForm({ ...form, level: e.target.value })}
                           className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+                          aria-label="Level"
                         >
-                          {ILLUSTRATED_STYLES.map((s) => (
-                            <option key={s} value={s}>{s}</option>
+                          {["Beginner", "Intermediate", "Advanced"].map((c) => (
+                            <option key={c}>{c}</option>
                           ))}
                         </select>
-                        <div className="mt-2 space-y-2">
-                          <p className="text-xs text-muted-foreground">Recurring characters (optional)</p>
-                          {form.illustration_guide.characters.map((c, i) => (
-                            <div key={i} className="flex flex-wrap items-center gap-2">
-                              <Input
-                                aria-label={`Character ${i + 1} name`}
-                                value={c.name}
-                                placeholder="Name"
-                                maxLength={60}
-                                onChange={(e) =>
-                                  setForm((f) => ({
-                                    ...f,
-                                    illustration_guide: {
-                                      ...f.illustration_guide,
-                                      characters: f.illustration_guide.characters.map((x, xi) => (xi === i ? { ...x, name: e.target.value } : x)),
-                                    },
-                                  }))
-                                }
-                                className="h-8 w-32"
-                              />
-                              <Input
-                                aria-label={`Character ${i + 1} description`}
-                                value={c.description}
-                                placeholder="Role / appearance, for consistency"
-                                maxLength={200}
-                                onChange={(e) =>
-                                  setForm((f) => ({
-                                    ...f,
-                                    illustration_guide: {
-                                      ...f.illustration_guide,
-                                      characters: f.illustration_guide.characters.map((x, xi) => (xi === i ? { ...x, description: e.target.value } : x)),
-                                    },
-                                  }))
-                                }
-                                className="h-8 min-w-[10rem] flex-1"
-                              />
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                aria-label={`Remove character ${i + 1}`}
-                                onClick={() =>
-                                  setForm((f) => ({
-                                    ...f,
-                                    illustration_guide: { ...f.illustration_guide, characters: f.illustration_guide.characters.filter((_, xi) => xi !== i) },
-                                  }))
-                                }
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              setForm((f) => ({
-                                ...f,
-                                illustration_guide: { ...f.illustration_guide, characters: [...f.illustration_guide.characters, { name: "", description: "" }] },
-                              }))
-                            }
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium">Theme</label>
+                      <div
+                        className="mt-1 flex flex-wrap gap-1.5"
+                        role="radiogroup"
+                        aria-label="Course theme"
+                      >
+                        {COURSE_THEME_NAMES.map((name) => (
+                          <button
+                            key={name}
+                            type="button"
+                            role="radio"
+                            aria-checked={form.theme === name}
+                            aria-label={COURSE_THEMES[name].label}
+                            onClick={() => setForm({ ...form, theme: name })}
+                            className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${form.theme === name ? "border-foreground" : "border-transparent"}`}
+                            style={{ backgroundColor: COURSE_THEMES[name].primary }}
                           >
-                            <Plus className="h-4 w-4" />
-                            Add character
-                          </Button>
-                        </div>
+                            {form.theme === name && (
+                              <Check
+                                className="h-3 w-3"
+                                style={{ color: COURSE_THEMES[name].primaryForeground }}
+                              />
+                            )}
+                          </button>
+                        ))}
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium">Price (USD)</label>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={form.price}
-                          onChange={(e) => setForm({ ...form, price: e.target.value })}
-                          className="mt-1 h-8 text-xs"
-                          aria-label="Price in US dollars"
-                        />
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          0 is free. Buyers pay once via Stripe Checkout.
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium">Illustration guide</label>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Decide the visual style and any recurring characters once, before designing
+                        lessons, so every illustrated explanation stays consistent — no continuity
+                        errors.
+                      </p>
+                      <select
+                        aria-label="Illustration style"
+                        value={form.illustration_guide.style}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            illustration_guide: { ...f.illustration_guide, style: e.target.value },
+                          }))
+                        }
+                        className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+                      >
+                        {ILLUSTRATED_STYLES.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="mt-2 space-y-2">
+                        <p className="text-xs text-muted-foreground">
+                          Recurring characters (optional)
                         </p>
+                        {form.illustration_guide.characters.map((c, i) => (
+                          <div key={i} className="flex flex-wrap items-center gap-2">
+                            <Input
+                              aria-label={`Character ${i + 1} name`}
+                              value={c.name}
+                              placeholder="Name"
+                              maxLength={60}
+                              onChange={(e) =>
+                                setForm((f) => ({
+                                  ...f,
+                                  illustration_guide: {
+                                    ...f.illustration_guide,
+                                    characters: f.illustration_guide.characters.map((x, xi) =>
+                                      xi === i ? { ...x, name: e.target.value } : x,
+                                    ),
+                                  },
+                                }))
+                              }
+                              className="h-8 w-32"
+                            />
+                            <Input
+                              aria-label={`Character ${i + 1} description`}
+                              value={c.description}
+                              placeholder="Role / appearance, for consistency"
+                              maxLength={200}
+                              onChange={(e) =>
+                                setForm((f) => ({
+                                  ...f,
+                                  illustration_guide: {
+                                    ...f.illustration_guide,
+                                    characters: f.illustration_guide.characters.map((x, xi) =>
+                                      xi === i ? { ...x, description: e.target.value } : x,
+                                    ),
+                                  },
+                                }))
+                              }
+                              className="h-8 min-w-[10rem] flex-1"
+                            />
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              aria-label={`Remove character ${i + 1}`}
+                              onClick={() =>
+                                setForm((f) => ({
+                                  ...f,
+                                  illustration_guide: {
+                                    ...f.illustration_guide,
+                                    characters: f.illustration_guide.characters.filter(
+                                      (_, xi) => xi !== i,
+                                    ),
+                                  },
+                                }))
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            setForm((f) => ({
+                              ...f,
+                              illustration_guide: {
+                                ...f.illustration_guide,
+                                characters: [
+                                  ...f.illustration_guide.characters,
+                                  { name: "", description: "" },
+                                ],
+                              },
+                            }))
+                          }
+                        >
+                          <Plus className="h-4 w-4" />
+                          Add character
+                        </Button>
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium">Privacy</label>
-                        <div className="mt-1">
-                          <CourseOrganizationButton course={course} />
-                        </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium">Price (USD)</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={form.price}
+                        onChange={(e) => setForm({ ...form, price: e.target.value })}
+                        className="mt-1 h-8 text-xs"
+                        aria-label="Price in US dollars"
+                      />
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        0 is free. Buyers pay once via Stripe Checkout.
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium">Privacy</label>
+                      <div className="mt-1">
+                        <CourseOrganizationButton course={course} />
                       </div>
                     </div>
                   </div>
-                  <Button onClick={saveDetails} className="mt-auto w-full">
-                    Save details
-                  </Button>
-                </section>
-              </fieldset>
-            )}
-            {screen === "content" && (
-              <StudioContentLibrary
-                courseId={id}
-                modules={(studioModules ?? []).map((m) => ({ id: m.id, title: m.title }))}
-                readOnly={course.published}
-              />
-            )}
-            {screen === "import" && (
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div
-                  className="flex gap-1 rounded-full border border-border p-1 w-fit"
-                  role="tablist"
-                  aria-label="Design method"
-                >
-                  {(
-                    [
-                      { key: "auto", label: "Auto Design" },
-                      { key: "manual", label: "Manual Design" },
-                    ] as const
-                  ).map((t) => (
-                    <Button
-                      key={t.key}
-                      role="tab"
-                      aria-selected={designTab === t.key}
-                      size="sm"
-                      variant={designTab === t.key ? "default" : "ghost"}
-                      className="rounded-full"
-                      onClick={() => setDesignTab(t.key)}
-                    >
-                      {t.label}
-                    </Button>
-                  ))}
                 </div>
-                <Link
-                  to="/class/$id"
-                  params={{ id }}
-                  className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs"
+                <Button onClick={saveDetails} className="mt-auto w-full">
+                  Save details
+                </Button>
+              </section>
+            </fieldset>
+            <nav className="flex flex-wrap gap-2">
+              {[
+                { id: "content", label: "Content Library" },
+                { id: "performance", label: "Performance" },
+                { id: "history", label: "Version history" },
+              ].map((item) => (
+                <Button key={item.id} variant="outline" onClick={() => setScreen(item.id)}>
+                  {item.label}
+                </Button>
+              ))}
+            </nav>
+          </>
+        }
+        source={
+          <StudioSourceReference
+            sourceName={sourceName}
+            page={draft?.lessons[outlineFocus?.index ?? 0]?.sourceRefs[0]?.page ?? 1}
+            text={draft?.lessons[outlineFocus?.index ?? 0]?.body || sourceText}
+          />
+        }
+        outline={
+          <div className="space-y-3">
+            <h2 className="text-sm font-semibold">Training outline</h2>
+            <Input
+              aria-label="Search studio topics"
+              placeholder="Search topics and lessons"
+              value={workspaceTopicSearch}
+              onChange={(e) => setWorkspaceTopicSearch(e.target.value)}
+            />
+            {!!draft?.lessons.length && (
+              <>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      setBulkOutline(
+                        draft.lessons.flatMap((l, i) =>
+                          l.title.toLowerCase().includes(workspaceTopicSearch.toLowerCase())
+                            ? [i]
+                            : [],
+                        ),
+                      )
+                    }
+                  >
+                    Select visible
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setBulkOutline([])}>
+                    Clear
+                  </Button>
+                  <span className="supporting-text">{bulkOutline.length} selected</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!bulkOutline.length || workspaceLocked || batchRunning}
+                  onClick={() => void generateBatch()}
                 >
-                  <Eye className="h-3 w-3" />
-                  Preview
-                </Link>
-              </div>
+                  Generate selected (up to 5)
+                </Button>
+                <p className="supporting-text">Outline drafts · drag to reorder</p>
+              </>
             )}
-            {screen === "import" && designTab === "manual" && (
-              <fieldset disabled={course.published} className="min-w-0 space-y-6">
-                {modules.length === 0 && (
-                  <section className="space-y-3 rounded-2xl border border-dashed border-border p-4">
-                    <h2 className="font-semibold">Add your first lesson</h2>
-                    <LessonTypeAdder
-                      onAdd={(kind) => void addLesson(kind)}
-                      onAddSlides={(subKinds) => void addSlideSet(subKinds)}
+            {draft?.lessons.map(
+              (lesson, index) =>
+                lesson.title.toLowerCase().includes(workspaceTopicSearch.toLowerCase()) && (
+                  <div
+                    key={index}
+                    className="flex items-start gap-2 rounded-md border p-2"
+                    draggable={!course.published && !workspaceLocked && !batchRunning}
+                    onDragStart={(e) =>
+                      e.dataTransfer.setData("application/x-studio-topic", String(index))
+                    }
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const from = e.dataTransfer.getData("application/x-studio-topic");
+                      if (from) moveOutline(Number(from), index);
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      aria-label={"Select " + lesson.title}
+                      checked={bulkOutline.includes(index)}
+                      onChange={(e) =>
+                        setBulkOutline((p) =>
+                          e.target.checked ? [...p, index] : p.filter((i) => i !== index),
+                        )
+                      }
                     />
-                    <VideoLibraryPicker
-                      courseId={id}
-                      position={lessons?.length ?? 0}
-                      usedItemIds={videoLinks.map((v) => v.item_id)}
-                      onAdded={() => {
-                        refresh();
-                        void refetchLinks();
+                    <button
+                      className="min-w-0 flex-1 text-left text-sm"
+                      aria-current={
+                        screen === "import" && outlineFocus?.index === index ? "step" : undefined
+                      }
+                      onClick={() => {
+                        setOutlineFocus({ index, token: Date.now() });
+                        setScreen("import");
+                        setDesignTab("auto");
+                        setFactoryStep(1);
                       }}
-                    />
-                  </section>
-                )}
-                <section className="space-y-3 border-b border-border pb-6">
+                    >
+                      <span className="block font-medium">
+                        {index + 1}. {lesson.title || "Untitled topic"}
+                      </span>
+                      <span className="supporting-text">
+                        {lesson.module} ·{" "}
+                        {designApproved[index]
+                          ? "Reviewed"
+                          : lessonPreviews[index]
+                            ? "Generated · needs review"
+                            : "Draft · needs review"}
+                      </span>
+                    </button>
+                  </div>
+                ),
+            )}
+            <h3 className="text-sm font-semibold">Saved curriculum</h3>
+            {(lessons ?? [])
+              .filter((l) => l.title.toLowerCase().includes(workspaceTopicSearch.toLowerCase()))
+              .map((lesson) => (
+                <Button
+                  key={lesson.id}
+                  variant={
+                    selectedLesson === lesson.id && screen === "lesson" ? "secondary" : "ghost"
+                  }
+                  className="h-auto w-full justify-start whitespace-normal text-left"
+                  onClick={() => {
+                    setSelectedLesson(lesson.id);
+                    setScreen("lesson");
+                  }}
+                >
+                  {lesson.title}
+                </Button>
+              ))}
+            <nav aria-label="Curriculum modules" className="grid gap-1">
+              {modules.map((module) => (
+                <Button
+                  key={module.key}
+                  size="sm"
+                  variant={screen === module.key ? "secondary" : "ghost"}
+                  className="h-auto justify-start whitespace-normal text-left"
+                  onClick={() => setScreen(module.key)}
+                >
+                  {module.title} · {module.lessons.length}
+                </Button>
+              ))}
+            </nav>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setScreen("import");
+                setDesignTab("manual");
+              }}
+            >
+              Add or manage lessons
+            </Button>
+          </div>
+        }
+        footer={
+          <span>
+            {draft?.lessons.length ?? 0} outline topics · {lessons?.length ?? 0} saved lessons ·
+            Publishing requires review.
+          </span>
+        }
+      >
+        <fieldset disabled={workspaceLocked} className="min-w-0 space-y-4">
+          {course.published && (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-l-4 border-primary bg-muted p-4">
+              <p className="text-sm">
+                This published version is read-only. Create a draft revision to make changes.
+              </p>
+              <StudioCourseActions course={course} onChanged={refresh} revisionOnly />
+            </div>
+          )}
+          {screen === "history" && (
+            <StudioVersions
+              courseId={course.revision_of ?? id}
+              onOpened={(newId) => nav({ to: "/studio/$id", params: { id: newId } })}
+            />
+          )}
+          {screen === "lesson" &&
+            (() => {
+              const lesson = lessons?.find((l) => l.id === selectedLesson);
+              if (!lesson)
+                return (
+                  <p className="py-10 text-muted-foreground">
+                    Select a lesson from the curriculum, or add a new one.
+                  </p>
+                );
+              const index = lessons?.findIndex((l) => l.id === lesson.id) ?? 0;
+              return (
+                <div className="space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h2 className="font-semibold">Manage lessons</h2>
-                    {selectedLessonIds.length > 0 && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive"
-                        onClick={() => {
-                          void deleteLessons(selectedLessonIds);
-                          setSelectedLessonIds([]);
+                    <h2 className="font-semibold">Lesson editor</h2>
+                    <select
+                      aria-label="Lesson module"
+                      value={lesson.module_id ?? ""}
+                      disabled={course.published}
+                      onChange={(e) => assignLessonToModule(lesson.id, e.target.value || null)}
+                      className="max-w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">Unassigned lessons</option>
+                      {studioModules?.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={index === 0 || course.published}
+                      onClick={() => reorderLesson(lesson.id, -1)}
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                      Move up
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={index === (lessons?.length ?? 0) - 1 || course.published}
+                      onClick={() => reorderLesson(lesson.id, 1)}
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                      Move down
+                    </Button>
+                  </div>
+                  <LessonEditor
+                    key={lesson.id}
+                    lesson={lesson}
+                    index={index}
+                    link={videoLinks.find((v) => v.lesson_id === lesson.id)}
+                    onChange={() => {
+                      refresh();
+                      void refetchLinks();
+                    }}
+                    courseId={id}
+                    sourceText={
+                      lessons
+                        ?.slice(0, index)
+                        .reverse()
+                        .find((l) => l.kind !== "quiz")?.body ?? ""
+                    }
+                    readOnly={course.published}
+                  />
+                </div>
+              );
+            })()}
+          {screen === "overview" && (
+            <p className="supporting-text">
+              Open Settings to edit course details, or select a workflow step above.
+            </p>
+          )}
+          {screen === "content" && (
+            <StudioContentLibrary
+              courseId={id}
+              modules={(studioModules ?? []).map((m) => ({ id: m.id, title: m.title }))}
+              readOnly={course.published}
+            />
+          )}
+          {screen === "import" && (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div
+                className="flex gap-1 rounded-full border border-border p-1 w-fit"
+                role="tablist"
+                aria-label="Design method"
+              >
+                {(
+                  [
+                    { key: "auto", label: "Auto Design" },
+                    { key: "manual", label: "Manual Design" },
+                  ] as const
+                ).map((t) => (
+                  <Button
+                    key={t.key}
+                    role="tab"
+                    aria-selected={designTab === t.key}
+                    size="sm"
+                    variant={designTab === t.key ? "default" : "ghost"}
+                    className="rounded-full"
+                    onClick={() => setDesignTab(t.key)}
+                  >
+                    {t.label}
+                  </Button>
+                ))}
+              </div>
+              <Link
+                to="/class/$id"
+                params={{ id }}
+                className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs"
+              >
+                <Eye className="h-3 w-3" />
+                Preview
+              </Link>
+            </div>
+          )}
+          {screen === "import" && designTab === "manual" && (
+            <fieldset disabled={course.published} className="min-w-0 space-y-6">
+              {modules.length === 0 && (
+                <section className="space-y-3 rounded-2xl border border-dashed border-border p-4">
+                  <h2 className="font-semibold">Add your first lesson</h2>
+                  <LessonTypeAdder
+                    onAdd={(kind) => void addLesson(kind)}
+                    onAddSlides={(subKinds) => void addSlideSet(subKinds)}
+                  />
+                  <VideoLibraryPicker
+                    courseId={id}
+                    position={lessons?.length ?? 0}
+                    usedItemIds={videoLinks.map((v) => v.item_id)}
+                    onAdded={() => {
+                      refresh();
+                      void refetchLinks();
+                    }}
+                  />
+                </section>
+              )}
+              <section className="space-y-3 border-b border-border pb-6">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="font-semibold">Manage lessons</h2>
+                  {selectedLessonIds.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive"
+                      onClick={() => {
+                        void deleteLessons(selectedLessonIds);
+                        setSelectedLessonIds([]);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete {selectedLessonIds.length} selected
+                    </Button>
+                  )}
+                </div>
+                {lessons?.length ? (
+                  (() => {
+                    const titleCounts = new Map<string, number>();
+                    for (const l of lessons)
+                      titleCounts.set(l.title, (titleCounts.get(l.title) ?? 0) + 1);
+                    return (
+                      <ul className="space-y-1.5">
+                        {lessons.map((l) => {
+                          const duplicate = (titleCounts.get(l.title) ?? 0) > 1;
+                          const checked = selectedLessonIds.includes(l.id);
+                          return (
+                            <li
+                              key={l.id}
+                              className={`flex flex-wrap items-center gap-2 rounded-lg border p-2 text-sm ${duplicate ? "border-destructive/40 bg-destructive/5" : "border-border"}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) =>
+                                  setSelectedLessonIds((cur) =>
+                                    e.target.checked
+                                      ? [...cur, l.id]
+                                      : cur.filter((x) => x !== l.id),
+                                  )
+                                }
+                              />
+                              <Button
+                                variant="ghost"
+                                className="min-w-0 flex-1 justify-start truncate"
+                                onClick={() => {
+                                  setSelectedLesson(l.id);
+                                  setScreen("lesson");
+                                }}
+                              >
+                                {l.title}
+                                {duplicate && (
+                                  <span className="ml-2 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">
+                                    Possible duplicate
+                                  </span>
+                                )}
+                              </Button>
+                              <select
+                                value={l.module_id ?? ""}
+                                onChange={(e) => assignLessonToModule(l.id, e.target.value || null)}
+                                className="rounded-md border border-input bg-background px-2 py-1 text-xs"
+                                aria-label="Module"
+                              >
+                                <option value="">Unassigned</option>
+                                {studioModules?.map((m) => (
+                                  <option key={m.id} value={m.id}>
+                                    {m.title}
+                                  </option>
+                                ))}
+                              </select>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    );
+                  })()
+                ) : (
+                  <p className="text-xs text-muted-foreground">No lessons yet.</p>
+                )}
+              </section>
+            </fieldset>
+          )}
+          {screen === "import" && designTab === "auto" && (
+            <div className="min-w-0 space-y-6">
+              <section className="space-y-3 border-b border-border pb-6">
+                {factoryStep === 0 && (
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      Paste extracted text from a training manual. Module and chapter headings
+                      become draft reading lessons. Upload PDF, Word, PowerPoint or plain text.
+                      Enable local recognition for scanned English PDFs. Review every lesson before
+                      publishing.
+                    </p>
+                    <label className="flex items-center gap-2 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={localOcr}
+                        disabled={readingFile}
+                        onChange={(event) => setLocalOcr(event.target.checked)}
+                      />
+                      Recognize scanned English PDF pages on this device
+                    </label>
+                    {localOcr && (
+                      <p className="text-xs text-muted-foreground">
+                        Up to 20 pages with little embedded text, within the 12 MB document limit.
+                        First use downloads the recognition engine from Plusticity. Source pages
+                        stay on your device during recognition. Check spelling, numbers and reading
+                        order; tables and handwriting may be inaccurate.
+                      </p>
+                    )}
+                    {readingFile && (
+                      <div className="flex items-center gap-2">
+                        <p role="status" aria-live="polite" className="text-xs">
+                          {extractionProgress}
+                        </p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => extractionController.current?.abort()}
+                        >
+                          Cancel extraction
+                        </Button>
+                      </div>
+                    )}
+                    {!readingFile && recognizedPages.length > 0 && (
+                      <p role="status" className="text-xs">
+                        Recognized {recognizedPages.length} scanned pages. Review all extracted text
+                        before importing.
+                        {recognizedPages.some((page) => page.confidence < 70) &&
+                          ` Low-confidence pages: ${recognizedPages
+                            .filter((page) => page.confidence < 70)
+                            .map((page) => page.page)
+                            .join(", ")}.`}
+                      </p>
+                    )}
+                    {!readingFile && !recognizedPages.length && lowTextPages.length > 0 && (
+                      <p role="status" className="text-xs">
+                        Pages with little embedded text: {lowTextPages.join(", ")}. Check the
+                        original pages. Scanned images may need local recognition; upload again with
+                        recognition enabled.
+                      </p>
+                    )}
+                    <label className="block text-xs font-medium">
+                      Upload a manual (PDF, DOCX, PPTX, TXT or MD)
+                      <input
+                        type="file"
+                        accept=".pdf,.docx,.pptx,.txt,.md"
+                        disabled={readingFile}
+                        onChange={(e) => {
+                          void readTextFile(e.target.files?.[0]);
+                          e.target.value = "";
                         }}
+                        className="mt-1 block w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-primary"
+                      />
+                    </label>
+                    <Input
+                      value={sourceName}
+                      onChange={(e) => setSourceName(e.target.value)}
+                      placeholder="Source document name"
+                      aria-label="Source document name"
+                      maxLength={160}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowExtractedText((v) => !v)}
+                    >
+                      {showExtractedText
+                        ? "Hide extracted text"
+                        : sourceText
+                          ? "Edit extracted text"
+                          : "Paste text manually instead"}
+                    </Button>
+                    {showExtractedText && (
+                      <Textarea
+                        value={sourceText}
+                        onChange={(e) => {
+                          setSourceText(e.target.value);
+                          setSourcePages(null);
+                          setDraft(null);
+                        }}
+                        placeholder={"Module 1: Introduction\\nYour training content..."}
+                        rows={6}
+                        maxLength={1000000}
+                        aria-label="Extracted manual text"
+                      />
+                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          previewSource();
+                          setFactoryStep(1);
+                        }}
+                        disabled={!sourceText.trim()}
                       >
-                        <Trash2 className="h-4 w-4" />
-                        Delete {selectedLessonIds.length} selected
+                        Analyse manual & build course outline
                       </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={generateOutlineWithAI}
+                        disabled={!sourceText.trim() || aiOutlineLoading}
+                      >
+                        {aiOutlineLoading ? "Generating with AI…" : "Generate outline with AI"}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      "Analyse manual" splits the manual by its own headings. "Generate outline with
+                      AI" lets the AI organise it instead — useful when the manual's headings are
+                      inconsistent. Either way, review and approve lessons before publishing.
+                    </p>
+                    <p role="status" aria-live="polite" className="text-xs text-muted-foreground">
+                      Cloud source draft:{" "}
+                      {workspaceSave.status === "saved"
+                        ? "Working draft saved"
+                        : "Working draft autosave"}
+                    </p>
+                    {!!savedDesigns?.length && (
+                      <div className="space-y-2 rounded-xl border border-border p-4">
+                        <h3 className="font-semibold">Saved learning designs</h3>
+                        <p className="text-xs text-muted-foreground">
+                          These records are available across devices. To edit or generate their
+                          lesson content, upload the source manual on this device.
+                        </p>
+                        <p className="text-xs font-medium">
+                          {savedDesigns.filter((item) => item.review_status === "approved").length}{" "}
+                          of {savedDesigns.length} designs approved
+                        </p>
+                        {savedDesigns.map((item, index) => (
+                          <details
+                            key={item.lesson_key}
+                            className="rounded-lg border border-border bg-background p-3 text-xs"
+                          >
+                            <summary className="cursor-pointer font-medium">
+                              {index + 1}. {item.lesson_title} ·{" "}
+                              {item.review_status === "approved" ? "✓ Approved" : "Needs review"}
+                            </summary>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <p className="w-full font-medium">Teaching and assessment methods</p>
+                              {learningMethods.map((method) => {
+                                const methodSelected = item.proposed_methods.includes(method.id);
+                                return (
+                                  <Button
+                                    key={method.id}
+                                    type="button"
+                                    size="sm"
+                                    variant={methodSelected ? "secondary" : "outline"}
+                                    title={method.detail}
+                                    aria-pressed={methodSelected}
+                                    disabled={designSyncing || course?.published}
+                                    onClick={() =>
+                                      void updateSavedMethods(
+                                        item.lesson_key,
+                                        methodSelected
+                                          ? item.proposed_methods.filter(
+                                              (value) => value !== method.id,
+                                            )
+                                          : [...item.proposed_methods, method.id],
+                                      )
+                                    }
+                                  >
+                                    <method.icon className="h-3.5 w-3.5" />
+                                    {method.label}
+                                  </Button>
+                                );
+                              })}
+                            </div>
+                            {item.ai_rationale && (
+                              <p className="mt-2 whitespace-pre-wrap text-muted-foreground">
+                                <strong>AI explanation:</strong> {item.ai_rationale}
+                              </p>
+                            )}
+                            <p className="mt-2 text-muted-foreground">
+                              Teaching methods can be changed here. To generate lesson content,
+                              analyse the original source manual on this device.
+                            </p>
+                            {!course?.published && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={
+                                  designSyncing ||
+                                  (item.review_status !== "approved" &&
+                                    !item.proposed_methods.length)
+                                }
+                                onClick={() =>
+                                  void updateSavedApproval(
+                                    item.lesson_key,
+                                    item.review_status !== "approved",
+                                  )
+                                }
+                              >
+                                {item.review_status === "approved"
+                                  ? "Reopen approval"
+                                  : "Approve saved design"}
+                              </Button>
+                            )}
+                          </details>
+                        ))}
+                      </div>
                     )}
                   </div>
-                  {lessons?.length ? (
-                    (() => {
-                      const titleCounts = new Map<string, number>();
-                      for (const l of lessons)
-                        titleCounts.set(l.title, (titleCounts.get(l.title) ?? 0) + 1);
-                      return (
-                        <ul className="space-y-1.5">
-                          {lessons.map((l) => {
-                            const duplicate = (titleCounts.get(l.title) ?? 0) > 1;
-                            const checked = selectedLessonIds.includes(l.id);
+                )}
+
+                {factoryStep === 1 &&
+                  (draft ? (
+                    <div className="space-y-5">
+                      <ManualLessonReview
+                        draft={draft}
+                        courseId={id}
+                        onCommit={(lessonIndex, lesson, slideTexts, preview) =>
+                          void commitLessonToCourse(lessonIndex, lesson, slideTexts, preview)
+                        }
+                        illustrationGuide={form.illustration_guide}
+                        extraControls={
+                          <div className="flex flex-wrap items-end gap-3 border-b border-border pb-4">
+                            <label className="space-y-1 text-xs font-medium">
+                              <span className="block">First content page</span>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={sourcePages?.at(-1)?.page ?? 500}
+                                value={firstContentPage}
+                                aria-label="First content page"
+                                className="w-24"
+                                disabled={course.published}
+                                onChange={(event) =>
+                                  setFirstContentPage(Math.max(1, Number(event.target.value) || 1))
+                                }
+                              />
+                            </label>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={course.published || !sourceText.trim()}
+                              onClick={async () => {
+                                if (
+                                  await confirm({
+                                    title: "Rebuild the outline?",
+                                    description:
+                                      "This replaces your outline edits and approvals. Your original source and saved course lessons stay unchanged.",
+                                    confirmLabel: "Rebuild outline",
+                                  })
+                                )
+                                  previewSource();
+                              }}
+                            >
+                              Rebuild outline
+                            </Button>
+                          </div>
+                        }
+                        readOnly={course.published}
+                        busy={designSyncing || designLoading !== null || batchRunning || aiLoading}
+                        methods={learningMethods}
+                        choices={choicesFor}
+                        approved={designApproved}
+                        rationale={designRationale}
+                        previews={lessonPreviews}
+                        previewLoading={previewLoading}
+                        onPreview={(index, lesson) => void previewLessonPage(index, lesson)}
+                        onEdit={(index, lesson) =>
+                          reviseOutline(
+                            draft.lessons.map((item, i) => (i === index ? lesson : item)),
+                          )
+                        }
+                        onSplit={(index, paragraph, title) => {
+                          const lesson = draft.lessons[index];
+                          if (lesson)
+                            reviseOutline(
+                              draft.lessons.flatMap((item, i) =>
+                                i === index ? splitDraftLessonAt(lesson, paragraph, title) : [item],
+                              ),
+                            );
+                        }}
+                        onMerge={(index) => {
+                          const first = draft.lessons[index];
+                          const second = draft.lessons[index + 1];
+                          if (!first || !second) return;
+                          const previousLessons = draft.lessons;
+                          reviseOutline([
+                            ...draft.lessons.slice(0, index),
+                            mergeDraftLessons(first, second),
+                            ...draft.lessons.slice(index + 2),
+                          ]);
+                          toast.success("Lessons merged.", {
+                            action: {
+                              label: "Undo",
+                              onClick: () => reviseOutline(previousLessons),
+                            },
+                          });
+                        }}
+                        onDelete={async (index) => {
+                          if (
+                            await confirm({
+                              title: "Remove this lesson from the outline?",
+                              description:
+                                "The original manual and saved course lessons will not be deleted.",
+                              confirmLabel: "Remove lesson",
+                              tone: "danger",
+                            })
+                          )
+                            reviseOutline(draft.lessons.filter((_, i) => i !== index));
+                        }}
+                        onMethods={(index, methods) => void saveDesignSelection(index, methods)}
+                        onApprove={(index, lesson) => void toggleDesignApproval(index, lesson)}
+                        suggestions={methodSuggestions}
+                        suggestLoading={suggestLoading}
+                        onSuggest={(index, lesson, methods, webSearch) =>
+                          suggestMethodContent(index, lesson, methods, webSearch)
+                        }
+                        focusOnly
+                        focusIndex={outlineFocus?.index ?? 0}
+                        focusToken={outlineFocus?.token ?? 0}
+                      />
+                      <div className="flex flex-wrap justify-between gap-2 border-t border-border pt-4">
+                        <Button variant="outline" onClick={() => setFactoryStep(0)}>
+                          Back to upload
+                        </Button>
+                        <Button disabled={!draft.lessons.length} onClick={() => setFactoryStep(2)}>
+                          Continue to generation
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 py-6 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        {sourceText.trim()
+                          ? "Analyse the manual before reviewing its lessons."
+                          : "Upload a manual to review its lessons."}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setFactoryStep(0)}
+                      >
+                        Go to Step 1: Upload
+                      </Button>
+                    </div>
+                  ))}
+
+                {factoryStep === 2 &&
+                  (draft ? (
+                    <div className="space-y-3">
+                      <div className="space-y-2 rounded-xl border border-border bg-background p-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={batchRunning || aiLoading || !!course.published}
+                            onClick={generateBatch}
+                          >
+                            {batchRunning ? "Working…" : "Generate batch (up to 5 lessons)"}
+                          </Button>
+                          {batchProgress && (
+                            <p className="text-xs text-muted-foreground">{batchProgress}</p>
+                          )}
+                          {batchDrafts.length > 0 && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={batchRunning || aiLoading}
+                              onClick={saveBatchDrafts}
+                            >
+                              Save {batchDrafts.length} batch drafts
+                            </Button>
+                          )}
+                        </div>
+                        {batchDrafts.map((item, i) => (
+                          <div key={i} className="rounded-lg border border-border p-2 text-xs">
+                            <p className="font-medium">
+                              {item.lessonTitle} — {item.questions.length} quiz questions
+                            </p>
+                            <p className="text-muted-foreground">{item.sourceRefs}</p>
+                            <p className="mt-1 whitespace-pre-wrap">{item.lessonSummary}</p>
+                            {item.questions.map((q, j) => (
+                              <p key={j} className="mt-1">
+                                Q: {q.question} — source: {q.sourceQuote}
+                              </p>
+                            ))}
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={
+                            aiLoading ||
+                            !draft.lessons.length ||
+                            !!course.published ||
+                            (draft.lessons[0]?.body.length ?? 0) < 100
+                          }
+                          onClick={generateAiDraft}
+                        >
+                          {aiLoading
+                            ? "Generating…"
+                            : "Generate AI lesson and quiz preview (first lesson)"}
+                        </Button>
+                        {aiDraft && (
+                          <div className="space-y-2 rounded-lg border border-border p-3 text-xs">
+                            <p className="font-semibold">
+                              AI draft — verify against your manual before using
+                            </p>
+                            <p className="font-medium">{aiDraft.lessonTitle}</p>
+                            <FormattedLesson content={aiDraft.lessonSummary} />
+                            {aiDraft.questions.map((q, i) => (
+                              <div key={i} className="space-y-1 border-t border-border pt-2">
+                                <p className="font-medium">
+                                  {i + 1}. {q.question}
+                                </p>
+                                {q.options.map((option, j) => (
+                                  <p key={j}>
+                                    {j === q.correctIndex ? "✓ " : "○ "}
+                                    {option}
+                                  </p>
+                                ))}
+                                <p className="italic text-muted-foreground">
+                                  Source quote: {q.sourceQuote}
+                                </p>
+                              </div>
+                            ))}
+                            {!!aiDraft.droppedUnsupportedQuestions && (
+                              <p>
+                                {aiDraft.droppedUnsupportedQuestions} question(s) removed because
+                                their source quotes were not found.
+                              </p>
+                            )}
+                            <p className="text-muted-foreground">
+                              Review all answers and citations. Saving does not publish the course.
+                            </p>
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={
+                                aiLoading || !aiDraft.questions.length || !!course.published
+                              }
+                              onClick={saveAiDraft}
+                            >
+                              Save AI lesson and quiz as drafts
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2 rounded-xl border border-border bg-background p-4">
+                        <h3 className="text-sm font-medium">Suggested knowledge checks</h3>
+                        <p className="text-xs text-muted-foreground">
+                          These are source-based question prompts, not AI-generated multiple-choice
+                          quizzes. Review the suggested answer and create verified options using the
+                          Quiz editor in each lesson.
+                        </p>
+                        {suggestReviewQuestions(draft, 8).map((item, i) => (
+                          <div key={i} className="rounded-lg border border-border p-2 text-xs">
+                            <p className="font-medium">{item.question}</p>
+                            <p className="mt-1 text-muted-foreground">
+                              Source answer: {item.suggestedAnswer}
+                            </p>
+                            <p className="mt-1 text-muted-foreground">
+                              {item.sourceId}, page {item.page}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-between border-t border-border pt-3">
+                        <Button variant="outline" onClick={() => setFactoryStep(1)}>
+                          Back: Review & approve
+                        </Button>
+                        <label className="flex flex-wrap items-center gap-2 text-sm">
+                          Import as
+                          <select
+                            className="rounded-md border border-input bg-background px-2 py-1"
+                            value={manualFormat}
+                            disabled={importing || !!course.published}
+                            onChange={(event) =>
+                              setManualFormat(event.target.value === "slide" ? "slide" : "reading")
+                            }
+                          >
+                            <option value="reading">Reading lessons</option>
+                            <option value="slide">Interactive slides</option>
+                          </select>
+                        </label>
+                        <Button
+                          type="button"
+                          onClick={importDraft}
+                          disabled={!draft.lessons.length || importing || !!course.published}
+                        >
+                          {importing ? "Importing…" : "Add draft lessons to course"}
+                        </Button>
+                      </div>
+                      {course.published && (
+                        <p className="text-xs text-destructive">
+                          Unpublish the course before importing draft material.
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2 rounded-2xl border border-dashed border-border p-6 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        {sourceText.trim()
+                          ? "Analyse the manual to build a course outline before generating lessons."
+                          : "Upload or paste a source manual and analyse it first."}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setFactoryStep(0)}
+                      >
+                        Go to Step 1: Upload
+                      </Button>
+                    </div>
+                  ))}
+              </section>
+            </div>
+          )}
+          {screen === "performance" && (
+            <div className="min-w-0 space-y-6">
+              <CourseAnalytics courseId={id} />
+            </div>
+          )}
+          {screen === "publish" && (
+            <div className="min-w-0 space-y-6">
+              <div className="grid min-w-0 items-stretch gap-6 lg:grid-cols-2">
+                <section className="flex h-full flex-col space-y-2 border-b border-border pb-6">
+                  <h2 className="font-semibold">Publish v1.{course.version_number - 1}</h2>
+                  {!course.published && (
+                    <Textarea
+                      aria-label="Version change note"
+                      value={changeNote}
+                      onChange={(e) => setChangeNote(e.target.value)}
+                      placeholder="What changed in this version?"
+                      maxLength={1000}
+                    />
+                  )}
+                  <ul className="space-y-2">
+                    {readiness.map((item) => (
+                      <li key={item.label} className="flex items-center gap-2 text-xs">
+                        <Check
+                          className={
+                            item.ready ? "h-4 w-4 text-primary" : "h-4 w-4 text-muted-foreground"
+                          }
+                        />
+                        {item.label}
+                      </li>
+                    ))}
+                  </ul>
+                  {!course.published && pendingReviewCount > 0 && (
+                    <div className="space-y-2 border-l-2 border-primary py-2 pl-3">
+                      <p className="text-sm text-muted-foreground">
+                        {pendingReviewCount} imported lessons awaiting your review.
+                      </p>
+                      <Button
+                        variant="outline"
+                        disabled={reviewingLessons}
+                        onClick={markAllReviewed}
+                      >
+                        <Check className="h-4 w-4" />
+                        {reviewingLessons ? "Saving review…" : "Mark all lessons as reviewed"}
+                      </Button>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Course details, modules and lesson content are checked automatically before this
+                    is allowed.
+                  </p>
+                  {course.published ? (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setPublished(false)}
+                    >
+                      Unpublish
+                    </Button>
+                  ) : (
+                    <Button
+                      className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+                      disabled={!readyToPublish || reviewingLessons}
+                      onClick={() => setPublished(true)}
+                    >
+                      Publish to catalogue
+                    </Button>
+                  )}
+                  {!readyToPublish && !course.published && (
+                    <p className="text-xs text-muted-foreground">
+                      Finish the course title, description, industry/topic, and add at least one
+                      lesson with every imported lesson reviewed, to enable publishing.
+                    </p>
+                  )}
+                  <Button
+                    variant="ghost"
+                    className="mt-2 w-full text-destructive"
+                    onClick={remove}
+                    disabled={deleting || course.published}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    {deleting ? "Deleting…" : "Delete course"}
+                  </Button>
+                </section>
+                <aside className="flex h-full flex-col space-y-3 border-b border-border pb-6">
+                  <h2 className="font-semibold">Trainer review</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Check the source evidence, lesson content and assessments before publishing.
+                  </p>
+                  <div className="rounded-lg bg-muted/40 p-3 text-xs">
+                    <p className="font-medium">AI learning design</p>
+                    <p className="mt-1 text-muted-foreground">
+                      Proposed teaching and assessment methods with trainer approval are planned,
+                      not yet active.
+                    </p>
+                  </div>
+                  <Link
+                    to="/class/$id"
+                    params={{ id }}
+                    className="inline-flex items-center gap-2 text-sm font-medium text-primary"
+                  >
+                    <Eye className="h-4 w-4" />
+                    Preview as learner
+                  </Link>
+                </aside>
+              </div>
+            </div>
+          )}
+          {![
+            "overview",
+            "performance",
+            "publish",
+            "import",
+            "history",
+            "lesson",
+            "content",
+          ].includes(screen) &&
+            (() => {
+              const moduleIndex = modules.findIndex((m) => m.key === screen);
+              const mod = modules[moduleIndex];
+              if (!mod)
+                return (
+                  <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                    Module not found.{" "}
+                    <button
+                      type="button"
+                      className="font-medium text-primary"
+                      onClick={() => setScreen("overview")}
+                    >
+                      Back to Overview
+                    </button>
+                  </p>
+                );
+              const dGroup = draftGroupFor(mod.title);
+              const videoLessons = mod.lessons.filter((l) => l.kind === "video");
+              const quizLessons = mod.lessons.filter((l) => l.kind === "quiz");
+              const goToModule = (index: number) => {
+                const next = modules[index];
+                setScreen(next ? next.key : "overview");
+              };
+              return (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h2 className="font-semibold">{mod.title}</h2>
+                      <p className="text-xs text-muted-foreground">
+                        {mod.lessons.length} lesson{mod.lessons.length === 1 ? "" : "s"}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => setScreen("overview")}>
+                      <LayoutGrid className="h-4 w-4" />
+                      Overview
+                    </Button>
+                  </div>
+                  <Tabs defaultValue="lessons">
+                    <TabsList className="flex-wrap">
+                      <TabsTrigger value="lessons">Lessons</TabsTrigger>
+                      <TabsTrigger value="content">Content</TabsTrigger>
+                      <TabsTrigger value="media">Media</TabsTrigger>
+                      <TabsTrigger value="activities">Activities</TabsTrigger>
+                      <TabsTrigger value="assessment">Assessment</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="lessons" className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs text-muted-foreground"></p>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => addLesson("video", mod.moduleId)}
+                          >
+                            <Video className="h-4 w-4" />
+                            Video
+                          </Button>
+                          <VideoLibraryPicker
+                            courseId={id}
+                            position={lessons?.length ?? 0}
+                            usedItemIds={videoLinks.map((v) => v.item_id)}
+                            onAdded={() => {
+                              refresh();
+                              void refetchLinks();
+                            }}
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => addLesson("reading", mod.moduleId)}
+                          >
+                            <FileText className="h-4 w-4" />
+                            Reading
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => addLesson("quiz", mod.moduleId)}
+                          >
+                            <HelpCircle className="h-4 w-4" />
+                            Quiz
+                          </Button>
+                        </div>
+                      </div>
+                      {mod.lessons.map((l) => (
+                        <Button
+                          key={l.id}
+                          variant="outline"
+                          className="h-auto w-full justify-start whitespace-normal text-left"
+                          onClick={() => {
+                            setSelectedLesson(l.id);
+                            setScreen("lesson");
+                          }}
+                        >
+                          {l.title}
+                          <FileText className="ml-auto h-4 w-4 shrink-0" />
+                        </Button>
+                      ))}
+                      {mod.lessons.length === 0 && (
+                        <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                          Add this module's first video, reading or quiz.
+                        </p>
+                      )}
+                    </TabsContent>
+                    <TabsContent value="content" className="space-y-3">
+                      {dGroup ? (
+                        <>
+                          <div className="space-y-3 rounded-xl border border-border bg-background p-4">
+                            <h3 className="font-semibold">AI learning design review</h3>
+                            <p className="text-xs text-muted-foreground">
+                              Suggested teaching and assessment methods are based on topic keywords.
+                              Approve or adjust each lesson before content generation.
+                            </p>
+                            {dGroup.items.map(({ lesson, index: i }) => (
+                              <details key={i} className="rounded-lg border border-border p-3">
+                                <summary className="cursor-pointer text-sm font-medium">
+                                  {lesson.title}{" "}
+                                  {designApproved[i] ? "✓ Approved" : "· Needs review"}
+                                </summary>
+                                <div className="mt-3 space-y-2">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={
+                                      designLoading !== null ||
+                                      lesson.body.length < 100 ||
+                                      !!course.published
+                                    }
+                                    onClick={() => void proposeDesign(i, lesson)}
+                                  >
+                                    {designLoading === i
+                                      ? "Designing…"
+                                      : "Ask AI to propose methods"}
+                                  </Button>
+                                  {designRationale[i] && (
+                                    <p className="rounded-lg bg-muted/50 p-2 text-xs text-muted-foreground">
+                                      <strong>AI rationale:</strong> {designRationale[i]}
+                                    </p>
+                                  )}
+                                  <div className="flex flex-wrap gap-2">
+                                    {learningMethods.map((method) => {
+                                      const methodSelected = choicesFor(
+                                        i,
+                                        lesson.title,
+                                        lesson.body,
+                                      ).includes(method.id);
+                                      return (
+                                        <Button
+                                          key={method.id}
+                                          type="button"
+                                          size="sm"
+                                          variant={methodSelected ? "secondary" : "outline"}
+                                          title={method.detail}
+                                          aria-pressed={methodSelected}
+                                          disabled={designSyncing}
+                                          onClick={() =>
+                                            void saveDesignSelection(
+                                              i,
+                                              methodSelected
+                                                ? choicesFor(i, lesson.title, lesson.body).filter(
+                                                    (x) => x !== method.id,
+                                                  )
+                                                : [
+                                                    ...choicesFor(i, lesson.title, lesson.body),
+                                                    method.id,
+                                                  ],
+                                            )
+                                          }
+                                        >
+                                          <method.icon className="h-3.5 w-3.5" />
+                                          {method.label}
+                                        </Button>
+                                      );
+                                    })}
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={designApproved[i] ? "secondary" : "outline"}
+                                    disabled={
+                                      designSyncing ||
+                                      !choicesFor(i, lesson.title, lesson.body).length
+                                    }
+                                    onClick={() => void toggleDesignApproval(i, lesson)}
+                                  >
+                                    {designApproved[i] ? "Reopen review" : "Approve lesson design"}
+                                  </Button>
+                                </div>
+                              </details>
+                            ))}
+                          </div>
+                          <div className="space-y-2 rounded-xl border border-border bg-background p-4">
+                            <h3 className="font-semibold">Source sections</h3>
+                            {dGroup.items.map(({ lesson, index: i }) => (
+                              <details
+                                key={i}
+                                className="rounded-lg border border-border bg-muted/20 p-3"
+                              >
+                                <summary className="cursor-pointer text-sm font-medium">
+                                  {lesson.title}{" "}
+                                  <span className="text-xs font-normal text-muted-foreground">
+                                    · {lesson.sourceRefs.length} source pages
+                                  </span>
+                                </summary>
+                                <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
+                                  {lesson.body.slice(0, 2500)}
+                                  {lesson.body.length > 2500 ? "…" : ""}
+                                </p>
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                  Source:{" "}
+                                  {lesson.sourceRefs
+                                    .map((ref) => `${ref.sourceId} p.${ref.page}`)
+                                    .join(", ")}
+                                </p>
+                              </details>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                          No AI draft content loaded for this module. Import a source manual from
+                          Overview to review it here.
+                        </p>
+                      )}
+                    </TabsContent>
+                    <TabsContent value="media" className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => addLesson("video", mod.moduleId)}
+                        >
+                          <Video className="h-4 w-4" />
+                          Add video lesson
+                        </Button>
+                        <VideoLibraryPicker
+                          courseId={id}
+                          position={lessons?.length ?? 0}
+                          usedItemIds={videoLinks.map((v) => v.item_id)}
+                          onAdded={() => {
+                            refresh();
+                            void refetchLinks();
+                          }}
+                        />
+                      </div>
+                      {videoLessons.length ? (
+                        <ul className="space-y-2">
+                          {videoLessons.map((l) => {
+                            const link = videoLinks.find((v) => v.lesson_id === l.id);
                             return (
                               <li
                                 key={l.id}
-                                className={`flex flex-wrap items-center gap-2 rounded-lg border p-2 text-sm ${duplicate ? "border-destructive/40 bg-destructive/5" : "border-border"}`}
+                                className="rounded-xl border border-border p-3 text-sm"
                               >
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
-                                  onChange={(e) =>
-                                    setSelectedLessonIds((cur) =>
-                                      e.target.checked
-                                        ? [...cur, l.id]
-                                        : cur.filter((x) => x !== l.id),
-                                    )
-                                  }
-                                />
-                                <Button
-                                  variant="ghost"
-                                  className="min-w-0 flex-1 justify-start truncate"
-                                  onClick={() => {
-                                    setSelectedLesson(l.id);
-                                    setScreen("lesson");
-                                  }}
-                                >
-                                  {l.title}
-                                  {duplicate && (
-                                    <span className="ml-2 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">
-                                      Possible duplicate
-                                    </span>
-                                  )}
-                                </Button>
-                                <select
-                                  value={l.module_id ?? ""}
-                                  onChange={(e) =>
-                                    assignLessonToModule(l.id, e.target.value || null)
-                                  }
-                                  className="rounded-md border border-input bg-background px-2 py-1 text-xs"
-                                  aria-label="Module"
-                                >
-                                  <option value="">Unassigned</option>
-                                  {studioModules?.map((m) => (
-                                    <option key={m.id} value={m.id}>
-                                      {m.title}
-                                    </option>
-                                  ))}
-                                </select>
+                                <p className="font-medium">{l.title}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {link
+                                    ? `Library video · ${link.item?.title ?? ""}`
+                                    : l.video_url || "No video link set yet"}
+                                </p>
                               </li>
                             );
                           })}
                         </ul>
-                      );
-                    })()
-                  ) : (
-                    <p className="text-xs text-muted-foreground">No lessons yet.</p>
-                  )}
-                </section>
-              </fieldset>
-            )}
-            {screen === "import" && designTab === "auto" && (
-              <div className="min-w-0 space-y-6">
-                <section className="space-y-3 border-b border-border pb-6">
-                  <nav aria-label="Course Factory steps" className="flex flex-wrap gap-2">
-                    {["Upload", "Review & approve", "Generate & import"].map((label, i) => {
-                      const reachable = i === 0 || (i === 1 && !!sourceText.trim()) || (i === 2 && !!draft);
-                      return (
-                        <Button
-                          key={label}
-                          type="button"
-                          size="sm"
-                          variant={factoryStep === i ? "secondary" : "ghost"}
-                          disabled={!reachable}
-                          title={reachable ? undefined : "Complete the earlier steps first"}
-                          onClick={() => setFactoryStep(i)}
-                        >
-                          {i + 1}. {label}
-                        </Button>
-                      );
-                    })}
-                  </nav>
-
-                  {factoryStep === 0 && (
-                    <div className="space-y-3">
-                      <p className="text-xs text-muted-foreground">
-                        Paste extracted text from a training manual. Module and chapter headings
-                        become draft reading lessons. Upload PDF, Word, PowerPoint or plain text.
-                        Enable local recognition for scanned English PDFs. Review every lesson
-                        before publishing.
-                      </p>
-                      <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={localOcr} disabled={readingFile} onChange={event => setLocalOcr(event.target.checked)} />Recognize scanned English PDF pages on this device</label>
-                      {localOcr && <p className="text-xs text-muted-foreground">Up to 20 pages with little embedded text, within the 12 MB document limit. First use downloads the recognition engine from Plusticity. Source pages stay on your device during recognition. Check spelling, numbers and reading order; tables and handwriting may be inaccurate.</p>}
-                      {readingFile && <div className="flex items-center gap-2"><p role="status" aria-live="polite" className="text-xs">{extractionProgress}</p><Button type="button" size="sm" variant="outline" onClick={() => extractionController.current?.abort()}>Cancel extraction</Button></div>}
-                      {!readingFile && recognizedPages.length > 0 && <p role="status" className="text-xs">Recognized {recognizedPages.length} scanned pages. Review all extracted text before importing.{recognizedPages.some(page => page.confidence < 70) && ` Low-confidence pages: ${recognizedPages.filter(page => page.confidence < 70).map(page => page.page).join(", ")}.`}</p>}
-                      {!readingFile && !recognizedPages.length && lowTextPages.length > 0 && <p role="status" className="text-xs">Pages with little embedded text: {lowTextPages.join(", ")}. Check the original pages. Scanned images may need local recognition; upload again with recognition enabled.</p>}
-                      <label className="block text-xs font-medium">
-                        Upload a manual (PDF, DOCX, PPTX, TXT or MD)
-                        <input
-                          type="file"
-                          accept=".pdf,.docx,.pptx,.txt,.md"
-                          disabled={readingFile}
-                          onChange={(e) => {
-                            void readTextFile(e.target.files?.[0]);
-                            e.target.value = "";
-                          }}
-                          className="mt-1 block w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-primary"
-                        />
-                      </label>
-                      <Input
-                        value={sourceName}
-                        onChange={(e) => setSourceName(e.target.value)}
-                        placeholder="Source document name"
-                        aria-label="Source document name"
-                        maxLength={160}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowExtractedText((v) => !v)}
-                      >
-                        {showExtractedText
-                          ? "Hide extracted text"
-                          : sourceText
-                            ? "Edit extracted text"
-                            : "Paste text manually instead"}
-                      </Button>
-                      {showExtractedText && (
-                        <Textarea
-                          value={sourceText}
-                          onChange={(e) => {
-                            setSourceText(e.target.value);
-                            setSourcePages(null);
-                            setDraft(null);
-                          }}
-                          placeholder={"Module 1: Introduction\\nYour training content..."}
-                          rows={6}
-                          maxLength={1000000}
-                          aria-label="Extracted manual text"
-                        />
+                      ) : (
+                        <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                          No video lessons in this module yet.
+                        </p>
                       )}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            previewSource();
-                            setFactoryStep(1);
-                          }}
-                          disabled={!sourceText.trim()}
-                        >
-                          Analyse manual & build course outline
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={generateOutlineWithAI}
-                          disabled={!sourceText.trim() || aiOutlineLoading}
-                        >
-                          {aiOutlineLoading ? "Generating with AI…" : "Generate outline with AI"}
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        "Analyse manual" splits the manual by its own headings. "Generate outline with AI" lets the AI organise it instead — useful when the manual's headings are inconsistent. Either way, review and approve lessons before publishing.
-                      </p>
-                      <p role="status" aria-live="polite" className="text-xs text-muted-foreground">
-                        Cloud source draft:{" "}
-                        {cloudSaveStatus === "saved"
-                          ? "Saved"
-                          : cloudSaveStatus === "saving"
-                            ? "Saving…"
-                            : cloudSaveStatus === "pending"
-                              ? "Unsaved changes — saving shortly"
-                              : cloudSaveStatus === "loading"
-                                ? "Loading…"
-                                : cloudSaveStatus === "error"
-                                  ? "Save failed — check connection"
-                                  : "Cloud storage unavailable"}
-                      </p>
-                      {!!savedDesigns?.length && (
-                        <div className="space-y-2 rounded-xl border border-border p-4">
-                          <h3 className="font-semibold">Saved learning designs</h3>
+                    </TabsContent>
+                    <TabsContent value="activities" className="space-y-3">
+                      {dGroup ? (
+                        <div className="space-y-3 rounded-xl border border-border bg-background p-4">
+                          <h3 className="font-semibold">Learning activity storyboard</h3>
                           <p className="text-xs text-muted-foreground">
-                            These records are available across devices. To edit or generate their
-                            lesson content, upload the source manual on this device.
+                            Preview the mix of presentation and assessment methods. These are
+                            activity plans, not generated videos, images or quizzes.
                           </p>
-                          <p className="text-xs font-medium">
-                            {
-                              savedDesigns.filter((item) => item.review_status === "approved")
-                                .length
-                            }{" "}
-                            of {savedDesigns.length} designs approved
-                          </p>
-                          {savedDesigns.map((item, index) => (
-                            <details
-                              key={item.lesson_key}
-                              className="rounded-lg border border-border bg-background p-3 text-xs"
-                            >
-                              <summary className="cursor-pointer font-medium">
-                                {index + 1}. {item.lesson_title} ·{" "}
-                                {item.review_status === "approved" ? "✓ Approved" : "Needs review"}
+                          {dGroup.items.map(({ lesson, index }) => (
+                            <details key={index} className="rounded-lg border border-border p-3">
+                              <summary className="cursor-pointer text-sm font-medium">
+                                {lesson.title} ·{" "}
+                                {designApproved[index]
+                                  ? "Approved design"
+                                  : "Pending design approval"}
                               </summary>
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                <p className="w-full font-medium">Teaching and assessment methods</p>
-                                {learningMethods.map((method) => {
-                                  const methodSelected = item.proposed_methods.includes(method.id);
-                                  return (
-                                    <Button
-                                      key={method.id}
-                                      type="button"
-                                      size="sm"
-                                      variant={methodSelected ? "secondary" : "outline"}
-                                      title={method.detail}
-                                      aria-pressed={methodSelected}
-                                      disabled={designSyncing || course?.published}
-                                      onClick={() =>
-                                        void updateSavedMethods(
-                                          item.lesson_key,
-                                          methodSelected
-                                            ? item.proposed_methods.filter((value) => value !== method.id)
-                                            : [...item.proposed_methods, method.id],
-                                        )
-                                      }
+                              <div className="mt-3 space-y-2">
+                                <div className="rounded-lg bg-muted/40 p-3 text-sm">
+                                  <strong>1. Lesson introduction</strong>
+                                  <p className="text-xs text-muted-foreground">
+                                    Introduce the learning objective and connect it to the original
+                                    manual.
+                                  </p>
+                                </div>
+                                {choicesFor(index, lesson.title, lesson.body).map(
+                                  (method, methodIndex) => (
+                                    <div
+                                      key={method}
+                                      className="rounded-lg bg-muted/40 p-3 text-sm"
                                     >
-                                      <method.icon className="h-3.5 w-3.5" />
-                                      {method.label}
-                                    </Button>
-                                  );
-                                })}
-                              </div>
-                              {item.ai_rationale && (
-                                <p className="mt-2 whitespace-pre-wrap text-muted-foreground">
-                                  <strong>AI explanation:</strong> {item.ai_rationale}
+                                      <strong>
+                                        {methodIndex + 2}. {activityLabels[method]?.title ?? method}
+                                      </strong>
+                                      <p className="text-xs text-muted-foreground">
+                                        {activityLabels[method]?.description ??
+                                          "Trainer review required."}
+                                      </p>
+                                      <SourceActivity
+                                        method={method}
+                                        lesson={lesson}
+                                        courseId={id}
+                                        published={!!course.published}
+                                      />
+                                    </div>
+                                  ),
+                                )}
+                                <p className="text-xs text-muted-foreground">
+                                  Source:{" "}
+                                  {lesson.sourceRefs
+                                    .map((ref) => `${ref.sourceId} p.${ref.page}`)
+                                    .join(", ")}
                                 </p>
-                              )}
-                              <p className="mt-2 text-muted-foreground">
-                                Teaching methods can be changed here. To generate lesson content,
-                                analyse the original source manual on this device.
-                              </p>
-                              {!course?.published && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={
-                                    designSyncing ||
-                                    (item.review_status !== "approved" &&
-                                      !item.proposed_methods.length)
-                                  }
-                                  onClick={() =>
-                                    void updateSavedApproval(
-                                      item.lesson_key,
-                                      item.review_status !== "approved",
-                                    )
-                                  }
-                                >
-                                  {item.review_status === "approved"
-                                    ? "Reopen approval"
-                                    : "Approve saved design"}
-                                </Button>
-                              )}
+                              </div>
                             </details>
                           ))}
                         </div>
-                      )}
-                    </div>
-                  )}
-
-                  {factoryStep === 1 &&
-                    (draft ? (
-                      <div className="space-y-5">
-                        <ManualLessonReview
-                          draft={draft}
-                          courseId={id}
-                          onCommit={(lessonIndex, lesson, slideTexts, preview) => void commitLessonToCourse(lessonIndex, lesson, slideTexts, preview)}
-                          illustrationGuide={form.illustration_guide}
-                          extraControls={
-                            <div className="flex flex-wrap items-end gap-3 border-b border-border pb-4">
-                              <label className="space-y-1 text-xs font-medium">
-                                <span className="block">First content page</span>
-                                <Input
-                                  type="number"
-                                  min={1}
-                                  max={sourcePages?.at(-1)?.page ?? 500}
-                                  value={firstContentPage}
-                                  aria-label="First content page"
-                                  className="w-24"
-                                  disabled={course.published}
-                                  onChange={(event) =>
-                                    setFirstContentPage(Math.max(1, Number(event.target.value) || 1))
-                                  }
-                                />
-                              </label>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={course.published || !sourceText.trim()}
-                                onClick={async () => {
-                                  if (
-                                    await confirm({
-                                      title: "Rebuild the outline?",
-                                      description:
-                                        "This replaces your outline edits and approvals. Your original source and saved course lessons stay unchanged.",
-                                      confirmLabel: "Rebuild outline",
-                                    })
-                                  )
-                                    previewSource();
-                                }}
-                              >
-                                Rebuild outline
-                              </Button>
-                            </div>
-                          }
-                          readOnly={course.published}
-                          busy={
-                            designSyncing || designLoading !== null || batchRunning || aiLoading
-                          }
-                          methods={learningMethods}
-                          choices={choicesFor}
-                          approved={designApproved}
-                          rationale={designRationale}
-                          previews={lessonPreviews}
-                          previewLoading={previewLoading}
-                          onPreview={(index, lesson) => void previewLessonPage(index, lesson)}
-                          onEdit={(index, lesson) =>
-                            reviseOutline(
-                              draft.lessons.map((item, i) => (i === index ? lesson : item)),
-                            )
-                          }
-                          onSplit={(index, paragraph, title) => {
-                            const lesson = draft.lessons[index];
-                            if (lesson)
-                              reviseOutline(
-                                draft.lessons.flatMap((item, i) =>
-                                  i === index
-                                    ? splitDraftLessonAt(lesson, paragraph, title)
-                                    : [item],
-                                ),
-                              );
-                          }}
-                          onMerge={(index) => {
-                            const first = draft.lessons[index];
-                            const second = draft.lessons[index + 1];
-                            if (!first || !second) return;
-                            const previousLessons = draft.lessons;
-                            reviseOutline([
-                              ...draft.lessons.slice(0, index),
-                              mergeDraftLessons(first, second),
-                              ...draft.lessons.slice(index + 2),
-                            ]);
-                            toast.success("Lessons merged.", {
-                              action: { label: "Undo", onClick: () => reviseOutline(previousLessons) },
-                            });
-                          }}
-                          onDelete={async (index) => {
-                            if (
-                              await confirm({
-                                title: "Remove this lesson from the outline?",
-                                description:
-                                  "The original manual and saved course lessons will not be deleted.",
-                                confirmLabel: "Remove lesson",
-                                tone: "danger",
-                              })
-                            )
-                              reviseOutline(draft.lessons.filter((_, i) => i !== index));
-                          }}
-                          onMethods={(index, methods) => void saveDesignSelection(index, methods)}
-                          onApprove={(index, lesson) => void toggleDesignApproval(index, lesson)}
-                          suggestions={methodSuggestions}
-                          suggestLoading={suggestLoading}
-                          onSuggest={(index, lesson, methods, webSearch) => suggestMethodContent(index, lesson, methods, webSearch)}
-                          focusIndex={outlineFocus?.index ?? null}
-                          focusToken={outlineFocus?.token ?? 0}
-                        />
-                        <div className="flex flex-wrap justify-between gap-2 border-t border-border pt-4">
-                          <Button variant="outline" onClick={() => setFactoryStep(0)}>
-                            Back to upload
-                          </Button>
-                          <Button
-                            disabled={!draft.lessons.length}
-                            onClick={() => setFactoryStep(2)}
-                          >
-                            Continue to generation
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2 py-6 text-center">
-                        <p className="text-sm text-muted-foreground">
-                          {sourceText.trim()
-                            ? "Analyse the manual before reviewing its lessons."
-                            : "Upload a manual to review its lessons."}
+                      ) : (
+                        <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                          No AI activity storyboard for this module yet. Import a source manual from
+                          Overview to generate one.
                         </p>
-                        <Button type="button" variant="outline" size="sm" onClick={() => setFactoryStep(0)}>
-                          Go to Step 1: Upload
-                        </Button>
-                      </div>
-                    ))}
-
-                  {factoryStep === 2 &&
-                    (draft ? (
-                      <div className="space-y-3">
+                      )}
+                    </TabsContent>
+                    <TabsContent value="assessment" className="space-y-3">
+                      {dGroup && (
                         <div className="space-y-2 rounded-xl border border-border bg-background p-4">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              disabled={batchRunning || aiLoading || !!course.published}
-                              onClick={generateBatch}
-                            >
-                              {batchRunning ? "Working…" : "Generate batch (up to 5 lessons)"}
-                            </Button>
-                            {batchProgress && (
-                              <p className="text-xs text-muted-foreground">{batchProgress}</p>
-                            )}
-                            {batchDrafts.length > 0 && (
-                              <Button
-                                type="button"
-                                size="sm"
-                                disabled={batchRunning || aiLoading}
-                                onClick={saveBatchDrafts}
-                              >
-                                Save {batchDrafts.length} batch drafts
-                              </Button>
-                            )}
-                          </div>
-                          {batchDrafts.map((item, i) => (
-                            <div key={i} className="rounded-lg border border-border p-2 text-xs">
-                              <p className="font-medium">
-                                {item.lessonTitle} — {item.questions.length} quiz questions
-                              </p>
-                              <p className="text-muted-foreground">{item.sourceRefs}</p>
-                              <p className="mt-1 whitespace-pre-wrap">{item.lessonSummary}</p>
-                              {item.questions.map((q, j) => (
-                                <p key={j} className="mt-1">
-                                  Q: {q.question} — source: {q.sourceQuote}
-                                </p>
-                              ))}
-                            </div>
-                          ))}
-                          <Button
-                            type="button"
-                            variant="outline"
-                            disabled={
-                              aiLoading ||
-                              !draft.lessons.length ||
-                              !!course.published ||
-                              (draft.lessons[0]?.body.length ?? 0) < 100
-                            }
-                            onClick={generateAiDraft}
-                          >
-                            {aiLoading
-                              ? "Generating…"
-                              : "Generate AI lesson and quiz preview (first lesson)"}
-                          </Button>
-                          {aiDraft && (
-                            <div className="space-y-2 rounded-lg border border-border p-3 text-xs">
-                              <p className="font-semibold">
-                                AI draft — verify against your manual before using
-                              </p>
-                              <p className="font-medium">{aiDraft.lessonTitle}</p>
-                              <FormattedLesson content={aiDraft.lessonSummary} />
-                              {aiDraft.questions.map((q, i) => (
-                                <div key={i} className="space-y-1 border-t border-border pt-2">
-                                  <p className="font-medium">
-                                    {i + 1}. {q.question}
-                                  </p>
-                                  {q.options.map((option, j) => (
-                                    <p key={j}>
-                                      {j === q.correctIndex ? "✓ " : "○ "}
-                                      {option}
-                                    </p>
-                                  ))}
-                                  <p className="italic text-muted-foreground">
-                                    Source quote: {q.sourceQuote}
-                                  </p>
-                                </div>
-                              ))}
-                              {!!aiDraft.droppedUnsupportedQuestions && (
-                                <p>
-                                  {aiDraft.droppedUnsupportedQuestions} question(s) removed because
-                                  their source quotes were not found.
-                                </p>
-                              )}
-                              <p className="text-muted-foreground">
-                                Review all answers and citations. Saving does not publish the
-                                course.
-                              </p>
-                              <Button
-                                type="button"
-                                size="sm"
-                                disabled={
-                                  aiLoading || !aiDraft.questions.length || !!course.published
-                                }
-                                onClick={saveAiDraft}
-                              >
-                                Save AI lesson and quiz as drafts
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                        <div className="space-y-2 rounded-xl border border-border bg-background p-4">
-                          <h3 className="text-sm font-medium">Suggested knowledge checks</h3>
+                          <h3 className="font-semibold">Suggested knowledge checks</h3>
                           <p className="text-xs text-muted-foreground">
                             These are source-based question prompts, not AI-generated
-                            multiple-choice quizzes. Review the suggested answer and create verified
-                            options using the Quiz editor in each lesson.
+                            multiple-choice quizzes. Create verified questions using the Quiz editor
+                            in the Lessons tab.
                           </p>
-                          {suggestReviewQuestions(draft, 8).map((item, i) => (
+                          {suggestReviewQuestions(
+                            {
+                              title: draft?.title ?? "",
+                              status: "draft",
+                              warnings: [],
+                              lessons: dGroup.items.map((i) => i.lesson),
+                            },
+                            8,
+                          ).map((item, i) => (
                             <div key={i} className="rounded-lg border border-border p-2 text-xs">
                               <p className="font-medium">{item.question}</p>
                               <p className="mt-1 text-muted-foreground">
@@ -3406,594 +4453,62 @@ function Editor() {
                             </div>
                           ))}
                         </div>
-                        <div className="flex items-center justify-between border-t border-border pt-3">
-                          <Button variant="outline" onClick={() => setFactoryStep(1)}>
-                            Back: Review & approve
-                          </Button>
-                          <label className="flex flex-wrap items-center gap-2 text-sm">
-                            Import as
-                            <select
-                              className="rounded-md border border-input bg-background px-2 py-1"
-                              value={manualFormat}
-                              disabled={importing || !!course.published}
-                              onChange={(event) =>
-                                setManualFormat(
-                                  event.target.value === "slide" ? "slide" : "reading",
-                                )
-                              }
-                            >
-                              <option value="reading">Reading lessons</option>
-                              <option value="slide">Interactive slides</option>
-                            </select>
-                          </label>
-                          <Button
-                            type="button"
-                            onClick={importDraft}
-                            disabled={!draft.lessons.length || importing || !!course.published}
-                          >
-                            {importing ? "Importing…" : "Add draft lessons to course"}
-                          </Button>
-                        </div>
-                        {course.published && (
-                          <p className="text-xs text-destructive">
-                            Unpublish the course before importing draft material.
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="space-y-2 rounded-2xl border border-dashed border-border p-6 text-center">
-                        <p className="text-sm text-muted-foreground">
-                          {sourceText.trim()
-                            ? "Analyse the manual to build a course outline before generating lessons."
-                            : "Upload or paste a source manual and analyse it first."}
-                        </p>
-                        <Button type="button" variant="outline" size="sm" onClick={() => setFactoryStep(0)}>
-                          Go to Step 1: Upload
-                        </Button>
-                      </div>
-                    ))}
-                </section>
-              </div>
-            )}
-            {screen === "performance" && (
-              <div className="min-w-0 space-y-6">
-                <CourseAnalytics courseId={id} />
-              </div>
-            )}
-            {screen === "publish" && (
-              <div className="min-w-0 space-y-6">
-                <div className="grid min-w-0 items-stretch gap-6 lg:grid-cols-2">
-                  <section className="flex h-full flex-col space-y-2 border-b border-border pb-6">
-                    <h2 className="font-semibold">Publish v1.{course.version_number - 1}</h2>
-                    {!course.published && (
-                      <Textarea
-                        aria-label="Version change note"
-                        value={changeNote}
-                        onChange={(e) => setChangeNote(e.target.value)}
-                        placeholder="What changed in this version?"
-                        maxLength={1000}
-                      />
-                    )}
-                    <ul className="space-y-2">
-                      {readiness.map((item) => (
-                        <li key={item.label} className="flex items-center gap-2 text-xs">
-                          <Check
-                            className={
-                              item.ready ? "h-4 w-4 text-primary" : "h-4 w-4 text-muted-foreground"
-                            }
-                          />
-                          {item.label}
-                        </li>
-                      ))}
-                    </ul>
-                    {!course.published && pendingReviewCount > 0 && (
-                      <div className="space-y-2 border-l-2 border-primary py-2 pl-3">
-                        <p className="text-sm text-muted-foreground">
-                          {pendingReviewCount} imported lessons awaiting your review.
-                        </p>
-                        <Button
-                          variant="outline"
-                          disabled={reviewingLessons}
-                          onClick={markAllReviewed}
-                        >
-                          <Check className="h-4 w-4" />
-                          {reviewingLessons ? "Saving review…" : "Mark all lessons as reviewed"}
-                        </Button>
-                      </div>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      Course details, modules and lesson content are checked automatically before
-                      this is allowed.
-                    </p>
-                    {course.published ? (
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => setPublished(false)}
-                      >
-                        Unpublish
-                      </Button>
-                    ) : (
-                      <Button
-                        className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
-                        disabled={!readyToPublish || reviewingLessons}
-                        onClick={() => setPublished(true)}
-                      >
-                        Publish to catalogue
-                      </Button>
-                    )}
-                    {!readyToPublish && !course.published && (
-                      <p className="text-xs text-muted-foreground">
-                        Finish the course title, description, industry/topic, and add at least one
-                        lesson with every imported lesson reviewed, to enable publishing.
-                      </p>
-                    )}
-                    <Button
-                      variant="ghost"
-                      className="mt-2 w-full text-destructive"
-                      onClick={remove}
-                      disabled={deleting || course.published}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      {deleting ? "Deleting…" : "Delete course"}
-                    </Button>
-                  </section>
-                  <aside className="flex h-full flex-col space-y-3 border-b border-border pb-6">
-                    <h2 className="font-semibold">Trainer review</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Check the source evidence, lesson content and assessments before publishing.
-                    </p>
-                    <div className="rounded-lg bg-muted/40 p-3 text-xs">
-                      <p className="font-medium">AI learning design</p>
-                      <p className="mt-1 text-muted-foreground">
-                        Proposed teaching and assessment methods with trainer approval are planned,
-                        not yet active.
-                      </p>
-                    </div>
-                    <Link
-                      to="/class/$id"
-                      params={{ id }}
-                      className="inline-flex items-center gap-2 text-sm font-medium text-primary"
-                    >
-                      <Eye className="h-4 w-4" />
-                      Preview as learner
-                    </Link>
-                  </aside>
-                </div>
-              </div>
-            )}
-            {![
-              "overview",
-              "performance",
-              "publish",
-              "import",
-              "history",
-              "lesson",
-              "content",
-            ].includes(screen) &&
-              (() => {
-                const moduleIndex = modules.findIndex((m) => m.key === screen);
-                const mod = modules[moduleIndex];
-                if (!mod)
-                  return (
-                    <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                      Module not found.{" "}
-                      <button
-                        type="button"
-                        className="font-medium text-primary"
-                        onClick={() => setScreen("overview")}
-                      >
-                        Back to Overview
-                      </button>
-                    </p>
-                  );
-                const dGroup = draftGroupFor(mod.title);
-                const videoLessons = mod.lessons.filter((l) => l.kind === "video");
-                const quizLessons = mod.lessons.filter((l) => l.kind === "quiz");
-                const goToModule = (index: number) => {
-                  const next = modules[index];
-                  setScreen(next ? next.key : "overview");
-                };
-                return (
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <h2 className="font-semibold">{mod.title}</h2>
-                        <p className="text-xs text-muted-foreground">
-                          {mod.lessons.length} lesson{mod.lessons.length === 1 ? "" : "s"}
-                        </p>
-                      </div>
-                      <Button size="sm" variant="outline" onClick={() => setScreen("overview")}>
-                        <LayoutGrid className="h-4 w-4" />
-                        Overview
-                      </Button>
-                    </div>
-                    <Tabs defaultValue="lessons">
-                      <TabsList className="flex-wrap">
-                        <TabsTrigger value="lessons">Lessons</TabsTrigger>
-                        <TabsTrigger value="content">Content</TabsTrigger>
-                        <TabsTrigger value="media">Media</TabsTrigger>
-                        <TabsTrigger value="activities">Activities</TabsTrigger>
-                        <TabsTrigger value="assessment">Assessment</TabsTrigger>
-                      </TabsList>
-                      <TabsContent value="lessons" className="space-y-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-xs text-muted-foreground"></p>
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => addLesson("video", mod.moduleId)}
-                            >
-                              <Video className="h-4 w-4" />
-                              Video
-                            </Button>
-                            <VideoLibraryPicker
-                              courseId={id}
-                              position={lessons?.length ?? 0}
-                              usedItemIds={videoLinks.map((v) => v.item_id)}
-                              onAdded={() => {
-                                refresh();
-                                void refetchLinks();
-                              }}
-                            />
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => addLesson("reading", mod.moduleId)}
-                            >
-                              <FileText className="h-4 w-4" />
-                              Reading
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => addLesson("quiz", mod.moduleId)}
-                            >
-                              <HelpCircle className="h-4 w-4" />
-                              Quiz
-                            </Button>
-                          </div>
-                        </div>
-                        {mod.lessons.map((l) => (
-                          <Button
-                            key={l.id}
-                            variant="outline"
-                            className="h-auto w-full justify-start whitespace-normal text-left"
-                            onClick={() => {
-                              setSelectedLesson(l.id);
-                              setScreen("lesson");
-                            }}
-                          >
-                            {l.title}
-                            <FileText className="ml-auto h-4 w-4 shrink-0" />
-                          </Button>
-                        ))}
-                        {mod.lessons.length === 0 && (
-                          <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                            Add this module's first video, reading or quiz.
-                          </p>
-                        )}
-                      </TabsContent>
-                      <TabsContent value="content" className="space-y-3">
-                        {dGroup ? (
-                          <>
-                            <div className="space-y-3 rounded-xl border border-border bg-background p-4">
-                              <h3 className="font-semibold">AI learning design review</h3>
-                              <p className="text-xs text-muted-foreground">
-                                Suggested teaching and assessment methods are based on topic
-                                keywords. Approve or adjust each lesson before content generation.
-                              </p>
-                              {dGroup.items.map(({ lesson, index: i }) => (
-                                <details key={i} className="rounded-lg border border-border p-3">
-                                  <summary className="cursor-pointer text-sm font-medium">
-                                    {lesson.title}{" "}
-                                    {designApproved[i] ? "✓ Approved" : "· Needs review"}
-                                  </summary>
-                                  <div className="mt-3 space-y-2">
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="outline"
-                                      disabled={
-                                        designLoading !== null ||
-                                        lesson.body.length < 100 ||
-                                        !!course.published
-                                      }
-                                      onClick={() => void proposeDesign(i, lesson)}
-                                    >
-                                      {designLoading === i
-                                        ? "Designing…"
-                                        : "Ask AI to propose methods"}
-                                    </Button>
-                                    {designRationale[i] && (
-                                      <p className="rounded-lg bg-muted/50 p-2 text-xs text-muted-foreground">
-                                        <strong>AI rationale:</strong> {designRationale[i]}
-                                      </p>
-                                    )}
-                                    <div className="flex flex-wrap gap-2">
-                                      {learningMethods.map((method) => {
-                                        const methodSelected = choicesFor(
-                                          i,
-                                          lesson.title,
-                                          lesson.body,
-                                        ).includes(method.id);
-                                        return (
-                                          <Button
-                                            key={method.id}
-                                            type="button"
-                                            size="sm"
-                                            variant={methodSelected ? "secondary" : "outline"}
-                                            title={method.detail}
-                                            aria-pressed={methodSelected}
-                                            disabled={designSyncing}
-                                            onClick={() =>
-                                              void saveDesignSelection(
-                                                i,
-                                                methodSelected
-                                                  ? choicesFor(i, lesson.title, lesson.body).filter(
-                                                      (x) => x !== method.id,
-                                                    )
-                                                  : [
-                                                      ...choicesFor(i, lesson.title, lesson.body),
-                                                      method.id,
-                                                    ],
-                                              )
-                                            }
-                                          >
-                                            <method.icon className="h-3.5 w-3.5" />
-                                            {method.label}
-                                          </Button>
-                                        );
-                                      })}
-                                    </div>
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant={designApproved[i] ? "secondary" : "outline"}
-                                      disabled={
-                                        designSyncing ||
-                                        !choicesFor(i, lesson.title, lesson.body).length
-                                      }
-                                      onClick={() => void toggleDesignApproval(i, lesson)}
-                                    >
-                                      {designApproved[i]
-                                        ? "Reopen review"
-                                        : "Approve lesson design"}
-                                    </Button>
-                                  </div>
-                                </details>
-                              ))}
-                            </div>
-                            <div className="space-y-2 rounded-xl border border-border bg-background p-4">
-                              <h3 className="font-semibold">Source sections</h3>
-                              {dGroup.items.map(({ lesson, index: i }) => (
-                                <details
-                                  key={i}
-                                  className="rounded-lg border border-border bg-muted/20 p-3"
-                                >
-                                  <summary className="cursor-pointer text-sm font-medium">
-                                    {lesson.title}{" "}
-                                    <span className="text-xs font-normal text-muted-foreground">
-                                      · {lesson.sourceRefs.length} source pages
-                                    </span>
-                                  </summary>
-                                  <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
-                                    {lesson.body.slice(0, 2500)}
-                                    {lesson.body.length > 2500 ? "…" : ""}
-                                  </p>
-                                  <p className="mt-2 text-xs text-muted-foreground">
-                                    Source:{" "}
-                                    {lesson.sourceRefs
-                                      .map((ref) => `${ref.sourceId} p.${ref.page}`)
-                                      .join(", ")}
-                                  </p>
-                                </details>
-                              ))}
-                            </div>
-                          </>
-                        ) : (
-                          <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                            No AI draft content loaded for this module. Import a source manual from
-                            Overview to review it here.
-                          </p>
-                        )}
-                      </TabsContent>
-                      <TabsContent value="media" className="space-y-3">
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => addLesson("video", mod.moduleId)}
-                          >
-                            <Video className="h-4 w-4" />
-                            Add video lesson
-                          </Button>
-                          <VideoLibraryPicker
-                            courseId={id}
-                            position={lessons?.length ?? 0}
-                            usedItemIds={videoLinks.map((v) => v.item_id)}
-                            onAdded={() => {
-                              refresh();
-                              void refetchLinks();
-                            }}
-                          />
-                        </div>
-                        {videoLessons.length ? (
-                          <ul className="space-y-2">
-                            {videoLessons.map((l) => {
-                              const link = videoLinks.find((v) => v.lesson_id === l.id);
-                              return (
-                                <li
-                                  key={l.id}
-                                  className="rounded-xl border border-border p-3 text-sm"
-                                >
-                                  <p className="font-medium">{l.title}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {link
-                                      ? `Library video · ${link.item?.title ?? ""}`
-                                      : l.video_url || "No video link set yet"}
-                                  </p>
-                                </li>
-                              );
-                            })}
+                      )}
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-semibold">Quiz lessons in this module</h3>
+                        {quizLessons.length ? (
+                          <ul className="space-y-1.5">
+                            {quizLessons.map((l) => (
+                              <li
+                                key={l.id}
+                                className="rounded-xl border border-border p-3 text-sm"
+                              >
+                                <p className="font-medium">{l.title}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {Array.isArray(l.quiz) ? (l.quiz as unknown[]).length : 0}{" "}
+                                  question
+                                  {Array.isArray(l.quiz) && (l.quiz as unknown[]).length === 1
+                                    ? ""
+                                    : "s"}{" "}
+                                  · edit in the Lessons tab
+                                </p>
+                              </li>
+                            ))}
                           </ul>
                         ) : (
                           <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                            No video lessons in this module yet.
+                            No quiz lessons in this module yet. Add one from the Lessons tab.
                           </p>
                         )}
-                      </TabsContent>
-                      <TabsContent value="activities" className="space-y-3">
-                        {dGroup ? (
-                          <div className="space-y-3 rounded-xl border border-border bg-background p-4">
-                            <h3 className="font-semibold">Learning activity storyboard</h3>
-                            <p className="text-xs text-muted-foreground">
-                              Preview the mix of presentation and assessment methods. These are
-                              activity plans, not generated videos, images or quizzes.
-                            </p>
-                            {dGroup.items.map(({ lesson, index }) => (
-                              <details key={index} className="rounded-lg border border-border p-3">
-                                <summary className="cursor-pointer text-sm font-medium">
-                                  {lesson.title} ·{" "}
-                                  {designApproved[index]
-                                    ? "Approved design"
-                                    : "Pending design approval"}
-                                </summary>
-                                <div className="mt-3 space-y-2">
-                                  <div className="rounded-lg bg-muted/40 p-3 text-sm">
-                                    <strong>1. Lesson introduction</strong>
-                                    <p className="text-xs text-muted-foreground">
-                                      Introduce the learning objective and connect it to the
-                                      original manual.
-                                    </p>
-                                  </div>
-                                  {choicesFor(index, lesson.title, lesson.body).map(
-                                    (method, methodIndex) => (
-                                      <div
-                                        key={method}
-                                        className="rounded-lg bg-muted/40 p-3 text-sm"
-                                      >
-                                        <strong>
-                                          {methodIndex + 2}.{" "}
-                                          {activityLabels[method]?.title ?? method}
-                                        </strong>
-                                        <p className="text-xs text-muted-foreground">
-                                          {activityLabels[method]?.description ??
-                                            "Trainer review required."}
-                                        </p>
-                                        <SourceActivity
-                                          method={method}
-                                          lesson={lesson}
-                                          courseId={id}
-                                          published={!!course.published}
-                                        />
-                                      </div>
-                                    ),
-                                  )}
-                                  <p className="text-xs text-muted-foreground">
-                                    Source:{" "}
-                                    {lesson.sourceRefs
-                                      .map((ref) => `${ref.sourceId} p.${ref.page}`)
-                                      .join(", ")}
-                                  </p>
-                                </div>
-                              </details>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                            No AI activity storyboard for this module yet. Import a source manual
-                            from Overview to generate one.
-                          </p>
-                        )}
-                      </TabsContent>
-                      <TabsContent value="assessment" className="space-y-3">
-                        {dGroup && (
-                          <div className="space-y-2 rounded-xl border border-border bg-background p-4">
-                            <h3 className="font-semibold">Suggested knowledge checks</h3>
-                            <p className="text-xs text-muted-foreground">
-                              These are source-based question prompts, not AI-generated
-                              multiple-choice quizzes. Create verified questions using the Quiz
-                              editor in the Lessons tab.
-                            </p>
-                            {suggestReviewQuestions(
-                              {
-                                title: draft?.title ?? "",
-                                status: "draft",
-                                warnings: [],
-                                lessons: dGroup.items.map((i) => i.lesson),
-                              },
-                              8,
-                            ).map((item, i) => (
-                              <div key={i} className="rounded-lg border border-border p-2 text-xs">
-                                <p className="font-medium">{item.question}</p>
-                                <p className="mt-1 text-muted-foreground">
-                                  Source answer: {item.suggestedAnswer}
-                                </p>
-                                <p className="mt-1 text-muted-foreground">
-                                  {item.sourceId}, page {item.page}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        <div className="space-y-2">
-                          <h3 className="text-sm font-semibold">Quiz lessons in this module</h3>
-                          {quizLessons.length ? (
-                            <ul className="space-y-1.5">
-                              {quizLessons.map((l) => (
-                                <li
-                                  key={l.id}
-                                  className="rounded-xl border border-border p-3 text-sm"
-                                >
-                                  <p className="font-medium">{l.title}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {Array.isArray(l.quiz) ? (l.quiz as unknown[]).length : 0}{" "}
-                                    question
-                                    {Array.isArray(l.quiz) && (l.quiz as unknown[]).length === 1
-                                      ? ""
-                                      : "s"}{" "}
-                                    · edit in the Lessons tab
-                                  </p>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                              No quiz lessons in this module yet. Add one from the Lessons tab.
-                            </p>
-                          )}
-                        </div>
-                      </TabsContent>
-                    </Tabs>
-                    <div className="flex justify-between">
-                      <Button
-                        variant="outline"
-                        onClick={() =>
-                          moduleIndex > 0 ? goToModule(moduleIndex - 1) : setScreen("overview")
-                        }
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                        {moduleIndex > 0 ? "Previous module" : "Overview"}
-                      </Button>
-                      <Button
-                        onClick={() =>
-                          moduleIndex < modules.length - 1
-                            ? goToModule(moduleIndex + 1)
-                            : setScreen("publish")
-                        }
-                      >
-                        {moduleIndex < modules.length - 1 ? "Next module" : "Finish · Publish"}
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                  <div className="flex justify-between">
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        moduleIndex > 0 ? goToModule(moduleIndex - 1) : setScreen("overview")
+                      }
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      {moduleIndex > 0 ? "Previous module" : "Overview"}
+                    </Button>
+                    <Button
+                      onClick={() =>
+                        moduleIndex < modules.length - 1
+                          ? goToModule(moduleIndex + 1)
+                          : setScreen("publish")
+                      }
+                    >
+                      {moduleIndex < modules.length - 1 ? "Next module" : "Finish · Publish"}
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
                   </div>
-                );
-              })()}
-          </main>
-        </div>
-      </Sheet>
+                </div>
+              );
+            })()}
+        </fieldset>
+      </StudioWorkspace>
     </Phone>
   );
 }
@@ -4084,12 +4599,20 @@ function LessonEditor({
         let questions = parseQuizQuestions(initialQuiz);
         let keys: unknown;
         if (bankId) {
-          const { data, error } = await supabase.from("studio_exam_banks").select("questions,answers").eq("id", bankId).maybeSingle();
+          const { data, error } = await supabase
+            .from("studio_exam_banks")
+            .select("questions,answers")
+            .eq("id", bankId)
+            .maybeSingle();
           if (error || !data) throw new Error("Private exam unavailable");
           questions = parseQuizQuestions(data.questions);
           keys = data.answers;
         } else {
-          const { data, error } = await supabase.from("studio_quiz_answers").select("answers").eq("lesson_id", lesson.id).maybeSingle();
+          const { data, error } = await supabase
+            .from("studio_quiz_answers")
+            .select("answers")
+            .eq("lesson_id", lesson.id)
+            .maybeSingle();
           if (error) throw error;
           keys = data?.answers;
         }
@@ -4099,12 +4622,45 @@ function LessonEditor({
         baseline.current = JSON.stringify({ ...JSON.parse(baseline.current), qs: next });
         setQs(next);
         setQuizLoad("ready");
-      } catch { if (active) setQuizLoad("failed"); }
+      } catch {
+        if (active) setQuizLoad("failed");
+      }
     })();
     return () => {
       active = false;
     };
   }, [lesson.id, lesson.kind, initialQuiz]);
+  const lessonSave = useStudioAutosave({
+    id: lesson.id,
+    userId: lessonUser?.id,
+    courseId,
+    enabled: !readOnly && quizLoad === "ready",
+    state: {
+      kind: "lesson",
+      title,
+      video,
+      body,
+      lessonKind: kind,
+      qs,
+      passMark,
+      sampleSize,
+      privateExam,
+      objectives,
+    },
+    restore: (value) => {
+      if (value["kind"] !== "lesson") return;
+      if (typeof value["title"] === "string") setTitle(value["title"]);
+      if (typeof value["video"] === "string") setVideo(value["video"]);
+      if (typeof value["body"] === "string") setBody(value["body"]);
+      if (typeof value["lessonKind"] === "string") setKind(value["lessonKind"] as typeof kind);
+      if (Array.isArray(value["qs"])) setQs(value["qs"] as QuizDraftQuestion[]);
+      if (typeof value["passMark"] === "number") setPassMark(value["passMark"]);
+      if (typeof value["sampleSize"] === "number" || value["sampleSize"] === null)
+        setSampleSize(value["sampleSize"]);
+      if (typeof value["privateExam"] === "boolean") setPrivateExam(value["privateExam"]);
+      if (typeof value["objectives"] === "string") setObjectives(value["objectives"]);
+    },
+  });
   const Icon = lessonKindIcon(lesson.kind);
   const save = async (silent = false) => {
     if (readOnly || saving || quizLoad !== "ready") return;
@@ -4135,16 +4691,30 @@ function LessonEditor({
           return;
         }
         if (privateExam) {
-          if (sampleSize === null) { if (!silent) toast.error("Choose a sample size for the private exam."); return; }
-          ({ error } = await supabase.rpc("studio_save_private_quiz", { _lesson: lesson.id, _title: title, _pass_mark: passMark, _questions: quiz.questions, _answers: quiz.keys, _sample_size: sampleSize }));
-        } else ({ error } = await supabase.rpc("studio_save_quiz_pool", rpcArgs("studio_save_quiz_pool", {
-          _lesson_id: lesson.id,
-          _title: title,
-          _pass_mark: passMark,
-          _questions: quiz.questions,
-          _answers: quiz.keys,
-          _sample_size: sampleSize,
-        })));
+          if (sampleSize === null) {
+            if (!silent) toast.error("Choose a sample size for the private exam.");
+            return;
+          }
+          ({ error } = await supabase.rpc("studio_save_private_quiz", {
+            _lesson: lesson.id,
+            _title: title,
+            _pass_mark: passMark,
+            _questions: quiz.questions,
+            _answers: quiz.keys,
+            _sample_size: sampleSize,
+          }));
+        } else
+          ({ error } = await supabase.rpc(
+            "studio_save_quiz_pool",
+            rpcArgs("studio_save_quiz_pool", {
+              _lesson_id: lesson.id,
+              _title: title,
+              _pass_mark: passMark,
+              _questions: quiz.questions,
+              _answers: quiz.keys,
+              _sample_size: sampleSize,
+            }),
+          ));
       } else {
         ({ error } = await supabase
           .from("studio_lessons")
@@ -4186,7 +4756,17 @@ function LessonEditor({
   useEffect(() => {
     setSaved(
       baseline.current ===
-        JSON.stringify({ title, video, body, kind, qs, passMark, sampleSize, privateExam, objectives }),
+        JSON.stringify({
+          title,
+          video,
+          body,
+          kind,
+          qs,
+          passMark,
+          sampleSize,
+          privateExam,
+          objectives,
+        }),
     );
   }, [title, video, body, kind, qs, passMark, sampleSize, privateExam, objectives]);
   const del = async () => {
@@ -4223,7 +4803,21 @@ function LessonEditor({
           {readOnly ? "Read-only" : saving ? "Saving…" : saved ? "Saved" : "Unsaved changes"}
         </span>
       </div>
-      <fieldset disabled={readOnly || saving} className="space-y-4 p-4 md:p-6">
+      {!readOnly && (
+        <div className="px-4 py-2">
+          <StudioSaveStatus autosave={lessonSave} />
+        </div>
+      )}
+      <fieldset
+        disabled={
+          readOnly ||
+          saving ||
+          !lessonSave.ready ||
+          !!lessonSave.loadError ||
+          lessonSave.status === "conflict"
+        }
+        className="space-y-4 p-4 md:p-6"
+      >
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -4282,7 +4876,14 @@ function LessonEditor({
           <ScormPicker value={scormLessonRef(body)} onChange={(pid) => setBody(`scorm:${pid}`)} />
         )}
         {kind === "slide" && !readOnly && (
-          <SlideEditor key={lesson.id} value={body} onChange={setBody} readOnly={false} courseId={courseId} lessonTitle={title} />
+          <SlideEditor
+            key={lesson.id}
+            value={body}
+            onChange={setBody}
+            readOnly={false}
+            courseId={courseId}
+            lessonTitle={title}
+          />
         )}
         {kind !== "quiz" && kind !== "scorm" && kind !== "slide" && (
           <Textarea
@@ -4399,9 +5000,33 @@ function LessonEditor({
                 />
               </label>
             )}
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={privateExam} disabled={readOnly || saving || qs.length === 0} onChange={event => { setPrivateExam(event.target.checked); if (event.target.checked && sampleSize === null) setSampleSize(Math.min(5, Math.max(1, qs.length))); }} />Keep the complete question pool private</label>
-            {privateExam && <p className="text-xs text-muted-foreground">Learners receive only the questions selected when starting an attempt. Each save creates a private bank version; active attempts keep their original selection. Questions seen in earlier public versions remain known. Authorized author exports include the complete questions and answers.</p>}
-            {!privateExam && privateQuizBankId(lesson.body) && <p className="text-xs text-muted-foreground">Saving with pool privacy off places the full question pool in lesson content. Learners can read it once the course is published.</p>}
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={privateExam}
+                disabled={readOnly || saving || qs.length === 0}
+                onChange={(event) => {
+                  setPrivateExam(event.target.checked);
+                  if (event.target.checked && sampleSize === null)
+                    setSampleSize(Math.min(5, Math.max(1, qs.length)));
+                }}
+              />
+              Keep the complete question pool private
+            </label>
+            {privateExam && (
+              <p className="text-xs text-muted-foreground">
+                Learners receive only the questions selected when starting an attempt. Each save
+                creates a private bank version; active attempts keep their original selection.
+                Questions seen in earlier public versions remain known. Authorized author exports
+                include the complete questions and answers.
+              </p>
+            )}
+            {!privateExam && privateQuizBankId(lesson.body) && (
+              <p className="text-xs text-muted-foreground">
+                Saving with pool privacy off places the full question pool in lesson content.
+                Learners can read it once the course is published.
+              </p>
+            )}
             {sampleSize !== null && (
               <p className="text-xs text-muted-foreground">
                 The saved quiz questions form the pool (up to 50). Each learner gets a
@@ -4442,7 +5067,14 @@ function LessonEditor({
           </Button>
         </div>
       </fieldset>
-      {kind === "quiz" && <QuizExamPolicy key={lesson.id} lessonId={lesson.id} body={lesson.body} readOnly={readOnly} />}
+      {kind === "quiz" && (
+        <QuizExamPolicy
+          key={lesson.id}
+          lessonId={lesson.id}
+          body={lesson.body}
+          readOnly={readOnly}
+        />
+      )}
       {kind === "slide" && readOnly && (
         <div className="px-4 pb-4 md:px-6 md:pb-6">
           <SlideEditor value={body} onChange={setBody} readOnly />

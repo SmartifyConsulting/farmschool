@@ -76,6 +76,7 @@ import { Route as ForumCourseIdThreadIdRouteImport } from './routes/forum.$cours
 import { Route as LessonCourseIdLessonIdRouteImport } from './routes/lesson.$courseId.$lessonId'
 import { Route as OrganizationsIdNotificationsRouteImport } from './routes/organizations.$id.notifications'
 import { Route as OrganizationsIdProgramsRouteImport } from './routes/organizations.$id.programs'
+import { Route as StudioMaterialsProjectIdRouteImport } from './routes/studio.materials.$projectId'
 import { Route as ApiPublicV1CoursesRouteImport } from './routes/api/public/v1/courses'
 import { Route as ApiPublicV1ProgressRouteImport } from './routes/api/public/v1/progress'
 
@@ -416,6 +417,12 @@ const OrganizationsIdProgramsRoute = OrganizationsIdProgramsRouteImport.update({
   path: '/programs',
   getParentRoute: () => OrganizationsIdRoute,
 } as any)
+const StudioMaterialsProjectIdRoute =
+  StudioMaterialsProjectIdRouteImport.update({
+    id: '/materials/$projectId',
+    path: '/materials/$projectId',
+    getParentRoute: () => StudioRoute,
+  } as any)
 const ApiPublicV1CoursesRoute = ApiPublicV1CoursesRouteImport.update({
   id: '/api/public/v1/courses',
   path: '/api/public/v1/courses',
@@ -495,6 +502,7 @@ export interface FileRoutesByFullPath {
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/organizations/$id/notifications': typeof OrganizationsIdNotificationsRoute
   '/organizations/$id/programs': typeof OrganizationsIdProgramsRoute
+  '/studio/materials/$projectId': typeof StudioMaterialsProjectIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
   '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
 }
@@ -566,6 +574,7 @@ export interface FileRoutesByTo {
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/organizations/$id/notifications': typeof OrganizationsIdNotificationsRoute
   '/organizations/$id/programs': typeof OrganizationsIdProgramsRoute
+  '/studio/materials/$projectId': typeof StudioMaterialsProjectIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
   '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
 }
@@ -638,6 +647,7 @@ export interface FileRoutesById {
   '/lesson/$courseId/$lessonId': typeof LessonCourseIdLessonIdRoute
   '/organizations/$id/notifications': typeof OrganizationsIdNotificationsRoute
   '/organizations/$id/programs': typeof OrganizationsIdProgramsRoute
+  '/studio/materials/$projectId': typeof StudioMaterialsProjectIdRoute
   '/api/public/v1/courses': typeof ApiPublicV1CoursesRoute
   '/api/public/v1/progress': typeof ApiPublicV1ProgressRoute
 }
@@ -711,6 +721,7 @@ export interface FileRouteTypes {
     | '/lesson/$courseId/$lessonId'
     | '/organizations/$id/notifications'
     | '/organizations/$id/programs'
+    | '/studio/materials/$projectId'
     | '/api/public/v1/courses'
     | '/api/public/v1/progress'
   fileRoutesByTo: FileRoutesByTo
@@ -782,6 +793,7 @@ export interface FileRouteTypes {
     | '/lesson/$courseId/$lessonId'
     | '/organizations/$id/notifications'
     | '/organizations/$id/programs'
+    | '/studio/materials/$projectId'
     | '/api/public/v1/courses'
     | '/api/public/v1/progress'
   id:
@@ -853,6 +865,7 @@ export interface FileRouteTypes {
     | '/lesson/$courseId/$lessonId'
     | '/organizations/$id/notifications'
     | '/organizations/$id/programs'
+    | '/studio/materials/$projectId'
     | '/api/public/v1/courses'
     | '/api/public/v1/progress'
   fileRoutesById: FileRoutesById
@@ -1391,6 +1404,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrganizationsIdProgramsRouteImport
       parentRoute: typeof OrganizationsIdRoute
     }
+    '/studio/materials/$projectId': {
+      id: '/studio/materials/$projectId'
+      path: '/materials/$projectId'
+      fullPath: '/studio/materials/$projectId'
+      preLoaderRoute: typeof StudioMaterialsProjectIdRouteImport
+      parentRoute: typeof StudioRoute
+    }
     '/api/public/v1/courses': {
       id: '/api/public/v1/courses'
       path: '/api/public/v1/courses'
@@ -1451,6 +1471,7 @@ interface StudioRouteChildren {
   StudioContentLibraryRoute: typeof StudioContentLibraryRoute
   StudioGradingQueueRoute: typeof StudioGradingQueueRoute
   StudioReportsRoute: typeof StudioReportsRoute
+  StudioMaterialsProjectIdRoute: typeof StudioMaterialsProjectIdRoute
 }
 
 const StudioRouteChildren: StudioRouteChildren = {
@@ -1458,6 +1479,7 @@ const StudioRouteChildren: StudioRouteChildren = {
   StudioContentLibraryRoute: StudioContentLibraryRoute,
   StudioGradingQueueRoute: StudioGradingQueueRoute,
   StudioReportsRoute: StudioReportsRoute,
+  StudioMaterialsProjectIdRoute: StudioMaterialsProjectIdRoute,
 }
 
 const StudioRouteWithChildren =
@@ -1542,11 +1564,15 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
+
 import type { startInstance } from './start.ts'
+
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
+
     router: Awaited<ReturnType<typeof getRouter>>
+
     config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

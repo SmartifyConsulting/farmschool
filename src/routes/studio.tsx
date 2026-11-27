@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { CourseWizard } from "@/components/CourseWizard";
 import { AutoCategoriseButton } from "@/components/AutoCategoriseButton";
 import { StudioCourseActions } from "@/components/StudioCourseActions";
+import { StudioSavedWorkspaces } from "@/components/StudioSavedWorkspaces";
 import { CourseViewToggle, useCourseView } from "@/components/CourseViewToggle";
 
 /** Card-grid column counts from most spacious (fewest, largest cards) to most compact (most, smallest cards per row). */
@@ -258,6 +259,7 @@ function Studio() {
       <Sheet wide>
         <div className="mb-4">
           <CanvasHeading eyebrow="For trainers" title="Course Studio" />
+          <StudioSavedWorkspaces />
         </div>
         {ready && !user ? (
           <p className="py-10 text-center text-sm text-muted-foreground">

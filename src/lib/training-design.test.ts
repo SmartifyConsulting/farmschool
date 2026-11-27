@@ -42,6 +42,13 @@ function completed() {
   } satisfies TrainingPackage;
 }
 describe("source-faithful training design", () => {
+  it("uses the workspace outline in embedded preview while exports retain their own outline",()=>{
+    const pkg=completed();
+    const embedded=trainingHtml(pkg,true,{embedded:true,topic:pkg.topics[1]!.id});
+    expect(embedded).toContain(".training-outline{display:none}.outline-jump{display:block}");
+    expect(embedded).not.toContain("move(0)})();");
+    expect(trainingHtml(pkg,true)).toContain("move(0)})();");
+  });
   it("preserves real source-directory links but rejects invented links", () => {
     expect(
       sourceLinksOnly("Visit https://www.example.org/help/.", [

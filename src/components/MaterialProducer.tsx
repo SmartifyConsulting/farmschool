@@ -4,7 +4,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Link } from "@tanstack/react-router";
+import { StudioWorkspace, StudioSaveStatus } from "@/components/StudioWorkspace";
+import { StudioSourceReference } from "@/components/StudioSourceReference";
+import { useStudioAutosave } from "@/hooks/useStudioAutosave";
+import { recoverableTrainingPackage } from "@/lib/training-workspace-recovery";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { SectionTabsList, SectionTabsTrigger } from "@/components/SectionTabs";
 import { BlockListEditor } from "@/components/BlockListEditor";
@@ -50,6 +54,7 @@ export function MaterialProducer({
   initialBody,
   initialTitle,
   initialInstruction,
+  workspace,
   onClose,
   onSaved,
 }: {
@@ -58,6 +63,13 @@ export function MaterialProducer({
   initialBody?: string | undefined;
   initialTitle?: string | undefined;
   initialInstruction?: string | undefined;
+  workspace?: {
+    id: string;
+    scope: "personal" | "admin";
+    step: string;
+    topic: string;
+    navigate: (step: string, topic: string) => void;
+  };
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -76,7 +88,25 @@ export function MaterialProducer({
   const [topics, setTopics] = useState<TrainingTopic[]>([]);
   const [results, setResults] = useState<Record<string, TopicResult>>({});
   const cache = useRef<Record<string, TopicResult>>({});
-  const [selected, setSelected] = useState(0);
+  const [localSelected, setLocalSelected] = useState(0);
+  const selected = workspace?.topic
+    ? Math.max(
+        0,
+        topics.findIndex((topic) => topic.id === workspace.topic),
+      )
+    : localSelected;
+  const [localStep, setLocalStep] = useState("outline");
+  const step = workspace?.step ?? localStep;
+  const selectStep = (next: string) => {
+    setLocalStep(next);
+    workspace?.navigate(next, topics[selected]?.id ?? "");
+  };
+  const setSelected = (index: number) => {
+    setLocalSelected(index);
+    workspace?.navigate(step, topics[index]?.id ?? "");
+  };
+  const [topicSearch, setTopicSearch] = useState("");
+  const [bulkTopics, setBulkTopics] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -106,7 +136,40 @@ export function MaterialProducer({
     blob: Blob;
     name: string;
   } | null>(null);
+  const restoredPackage = useRef<TrainingPackage | null>(null);
+  const autosave = useStudioAutosave({
+    id: workspace?.id ?? sources[0]!.id,
+    userId: user?.id,
+    enabled: !!workspace,
+    canSave: !loading,
+    state: {
+      kind: "material",
+      title,
+      sourceIds: sources.map((source) => source.id),
+      scope: workspace?.scope ?? "personal",
+      folderId,
+      package: { version: 1, title, instruction, topics, results },
+      includeImages,
+      includeVideos,
+    },
+    restore: (snapshot) => {
+      if (snapshot["package"]) {
+        const restored = recoverableTrainingPackage.parse(snapshot["package"]);
+        restoredPackage.current = restored;
+        setTitle(restored.title);
+        setInstruction(restored.instruction);
+        setTopics(restored.topics);
+        setResults(restored.results);
+        cache.current = restored.results;
+      }
+      if (typeof snapshot["includeImages"] === "boolean")
+        setIncludeImages(snapshot["includeImages"]);
+      if (typeof snapshot["includeVideos"] === "boolean")
+        setIncludeVideos(snapshot["includeVideos"]);
+    },
+  });
   useEffect(() => {
+    if (!autosave.ready) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -126,7 +189,8 @@ export function MaterialProducer({
         }
         if (!all.length || all.reduce((n, u) => n + u.text.length, 0) > 1000000)
           throw new Error("Choose readable sources totalling at most 1,000,000 characters.");
-        const saved = initialBody ? readTrainingPackage(initialBody) : null;
+        const saved =
+          restoredPackage.current ?? (initialBody ? readTrainingPackage(initialBody) : null);
         if (!cancelled) {
           setUnits(all);
           setBlanks(low);
@@ -134,7 +198,11 @@ export function MaterialProducer({
           setLegacy(!!initialBody && !saved);
           if (saved) {
             setTitle(saved.title);
-            setInstruction(initialInstruction ?? saved.instruction);
+            setInstruction(
+              restoredPackage.current
+                ? saved.instruction
+                : (initialInstruction ?? saved.instruction),
+            );
             setResults(saved.results);
             cache.current = saved.results;
           }
@@ -149,7 +217,7 @@ export function MaterialProducer({
       cancelled = true;
       stopped.current = true;
     };
-  }, [sources, initialBody, initialInstruction]);
+  }, [sources, initialBody, initialInstruction, autosave.ready]);
   const topic = topics[selected];
   const result = topic ? results[topic.id] : undefined;
   const pkg: TrainingPackage = { version: 1, title, instruction, topics, results };
@@ -177,6 +245,11 @@ export function MaterialProducer({
   };
   const close = async () => {
     if (busy) return;
+    if (workspace) {
+      await autosave.flush();
+      onClose();
+      return;
+    }
     if (
       dirty &&
       !(await confirm({
@@ -190,7 +263,7 @@ export function MaterialProducer({
       return;
     onClose();
   };
-  const run = async (only?: string) => {
+  const run = async (only?: string | string[]) => {
     if (busy || loading || error) return;
     const issues = outlineProblems(topics, units);
     if (issues.length) {
@@ -211,8 +284,8 @@ export function MaterialProducer({
       cache.current,
       instruction,
       { images: includeImages, videos: includeVideos },
-      only,
-    );
+      typeof only === "string" ? only : undefined,
+    ).filter((task) => !Array.isArray(only) || only.includes(task.topic.id));
     if (!chosen.length) {
       toast.info("The selected slides and media are current. Existing attachments are kept.");
       return;
@@ -490,544 +563,663 @@ export function MaterialProducer({
       setBusy(false);
     }
   };
+  const reorderTopic = (from: number, to: number) => {
+    if (busy || from === to || from < 0 || to < 0 || from >= topics.length || to >= topics.length)
+      return;
+    const next = [...topics];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved!);
+    setTopics(next);
+    setDirty(true);
+    setLocalSelected(to);
+    workspace?.navigate(step, moved!.id);
+  };
+  const outline = (
+    <div className="space-y-3">
+      <h2 className="text-sm font-semibold">Training outline</h2>
+      <Input
+        aria-label="Search training topics"
+        placeholder="Find a topic"
+        value={topicSearch}
+        onChange={(event) => setTopicSearch(event.target.value)}
+      />
+      <div className="flex flex-wrap gap-1">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() =>
+            setBulkTopics(
+              topics
+                .filter((t) =>
+                  (t.module + " " + t.title).toLowerCase().includes(topicSearch.toLowerCase()),
+                )
+                .map((t) => t.id),
+            )
+          }
+        >
+          Select visible
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => setBulkTopics([])}>
+          Clear
+        </Button>
+      </div>
+      {!!bulkTopics.length && (
+        <Button
+          size="sm"
+          disabled={
+            busy || !autosave.ready || !!autosave.loadError || autosave.status === "conflict"
+          }
+          onClick={() => void run(bulkTopics)}
+        >
+          Generate selected ({bulkTopics.length})
+        </Button>
+      )}
+      <nav aria-label="Training outline" className="space-y-1">
+        {topics
+          .map((item, index) => ({ item, index }))
+          .filter(({ item }) =>
+            (item.module + " " + item.title).toLowerCase().includes(topicSearch.toLowerCase()),
+          )
+          .map(({ item, index }) => (
+            <div
+              key={item.id}
+              className={
+                "flex items-start gap-2 rounded-md border p-2 " +
+                (selected === index ? "border-primary bg-primary/10" : "")
+              }
+              draggable={
+                !busy && autosave.ready && !autosave.loadError && autosave.status !== "conflict"
+              }
+              onDragStart={(event) => event.dataTransfer.setData("text/plain", item.id)}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                reorderTopic(
+                  topics.findIndex((t) => t.id === event.dataTransfer.getData("text/plain")),
+                  index,
+                );
+              }}
+            >
+              <input
+                type="checkbox"
+                aria-label={"Select topic " + item.title}
+                checked={bulkTopics.includes(item.id)}
+                onChange={(event) =>
+                  setBulkTopics((old) =>
+                    event.target.checked ? [...old, item.id] : old.filter((id) => id !== item.id),
+                  )
+                }
+                className="mt-1"
+              />
+              <button
+                type="button"
+                aria-current={selected === index ? "step" : undefined}
+                className="min-w-0 flex-1 break-words text-left text-sm"
+                onClick={() => setSelected(index)}
+              >
+                {index + 1}. {item.title}
+                <span className="supporting-text block text-muted-foreground">
+                  {results[item.id]?.key === topicKey(item, units, instruction)
+                    ? results[item.id]?.reviewed
+                      ? "Reviewed"
+                      : "Generated · Needs review"
+                    : "Draft"}
+                </span>
+              </button>
+            </div>
+          ))}
+      </nav>
+      <p className="supporting-text text-muted-foreground">
+        Drag topics to reorder. Move up/down controls are also available in Outline.
+      </p>
+    </div>
+  );
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) void close();
+    <StudioWorkspace
+      title={title}
+      onTitleChange={(value) => {
+        setTitle(value);
+        setDirty(true);
       }}
+      locked={
+        busy || loading || !autosave.ready || !!autosave.loadError || autosave.status === "conflict"
+      }
+      breadcrumb={
+        <>
+          <Link
+            to={
+              workspace?.scope === "admin" ? "/admin/external-content" : "/studio/content-library"
+            }
+          >
+            Content Library
+          </Link>{" "}
+          / {title}
+        </>
+      }
+      saveStatus={workspace ? <StudioSaveStatus autosave={autosave} /> : undefined}
+      steps={[
+        { id: "outline", label: "Outline" },
+        { id: "slides", label: "Slides and media" },
+        { id: "review", label: "Coverage review" },
+        { id: "preview", label: "Preview" },
+      ]}
+      step={step}
+      onStepChange={selectStep}
+      outline={outline}
+      source={
+        <StudioSourceReference
+          files={sources}
+          page={units.find((unit) => topic?.unitIds.includes(unit.id))?.page ?? 1}
+          text={units
+            .filter((unit) => topic?.unitIds.includes(unit.id))
+            .map((unit) => unit.text)
+            .join("\n\n")}
+        />
+      }
+      settings={
+        <fieldset
+          disabled={
+            busy ||
+            loading ||
+            !autosave.ready ||
+            !!autosave.loadError ||
+            autosave.status === "conflict"
+          }
+          className="space-y-4"
+        >
+          <label className="block text-sm">
+            Training title
+            <Input
+              value={title}
+              maxLength={200}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setDirty(true);
+              }}
+            />
+          </label>
+          <p className="supporting-text">
+            {new Set(units.map((u) => `${u.sourceId}:${u.page}`)).size} readable source pages ·{" "}
+            {topics.length} topics · {topics.reduce((n, t) => n + t.slides, 0)} planned slides. Edit
+            or combine the page-based starter topics before generating.
+          </p>
+          <fieldset className="space-y-2 rounded-lg border p-3">
+            <legend className="text-sm font-semibold">Include supporting media</legend>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={includeImages}
+                onChange={(e) => setIncludeImages(e.target.checked)}
+              />
+              Generate missing illustrations with AI
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={includeVideos}
+                onChange={(e) => setIncludeVideos(e.target.checked)}
+              />
+              Find supporting YouTube videos
+            </label>
+            <p className="supporting-text text-muted-foreground">
+              Generation fills missing media without replacing existing slides, images or videos.
+              Each image and configured video search uses an additional allowance request. Videos
+              are suggested sources, not verified teaching material.
+            </p>
+            <p className="supporting-text">
+              Attached media: {topics.filter((t) => t.image).length} illustrations ·{" "}
+              {topics.filter((t) => t.video).length} videos across {topics.length} topics.
+            </p>
+          </fieldset>
+          {legacy && (
+            <p role="status">
+              The earlier output has no coverage outline and remains preserved in the Library.
+              Create a new complete copy here.
+            </p>
+          )}
+          {!!blanks.length && (
+            <p role="alert">
+              Little readable text: {blanks.join("; ")}. Replace or OCR these pages first.
+            </p>
+          )}
+          <label className="block text-sm">
+            Generation instructions
+            <Textarea
+              value={instruction}
+              maxLength={1000}
+              onChange={(e) => {
+                setInstruction(e.target.value);
+                setDirty(true);
+              }}
+            />
+          </label>
+          <h2 className="text-sm font-semibold">Exports and recovery</h2>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={download}>
+              Download HTML {problems.length ? "draft" : "slides"}
+            </Button>
+            <Button variant="outline" onClick={saveDraft}>
+              Save progress in this browser
+            </Button>
+            <Button variant="outline" disabled={!title.trim()} onClick={() => void save(true)}>
+              Save Draft to Library
+            </Button>
+            <label className="block text-sm">
+              Open downloaded HTML draft
+              <Input
+                type="file"
+                accept=".html,text/html"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void importDraft(file);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            {storedDraft && (
+              <Button variant="outline" onClick={() => void resumeDraft()}>
+                Resume saved draft
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              disabled={!!problems.length}
+              onClick={() => void exportScorm()}
+            >
+              Download SCORM text package
+            </Button>
+            <Button disabled={!!problems.length || !title.trim()} onClick={() => void save()}>
+              Save Completed material
+            </Button>
+          </div>
+          <Button variant="outline" onClick={() => void close()}>
+            Back to Content Library
+          </Button>
+        </fieldset>
+      }
+      actions={
+        <>
+          <Button
+            size="sm"
+            disabled={
+              busy || loading || !autosave.ready || autosave.status === "conflict" || !title.trim()
+            }
+            onClick={() => void run()}
+          >
+            Generate
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={
+              busy ||
+              loading ||
+              !autosave.ready ||
+              !!autosave.loadError ||
+              autosave.status === "conflict" ||
+              !!problems.length
+            }
+            onClick={() => void save()}
+          >
+            Save Completed
+          </Button>
+        </>
+      }
+      footer={
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span role={generationError ? "alert" : "status"}>
+            {generationError ||
+              progress ||
+              (problems.length
+                ? problems.length + " checks before Completed"
+                : "Ready for Completed")}
+          </span>
+          {busy && progress && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                stopped.current = true;
+                setProgress("Stopping after the current request…");
+              }}
+            >
+              Stop after this request
+            </Button>
+          )}
+        </div>
+      }
     >
-      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-6xl">
-        <DialogTitle>Design training from source material</DialogTitle>
-        <p className="supporting-text text-muted-foreground">
-          Outline → topic slides and media → coverage review → HTML. Original sources stay
-          unchanged.
-        </p>
-        {loading ? (
-          <p role="status">Reading every source page…</p>
-        ) : error ? (
-          <p role="alert">{error}</p>
-        ) : (
-          <>
-            <fieldset disabled={busy} className="space-y-4">
-              <label className="block text-sm">
-                Training title
-                <Input
-                  value={title}
-                  maxLength={200}
-                  onChange={(e) => {
-                    setTitle(e.target.value);
-                    setDirty(true);
-                  }}
-                />
-              </label>
-              <p className="supporting-text">
-                {new Set(units.map((u) => `${u.sourceId}:${u.page}`)).size} readable source pages ·{" "}
-                {topics.length} topics · {topics.reduce((n, t) => n + t.slides, 0)} planned slides.
-                Edit or combine the page-based starter topics before generating.
-              </p>
-              <fieldset className="space-y-2 rounded-lg border p-3">
-                <legend className="text-sm font-semibold">Include supporting media</legend>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={includeImages}
-                    onChange={(e) => setIncludeImages(e.target.checked)}
-                  />
-                  Generate missing illustrations with AI
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={includeVideos}
-                    onChange={(e) => setIncludeVideos(e.target.checked)}
-                  />
-                  Find supporting YouTube videos
-                </label>
-                <p className="supporting-text text-muted-foreground">
-                  Generation fills missing media without replacing existing slides, images or
-                  videos. Each image and configured video search uses an additional allowance
-                  request. Videos are suggested sources, not verified teaching material.
-                </p>
-                <p className="supporting-text">
-                  Attached media: {topics.filter((t) => t.image).length} illustrations ·{" "}
-                  {topics.filter((t) => t.video).length} videos across {topics.length} topics.
-                </p>
-              </fieldset>
-              {legacy && (
-                <p role="status">
-                  The earlier output has no coverage outline and remains preserved in the Library.
-                  Create a new complete copy here.
-                </p>
-              )}
-              {!!blanks.length && (
-                <p role="alert">
-                  Little readable text: {blanks.join("; ")}. Replace or OCR these pages first.
-                </p>
-              )}
-              <Tabs defaultValue="outline">
-                <SectionTabsList aria-label="Training design steps">
-                  {["Outline", "Slides and media", "Coverage review", "Preview"].map((label, i) => (
-                    <SectionTabsTrigger
-                      key={label}
-                      value={["outline", "slides", "review", "preview"][i]!}
-                    >
-                      {i + 1}. {label}
-                    </SectionTabsTrigger>
-                  ))}
-                </SectionTabsList>
-                <TabsContent value="outline" className="space-y-3">
+      {autosave.loadError ? (
+        <p role="alert">{autosave.loadError}</p>
+      ) : loading || !autosave.ready ? (
+        <p role="status">Opening sources and saved working copy…</p>
+      ) : error ? (
+        <p role="alert">{error}</p>
+      ) : (
+        <fieldset disabled={busy || autosave.status === "conflict"} className="min-w-0">
+          <Tabs value={step} onValueChange={selectStep}>
+            <TabsContent value="outline" className="space-y-3">
+              <div className="space-y-4">
+                {topic && (
+                  <section className="space-y-3" aria-label="Selected topic outline">
+                    <label className="block text-sm">
+                      Heading 1 — module
+                      <Input
+                        value={topic.module}
+                        maxLength={180}
+                        onChange={(e) => change({ module: e.target.value })}
+                      />
+                    </label>
+                    <label className="block text-sm">
+                      Heading 2 — topic
+                      <Input
+                        value={topic.title}
+                        maxLength={180}
+                        onChange={(e) => change({ title: e.target.value })}
+                      />
+                    </label>
+                    <label className="block text-sm">
+                      Learning objective
+                      <Textarea
+                        value={topic.objective}
+                        maxLength={500}
+                        onChange={(e) => change({ objective: e.target.value })}
+                      />
+                    </label>
+                    <label className="block text-sm">
+                      Number of slides
+                      <Input
+                        type="number"
+                        min={2}
+                        max={8}
+                        value={topic.slides}
+                        onChange={(e) => {
+                          const slides = Number(e.target.value);
+                          if (Number.isInteger(slides) && slides >= 2 && slides <= 8)
+                            change({
+                              slides,
+                              headings: Array.from(
+                                { length: slides },
+                                (_, i) =>
+                                  topic.headings[i] ??
+                                  `${topic.title} — part ${i + 1}`.slice(0, 160),
+                              ),
+                            });
+                        }}
+                      />
+                    </label>
+                    {topic.headings.map((heading, index) => (
+                      <label key={index} className="block text-sm">
+                        Heading 3 — slide {index + 1}
+                        <Input
+                          value={heading}
+                          maxLength={160}
+                          onChange={(e) =>
+                            change({
+                              headings: topic.headings.map((old, i) =>
+                                i === index ? e.target.value : old,
+                              ),
+                            })
+                          }
+                        />
+                      </label>
+                    ))}
+                    <fieldset className="rounded-lg border p-3">
+                      <legend>Learning components</legend>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {TRAINING_TOOLS.map((tool) => (
+                          <label className="text-sm" key={tool}>
+                            <input
+                              type="checkbox"
+                              checked={topic.tools.includes(tool)}
+                              onChange={(e) =>
+                                change({
+                                  tools: e.target.checked
+                                    ? [...topic.tools, tool]
+                                    : topic.tools.filter((t) => t !== tool),
+                                })
+                              }
+                            />{" "}
+                            {TOOL_LABELS[tool]}
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
+                    <fieldset className="rounded-lg border p-3">
+                      <legend>Assigned source pages / sections</legend>
+                      <div className="max-h-40 overflow-auto">
+                        {units.map((u) => (
+                          <label key={u.id} className="block text-sm">
+                            <input
+                              type="checkbox"
+                              checked={topic.unitIds.includes(u.id)}
+                              onChange={(e) =>
+                                change({
+                                  unitIds: e.target.checked
+                                    ? [...topic.unitIds, u.id]
+                                    : topic.unitIds.filter((id) => id !== u.id),
+                                })
+                              }
+                            />{" "}
+                            {u.file} · p.{u.page} · part {Number(u.id.split(":").at(-1)) + 1}
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" disabled={!selected} onClick={() => move(-1)}>
+                        Move up
+                      </Button>
+                      <Button
+                        variant="outline"
+                        disabled={selected === topics.length - 1}
+                        onClick={() => move(1)}
+                      >
+                        Move down
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setTopics(topics.filter((t) => t.id !== topic.id));
+                          setSelected(Math.max(0, selected - 1));
+                          setDirty(true);
+                        }}
+                      >
+                        Remove topic
+                      </Button>
+                    </div>
+                  </section>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setTopics([
+                    ...topics,
+                    {
+                      ...(topics.at(-1) ?? initialOutline(units)[0]!),
+                      id: crypto.randomUUID(),
+                      title: "New topic",
+                      unitIds: [],
+                    },
+                  ]);
+                  setSelected(topics.length);
+                  setDirty(true);
+                }}
+              >
+                Add topic
+              </Button>
+            </TabsContent>
+            <TabsContent value="slides" className="space-y-3">
+              {topic && (
+                <>
+                  <Button variant="outline" onClick={() => void run(topic.id)}>
+                    Generate this topic
+                  </Button>
+                  {result ? (
+                    <BlockListEditor
+                      value={result.body}
+                      onChange={(body) => updateResult(topic.id, { body, reviewed: false })}
+                      lessonTitle={topic.title}
+                    />
+                  ) : (
+                    <p className="supporting-text">
+                      Generate this topic to create its editable slides and learning components.
+                    </p>
+                  )}
                   <label className="block text-sm">
-                    Generation instructions
+                    Illustration / video plan
                     <Textarea
-                      value={instruction}
+                      value={topic.mediaPlan}
                       maxLength={1000}
+                      onChange={(e) => change({ mediaPlan: e.target.value })}
+                    />
+                  </label>
+                  <Button variant="outline" onClick={() => void createIllustration()}>
+                    Generate illustration with AI
+                  </Button>
+                  <label className="block text-sm">
+                    Upload illustration
+                    <Input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
                       onChange={(e) => {
-                        setInstruction(e.target.value);
-                        setDirty(true);
+                        const f = e.target.files?.[0];
+                        if (f) void uploadImage(f);
+                        e.target.value = "";
                       }}
                     />
                   </label>
-                  <div className="grid gap-4 md:grid-cols-[240px_minmax(0,1fr)]">
-                    <nav
-                      aria-label="Training outline"
-                      className="max-h-[55vh] space-y-1 overflow-auto"
-                    >
-                      {topics.map((t, i) => (
-                        <button
-                          type="button"
-                          key={t.id}
-                          aria-current={selected === i ? "step" : undefined}
-                          className={`block w-full rounded-md border p-2 text-left text-sm ${selected === i ? "border-primary bg-primary/10" : ""}`}
-                          onClick={() => setSelected(i)}
-                        >
-                          {i + 1}. {t.title}
-                          <span className="block text-xs text-muted-foreground">
-                            {results[t.id]?.key === topicKey(t, units, instruction)
-                              ? results[t.id]?.reviewed
-                                ? "Reviewed"
-                                : "Generated — review required"
-                              : "Not generated / changed"}
-                          </span>
-                        </button>
-                      ))}
-                    </nav>
-                    {topic && (
-                      <section className="space-y-3" aria-label="Selected topic outline">
-                        <label className="block text-sm">
-                          Heading 1 — module
-                          <Input
-                            value={topic.module}
-                            maxLength={180}
-                            onChange={(e) => change({ module: e.target.value })}
-                          />
-                        </label>
-                        <label className="block text-sm">
-                          Heading 2 — topic
-                          <Input
-                            value={topic.title}
-                            maxLength={180}
-                            onChange={(e) => change({ title: e.target.value })}
-                          />
-                        </label>
-                        <label className="block text-sm">
-                          Learning objective
-                          <Textarea
-                            value={topic.objective}
-                            maxLength={500}
-                            onChange={(e) => change({ objective: e.target.value })}
-                          />
-                        </label>
-                        <label className="block text-sm">
-                          Number of slides
-                          <Input
-                            type="number"
-                            min={2}
-                            max={8}
-                            value={topic.slides}
-                            onChange={(e) => {
-                              const slides = Number(e.target.value);
-                              if (Number.isInteger(slides) && slides >= 2 && slides <= 8)
-                                change({
-                                  slides,
-                                  headings: Array.from(
-                                    { length: slides },
-                                    (_, i) =>
-                                      topic.headings[i] ??
-                                      `${topic.title} — part ${i + 1}`.slice(0, 160),
-                                  ),
-                                });
-                            }}
-                          />
-                        </label>
-                        {topic.headings.map((heading, index) => (
-                          <label key={index} className="block text-sm">
-                            Heading 3 — slide {index + 1}
-                            <Input
-                              value={heading}
-                              maxLength={160}
-                              onChange={(e) =>
-                                change({
-                                  headings: topic.headings.map((old, i) =>
-                                    i === index ? e.target.value : old,
-                                  ),
-                                })
-                              }
-                            />
-                          </label>
-                        ))}
-                        <fieldset className="rounded-lg border p-3">
-                          <legend>Learning components</legend>
-                          <div className="grid gap-2 sm:grid-cols-2">
-                            {TRAINING_TOOLS.map((tool) => (
-                              <label className="text-sm" key={tool}>
-                                <input
-                                  type="checkbox"
-                                  checked={topic.tools.includes(tool)}
-                                  onChange={(e) =>
-                                    change({
-                                      tools: e.target.checked
-                                        ? [...topic.tools, tool]
-                                        : topic.tools.filter((t) => t !== tool),
-                                    })
-                                  }
-                                />{" "}
-                                {TOOL_LABELS[tool]}
-                              </label>
-                            ))}
-                          </div>
-                        </fieldset>
-                        <fieldset className="rounded-lg border p-3">
-                          <legend>Assigned source pages / sections</legend>
-                          <div className="max-h-40 overflow-auto">
-                            {units.map((u) => (
-                              <label key={u.id} className="block text-sm">
-                                <input
-                                  type="checkbox"
-                                  checked={topic.unitIds.includes(u.id)}
-                                  onChange={(e) =>
-                                    change({
-                                      unitIds: e.target.checked
-                                        ? [...topic.unitIds, u.id]
-                                        : topic.unitIds.filter((id) => id !== u.id),
-                                    })
-                                  }
-                                />{" "}
-                                {u.file} · p.{u.page} · part {Number(u.id.split(":").at(-1)) + 1}
-                              </label>
-                            ))}
-                          </div>
-                        </fieldset>
-                        <div className="flex flex-wrap gap-2">
-                          <Button variant="outline" disabled={!selected} onClick={() => move(-1)}>
-                            Move up
-                          </Button>
-                          <Button
-                            variant="outline"
-                            disabled={selected === topics.length - 1}
-                            onClick={() => move(1)}
-                          >
-                            Move down
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setTopics(topics.filter((t) => t.id !== topic.id));
-                              setSelected(Math.max(0, selected - 1));
-                              setDirty(true);
-                            }}
-                          >
-                            Remove topic
-                          </Button>
-                        </div>
-                      </section>
-                    )}
-                  </div>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setTopics([
-                        ...topics,
-                        {
-                          ...(topics.at(-1) ?? initialOutline(units)[0]!),
-                          id: crypto.randomUUID(),
-                          title: "New topic",
-                          unitIds: [],
-                        },
-                      ]);
-                      setSelected(topics.length);
-                      setDirty(true);
-                    }}
-                  >
-                    Add topic
-                  </Button>
-                </TabsContent>
-                <TabsContent value="slides" className="space-y-3">
                   <label className="block text-sm">
-                    Topic
-                    <select
-                      className="ml-2 max-w-full rounded-md border p-2"
-                      value={selected}
-                      onChange={(e) => setSelected(Number(e.target.value))}
-                    >
-                      {topics.map((t, i) => (
-                        <option key={t.id} value={i}>
-                          {i + 1}. {t.title}
-                        </option>
-                      ))}
-                    </select>
+                    Or HTTPS image URL
+                    <Input
+                      value={topic.image.startsWith("data:") ? "" : topic.image}
+                      placeholder={
+                        topic.image.startsWith("data:")
+                          ? "Uploaded illustration attached"
+                          : "https://…"
+                      }
+                      onChange={(e) => change({ image: e.target.value, mediaReviewed: false })}
+                    />
                   </label>
-                  {topic && (
+                  {topic.image && (
                     <>
-                      <label className="block text-sm">
-                        Assigned source text
-                        <Textarea
-                          readOnly
-                          className="max-h-56"
-                          value={units
-                            .filter((u) => topic.unitIds.includes(u.id))
-                            .map((u) => `${u.file} — page ${u.page}\n${u.text}`)
-                            .join("\n\n")}
-                        />
-                      </label>
-                      <Button variant="outline" onClick={() => void run(topic.id)}>
-                        Generate this topic
+                      <img
+                        src={topic.image}
+                        alt={topic.alt || "Illustration awaiting alternative text"}
+                        className="max-h-48 max-w-full rounded-lg"
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={() => change({ image: "", mediaReviewed: false })}
+                      >
+                        Remove illustration
                       </Button>
-                      {result ? (
-                        <BlockListEditor
-                          value={result.body}
-                          onChange={(body) => updateResult(topic.id, { body, reviewed: false })}
-                          lessonTitle={topic.title}
-                        />
-                      ) : (
-                        <p className="supporting-text">
-                          Generate this topic to create its editable slides and learning components.
-                        </p>
-                      )}
-                      <label className="block text-sm">
-                        Illustration / video plan
-                        <Textarea
-                          value={topic.mediaPlan}
-                          maxLength={1000}
-                          onChange={(e) => change({ mediaPlan: e.target.value })}
-                        />
-                      </label>
-                      <Button variant="outline" onClick={() => void createIllustration()}>
-                        Generate illustration with AI
-                      </Button>
-                      <label className="block text-sm">
-                        Upload illustration
-                        <Input
-                          type="file"
-                          accept="image/png,image/jpeg,image/webp"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) void uploadImage(f);
-                            e.target.value = "";
-                          }}
-                        />
-                      </label>
-                      <label className="block text-sm">
-                        Or HTTPS image URL
-                        <Input
-                          value={topic.image.startsWith("data:") ? "" : topic.image}
-                          placeholder={
-                            topic.image.startsWith("data:")
-                              ? "Uploaded illustration attached"
-                              : "https://…"
-                          }
-                          onChange={(e) => change({ image: e.target.value, mediaReviewed: false })}
-                        />
-                      </label>
-                      {topic.image && (
-                        <>
-                          <img
-                            src={topic.image}
-                            alt={topic.alt || "Illustration awaiting alternative text"}
-                            className="max-h-48 max-w-full rounded-lg"
-                          />
-                          <Button
-                            variant="outline"
-                            onClick={() => change({ image: "", mediaReviewed: false })}
-                          >
-                            Remove illustration
-                          </Button>
-                        </>
-                      )}
-                      <label className="block text-sm">
-                        Image alternative text / caption
-                        <Input
-                          value={topic.alt}
-                          maxLength={500}
-                          onChange={(e) => change({ alt: e.target.value, mediaReviewed: false })}
-                        />
-                      </label>
-                      <label className="block text-sm">
-                        Relevant YouTube video URL
-                        <Input
-                          value={topic.video}
-                          onChange={(e) => change({ video: e.target.value, mediaReviewed: false })}
-                        />
-                      </label>
-                      <label className="block text-sm">
-                        Media source / attribution / permission
-                        <Input
-                          value={topic.attribution}
-                          maxLength={1000}
-                          onChange={(e) =>
-                            change({ attribution: e.target.value, mediaReviewed: false })
-                          }
-                        />
-                      </label>
-                      <label className="flex gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={topic.mediaReviewed}
-                          onChange={(e) => change({ mediaReviewed: e.target.checked })}
-                        />
-                        I checked media relevance, accuracy, permission and available video
-                        captions.
-                      </label>
                     </>
                   )}
-                </TabsContent>
-                <TabsContent value="review" className="space-y-3">
-                  <p className="supporting-text">
-                    Assignment checks detect structural gaps. Compare slides with the source for
-                    factual accuracy and complete teaching coverage; AI claims alone are
-                    insufficient.
-                  </p>
-                  {topics.map((t) => (
-                    <section key={t.id} className="rounded-lg border p-3 text-sm">
-                      <h3 className="font-semibold">
-                        {t.module} → {t.title}
-                      </h3>
-                      <p>
-                        {t.unitIds
-                          .map((id) => {
-                            const u = units.find((u) => u.id === id);
-                            return u ? `${u.file} p.${u.page}` : "Missing source";
-                          })
-                          .join(" · ")}
-                      </p>
-                      <p>
-                        {results[t.id] ? parseLessonSlides(results[t.id]!.body).length : 0} /{" "}
-                        {t.slides} slides · {t.tools.map((tool) => TOOL_LABELS[tool]).join(", ")}
-                      </p>
-                      <p className="supporting-text">
-                        {t.image ? "Illustration attached" : "No illustration attached"} ·{" "}
-                        {t.video ? "Video attached" : "No video attached"}
-                        {(t.image || t.video) && !t.mediaReviewed ? " · Media review required" : ""}
-                      </p>
-                      <label className="mt-2 flex gap-2">
-                        <input
-                          type="checkbox"
-                          disabled={
-                            !results[t.id] || results[t.id]!.key !== topicKey(t, units, instruction)
-                          }
-                          checked={results[t.id]?.reviewed ?? false}
-                          onChange={(e) => updateResult(t.id, { reviewed: e.target.checked })}
-                        />
-                        I checked source coverage, procedures, exceptions and practice answers for
-                        this topic.
-                      </label>
-                    </section>
-                  ))}
-                  {!!problems.length && (
-                    <div role="status" className="rounded-lg border p-3">
-                      <p>Outstanding before Completed</p>
-                      <ul className="list-inside list-disc text-sm">
-                        {problems.map((p) => (
-                          <li key={p}>{p}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </TabsContent>
-                <TabsContent value="preview">
-                  <iframe
-                    title="HTML training slide preview"
-                    sandbox="allow-scripts"
-                    referrerPolicy="no-referrer"
-                    className="h-[65vh] w-full rounded-lg border"
-                    srcDoc={trainingHtml(pkg, problems.length > 0)}
-                  />
-                </TabsContent>
-              </Tabs>
-              <div className="flex flex-wrap gap-2">
-                <Button disabled={!title.trim()} onClick={() => void run()}>
-                  Generate remaining topics and media
-                </Button>
-                <Button variant="outline" onClick={download}>
-                  Download HTML {problems.length ? "draft" : "slides"}
-                </Button>
-                <Button variant="outline" onClick={saveDraft}>
-                  Save progress in this browser
-                </Button>
-                <Button variant="outline" disabled={!title.trim()} onClick={() => void save(true)}>
-                  Save Draft to Library
-                </Button>
-                <label className="block text-sm">
-                  Open downloaded HTML draft
-                  <Input
-                    type="file"
-                    accept=".html,text/html"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) void importDraft(file);
-                      e.target.value = "";
-                    }}
-                  />
-                </label>
-                {storedDraft && (
-                  <Button variant="outline" onClick={() => void resumeDraft()}>
-                    Resume saved draft
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  disabled={!!problems.length}
-                  onClick={() => void exportScorm()}
-                >
-                  Download SCORM text package
-                </Button>
-                <Button disabled={!!problems.length || !title.trim()} onClick={() => void save()}>
-                  Save Completed material
-                </Button>
-                <Button variant="outline" onClick={() => void close()}>
-                  Cancel
-                </Button>
-              </div>
-              <p className="supporting-text text-muted-foreground">
-                Slides, illustrations and video searches use separate requests from the existing
-                allowance. If media cannot be attached, the reason is shown; placeholders are not
-                finished media. Saving does not publish a course.
-              </p>
-              {generationError && (
-                <p role="alert" className="rounded-lg border p-3 text-sm">
-                  {generationError}
-                </p>
+                  <label className="block text-sm">
+                    Image alternative text / caption
+                    <Input
+                      value={topic.alt}
+                      maxLength={500}
+                      onChange={(e) => change({ alt: e.target.value, mediaReviewed: false })}
+                    />
+                  </label>
+                  <label className="block text-sm">
+                    Relevant YouTube video URL
+                    <Input
+                      value={topic.video}
+                      onChange={(e) => change({ video: e.target.value, mediaReviewed: false })}
+                    />
+                  </label>
+                  <label className="block text-sm">
+                    Media source / attribution / permission
+                    <Input
+                      value={topic.attribution}
+                      maxLength={1000}
+                      onChange={(e) =>
+                        change({ attribution: e.target.value, mediaReviewed: false })
+                      }
+                    />
+                  </label>
+                  <label className="flex gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={topic.mediaReviewed}
+                      onChange={(e) => change({ mediaReviewed: e.target.checked })}
+                    />
+                    I checked media relevance, accuracy, permission and available video captions.
+                  </label>
+                </>
               )}
-            </fieldset>
-            {busy && (
-              <div role="status">
-                <p>{progress || "Saving training…"}</p>
-                {progress && (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      stopped.current = true;
-                      setProgress("Stopping after the current topic…");
-                    }}
-                  >
-                    Stop after this topic
-                  </Button>
-                )}
-              </div>
-            )}
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
+            </TabsContent>
+            <TabsContent value="review" className="space-y-3">
+              <p className="supporting-text">
+                Assignment checks detect structural gaps. Compare slides with the source for factual
+                accuracy and complete teaching coverage; AI claims alone are insufficient.
+              </p>
+              {topics.map((t) => (
+                <section key={t.id} className="rounded-lg border p-3 text-sm">
+                  <h3 className="font-semibold">
+                    {t.module} → {t.title}
+                  </h3>
+                  <p>
+                    {t.unitIds
+                      .map((id) => {
+                        const u = units.find((u) => u.id === id);
+                        return u ? `${u.file} p.${u.page}` : "Missing source";
+                      })
+                      .join(" · ")}
+                  </p>
+                  <p>
+                    {results[t.id] ? parseLessonSlides(results[t.id]!.body).length : 0} / {t.slides}{" "}
+                    slides · {t.tools.map((tool) => TOOL_LABELS[tool]).join(", ")}
+                  </p>
+                  <p className="supporting-text">
+                    {t.image ? "Illustration attached" : "No illustration attached"} ·{" "}
+                    {t.video ? "Video attached" : "No video attached"}
+                    {(t.image || t.video) && !t.mediaReviewed ? " · Media review required" : ""}
+                  </p>
+                  <label className="mt-2 flex gap-2">
+                    <input
+                      type="checkbox"
+                      disabled={
+                        !results[t.id] || results[t.id]!.key !== topicKey(t, units, instruction)
+                      }
+                      checked={results[t.id]?.reviewed ?? false}
+                      onChange={(e) => updateResult(t.id, { reviewed: e.target.checked })}
+                    />
+                    I checked source coverage, procedures, exceptions and practice answers for this
+                    topic.
+                  </label>
+                </section>
+              ))}
+              {!!problems.length && (
+                <div role="status" className="rounded-lg border p-3">
+                  <p>Outstanding before Completed</p>
+                  <ul className="list-inside list-disc text-sm">
+                    {problems.map((p) => (
+                      <li key={p}>{p}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </TabsContent>
+            <TabsContent value="preview">
+              <iframe
+                title="HTML training slide preview"
+                sandbox="allow-scripts"
+                referrerPolicy="no-referrer"
+                className="h-[65vh] w-full rounded-lg border"
+                srcDoc={trainingHtml(pkg, problems.length > 0, {
+                  embedded: true,
+                  topic: topic?.id,
+                })}
+              />
+            </TabsContent>
+          </Tabs>
+        </fieldset>
+      )}
+    </StudioWorkspace>
   );
 }
