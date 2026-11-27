@@ -431,11 +431,23 @@ export function ContentLibraryContent({
                   type="color"
                   aria-label="New folder colour"
                   value={newFolderColor}
+                  onInput={(event) => setNewFolderColor(event.currentTarget.value)}
                   onChange={(event) => setNewFolderColor(event.target.value)}
                   className="h-8 w-12 p-1"
                 />
               </label>
-              <Button size="sm" disabled={!newFolderName.trim()} onClick={createFolder}>
+              <Input
+                aria-label="New folder colour hex"
+                value={newFolderColor}
+                onChange={(event) => setNewFolderColor(event.target.value)}
+                maxLength={7}
+                className="h-8 w-28"
+              />
+              <Button
+                size="sm"
+                disabled={!newFolderName.trim() || !/^#[0-9a-fA-F]{6}$/.test(newFolderColor)}
+                onClick={createFolder}
+              >
                 Create folder
               </Button>
               <Button
@@ -459,18 +471,35 @@ export function ContentLibraryContent({
                 className="max-w-md"
               />
               {renaming.type === "folder" && (
-                <label className="flex items-center gap-2 text-sm">
-                  Folder colour
+                <>
+                  <label className="flex items-center gap-2 text-sm">
+                    Folder colour
+                    <Input
+                      type="color"
+                      aria-label="Edit folder colour"
+                      value={renameColor}
+                      onInput={(event) => setRenameColor(event.currentTarget.value)}
+                      onChange={(event) => setRenameColor(event.target.value)}
+                      className="h-8 w-12 p-1"
+                    />
+                  </label>
                   <Input
-                    type="color"
-                    aria-label="Edit folder colour"
+                    aria-label="Edit folder colour hex"
                     value={renameColor}
                     onChange={(event) => setRenameColor(event.target.value)}
-                    className="h-8 w-12 p-1"
+                    maxLength={7}
+                    className="h-8 w-28"
                   />
-                </label>
+                </>
               )}
-              <Button size="sm" disabled={!renameValue.trim()} onClick={saveRename}>
+              <Button
+                size="sm"
+                disabled={
+                  !renameValue.trim() ||
+                  (renaming.type === "folder" && !/^#[0-9a-fA-F]{6}$/.test(renameColor))
+                }
+                onClick={saveRename}
+              >
                 Save name
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setRenaming(null)}>
