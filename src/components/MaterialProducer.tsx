@@ -117,6 +117,7 @@ export function MaterialProducer({
   );
   const [designPlan, setDesignPlan] = useState<CourseDesignPlan | null>(null);
   const [planning, setPlanning] = useState(false);
+  const planningInFlight = useRef(false);
   const [planningRequestId, setPlanningRequestId] = useState("");
   const [autoPlan, setAutoPlan] = useState(initialAutoPlan);
   const runPlan = useServerFn(planCourseDesign);
@@ -399,7 +400,7 @@ export function MaterialProducer({
     selectStep("outline");
   };
   const buildAIOutline = async () => {
-    if (planning || busy || loading || !autosave.ready) return;
+    if (planningInFlight.current || planning || busy || loading || !autosave.ready) return;
     if (sourceMode !== "studio" || Object.keys(cache.current).length) {
       await rebuildStudioOutline();
       return;
@@ -410,6 +411,7 @@ export function MaterialProducer({
       return;
     }
     const requestId = crypto.randomUUID();
+    planningInFlight.current = true;
     setPlanningRequestId(requestId);
     setPlanning(true);
     setAutoPlan(false);
@@ -432,6 +434,7 @@ export function MaterialProducer({
         ),
       );
     } finally {
+      planningInFlight.current = false;
       setPlanning(false);
     }
   };
@@ -460,7 +463,7 @@ export function MaterialProducer({
     const recover = async () => {
       const file = await supabase.storage
         .from("studio-content")
-        .download(`${planningUserId}/course-design-plans/${planningRequestId}.json`);
+        .download(`${planningUserId}/course-design-plans/${planningRequestId}.result.json`);
       if (cancelled) return;
       if (file.data) {
         try {
@@ -586,7 +589,17 @@ export function MaterialProducer({
               title,
               instruction,
               designReferences,
-              ...(designPlan ? { designerChoices } : {}),
+              ...(designPlan
+                ? {
+                    designerChoices,
+                    designGuidance: {
+                      accessibility: designPlan.accessibility,
+                      motivation: designPlan.motivation,
+                      cognitiveLoad: designPlan.cognitiveLoad,
+                      multimedia: designPlan.multimedia,
+                    },
+                  }
+                : {}),
               topic: t,
               budget: Math.min(
                 12000,
@@ -866,7 +879,9 @@ export function MaterialProducer({
   };
   const outline = (
     <div className="space-y-3">
-      <h2 className="text-sm font-semibold">Training outline</h2>
+      <h2 className="text-sm font-semibold">
+        {sourceMode === "studio" && !designPlan ? "Source map" : "Training outline"}
+      </h2>
       <Input
         aria-label="Search training topics"
         placeholder="Find a topic"

@@ -178,6 +178,7 @@ export function CourseDesignerWizard({
         )}
         {step === 3 && (
           <LearningBlueprintSelector
+            allowCustom={false}
             value={value.blueprint}
             onChange={(id) => {
               if (learningBlueprint(id)) change("blueprint", id as LearningBlueprintId);

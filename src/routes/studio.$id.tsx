@@ -2343,6 +2343,7 @@ function Editor() {
             )}
             <fieldset disabled={course.published || workspaceLocked} className="min-w-0 space-y-6">
               <LearningBlueprintSelector
+                allowCustom={false}
                 value={learningBlueprint}
                 onChange={(value) => {
                   if (LEARNING_BLUEPRINT_IDS.some((id) => id === value))

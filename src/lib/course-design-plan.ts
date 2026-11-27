@@ -119,6 +119,31 @@ export const courseDesignPlanSchema = z.object({
   notes: z.array(z.string().min(5).max(1200)).max(30),
 });
 export type CourseDesignPlan = z.infer<typeof courseDesignPlanSchema>;
+/** Short identifiers reduce copying mistakes in model output; stored plans retain real provenance. */
+export function designPlannerSources(units: SourceUnit[]) {
+  return units.map((unit, index) => ({
+    id: `s${String(index + 1).padStart(4, "0")}`,
+    file: unit.file,
+    page: unit.page,
+    pages: unit.pages,
+    text: unit.text,
+  }));
+}
+export function restorePlannedSourceIds(value: unknown, units: SourceUnit[]) {
+  const plan = courseDesignPlanSchema.parse(value);
+  const aliases = new Map(
+    designPlannerSources(units).map((unit, index) => [unit.id, units[index]!.id]),
+  );
+  plan.coverage.forEach((item) => {
+    item.unitId = aliases.get(item.unitId) ?? item.unitId;
+  });
+  plan.modules.forEach((module) =>
+    module.lessons.forEach((lesson) => {
+      lesson.sourceUnitIds = lesson.sourceUnitIds.map((id) => aliases.get(id) ?? id);
+    }),
+  );
+  return plan;
+}
 export const instructionalDesignSchema = z.object({
   objectives: z.array(plannedObjectiveSchema).max(10),
   activity: z.string().max(1000),

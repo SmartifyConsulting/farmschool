@@ -2,9 +2,11 @@ import { LEARNING_BLUEPRINTS, learningBlueprint } from "@/lib/course-methodology
 export function LearningBlueprintSelector({
   value,
   onChange,
+  allowCustom = true,
 }: {
   value: string;
   onChange: (id: string) => void;
+  allowCustom?: boolean;
 }) {
   const selected = learningBlueprint(value);
   return (
@@ -22,7 +24,7 @@ export function LearningBlueprintSelector({
               {blueprint.name}
             </option>
           ))}
-          <option value="custom">Custom / existing structure</option>
+          {allowCustom && <option value="custom">Custom / existing structure</option>}
         </select>
       </label>
       {selected && (

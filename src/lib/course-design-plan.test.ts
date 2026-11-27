@@ -8,7 +8,22 @@ import {
 import { sourceUnits, outlineProblems, topicKey } from "./training-design";
 import { trainingHtml, readTrainingPackage } from "./training-html";
 import { planUnits, validPlan } from "./course-design-plan.fixtures";
+import { designPlannerSources, restorePlannedSourceIds } from "./course-design-plan";
 describe("semantic course plan traceability", () => {
+  it("uses unambiguous compact AI identifiers and restores the original file provenance", () => {
+    const sources = designPlannerSources(planUnits);
+    expect(sources.map((unit) => unit.id)).toEqual(["s0001", "s0002", "s0003"]);
+    const plan = validPlan();
+    plan.coverage.forEach((item, index) => {
+      item.unitId = sources[index]!.id;
+    });
+    plan.modules[0]!.lessons.forEach((lesson, index) => {
+      lesson.sourceUnitIds = [sources[index]!.id];
+    });
+    const restored = validateCourseDesignPlan(restorePlannedSourceIds(plan, planUnits), planUnits);
+    expect(restored.coverage.map((item) => item.unitId)).toEqual(planUnits.map((unit) => unit.id));
+    expect(restored.modules[0]!.lessons[0]!.sourceUnitIds).toEqual([planUnits[0]!.id]);
+  });
   it("rejects a plan that silently omits source material", () => {
     const plan = validPlan();
     plan.coverage.pop();

@@ -5,6 +5,8 @@ import {
   courseDesignPlanSchema,
   designerChoicesSchema,
   validateCourseDesignPlan,
+  designPlannerSources,
+  restorePlannedSourceIds,
 } from "./course-design-plan";
 import { designReferencesSchema } from "./design-reference";
 import { learningBlueprintInstruction } from "./course-methodology";
@@ -60,6 +62,7 @@ export const planCourseDesign = createServerFn({ method: "POST" })
       data.designReferences,
     );
     const path = `${context.userId}/course-design-plans/${data.requestId}.json`;
+    const resultPath = `${context.userId}/course-design-plans/${data.requestId}.result.json`;
     const digest = await crypto.subtle.digest(
       "SHA-256",
       new TextEncoder().encode(JSON.stringify({ ...data, requestId: undefined })),
@@ -68,7 +71,8 @@ export const planCourseDesign = createServerFn({ method: "POST" })
       .map((value) => value.toString(16).padStart(2, "0"))
       .join("");
     const storage = context.supabase.storage.from("studio-content");
-    const existing = await storage.download(path);
+    const completed = await storage.download(resultPath);
+    const existing = completed.data ? completed : await storage.download(path);
     if (existing.data) {
       const cached = JSON.parse(await existing.data.text()) as {
         inputHash: string;
@@ -99,6 +103,7 @@ export const planCourseDesign = createServerFn({ method: "POST" })
       throw Error(
         "This planning attempt is already running or could not be saved. Your choices are retained.",
       );
+    let candidate: unknown;
     try {
       const quota = await context.supabase.rpc("course_factory_reserve_ai_request" as never);
       if (quota.error || typeof quota.data !== "number")
@@ -107,6 +112,15 @@ export const planCourseDesign = createServerFn({ method: "POST" })
         );
       const { createOpenAI } = await import("@ai-sdk/openai");
       const { generateText, Output } = await import("ai");
+      const modelSources = designPlannerSources(data.units);
+      const sourceIds = modelSources.map((unit) => unit.id) as [string, ...string[]];
+      const outputSchema = courseDesignPlanSchema.extend({
+        coverage: z
+          .array(
+            courseDesignPlanSchema.shape.coverage.element.extend({ unitId: z.enum(sourceIds) }),
+          )
+          .length(sourceIds.length),
+      });
       const result = await generateText({
         model: createOpenAI({ apiKey }).responses("gpt-4.1"),
         maxRetries: 0,
@@ -123,7 +137,10 @@ For this request, return between 2 and ${data.maxLessons} total lessons across a
                 type: "text",
                 text: JSON.stringify({
                   choices: data.choices,
-                  sources: data.units,
+                  requiredSourceUnitIds: sourceIds,
+                  coverageRequirement:
+                    "Return exactly one coverage record for each requiredSourceUnitId, including sections consolidated with other sections. Use these short ids in lessons and coverage; do not substitute chapter numbers or file ids.",
+                  sources: modelSources,
                   references: data.designReferences.map((reference) => ({
                     name: reference.name,
                     layoutGuidance: reference.text,
@@ -135,9 +152,10 @@ For this request, return between 2 and ${data.maxLessons} total lessons across a
             ],
           },
         ],
-        output: Output.object({ schema: courseDesignPlanSchema }),
+        output: Output.object({ schema: outputSchema }),
       });
-      const plan = validateCourseDesignPlan(result.output, data.units);
+      candidate = restorePlannedSourceIds(result.output, data.units);
+      const plan = validateCourseDesignPlan(candidate, data.units);
       if (plan.modules.flatMap((module) => module.lessons).length < 2)
         throw Error("Plan at least two meaningful lessons before generation.");
       if (
@@ -147,7 +165,7 @@ For this request, return between 2 and ${data.maxLessons} total lessons across a
           "The AI proposed more lessons than this course format supports. Replan a more concise structure.",
         );
       const saved = await storage.upload(
-        path,
+        resultPath,
         new Blob(
           [
             JSON.stringify({
@@ -159,7 +177,7 @@ For this request, return between 2 and ${data.maxLessons} total lessons across a
           ],
           { type: "application/json" },
         ),
-        { contentType: "application/json", upsert: true },
+        { contentType: "application/json", upsert: false },
       );
       if (saved.error)
         throw Error(
@@ -172,11 +190,11 @@ For this request, return between 2 and ${data.maxLessons} total lessons across a
         "The course outline could not be completed. Your source files and choices are retained.",
       );
       await storage.upload(
-        path,
-        new Blob([JSON.stringify({ inputHash, status: "failed", message })], {
+        resultPath,
+        new Blob([JSON.stringify({ inputHash, status: "failed", message, candidate })], {
           type: "application/json",
         }),
-        { contentType: "application/json", upsert: true },
+        { contentType: "application/json", upsert: false },
       );
       throw Error(message);
     }

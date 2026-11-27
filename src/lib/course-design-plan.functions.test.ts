@@ -23,7 +23,7 @@ vi.mock("@tanstack/react-start", () => ({
 import { planCourseDesign } from "./course-design-plan.functions";
 function fixture(owned = true) {
   vi.stubEnv("OPENAI_API_KEY", "synthetic-key");
-  let cached: Blob | null = null;
+  const objects = new Map<string, Blob>();
   const query = {
     select: () => query,
     eq: () => query,
@@ -31,9 +31,11 @@ function fixture(owned = true) {
   };
   const rpc = vi.fn().mockResolvedValue({ data: 1, error: null });
   const storage = {
-    download: vi.fn(async () => ({ data: cached, error: null })),
-    upload: vi.fn(async (_p: string, blob: Blob) => {
-      cached = blob;
+    download: vi.fn(async (path: string) => ({ data: objects.get(path) ?? null, error: null })),
+    upload: vi.fn(async (path: string, blob: Blob, options: { upsert: boolean }) => {
+      if (objects.has(path) || options.upsert)
+        return { error: { message: "Existing storage policy does not allow replacement" } };
+      objects.set(path, blob);
       return { error: null };
     }),
   };
@@ -64,7 +66,7 @@ describe("saved AI outline planning", () => {
     expect(generate).not.toHaveBeenCalled();
     expect(f.storage.upload).not.toHaveBeenCalled();
   });
-  it("recovers a completed request without spending allowance again", async () => {
+  it("saves and recovers with insert-only storage without spending allowance again", async () => {
     const f = fixture();
     generate.mockResolvedValueOnce({ output: validPlan() });
     await expect(f.call()).resolves.toMatchObject({ title: validPlan().title });

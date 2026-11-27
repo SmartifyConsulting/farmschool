@@ -5,7 +5,7 @@ import { topicSchema, sourceLinksOnly } from "./training-design";
 import { parseLessonSlides, slideBlockLocations } from "./lesson-slides";
 import { learningBlueprintInstruction } from "./course-methodology";
 import { designReferencesSchema } from "./design-reference";
-import { designerChoicesSchema } from "./course-design-plan";
+import { designerChoicesSchema, courseDesignPlanSchema } from "./course-design-plan";
 
 export const generateTrainingIllustration = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -50,6 +50,9 @@ export const generateTrainingTopic = createServerFn({ method: "POST" })
         instruction: z.string().max(1000),
         designReferences: designReferencesSchema.default([]),
         designerChoices: designerChoicesSchema.optional(),
+        designGuidance: courseDesignPlanSchema
+          .pick({ accessibility: true, motivation: true, cognitiveLoad: true, multimedia: true })
+          .optional(),
         budget: z.number().int().min(1200).max(12000),
         units: z
           .array(
@@ -131,6 +134,7 @@ export const generateTrainingTopic = createServerFn({ method: "POST" })
                 learningBlueprint: learningBlueprintInstruction(data.topic.methodology),
                 course: data.title,
                 designerChoices: data.designerChoices,
+                designGuidance: data.designGuidance,
                 designRequirements:
                   "Use the selected language and tone. Teach the mapped measurable objectives, provide the planned activity with feedback and aligned assessment, and apply the accessibility, cognitive-load and multimedia guidance. Do not claim that a knowledge check establishes practical competency.",
                 outline: data.topic,

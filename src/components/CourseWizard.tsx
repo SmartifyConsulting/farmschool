@@ -124,19 +124,25 @@ export function CourseWizard() {
             file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
           const upload = await supabase.storage.from("studio-content").upload(path, file, {
             contentType: file.type || "application/octet-stream",
-            upsert: true,
+            upsert: false,
           });
-          if (upload.error) throw upload.error;
-          const inserted = await supabase.from("content_library_files" as never).insert({
-            id: saved.id,
-            author_id: user.id,
-            file_name: file.name,
-            original_file_name: file.name,
-            file_type: detectContentFileType(file.name),
-            storage_path: path,
-            size_bytes: file.size,
-            material_stage: "raw",
-          } as never);
+          if (upload.error) {
+            const prior = await supabase.storage.from("studio-content").download(path);
+            if (!prior.data) throw upload.error;
+          }
+          const inserted = await supabase.from("content_library_files" as never).upsert(
+            {
+              id: saved.id,
+              author_id: user.id,
+              file_name: file.name,
+              original_file_name: file.name,
+              file_type: detectContentFileType(file.name),
+              storage_path: path,
+              size_bytes: file.size,
+              material_stage: "raw",
+            } as never,
+            { onConflict: "id", ignoreDuplicates: true },
+          );
           if (inserted.error) throw inserted.error;
           saved.registered = true;
         }
