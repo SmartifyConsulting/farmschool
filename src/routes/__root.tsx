@@ -82,6 +82,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "theme-color", content: "#080819" },
+      { name: "apple-mobile-web-app-title", content: "Plusticity" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
       { title: "FarmerPlus Learning" },
       { name: "description", content: "Agricultural courses from FarmerPlus." },
       { property: "og:type", content: "website" },
@@ -94,6 +97,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
     ],
   }),
   shellComponent: RootShell,
