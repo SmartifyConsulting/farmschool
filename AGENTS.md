@@ -9,6 +9,8 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
+- Home-screen installability uses a manifest and public raster icons only, without an app-shell service worker — why: phone icons must not introduce stale offline caches in previews.
+
 - Adapt verified nullable SQL RPC parameters through src/lib/rpc-args.ts; keep generated types untouched and all other parameters strict — why: generated function arguments omit SQL nullability while null has meaningful reset/default semantics.
 
 - Course catalogue is static in src/lib/courses.ts; per-learner state (lesson_progress, bookmarks, api_keys) lives in Lovable Cloud with own-row RLS — why: content is curated, learner data must persist.
