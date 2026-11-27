@@ -29,6 +29,7 @@ import {
   sourceUnits,
   topicKey,
   outlineProblems,
+  generationProblems,
   coverageProblems,
   TRAINING_TOOLS,
   TOOL_LABELS,
@@ -265,17 +266,10 @@ export function MaterialProducer({
   };
   const run = async (only?: string | string[]) => {
     if (busy || loading || error) return;
-    const issues = outlineProblems(topics, units);
+    if (!autosave.ready || autosave.loadError || autosave.status === "conflict") return;
+    const issues = generationProblems(topics, units, only);
     if (issues.length) {
       toast.error(issues[0]);
-      return;
-    }
-    if (blanks.length || topics.length > 50) {
-      toast.error(
-        blanks.length
-          ? "Use readable or OCR-processed source pages first."
-          : "Split this output into at most 50 topics before generating.",
-      );
       return;
     }
     const chosen = trainingGenerationPlan(
@@ -284,8 +278,8 @@ export function MaterialProducer({
       cache.current,
       instruction,
       { images: includeImages, videos: includeVideos },
-      typeof only === "string" ? only : undefined,
-    ).filter((task) => !Array.isArray(only) || only.includes(task.topic.id));
+      only,
+    );
     if (!chosen.length) {
       toast.info("The selected slides and media are current. Existing attachments are kept.");
       return;
@@ -510,10 +504,12 @@ export function MaterialProducer({
     }
   };
   const move = (delta: number) => {
+    if (!topic || selected + delta < 0 || selected + delta >= topics.length) return;
     const next = [...topics];
     [next[selected], next[selected + delta]] = [next[selected + delta]!, next[selected]!];
     setTopics(next);
-    setSelected(selected + delta);
+    setLocalSelected(selected + delta);
+    workspace?.navigate(step, topic.id);
     setDirty(true);
   };
   const uploadImage = async (file: File) => {
@@ -844,9 +840,9 @@ export function MaterialProducer({
             disabled={
               busy || loading || !autosave.ready || autosave.status === "conflict" || !title.trim()
             }
-            onClick={() => void run()}
+            onClick={() => void run(bulkTopics.length ? bulkTopics : undefined)}
           >
-            Generate
+            {bulkTopics.length ? `Generate selected (${bulkTopics.length})` : "Generate remaining"}
           </Button>
           <Button
             size="sm"
@@ -870,9 +866,7 @@ export function MaterialProducer({
           <span role={generationError ? "alert" : "status"}>
             {generationError ||
               progress ||
-              (problems.length
-                ? problems.length + " checks before Completed"
-                : "Ready for Completed")}
+              `${topics.filter((t) => results[t.id]?.key === topicKey(t, units, instruction)).length}/${topics.length} topics generated · ${topics.filter((t) => results[t.id]?.key === topicKey(t, units, instruction) && results[t.id]?.reviewed).length} reviewed · ${problems.length ? problems.length + " completion checks remaining" : "Ready for Completed"}`}
           </span>
           {busy && progress && (
             <Button
@@ -1020,8 +1014,12 @@ export function MaterialProducer({
                       <Button
                         variant="outline"
                         onClick={() => {
-                          setTopics(topics.filter((t) => t.id !== topic.id));
-                          setSelected(Math.max(0, selected - 1));
+                          const next = topics.filter((t) => t.id !== topic.id);
+                          const index = Math.max(0, selected - 1);
+                          setTopics(next);
+                          setLocalSelected(index);
+                          workspace?.navigate(step, next[index]?.id ?? "");
+                          setBulkTopics((old) => old.filter((id) => id !== topic.id));
                           setDirty(true);
                         }}
                       >
@@ -1158,42 +1156,49 @@ export function MaterialProducer({
                 Assignment checks detect structural gaps. Compare slides with the source for factual
                 accuracy and complete teaching coverage; AI claims alone are insufficient.
               </p>
-              {topics.map((t) => (
-                <section key={t.id} className="rounded-lg border p-3 text-sm">
-                  <h3 className="font-semibold">
-                    {t.module} → {t.title}
-                  </h3>
-                  <p>
-                    {t.unitIds
-                      .map((id) => {
-                        const u = units.find((u) => u.id === id);
-                        return u ? `${u.file} p.${u.page}` : "Missing source";
-                      })
-                      .join(" · ")}
-                  </p>
-                  <p>
-                    {results[t.id] ? parseLessonSlides(results[t.id]!.body).length : 0} / {t.slides}{" "}
-                    slides · {t.tools.map((tool) => TOOL_LABELS[tool]).join(", ")}
-                  </p>
-                  <p className="supporting-text">
-                    {t.image ? "Illustration attached" : "No illustration attached"} ·{" "}
-                    {t.video ? "Video attached" : "No video attached"}
-                    {(t.image || t.video) && !t.mediaReviewed ? " · Media review required" : ""}
-                  </p>
-                  <label className="mt-2 flex gap-2">
-                    <input
-                      type="checkbox"
-                      disabled={
-                        !results[t.id] || results[t.id]!.key !== topicKey(t, units, instruction)
-                      }
-                      checked={results[t.id]?.reviewed ?? false}
-                      onChange={(e) => updateResult(t.id, { reviewed: e.target.checked })}
-                    />
-                    I checked source coverage, procedures, exceptions and practice answers for this
-                    topic.
-                  </label>
-                </section>
-              ))}
+              <p className="supporting-text">
+                Review the selected topic against its original source. Select another topic in the
+                outline to continue. Completed material still requires every topic and source to
+                pass.
+              </p>
+              {topics
+                .filter((t) => t.id === topic?.id)
+                .map((t) => (
+                  <section key={t.id} className="rounded-lg border p-3 text-sm">
+                    <h3 className="font-semibold">
+                      {t.module} → {t.title}
+                    </h3>
+                    <p>
+                      {t.unitIds
+                        .map((id) => {
+                          const u = units.find((u) => u.id === id);
+                          return u ? `${u.file} p.${u.page}` : "Missing source";
+                        })
+                        .join(" · ")}
+                    </p>
+                    <p>
+                      {results[t.id] ? parseLessonSlides(results[t.id]!.body).length : 0} /{" "}
+                      {t.slides} slides · {t.tools.map((tool) => TOOL_LABELS[tool]).join(", ")}
+                    </p>
+                    <p className="supporting-text">
+                      {t.image ? "Illustration attached" : "No illustration attached"} ·{" "}
+                      {t.video ? "Video attached" : "No video attached"}
+                      {(t.image || t.video) && !t.mediaReviewed ? " · Media review required" : ""}
+                    </p>
+                    <label className="mt-2 flex gap-2">
+                      <input
+                        type="checkbox"
+                        disabled={
+                          !results[t.id] || results[t.id]!.key !== topicKey(t, units, instruction)
+                        }
+                        checked={results[t.id]?.reviewed ?? false}
+                        onChange={(e) => updateResult(t.id, { reviewed: e.target.checked })}
+                      />
+                      I checked source coverage, procedures, exceptions and practice answers for
+                      this topic.
+                    </label>
+                  </section>
+                ))}
               {!!problems.length && (
                 <div role="status" className="rounded-lg border p-3">
                   <p>Outstanding before Completed</p>

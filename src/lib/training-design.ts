@@ -160,13 +160,17 @@ export function topicKey(topic: TrainingTopic, units: SourceUnit[], instruction:
   for (let i = 0; i < value.length; i++) hash = Math.imul(hash ^ value.charCodeAt(i), 16777619);
   return `${value.length}:${hash >>> 0}`;
 }
-export function outlineProblems(topics: TrainingTopic[], units: SourceUnit[]) {
+function outlineStructureProblems(topics: TrainingTopic[]) {
   const problems: string[] = [];
-  const ids = new Set(units.map((u) => u.id));
   if (!topics.length) problems.push("Add at least one topic.");
   if (topics.length > 250) problems.push("Use at most 250 topics per output.");
   if (new Set(topics.map((t) => t.id)).size !== topics.length)
     problems.push("Topic identifiers must be unique.");
+  return problems;
+}
+function topicProblems(topics: TrainingTopic[], units: SourceUnit[]) {
+  const problems: string[] = [];
+  const ids = new Set(units.map((u) => u.id));
   for (const topic of topics) {
     if (topic.headings.length !== topic.slides)
       problems.push(`Plan a heading for every slide in ${topic.title}.`);
@@ -182,6 +186,32 @@ export function outlineProblems(topics: TrainingTopic[], units: SourceUnit[]) {
     )
       problems.push(`Split ${topic.title} into smaller topics before generating.`);
   }
+  return problems;
+}
+/** Generation validates only the requested work. Completion still checks every source and topic. */
+export function generationProblems(
+  topics: TrainingTopic[],
+  units: SourceUnit[],
+  only?: string | string[],
+) {
+  const requested =
+    only === undefined ? topics.map((topic) => topic.id) : typeof only === "string" ? [only] : only;
+  const selected = topics.filter((topic) => requested.includes(topic.id));
+  const problems = outlineStructureProblems(topics);
+  if (!requested.length || requested.some((id) => !topics.some((topic) => topic.id === id)))
+    problems.push("Choose available topics to generate.");
+  problems.push(...topicProblems(selected, units));
+  if (
+    units.some(
+      (unit) =>
+        selected.some((topic) => topic.unitIds.includes(unit.id)) && unit.text.trim().length < 24,
+    )
+  )
+    problems.push("Use readable or OCR-processed source pages for the selected topics first.");
+  return [...new Set(problems)];
+}
+export function outlineProblems(topics: TrainingTopic[], units: SourceUnit[]) {
+  const problems = [...outlineStructureProblems(topics), ...topicProblems(topics, units)];
   for (const unit of units)
     if (!topics.some((topic) => topic.unitIds.includes(unit.id)))
       problems.push(`Unassigned source: ${unit.file}, page ${unit.page}.`);

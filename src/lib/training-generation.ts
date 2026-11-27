@@ -18,10 +18,12 @@ export function trainingGenerationPlan(
   results: Record<string, TopicResult>,
   instruction: string,
   media: { images: boolean; videos: boolean },
-  only?: string,
+  only?: string | string[],
 ): TrainingGenerationTask[] {
   return topics
-    .filter((t) => !only || t.id === only)
+    .filter(
+      (t) => only === undefined || (typeof only === "string" ? t.id === only : only.includes(t.id)),
+    )
     .map((topic) => ({
       topic,
       slides: results[topic.id]?.key !== topicKey(topic, units, instruction),
