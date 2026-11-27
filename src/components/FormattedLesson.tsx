@@ -1,14 +1,70 @@
-/** Renders lesson body text with light markdown formatting (headings, bullet/numbered lists). */
+import { lessonProseParts } from "@/lib/lesson-prose";
+function Inline({ text }: { text: string }) {
+  return (
+    <>
+      {text
+        .split(/(\*\*[^*\n]+\*\*)/g)
+        .map((part, i) =>
+          part.startsWith("**") && part.endsWith("**") ? (
+            <strong key={i}>{part.slice(2, -2)}</strong>
+          ) : (
+            part
+          ),
+        )}
+    </>
+  );
+}
+/** Safe semantic text; never accepts raw HTML. */
 export function FormattedLesson({ content }: { content: string }) {
-  return <div className="space-y-3 text-sm leading-relaxed">{content.split(/\n\s*\n/).filter(Boolean).map((block, index) => {
-    const line = block.trim();
-    if (/^###\s+/.test(line)) return <h4 key={index} className="pt-2 text-base font-semibold">{line.replace(/^###\s+/, "")}</h4>;
-    if (/^##\s+/.test(line)) return <h3 key={index} className="pt-3 text-lg font-semibold">{line.replace(/^##\s+/, "")}</h3>;
-    if (/^#\s+/.test(line)) return <h2 key={index} className="pt-3 text-xl font-bold">{line.replace(/^#\s+/, "")}</h2>;
-    if (/^Source: /.test(line) && line.split("\n").length === 1) return <p key={index} className="text-xs italic text-muted-foreground">{line}</p>;
-    const lines = line.split("\n");
-    if (lines.every(item => /^[-*]\s+/.test(item))) return <ul key={index} className="list-disc space-y-1 pl-5">{lines.map((item, i) => <li key={i}>{item.replace(/^[-*]\s+/, "")}</li>)}</ul>;
-    if (lines.every(item => /^\d+[.)]\s+/.test(item))) return <ol key={index} className="list-decimal space-y-1 pl-5">{lines.map((item, i) => <li key={i}>{item.replace(/^\d+[.)]\s+/, "")}</li>)}</ol>;
-    return <p key={index} className="whitespace-pre-line">{line}</p>;
-  })}</div>;
+  return (
+    <div className="space-y-3 text-sm leading-relaxed">
+      {lessonProseParts(content).map((part, index) => {
+        if (part.kind === "bullets" || part.kind === "numbers") {
+          const List = part.kind === "bullets" ? "ul" : "ol";
+          return (
+            <List
+              key={index}
+              className={
+                (part.kind === "bullets" ? "list-disc" : "list-decimal") + " space-y-1 pl-5"
+              }
+            >
+              {part.items.map((item, i) => (
+                <li key={i}>
+                  <Inline text={item} />
+                </li>
+              ))}
+            </List>
+          );
+        }
+        if (part.kind === "heading")
+          return part.level === 1 ? (
+            <h2 key={index} className="pt-3 text-xl font-bold">
+              <Inline text={part.text} />
+            </h2>
+          ) : part.level === 2 ? (
+            <h3 key={index} className="pt-3 text-lg font-semibold">
+              <Inline text={part.text} />
+            </h3>
+          ) : (
+            <h4 key={index} className="pt-2 text-base font-semibold">
+              <Inline text={part.text} />
+            </h4>
+          );
+        if ("text" in part)
+          return (
+            <p
+              key={index}
+              className={
+                part.text.startsWith("Source: ")
+                  ? "text-xs italic text-muted-foreground"
+                  : "whitespace-pre-line"
+              }
+            >
+              <Inline text={part.text} />
+            </p>
+          );
+        return null;
+      })}
+    </div>
+  );
 }
