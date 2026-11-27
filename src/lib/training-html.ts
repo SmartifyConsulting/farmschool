@@ -145,7 +145,7 @@ ${options.embedded ? ".training-layout{display:block}.training-outline{display:n
             0,
             topic.headings.findIndex((heading) => /^(?:See|Demonstrate):/i.test(heading)),
           )
-            ? `${topic.image && publicImage(topic.image) ? `<figure><img src="${htmlEscape(topic.image)}" alt="${htmlEscape(topic.alt)}"><figcaption>${htmlEscape(topic.alt)} · ${htmlEscape(topic.attribution)}</figcaption></figure>` : ""}${topic.video ? videoHtml(topic.video) : ""}${topic.image || topic.video ? `<p class="muted">Media source: ${htmlEscape(topic.attribution)}</p>` : `<aside class="muted">Media plan / placeholder: ${htmlEscape(topic.mediaPlan || "No external media selected for this topic.")}</aside>`}`
+            ? `${topic.image && publicImage(topic.image) ? `<figure><img src="${htmlEscape(topic.image)}" alt="${htmlEscape(topic.alt)}"><figcaption>${htmlEscape(topic.alt)} · ${htmlEscape(topic.attribution)}</figcaption></figure>` : ""}${topic.video ? videoHtml(topic.video) : ""}${topic.image || topic.video ? `<p class="muted">Media source: ${htmlEscape(topic.attribution)}</p>` : topic.instructionalDesign && ["diagram", "none"].includes(topic.instructionalDesign.mediaType) ? "" : `<aside class="muted">Media plan / placeholder: ${htmlEscape(topic.mediaPlan || "No external media selected for this topic.")}</aside>`}`
             : ""
         }<p class="muted">Source sections: ${htmlEscape(topic.references.join("; "))}</p></article>`,
     )

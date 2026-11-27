@@ -1,11 +1,14 @@
 import type { CourseDesignPlan, DesignerChoices } from "@/lib/course-design-plan";
 import { designQualityChecks } from "@/lib/course-design-plan";
+import type { SourceUnit } from "@/lib/training-design";
 export function CourseDesignReview({
   plan,
   choices,
+  units = [],
 }: {
   plan: CourseDesignPlan;
   choices: DesignerChoices;
+  units?: SourceUnit[];
 }) {
   return (
     <section aria-label="Instructional design checks" className="space-y-3 rounded-lg border p-3">
@@ -33,9 +36,26 @@ export function CourseDesignReview({
           Source coverage and consolidation ({plan.coverage.length} sections)
         </summary>
         <ul className="mt-2 space-y-2 text-sm">
-          {plan.coverage.map((item) => (
+          {plan.coverage.map((item, index) => (
             <li key={item.unitId}>
-              <span className="font-medium capitalize">{item.disposition}</span> · {item.unitId}
+              <span className="font-medium capitalize">{item.disposition}</span> ·{" "}
+              {(() => {
+                const unit = units.find((unit) => unit.id === item.unitId);
+                return unit
+                  ? `${unit.file} · page ${(unit.pages ?? [unit.page]).join(", ")}`
+                  : `Source section ${index + 1}`;
+              })()}
+              <p className="supporting-text">
+                {item.lessonIds
+                  .map(
+                    (id) =>
+                      plan.modules
+                        .flatMap((module) => module.lessons)
+                        .find((lesson) => lesson.id === id)?.title,
+                  )
+                  .filter(Boolean)
+                  .join("; ") || "Retained as a supporting resource"}
+              </p>
               <p className="supporting-text">{item.reason}</p>
             </li>
           ))}

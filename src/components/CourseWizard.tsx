@@ -510,7 +510,7 @@ export function CourseWizard() {
                     units={planUnits}
                     onSelect={() => {}}
                   />
-                  <CourseDesignReview plan={coursePlan} choices={choices} />
+                  <CourseDesignReview plan={coursePlan} choices={choices} units={planUnits} />
                   <div className="flex flex-wrap items-center gap-3">
                     <Button variant="outline" disabled={busy} onClick={() => setCoursePlan(null)}>
                       Back to course choices

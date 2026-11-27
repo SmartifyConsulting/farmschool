@@ -1593,7 +1593,9 @@ export function MaterialProducer({
               )}
             </TabsContent>
             <TabsContent value="review" className="space-y-3">
-              {designPlan && <CourseDesignReview plan={designPlan} choices={designerChoices} />}
+              {designPlan && (
+                <CourseDesignReview plan={designPlan} choices={designerChoices} units={units} />
+              )}
               <p className="supporting-text">
                 Assignment checks detect structural gaps. Compare slides with the source for factual
                 accuracy and complete teaching coverage; AI claims alone are insufficient.

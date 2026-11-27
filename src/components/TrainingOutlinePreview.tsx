@@ -49,7 +49,6 @@ export function TrainingOutlinePreview({
                     >
                       {topic.title.replace(/^\d+(?:\.\d+)*[.)]?\s+/, "")}
                     </button>
-                    <p className="supporting-text text-muted-foreground">{topic.objective}</p>
                   </li>
                 ))}
               </ul>
