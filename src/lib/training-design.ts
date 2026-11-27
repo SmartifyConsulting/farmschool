@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { parseLessonSlides, slideBlockLocations } from "./lesson-slides";
+import { LEARNING_BLUEPRINT_IDS, learningBlueprint } from "./course-methodology";
 
 export const TRAINING_TOOLS = [
   "explanation",
@@ -19,7 +20,14 @@ export const TOOL_LABELS: Record<(typeof TRAINING_TOOLS)[number], string> = {
   scenario: "Practical scenario",
   quizcheck: "Knowledge check",
 };
-export type SourceUnit = { id: string; sourceId: string; file: string; page: number; text: string };
+export type SourceUnit = {
+  id: string;
+  sourceId: string;
+  file: string;
+  page: number;
+  text: string;
+  pages?: number[];
+};
 export const topicSchema = z.object({
   id: z.string().min(1).max(100),
   module: z.string().trim().min(1).max(180),
@@ -28,14 +36,15 @@ export const topicSchema = z.object({
   unitIds: z.array(z.string().min(1).max(160)).min(1).max(50),
   references: z.array(z.string().max(400)).max(50).default([]),
   tools: z.array(z.enum(TRAINING_TOOLS)).min(2).max(7),
-  slides: z.number().int().min(2).max(8),
-  headings: z.array(z.string().trim().min(1).max(160)).min(2).max(8),
+  slides: z.number().int().min(2).max(12),
+  headings: z.array(z.string().trim().min(1).max(160)).min(2).max(12),
   image: z.string().max(120000).default(""),
   alt: z.string().max(500).default(""),
   video: z.string().max(1000).default(""),
   attribution: z.string().max(1000).default(""),
   mediaReviewed: z.boolean().default(false),
   mediaPlan: z.string().max(1000).default(""),
+  methodology: z.enum([...LEARNING_BLUEPRINT_IDS, "custom"]).optional(),
 });
 export type TrainingTopic = z.infer<typeof topicSchema>;
 export type TopicResult = { key: string; body: string; reviewed: boolean };
@@ -45,11 +54,15 @@ export type TrainingPackage = {
   instruction: string;
   topics: TrainingTopic[];
   results: Record<string, TopicResult>;
+  sourceMode?: "studio" | "legacy" | undefined;
+  introduction?: string | undefined;
 };
 export const packageSchema = z.object({
   version: z.literal(1),
   title: z.string().max(200),
   instruction: z.string().max(1000),
+  sourceMode: z.enum(["studio", "legacy"]).optional(),
+  introduction: z.string().max(1000).optional(),
   topics: z.array(topicSchema).max(250),
   results: z.record(
     z.string(),
@@ -154,6 +167,7 @@ export function topicKey(topic: TrainingTopic, units: SourceUnit[], instruction:
     topic.headings,
     instruction,
     units.filter((unit) => topic.unitIds.includes(unit.id)).map((unit) => [unit.id, unit.text]),
+    ...(topic.methodology ? [topic.methodology] : []),
   ]);
   // Local invalidation marker, never an authentication or cryptographic token.
   let hash = 2166136261;
@@ -172,6 +186,14 @@ function topicProblems(topics: TrainingTopic[], units: SourceUnit[]) {
   const problems: string[] = [];
   const ids = new Set(units.map((u) => u.id));
   for (const topic of topics) {
+    const blueprint = learningBlueprint(topic.methodology);
+    if (
+      blueprint &&
+      blueprint.stages.some((stage, index) => !topic.headings[index]?.startsWith(stage + ":"))
+    )
+      problems.push(
+        `Keep the ${blueprint.name} stages in order for ${topic.title}, or choose a custom structure.`,
+      );
     if (topic.headings.length !== topic.slides)
       problems.push(`Plan a heading for every slide in ${topic.title}.`);
     if (!topicSchema.safeParse(topic).success)

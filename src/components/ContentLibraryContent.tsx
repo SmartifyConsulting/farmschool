@@ -23,6 +23,8 @@ import { toast } from "sonner";
 import { BulkCourseUpload } from "@/components/BulkCourseUpload";
 import { useLibraryMaterials } from "@/hooks/useLibraryMaterials";
 import { createMaterialWorkspace } from "@/lib/studio-workspace";
+import { DesignReferenceAttachments } from "@/components/DesignReferenceAttachments";
+import type { DesignReference } from "@/lib/design-reference";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { SlidePlayer } from "@/components/SlidePlayer";
 import { parseLessonSlides } from "@/lib/lesson-slides";
@@ -114,12 +116,19 @@ export function ContentLibraryContent({
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const [uploadSector, setUploadSector] = useState("Uncategorised");
   const [outputBriefs, setOutputBriefs] = useState<Record<string, string>>({});
+  const [briefReferences, setBriefReferences] = useState<Record<string, DesignReference[]>>({});
   const navigate = useNavigate();
   const openingWorkspace = useRef(false);
   const [launching, setLaunching] = useState(false);
   const openWorkspace = async (
     sources: LibraryFile[],
-    options: { initialBody?: string; initialTitle?: string; initialInstruction?: string },
+    options: {
+      initialBody?: string;
+      initialTitle?: string;
+      initialInstruction?: string;
+      sourceMode?: "studio" | "legacy";
+      designReferences?: DesignReference[];
+    },
   ) => {
     if (!user || openingWorkspace.current) return;
     openingWorkspace.current = true;
@@ -159,8 +168,10 @@ export function ContentLibraryContent({
         .download(file.storage_path);
       if (error || !data) throw error ?? new Error("Could not open this output.");
       if (data.size > 16000000) throw new Error("This output is too large for the lesson editor.");
+      const body = await data.text();
       await openWorkspace(sources, {
-        initialBody: await data.text(),
+        initialBody: body,
+        sourceMode: readTrainingPackage(body)?.sourceMode ?? "legacy",
         initialTitle: file.file_name.replace(/\.(?:md|html)$/i, ""),
       });
     } catch (error) {
@@ -190,6 +201,7 @@ export function ContentLibraryContent({
   const startTransformation = (sources: LibraryFile[]) => {
     if (!sources.length) return;
     void openWorkspace(sources, {
+      designReferences: briefReferences[sources[0]!.id] ?? [],
       initialInstruction: instructionForTrainingBrief(
         sources.length === 1 ? outputBriefs[sources[0]!.id] : "",
       ),
@@ -590,6 +602,12 @@ export function ContentLibraryContent({
                         preferences for depth, examples, visuals or video emphasis. You can review
                         the outline and media choices before generating.
                       </p>
+                      <DesignReferenceAttachments
+                        value={briefReferences[activeLesson.id] ?? []}
+                        onChange={(references) =>
+                          setBriefReferences((old) => ({ ...old, [activeLesson.id]: references }))
+                        }
+                      />
                       <Button
                         disabled={!activeLesson.sources.every(canTransform)}
                         onClick={() => startTransformation(activeLesson.sources)}

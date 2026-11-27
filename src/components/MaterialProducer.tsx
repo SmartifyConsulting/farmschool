@@ -4,7 +4,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { studioTrainingOutline } from "@/lib/studio-training-outline";
+import { TrainingOutlinePreview } from "@/components/TrainingOutlinePreview";
+import { createMaterialWorkspace } from "@/lib/studio-workspace";
+import { learningBlueprint } from "@/lib/course-methodology";
+import { LearningBlueprintSelector } from "@/components/LearningBlueprintSelector";
+import { DesignReferenceAttachments } from "@/components/DesignReferenceAttachments";
+import { designReferencesSchema, type DesignReference } from "@/lib/design-reference";
 import { StudioWorkspace, StudioSaveStatus } from "@/components/StudioWorkspace";
 import { StudioSourceReference } from "@/components/StudioSourceReference";
 import { useStudioAutosave } from "@/hooks/useStudioAutosave";
@@ -55,6 +62,8 @@ export function MaterialProducer({
   initialBody,
   initialTitle,
   initialInstruction,
+  initialSourceMode = "legacy",
+  initialDesignReferences = [],
   workspace,
   onClose,
   onSaved,
@@ -64,6 +73,8 @@ export function MaterialProducer({
   initialBody?: string | undefined;
   initialTitle?: string | undefined;
   initialInstruction?: string | undefined;
+  initialSourceMode?: "studio" | "legacy";
+  initialDesignReferences?: DesignReference[];
   workspace?: {
     id: string;
     scope: "personal" | "admin";
@@ -76,6 +87,14 @@ export function MaterialProducer({
 }) {
   const { user } = useAuth();
   const confirm = useConfirm();
+  const navigate = useNavigate();
+  const [sourceMode, setSourceMode] = useState(initialSourceMode);
+  const [sourceWarnings, setSourceWarnings] = useState<string[]>([]);
+  const [outlineEditing, setOutlineEditing] = useState(false);
+  const [introduction, setIntroduction] = useState("");
+  const [designReferences, setDesignReferences] =
+    useState<DesignReference[]>(initialDesignReferences);
+  const [referenceBusy, setReferenceBusy] = useState(false);
   const generate = useServerFn(generateTrainingTopic);
   const illustrate = useServerFn(generateTrainingIllustration);
   const findVideo = useServerFn(searchYouTubeVideo);
@@ -87,6 +106,8 @@ export function MaterialProducer({
   );
   const [units, setUnits] = useState<SourceUnit[]>([]);
   const [topics, setTopics] = useState<TrainingTopic[]>([]);
+  const topicsRef = useRef(topics);
+  topicsRef.current = topics;
   const [results, setResults] = useState<Record<string, TopicResult>>({});
   const cache = useRef<Record<string, TopicResult>>({});
   const [localSelected, setLocalSelected] = useState(0);
@@ -99,10 +120,12 @@ export function MaterialProducer({
   const [localStep, setLocalStep] = useState("outline");
   const step = workspace?.step ?? localStep;
   const selectStep = (next: string) => {
+    if (next === "outline") setOutlineEditing(false);
     setLocalStep(next);
     workspace?.navigate(next, topics[selected]?.id ?? "");
   };
   const setSelected = (index: number) => {
+    setOutlineEditing(true);
     setLocalSelected(index);
     workspace?.navigate(step, topics[index]?.id ?? "");
   };
@@ -148,12 +171,23 @@ export function MaterialProducer({
       title,
       sourceIds: sources.map((source) => source.id),
       scope: workspace?.scope ?? "personal",
+      sourceMode,
+      introduction,
+      designReferences,
       folderId,
-      package: { version: 1, title, instruction, topics, results },
+      package: { version: 1, title, instruction, topics, results, sourceMode, introduction },
       includeImages,
       includeVideos,
+      generationError,
     },
     restore: (snapshot) => {
+      if (typeof snapshot["generationError"] === "string")
+        setGenerationError(snapshot["generationError"]);
+      if (snapshot["designReferences"])
+        setDesignReferences(designReferencesSchema.parse(snapshot["designReferences"]));
+      if (snapshot["sourceMode"] === "studio" || snapshot["sourceMode"] === "legacy")
+        setSourceMode(snapshot["sourceMode"]);
+      if (typeof snapshot["introduction"] === "string") setIntroduction(snapshot["introduction"]);
       if (snapshot["package"]) {
         const restored = recoverableTrainingPackage.parse(snapshot["package"]);
         restoredPackage.current = restored;
@@ -176,6 +210,8 @@ export function MaterialProducer({
       try {
         const all: SourceUnit[] = [];
         const low: string[] = [];
+        const studioTopics: TrainingTopic[] = [];
+        const warnings: string[] = [];
         for (const file of sources) {
           if (file.size_bytes > 12 * 1024 * 1024)
             throw new Error("Each source must be 12 MB or smaller.");
@@ -186,7 +222,12 @@ export function MaterialProducer({
           const pages = await extractDocument(new File([download.data], file.original_file_name));
           for (const page of pages)
             if (page.text.trim().length < 24) low.push(`${file.file_name}, page ${page.page}`);
-          all.push(...sourceUnits(file.id, file.original_file_name, pages));
+          if (sourceMode === "studio") {
+            const prepared = studioTrainingOutline(file.id, file.original_file_name, pages);
+            all.push(...prepared.units);
+            studioTopics.push(...prepared.topics);
+            warnings.push(...prepared.warnings);
+          } else all.push(...sourceUnits(file.id, file.original_file_name, pages));
         }
         if (!all.length || all.reduce((n, u) => n + u.text.length, 0) > 1000000)
           throw new Error("Choose readable sources totalling at most 1,000,000 characters.");
@@ -194,11 +235,21 @@ export function MaterialProducer({
           restoredPackage.current ?? (initialBody ? readTrainingPackage(initialBody) : null);
         if (!cancelled) {
           setUnits(all);
-          setBlanks(low);
-          setTopics(saved?.topics ?? initialOutline(all));
+          setBlanks(
+            sourceMode === "studio"
+              ? all
+                  .filter((unit) => unit.text.trim().length < 24)
+                  .map((unit) => `${unit.file}, page ${unit.page}`)
+              : low,
+          );
+          setSourceWarnings(warnings);
+          setTopics(
+            saved?.topics ?? (sourceMode === "studio" ? studioTopics : initialOutline(all)),
+          );
           setLegacy(!!initialBody && !saved);
           if (saved) {
             setTitle(saved.title);
+            setIntroduction(saved.introduction ?? "");
             setInstruction(
               restoredPackage.current
                 ? saved.instruction
@@ -218,10 +269,48 @@ export function MaterialProducer({
       cancelled = true;
       stopped.current = true;
     };
-  }, [sources, initialBody, initialInstruction, autosave.ready]);
+  }, [sources, initialBody, initialInstruction, autosave.ready, sourceMode]);
   const topic = topics[selected];
   const result = topic ? results[topic.id] : undefined;
-  const pkg: TrainingPackage = { version: 1, title, instruction, topics, results };
+  const pkg: TrainingPackage = {
+    version: 1,
+    title,
+    instruction,
+    topics,
+    results,
+    sourceMode,
+    introduction,
+  };
+  const rebuildStudioOutline = async () => {
+    if (!user || busy || autosave.status === "conflict") return;
+    if (
+      !(await confirm({
+        title: "Create a version using Studio’s source cleanup?",
+        description:
+          "Your current outline, generated content and source files are retained in this version. A new private workspace will use Studio’s existing heading detection and front-matter filtering.",
+        confirmLabel: "Create corrected version",
+      }))
+    )
+      return;
+    try {
+      await autosave.flush();
+      const projectId = await createMaterialWorkspace(user.id, sources, {
+        scope: workspace?.scope ?? "personal",
+        folderId,
+        initialTitle: title,
+        initialInstruction: instruction,
+        sourceMode: "studio",
+        designReferences,
+      });
+      await navigate({
+        to: "/studio/materials/$projectId",
+        params: { projectId },
+        search: { step: "outline", topic: "" },
+      });
+    } catch (error) {
+      toast.error(friendlyError(error, "Could not create the corrected version."));
+    }
+  };
   const problems = coverageProblems(topics, units, results, instruction);
   if (blanks.length)
     problems.unshift("Replace or OCR pages with little readable text before completion.");
@@ -265,10 +354,11 @@ export function MaterialProducer({
     onClose();
   };
   const run = async (only?: string | string[]) => {
-    if (busy || loading || error) return;
+    if (busy || referenceBusy || loading || error) return;
     if (!autosave.ready || autosave.loadError || autosave.status === "conflict") return;
     const issues = generationProblems(topics, units, only);
     if (issues.length) {
+      setGenerationError(issues[0]!);
       toast.error(issues[0]);
       return;
     }
@@ -305,6 +395,7 @@ export function MaterialProducer({
             data: {
               title,
               instruction,
+              designReferences,
               topic: t,
               budget: Math.min(
                 12000,
@@ -330,8 +421,10 @@ export function MaterialProducer({
         image: imageForTopic,
         video: (t) =>
           findVideo({ data: { query: `${t.title} ${t.objective} training`.slice(0, 120) } }),
-        attach: (id, patch) =>
-          setTopics((old) => old.map((t) => (t.id === id ? { ...t, ...patch } : t))),
+        attach: (id, patch) => {
+          topicsRef.current = topicsRef.current.map((t) => (t.id === id ? { ...t, ...patch } : t));
+          setTopics(topicsRef.current);
+        },
       });
       if (warnings.length) setGenerationError(warnings.join(" "));
     } catch (e) {
@@ -342,15 +435,19 @@ export function MaterialProducer({
       setGenerationError(message);
       toast.error(message);
     } finally {
+      if (Object.keys(cache.current).length)
+        await save(true, { ...pkg, topics: topicsRef.current, results: cache.current });
       setBusy(false);
       setProgress("");
     }
   };
-  const save = async (asDraft = false) => {
-    if (!user || busy || (!asDraft && problems.length) || !title.trim()) return;
-    setBusy(true);
+  const save = async (asDraft = false, backgroundSnapshot?: TrainingPackage) => {
+    if (!user || (busy && !backgroundSnapshot) || (!asDraft && problems.length) || !title.trim())
+      return;
+    const snapshot = backgroundSnapshot ?? pkg;
+    if (!backgroundSnapshot) setBusy(true);
     try {
-      const key = JSON.stringify([pkg, asDraft]);
+      const key = JSON.stringify([snapshot, asDraft]);
       if (attempt.current?.key !== key) {
         const id = crypto.randomUUID();
         const name = (title.trim().replace(/[\\/:*?"<>|]/g, "-") || "Training") + ".html";
@@ -359,7 +456,7 @@ export function MaterialProducer({
           id,
           name,
           path: `${user.id}/library/produced/${id}/${name}`,
-          blob: new Blob([trainingHtml(pkg, asDraft)], { type: "text/html;charset=utf-8" }),
+          blob: new Blob([trainingHtml(snapshot, asDraft)], { type: "text/html;charset=utf-8" }),
         };
       }
       const out = attempt.current!;
@@ -377,7 +474,7 @@ export function MaterialProducer({
           _storage_path: out.path,
           _size_bytes: out.blob.size,
           _description:
-            `${asDraft ? DRAFT_MATERIAL_PREFIX : ""}HTML training: ${topics.length} ${asDraft ? "draft" : "reviewed"} topics. Sources: ${sources.map((s) => s.file_name).join(", ")}`.slice(
+            `${asDraft ? DRAFT_MATERIAL_PREFIX : ""}HTML training: ${snapshot.topics.length} ${asDraft ? "draft" : "reviewed"} topics. Sources: ${sources.map((s) => s.file_name).join(", ")}`.slice(
               0,
               4000,
             ),
@@ -391,11 +488,11 @@ export function MaterialProducer({
           ? "Draft saved beside its raw material. Original sources and earlier versions are preserved."
           : "Completed material saved beside its raw material. Original sources and earlier versions are preserved.",
       );
-      onSaved();
+      if (!backgroundSnapshot) onSaved();
     } catch (e) {
       toast.error(friendlyError(e, "Could not confirm the save. Retry the same output."));
     } finally {
-      setBusy(false);
+      if (!backgroundSnapshot) setBusy(false);
     }
   };
   const download = () => {
@@ -436,6 +533,9 @@ export function MaterialProducer({
     )
       return;
     setTitle(storedDraft.title);
+    restoredPackage.current = storedDraft;
+    setSourceMode(storedDraft.sourceMode ?? "legacy");
+    setIntroduction(storedDraft.introduction ?? "");
     setInstruction(storedDraft.instruction);
     setTopics(storedDraft.topics);
     setResults(storedDraft.results);
@@ -462,6 +562,9 @@ export function MaterialProducer({
       )
         return;
       setTitle(draft.title);
+      restoredPackage.current = draft;
+      setSourceMode(draft.sourceMode ?? "legacy");
+      setIntroduction(draft.introduction ?? "");
       setInstruction(draft.instruction);
       setTopics(draft.topics);
       setResults(draft.results);
@@ -724,6 +827,50 @@ export function MaterialProducer({
           className="space-y-4"
         >
           <label className="block text-sm">
+            Course introduction
+            <Textarea
+              value={introduction}
+              maxLength={1000}
+              onChange={(event) => setIntroduction(event.target.value)}
+              placeholder="A short introduction learners will see in the course outline"
+            />
+          </label>
+          <LearningBlueprintSelector
+            value={
+              topics.length && topics.every((topic) => topic.methodology === topics[0]?.methodology)
+                ? (topics[0]?.methodology ?? "custom")
+                : "custom"
+            }
+            onChange={async (value) => {
+              const blueprint = learningBlueprint(value);
+              if (
+                blueprint &&
+                !(await confirm({
+                  title: "Apply " + blueprint.name + "?",
+                  description:
+                    "This changes the planned stages and recommended learning tools. Existing generated content is retained and becomes out of date until regenerated against the changed outline.",
+                  confirmLabel: "Apply blueprint",
+                }))
+              )
+                return;
+              setTopics((old) =>
+                old.map((topic) =>
+                  blueprint
+                    ? {
+                        ...topic,
+                        methodology: blueprint.id,
+                        slides: blueprint.stages.length,
+                        headings: blueprint.stages.map((stage) =>
+                          (stage + ": " + topic.title).slice(0, 160),
+                        ),
+                        tools: blueprint.tools as TrainingTopic["tools"],
+                      }
+                    : { ...topic, methodology: "custom" },
+                ),
+              );
+            }}
+          />
+          <label className="block text-sm">
             Training title
             <Input
               value={title}
@@ -789,6 +936,11 @@ export function MaterialProducer({
               }}
             />
           </label>
+          <DesignReferenceAttachments
+            value={designReferences}
+            onChange={setDesignReferences}
+            onBusyChange={setReferenceBusy}
+          />
           <h2 className="text-sm font-semibold">Exports and recovery</h2>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={download}>
@@ -838,7 +990,12 @@ export function MaterialProducer({
           <Button
             size="sm"
             disabled={
-              busy || loading || !autosave.ready || autosave.status === "conflict" || !title.trim()
+              busy ||
+              referenceBusy ||
+              loading ||
+              !autosave.ready ||
+              autosave.status === "conflict" ||
+              !title.trim()
             }
             onClick={() => void run(bulkTopics.length ? bulkTopics : undefined)}
           >
@@ -893,160 +1050,192 @@ export function MaterialProducer({
         <fieldset disabled={busy || autosave.status === "conflict"} className="min-w-0">
           <Tabs value={step} onValueChange={selectStep}>
             <TabsContent value="outline" className="space-y-3">
-              <div className="space-y-4">
-                {topic && (
-                  <section className="space-y-3" aria-label="Selected topic outline">
-                    <label className="block text-sm">
-                      Heading 1 — module
-                      <Input
-                        value={topic.module}
-                        maxLength={180}
-                        onChange={(e) => change({ module: e.target.value })}
-                      />
-                    </label>
-                    <label className="block text-sm">
-                      Heading 2 — topic
-                      <Input
-                        value={topic.title}
-                        maxLength={180}
-                        onChange={(e) => change({ title: e.target.value })}
-                      />
-                    </label>
-                    <label className="block text-sm">
-                      Learning objective
-                      <Textarea
-                        value={topic.objective}
-                        maxLength={500}
-                        onChange={(e) => change({ objective: e.target.value })}
-                      />
-                    </label>
-                    <label className="block text-sm">
-                      Number of slides
-                      <Input
-                        type="number"
-                        min={2}
-                        max={8}
-                        value={topic.slides}
-                        onChange={(e) => {
-                          const slides = Number(e.target.value);
-                          if (Number.isInteger(slides) && slides >= 2 && slides <= 8)
-                            change({
-                              slides,
-                              headings: Array.from(
-                                { length: slides },
-                                (_, i) =>
-                                  topic.headings[i] ??
-                                  `${topic.title} — part ${i + 1}`.slice(0, 160),
-                              ),
-                            });
-                        }}
-                      />
-                    </label>
-                    {topic.headings.map((heading, index) => (
-                      <label key={index} className="block text-sm">
-                        Heading 3 — slide {index + 1}
+              {sourceMode === "legacy" && (
+                <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+                  <p className="supporting-text">
+                    This version uses the older page-based outline. Use Studio’s existing source
+                    cleanup and chapter detection in a new version; this version stays preserved.
+                  </p>
+                  <Button variant="outline" onClick={() => void rebuildStudioOutline()}>
+                    Rebuild with Studio outline
+                  </Button>
+                </div>
+              )}
+              {!!sourceWarnings.length && (
+                <p className="supporting-text text-muted-foreground">
+                  {[...new Set(sourceWarnings)].join(" ")}
+                </p>
+              )}
+              {!outlineEditing && (
+                <TrainingOutlinePreview
+                  title={title}
+                  introduction={introduction}
+                  topics={topics}
+                  units={units}
+                  onSelect={(id) => setSelected(topics.findIndex((topic) => topic.id === id))}
+                />
+              )}
+              {outlineEditing && (
+                <Button size="sm" variant="outline" onClick={() => setOutlineEditing(false)}>
+                  Back to course outline
+                </Button>
+              )}
+              <div hidden={!outlineEditing}>
+                <div className="space-y-4">
+                  {topic && (
+                    <section className="space-y-3" aria-label="Selected topic outline">
+                      <label className="block text-sm">
+                        Heading 1 — module
                         <Input
-                          value={heading}
-                          maxLength={160}
-                          onChange={(e) =>
-                            change({
-                              headings: topic.headings.map((old, i) =>
-                                i === index ? e.target.value : old,
-                              ),
-                            })
-                          }
+                          value={topic.module}
+                          maxLength={180}
+                          onChange={(e) => change({ module: e.target.value })}
                         />
                       </label>
-                    ))}
-                    <fieldset className="rounded-lg border p-3">
-                      <legend>Learning components</legend>
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {TRAINING_TOOLS.map((tool) => (
-                          <label className="text-sm" key={tool}>
-                            <input
-                              type="checkbox"
-                              checked={topic.tools.includes(tool)}
-                              onChange={(e) =>
-                                change({
-                                  tools: e.target.checked
-                                    ? [...topic.tools, tool]
-                                    : topic.tools.filter((t) => t !== tool),
-                                })
-                              }
-                            />{" "}
-                            {TOOL_LABELS[tool]}
-                          </label>
-                        ))}
+                      <label className="block text-sm">
+                        Heading 2 — topic
+                        <Input
+                          value={topic.title}
+                          maxLength={180}
+                          onChange={(e) => change({ title: e.target.value })}
+                        />
+                      </label>
+                      <label className="block text-sm">
+                        Learning objective
+                        <Textarea
+                          value={topic.objective}
+                          maxLength={500}
+                          onChange={(e) => change({ objective: e.target.value })}
+                        />
+                      </label>
+                      <label className="block text-sm">
+                        Number of slides
+                        <Input
+                          type="number"
+                          min={2}
+                          max={12}
+                          value={topic.slides}
+                          onChange={(e) => {
+                            const slides = Number(e.target.value);
+                            if (Number.isInteger(slides) && slides >= 2 && slides <= 12)
+                              change({
+                                slides,
+                                headings: Array.from(
+                                  { length: slides },
+                                  (_, i) =>
+                                    topic.headings[i] ??
+                                    `${topic.title} — part ${i + 1}`.slice(0, 160),
+                                ),
+                              });
+                          }}
+                        />
+                      </label>
+                      {topic.headings.map((heading, index) => (
+                        <label key={index} className="block text-sm">
+                          Heading 3 — slide {index + 1}
+                          <Input
+                            value={heading}
+                            maxLength={160}
+                            onChange={(e) =>
+                              change({
+                                headings: topic.headings.map((old, i) =>
+                                  i === index ? e.target.value : old,
+                                ),
+                              })
+                            }
+                          />
+                        </label>
+                      ))}
+                      <fieldset className="rounded-lg border p-3">
+                        <legend>Learning components</legend>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {TRAINING_TOOLS.map((tool) => (
+                            <label className="text-sm" key={tool}>
+                              <input
+                                type="checkbox"
+                                checked={topic.tools.includes(tool)}
+                                onChange={(e) =>
+                                  change({
+                                    tools: e.target.checked
+                                      ? [...topic.tools, tool]
+                                      : topic.tools.filter((t) => t !== tool),
+                                  })
+                                }
+                              />{" "}
+                              {TOOL_LABELS[tool]}
+                            </label>
+                          ))}
+                        </div>
+                      </fieldset>
+                      <fieldset className="rounded-lg border p-3">
+                        <legend>Assigned source pages / sections</legend>
+                        <div className="max-h-40 overflow-auto">
+                          {units.map((u) => (
+                            <label key={u.id} className="block text-sm">
+                              <input
+                                type="checkbox"
+                                checked={topic.unitIds.includes(u.id)}
+                                onChange={(e) =>
+                                  change({
+                                    unitIds: e.target.checked
+                                      ? [...topic.unitIds, u.id]
+                                      : topic.unitIds.filter((id) => id !== u.id),
+                                  })
+                                }
+                              />{" "}
+                              {u.file} · p.{u.page} · part {Number(u.id.split(":").at(-1)) + 1}
+                            </label>
+                          ))}
+                        </div>
+                      </fieldset>
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" disabled={!selected} onClick={() => move(-1)}>
+                          Move up
+                        </Button>
+                        <Button
+                          variant="outline"
+                          disabled={selected === topics.length - 1}
+                          onClick={() => move(1)}
+                        >
+                          Move down
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            const next = topics.filter((t) => t.id !== topic.id);
+                            const index = Math.max(0, selected - 1);
+                            setTopics(next);
+                            setLocalSelected(index);
+                            workspace?.navigate(step, next[index]?.id ?? "");
+                            setBulkTopics((old) => old.filter((id) => id !== topic.id));
+                            setDirty(true);
+                          }}
+                        >
+                          Remove topic
+                        </Button>
                       </div>
-                    </fieldset>
-                    <fieldset className="rounded-lg border p-3">
-                      <legend>Assigned source pages / sections</legend>
-                      <div className="max-h-40 overflow-auto">
-                        {units.map((u) => (
-                          <label key={u.id} className="block text-sm">
-                            <input
-                              type="checkbox"
-                              checked={topic.unitIds.includes(u.id)}
-                              onChange={(e) =>
-                                change({
-                                  unitIds: e.target.checked
-                                    ? [...topic.unitIds, u.id]
-                                    : topic.unitIds.filter((id) => id !== u.id),
-                                })
-                              }
-                            />{" "}
-                            {u.file} · p.{u.page} · part {Number(u.id.split(":").at(-1)) + 1}
-                          </label>
-                        ))}
-                      </div>
-                    </fieldset>
-                    <div className="flex flex-wrap gap-2">
-                      <Button variant="outline" disabled={!selected} onClick={() => move(-1)}>
-                        Move up
-                      </Button>
-                      <Button
-                        variant="outline"
-                        disabled={selected === topics.length - 1}
-                        onClick={() => move(1)}
-                      >
-                        Move down
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          const next = topics.filter((t) => t.id !== topic.id);
-                          const index = Math.max(0, selected - 1);
-                          setTopics(next);
-                          setLocalSelected(index);
-                          workspace?.navigate(step, next[index]?.id ?? "");
-                          setBulkTopics((old) => old.filter((id) => id !== topic.id));
-                          setDirty(true);
-                        }}
-                      >
-                        Remove topic
-                      </Button>
-                    </div>
-                  </section>
-                )}
+                    </section>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setTopics([
+                      ...topics,
+                      {
+                        ...(topics.at(-1) ?? initialOutline(units)[0]!),
+                        id: crypto.randomUUID(),
+                        title: "New topic",
+                        unitIds: [],
+                      },
+                    ]);
+                    setSelected(topics.length);
+                    setDirty(true);
+                  }}
+                >
+                  Add topic
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setTopics([
-                    ...topics,
-                    {
-                      ...(topics.at(-1) ?? initialOutline(units)[0]!),
-                      id: crypto.randomUUID(),
-                      title: "New topic",
-                      unitIds: [],
-                    },
-                  ]);
-                  setSelected(topics.length);
-                  setDirty(true);
-                }}
-              >
-                Add topic
-              </Button>
             </TabsContent>
             <TabsContent value="slides" className="space-y-3">
               {topic && (

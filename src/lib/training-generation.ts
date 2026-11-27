@@ -1,3 +1,4 @@
+import { friendlyError } from "./friendly-error";
 import {
   topicKey,
   youtubeVideo,
@@ -53,66 +54,80 @@ export async function runTrainingGeneration(
 ) {
   const warnings: string[] = [];
   let videoConfigured = true;
+  // Finish teaching content before optional media uses the remaining daily allowance.
+  for (const [index, task] of tasks.entries()) {
+    if (actions.stopped()) return warnings;
+    if (task.slides) {
+      actions.progress(`Generating slides ${index + 1} of ${tasks.length}: ${task.topic.title}`);
+      await actions.slides(task.topic);
+    }
+  }
   for (const [index, task] of tasks.entries()) {
     let topic = task.topic;
     const status = `${index + 1} of ${tasks.length}: ${topic.title}`;
     if (actions.stopped()) break;
-    if (task.slides) {
-      actions.progress(`Generating slides ${status}`);
-      await actions.slides(topic);
-    }
     if (actions.stopped()) break;
-    if (task.image) {
-      actions.progress(`Generating illustration ${status}`);
-      const image = await actions.image(topic);
-      if (!image)
-        throw new Error("The illustration was not attached. Finished slides are retained.");
-      topic = {
-        ...topic,
-        image,
-        alt: `Illustration: ${topic.title}`.slice(0, 500),
-        mediaReviewed: false,
-        attribution: [topic.attribution, "AI-generated illustration — trainer review required"]
-          .filter(Boolean)
-          .join("; ")
-          .slice(0, 1000),
-      };
-      actions.attach(topic.id, {
-        image: topic.image,
-        alt: topic.alt,
-        attribution: topic.attribution,
-        mediaReviewed: false,
-      });
-    }
-    if (actions.stopped()) break;
-    if (task.video && videoConfigured) {
-      actions.progress(`Finding a supporting video ${status}`);
-      const result = await actions.video(topic);
-      if (!result.configured) {
-        videoConfigured = false;
-        warnings.push(
-          "Video search is not configured. No videos were attached; add reviewed YouTube links in Slides and media.",
-        );
-      } else if (!result.videoId) {
-        warnings.push(
-          `No supporting video was found for ${topic.title}. Add one in Slides and media if needed.`,
-        );
-      } else {
-        const video = `https://www.youtube.com/watch?v=${result.videoId}`;
-        if (!youtubeVideo(video))
-          throw new Error("Video search returned an invalid video. Finished material is retained.");
-        actions.attach(topic.id, {
-          video,
+    try {
+      if (task.image) {
+        actions.progress(`Generating illustration ${status}`);
+        const image = await actions.image(topic);
+        if (!image)
+          throw new Error("The illustration was not attached. Finished slides are retained.");
+        topic = {
+          ...topic,
+          image,
+          alt: `Illustration: ${topic.title}`.slice(0, 500),
           mediaReviewed: false,
-          attribution: [
-            topic.attribution,
-            `YouTube: ${result.title || topic.title}${result.channelTitle ? ` — ${result.channelTitle}` : ""}; relevance and permission need trainer review`,
-          ]
+          attribution: [topic.attribution, "AI-generated illustration — trainer review required"]
             .filter(Boolean)
             .join("; ")
             .slice(0, 1000),
+        };
+        actions.attach(topic.id, {
+          image: topic.image,
+          alt: topic.alt,
+          attribution: topic.attribution,
+          mediaReviewed: false,
         });
       }
+      if (actions.stopped()) break;
+      if (task.video && videoConfigured) {
+        actions.progress(`Finding a supporting video ${status}`);
+        const result = await actions.video(topic);
+        if (!result.configured) {
+          videoConfigured = false;
+          warnings.push(
+            "Video search is not configured. No videos were attached; add reviewed YouTube links in Slides and media.",
+          );
+        } else if (!result.videoId) {
+          warnings.push(
+            `No supporting video was found for ${topic.title}. Add one in Slides and media if needed.`,
+          );
+        } else {
+          const video = `https://www.youtube.com/watch?v=${result.videoId}`;
+          if (!youtubeVideo(video))
+            throw new Error(
+              "Video search returned an invalid video. Finished material is retained.",
+            );
+          actions.attach(topic.id, {
+            video,
+            mediaReviewed: false,
+            attribution: [
+              topic.attribution,
+              `YouTube: ${result.title || topic.title}${result.channelTitle ? ` — ${result.channelTitle}` : ""}; relevance and permission need trainer review`,
+            ]
+              .filter(Boolean)
+              .join("; ")
+              .slice(0, 1000),
+          });
+        }
+      }
+    } catch (error) {
+      warnings.push(
+        "Lesson content is retained. Some supporting media is unfinished: " +
+          friendlyError(error, "Retry the remaining media later."),
+      );
+      break;
     }
   }
   return warnings;

@@ -12,9 +12,9 @@ export const recoverableTrainingPackage = packageSchema.extend({
         tools: z.array(z.enum(TRAINING_TOOLS)).max(7),
         slides: z.preprocess(
           (value) => (typeof value === "number" && Number.isFinite(value) ? value : 0),
-          z.number().int().min(0).max(8),
+          z.number().int().min(0).max(12),
         ),
-        headings: z.array(z.string().max(160)).max(8),
+        headings: z.array(z.string().max(160)).max(12),
       }),
     )
     .max(250),

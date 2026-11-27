@@ -83,6 +83,8 @@ function MaterialWorkspace() {
           initialTitle={project.data.state.initialTitle}
           initialBody={project.data.state.initialBody}
           initialInstruction={project.data.state.initialInstruction}
+          initialSourceMode={project.data.state.sourceMode ?? "legacy"}
+          initialDesignReferences={project.data.state.designReferences}
           workspace={{
             id: projectId,
             scope: project.data.state.scope,

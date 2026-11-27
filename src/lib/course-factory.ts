@@ -82,7 +82,7 @@ const MAX_CHARS = 1_000_000;
 // heading — without one it reads as a numbered list item (an outcome, an objective), not a section,
 // so it is left as body text. A multi-level decimal ("1.1 Wetlands") is unambiguous either way.
 const heading =
-  /^(?:(?:module|chapter|unit|lesson|section|part|topic)\s+(?:\d+|[IVX]+|[A-Z])(?:[.:\s–-]+.*)?|(?:\d+\.\d+(?:\.\d+)*|\d+[.)])\s+[A-Z][^.!?]{2,100}|[IVX]+[.)]\s+[A-Z][^.!?]{2,100})$/i;
+  /^(?:(?:annex|appendix)\s+[A-Z](?:[.:\s–-]+.*)?|(?:module|chapter|unit|lesson|section|part|topic)\s+(?:\d+|[IVX]+|[A-Z])(?:[.:\s–-]+.*)?|(?:\d+\.\d+(?:\.\d+)*|\d+[.)])\s+[A-Z][^.!?]{2,100}|[IVX]+[.)]\s+[A-Z][^.!?]{2,100})$/i;
 const contentsEntry = /(?:\.{2,}|…+|\s{3,})\s*\d{1,3}\s*$/;
 const coverMarker =
   /^(?:short learning programme|training manual|copyright|all rights reserved|entrepreneurship|equip\s*[•·-]\s*learn|building skills,? empowering people|protecting pollinators|future leaders)$/i;
@@ -94,7 +94,7 @@ function normalise(text: string): string {
     .trim();
 }
 const h1 =
-  /^(?:(?:module|chapter|unit|part)\s+(?:\d+|[IVX]+|[A-Z])(?:[.:\s–-]+.*)?|\d+[.)]\s+[A-Z][^.!?]{2,100}|[IVX]+[.)]\s+[A-Z][^.!?]{2,100})$/i;
+  /^(?:(?:annex|appendix)\s+[A-Z](?:[.:\s–-]+.*)?|(?:module|chapter|unit|part)\s+(?:\d+|[IVX]+|[A-Z])(?:[.:\s–-]+.*)?|\d+[.)]\s+[A-Z][^.!?]{2,100}|[IVX]+[.)]\s+[A-Z][^.!?]{2,100})$/i;
 // (h1 keeps the stricter single-integer+punctuation form: "1." starts a module, "1.1" never does.)
 const referencesHeading =
   /^(?:\d+(?:\.\d+)*[.)]?\s+)?(?:references?(?: list)?|bibliography|works cited|sources|further reading)$/i;
@@ -164,6 +164,7 @@ export function buildCourseDraft(
   const tocTitles = new Set<string>();
   let currentTitle = title.trim();
   let currentModule: string | undefined;
+  let currentChapter: string | undefined;
   let inReferences = false;
   let started = false;
   let skipped = false;
@@ -224,7 +225,7 @@ export function buildCourseDraft(
     }
     for (const [lineIndex, line] of lines.entries()) {
       if (/^\d+$/.test(line)) continue;
-      if (referencesHeading.test(line)) {
+      if (referencesHeading.test(line) || /^(?:annex|appendix)\s+[A-Z][.)]?\s+(?:references?|bibliography|sources)\b/i.test(line)) {
         flush();
         inReferences = true;
         skipped = true;
@@ -235,9 +236,12 @@ export function buildCourseDraft(
         else continue;
       }
       const isHeading =
-        heading.test(line) ||
-        tocTitles.has(line.toLowerCase()) ||
-        (lineIndex === 0 && titleCase(line));
+        // Numbered procedure steps such as "2. Listen: remain calm ..." are
+        // teaching content, not new chapters. Keep them under the current heading.
+        !/^\d+[.)]\s+[^:]{1,40}:\s*[a-z]/.test(line) &&
+        (heading.test(line) ||
+          tocTitles.has(line.toLowerCase()) ||
+          (lineIndex === 0 && titleCase(line)));
       if (isHeading) {
         if (started && !body.length && /^(?:module|chapter|unit)\s+\d+$/i.test(currentTitle)) {
           currentTitle = `${currentTitle}: ${line}`.slice(0, 120);
@@ -246,7 +250,11 @@ export function buildCourseDraft(
         } else if (line !== currentTitle || !started) {
           flush();
           if (h1.test(line)) {
-            currentModule = line.slice(0, 120);
+            const chapterMatch=/^(?:(\d+)[.)]|((?:annex|appendix)\s+[A-Z])[.)]?)\s/i.exec(line);
+            const chapter=chapterMatch?.[1]??chapterMatch?.[2]?.toLowerCase();
+            // Continued chapter headings remain lessons under the same parent.
+            if (!chapter || chapter !== currentChapter) currentModule = line.slice(0, 120);
+            currentChapter = chapter;
             currentTitle = line;
           } else currentTitle = line;
         }

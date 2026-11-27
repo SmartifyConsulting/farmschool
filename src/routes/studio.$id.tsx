@@ -1,3 +1,9 @@
+import { LearningBlueprintSelector } from "@/components/LearningBlueprintSelector";
+import {
+  DEFAULT_COURSE_METHODOLOGY,
+  LEARNING_BLUEPRINT_IDS,
+  type LearningBlueprintId,
+} from "@/lib/course-methodology";
 import { rpcArgs } from "@/lib/rpc-args";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { StudioWorkspace, StudioSaveStatus } from "@/components/StudioWorkspace";
@@ -495,6 +501,9 @@ function Editor() {
       return data as unknown as { status: string } | null;
     },
   });
+  const [learningBlueprint, setLearningBlueprint] = useState<LearningBlueprintId>(
+    DEFAULT_COURSE_METHODOLOGY,
+  );
   const [factoryStep, setFactoryStep] = useState(
     Math.min(2, Math.max(0, Number(workspaceSearch.stage) || 0)),
   );
@@ -609,6 +618,7 @@ function Editor() {
         },
         body: JSON.stringify({
           courseId: id,
+          learningBlueprint,
           title: lesson.title,
           sourceId: lesson.sourceRefs[0]?.sourceId ?? sourceName,
           sourceText: lesson.body.slice(0, 12000),
@@ -778,6 +788,7 @@ function Editor() {
         },
         body: JSON.stringify({
           courseId: id,
+          learningBlueprint,
           title: lesson.title,
           sourceId: lesson.sourceRefs[0]?.sourceId ?? sourceName,
           sourceText: lesson.body.slice(0, 12000),
@@ -1611,6 +1622,7 @@ function Editor() {
         },
         body: JSON.stringify({
           courseId: id,
+          learningBlueprint,
           title: lesson.title,
           sourceId: lesson.sourceRefs[0]?.sourceId ?? sourceName,
           sourceText: lesson.body.slice(0, 12000),
@@ -1681,6 +1693,7 @@ function Editor() {
           },
           body: JSON.stringify({
             courseId: id,
+            learningBlueprint,
             title: lesson.title,
             sourceId: lesson.sourceRefs[0]?.sourceId ?? sourceName,
             sourceText: lesson.body.slice(0, 12000),
@@ -2117,6 +2130,7 @@ function Editor() {
     enabled: workspaceEnabled,
     state: {
       kind: "course",
+      learningBlueprint,
       title: form.title,
       form,
       draft,
@@ -2135,6 +2149,11 @@ function Editor() {
     },
     restore: (value) => {
       workspaceRestored.current = true;
+      if (
+        typeof value["learningBlueprint"] === "string" &&
+        LEARNING_BLUEPRINT_IDS.some((id) => id === value["learningBlueprint"])
+      )
+        setLearningBlueprint(value["learningBlueprint"] as LearningBlueprintId);
       if (value["kind"] !== "course") return;
       if (value["form"] && typeof value["form"] === "object") setForm(value["form"] as typeof form);
       if (
@@ -2305,6 +2324,13 @@ function Editor() {
         settings={
           <>
             <fieldset disabled={course.published || workspaceLocked} className="min-w-0 space-y-6">
+              <LearningBlueprintSelector
+                value={learningBlueprint}
+                onChange={(value) => {
+                  if (LEARNING_BLUEPRINT_IDS.some((id) => id === value))
+                    setLearningBlueprint(value as LearningBlueprintId);
+                }}
+              />
               <section className="space-y-4 border-b border-border pb-6">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h2 className="font-semibold">Course details</h2>

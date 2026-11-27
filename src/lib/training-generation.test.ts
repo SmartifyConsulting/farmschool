@@ -40,6 +40,24 @@ function fixture() {
   return { topics, results, actions };
 }
 describe("training generation with media", () => {
+  it("finishes every requested lesson before spending allowance on media", async () => {
+    const f = fixture();
+    const order: string[] = [];
+    f.actions.slides.mockImplementation(async (topic: TrainingTopic) => {
+      order.push("slides:" + topic.id);
+    });
+    f.actions.image.mockImplementation(async () => {
+      order.push("image");
+      throw Error("Your AI allowance is used up.");
+    });
+    const warnings = await runTrainingGeneration(
+      trainingGenerationPlan(f.topics, units, {}, "teach", { images: true, videos: false }),
+      f.actions,
+    );
+    expect(order.slice(0, 2)).toEqual(f.topics.map((topic) => "slides:" + topic.id));
+    expect(order[2]).toBe("image");
+    expect(warnings.join(" ")).toContain("content is retained");
+  });
   it("repairs media on existing slides without regenerating or unreviewing their teaching", async () => {
     const f = fixture();
     const tasks = trainingGenerationPlan(f.topics, units, f.results, "teach", {
@@ -92,7 +110,7 @@ describe("training generation with media", () => {
       "topic-1",
     );
     f.actions.image.mockRejectedValueOnce(new Error("Your AI allowance is used up."));
-    await expect(runTrainingGeneration(tasks, f.actions)).rejects.toThrow("allowance");
+    expect((await runTrainingGeneration(tasks, f.actions)).join(" ")).toContain("allowance");
     expect(f.actions.slides).toHaveBeenCalledOnce();
     expect(f.actions.attach).not.toHaveBeenCalled();
     expect(f.actions.video).not.toHaveBeenCalled();
@@ -136,7 +154,7 @@ describe("training generation with media", () => {
       videoId: "../outside",
       title: "Bad result",
     });
-    await expect(runTrainingGeneration(tasks, f.actions)).rejects.toThrow("invalid video");
+    expect((await runTrainingGeneration(tasks, f.actions)).join(" ")).toContain("invalid video");
     expect(f.actions.attach).not.toHaveBeenCalled();
   });
   it("retains successful illustrations and respects Stop before searching for videos", async () => {

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import type { LibraryFile } from "./library-materials";
+import { designReferencesSchema, type DesignReference } from "./design-reference";
 
 export const materialProjectSchema = z
   .object({
@@ -12,6 +13,8 @@ export const materialProjectSchema = z
     initialBody: z.string().max(16000000).optional(),
     initialTitle: z.string().max(200).optional(),
     initialInstruction: z.string().max(1000).optional(),
+    sourceMode: z.enum(["studio", "legacy"]).optional(),
+    designReferences: designReferencesSchema.default([]),
   })
   .passthrough();
 export async function createMaterialWorkspace(
@@ -23,6 +26,8 @@ export async function createMaterialWorkspace(
     initialTitle?: string;
     initialBody?: string;
     initialInstruction?: string;
+    sourceMode?: "studio" | "legacy";
+    designReferences?: DesignReference[];
   },
 ) {
   const id = crypto.randomUUID();
@@ -31,6 +36,7 @@ export async function createMaterialWorkspace(
     sourceIds: sources.map((file) => file.id),
     title: options.initialTitle ?? sources[0]?.file_name.replace(/\.[^.]+$/, ""),
     ...options,
+    sourceMode: options.sourceMode ?? (options.initialBody ? "legacy" : "studio"),
   });
   const { error } = await supabase
     .from("studio_workspace_drafts" as never)
