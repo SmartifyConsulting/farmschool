@@ -253,6 +253,8 @@ export function MaterialProducer({
       if (typeof snapshot["introduction"] === "string") setIntroduction(snapshot["introduction"]);
       if (snapshot["package"]) {
         const restored = recoverableTrainingPackage.parse(snapshot["package"]);
+        if (restored.designPlan) setDesignPlan(restored.designPlan);
+        if (restored.designerChoices) setDesignerChoices(restored.designerChoices);
         restoredPackage.current = restored;
         setTitle(restored.title);
         setInstruction(restored.instruction);
@@ -311,6 +313,8 @@ export function MaterialProducer({
           );
           setLegacy(!!initialBody && !saved);
           if (saved) {
+            if (saved.designPlan) setDesignPlan(saved.designPlan);
+            if (saved.designerChoices) setDesignerChoices(saved.designerChoices);
             setTitle(saved.title);
             setIntroduction(saved.introduction ?? "");
             setInstruction(
@@ -739,6 +743,8 @@ export function MaterialProducer({
     setTitle(storedDraft.title);
     restoredPackage.current = storedDraft;
     setSourceMode(storedDraft.sourceMode ?? "legacy");
+    setDesignPlan(storedDraft.designPlan ?? null);
+    setDesignerChoices(storedDraft.designerChoices ?? initialDesignerChoices ?? designerDefaults);
     setIntroduction(storedDraft.introduction ?? "");
     setInstruction(storedDraft.instruction);
     setTopics(storedDraft.topics);
@@ -768,6 +774,8 @@ export function MaterialProducer({
       setTitle(draft.title);
       restoredPackage.current = draft;
       setSourceMode(draft.sourceMode ?? "legacy");
+      setDesignPlan(draft.designPlan ?? null);
+      setDesignerChoices(draft.designerChoices ?? initialDesignerChoices ?? designerDefaults);
       setIntroduction(draft.introduction ?? "");
       setInstruction(draft.instruction);
       setTopics(draft.topics);
@@ -1096,7 +1104,7 @@ export function MaterialProducer({
           <p className="supporting-text">
             {new Set(units.map((u) => `${u.sourceId}:${u.page}`)).size} readable source pages ·{" "}
             {topics.length} topics · {topics.reduce((n, t) => n + t.slides, 0)} planned slides. Edit
-            or combine the page-based starter topics before generating.
+            the lesson plan before generating.
           </p>
           <fieldset className="space-y-2 rounded-lg border p-3">
             <legend className="text-sm font-semibold">Include supporting media</legend>
