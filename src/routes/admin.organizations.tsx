@@ -1,13 +1,14 @@
 import { rpcArgs } from "@/lib/rpc-args";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useLearning";
 import { supabase } from "@/integrations/supabase/client";
 import { Phone, Header, Sheet, CanvasHeading, useIsAdmin } from "@/components/AppShell";
 import { AdminNav } from "@/components/AdminNav";
+import { AdminOrganizationPortalPath } from "@/components/AdminOrganizationPortalPath";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -17,7 +18,10 @@ import { pageMeta } from "@/lib/page-meta";
 export const Route = createFileRoute("/admin/organizations")({
   component: AdminOrganizations,
   head: () =>
-    pageMeta("Organizations — Plusticity", "Link organizations into a parent/child reporting hierarchy."),
+    pageMeta(
+      "Organizations — Plusticity",
+      "Link organizations into a parent/child reporting hierarchy.",
+    ),
 });
 
 type Org = { id: string; name: string; parent_id: string | null };
@@ -32,8 +36,15 @@ function AdminOrganizations() {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [busy, setBusy] = useState(false);
+  const [portalEditing, setPortalEditing] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const deletionPending = useRef(false);
 
-  const { data: orgs = [], isLoading, error } = useQuery({
+  const {
+    data: orgs = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["admin-organizations"],
     enabled: admin,
     queryFn: async () => {
@@ -46,10 +57,13 @@ function AdminOrganizations() {
 
   const setParent = async (orgId: string, parentId: string) => {
     try {
-      const { error } = await supabase.rpc("admin_set_organization_parent", rpcArgs("admin_set_organization_parent", {
-        _organization: orgId,
-        _parent: parentId || null,
-      }));
+      const { error } = await supabase.rpc(
+        "admin_set_organization_parent",
+        rpcArgs("admin_set_organization_parent", {
+          _organization: orgId,
+          _parent: parentId || null,
+        }),
+      );
       if (error) throw error;
       toast.success("Updated.");
       refresh();
@@ -62,14 +76,17 @@ function AdminOrganizations() {
     if (busy || newName.trim().length < 2) return;
     setBusy(true);
     try {
-      const { error } = await supabase.rpc("save_organization", rpcArgs("save_organization", {
-        _organization: crypto.randomUUID(),
-        _name: newName.trim(),
-        _welcome: "",
-        _color: "#2765BC",
-        _logo: null,
-        _expected: 0,
-      }));
+      const { error } = await supabase.rpc(
+        "save_organization",
+        rpcArgs("save_organization", {
+          _organization: crypto.randomUUID(),
+          _name: newName.trim(),
+          _welcome: "",
+          _color: "#2765BC",
+          _logo: null,
+          _expected: 0,
+        }),
+      );
       if (error) throw error;
       toast.success("Organization created.");
       setCreating(false);
@@ -86,10 +103,13 @@ function AdminOrganizations() {
     if (busy || renameValue.trim().length < 2) return;
     setBusy(true);
     try {
-      const { error } = await supabase.rpc("admin_rename_organization" as never, {
-        _organization: orgId,
-        _name: renameValue.trim(),
-      } as never);
+      const { error } = await supabase.rpc(
+        "admin_rename_organization" as never,
+        {
+          _organization: orgId,
+          _name: renameValue.trim(),
+        } as never,
+      );
       if (error) throw error;
       toast.success("Renamed.");
       setRenaming(null);
@@ -102,20 +122,34 @@ function AdminOrganizations() {
   };
 
   const removeOrg = async (o: Org) => {
-    const ok = await confirm({
-      tone: "danger",
-      title: "Delete this organization?",
-      confirmLabel: "Delete organization",
-      description: `"${o.name}" and its member links will be permanently removed. This can't be undone.`,
-    });
-    if (!ok) return;
+    if (deletionPending.current) return;
+    deletionPending.current = true;
+    setDeleting(o.id);
     try {
-      const { error } = await supabase.rpc("admin_delete_organization" as never, { _organization: o.id } as never);
+      const ok = await confirm({
+        tone: "danger",
+        title: "Delete this organization?",
+        confirmLabel: "Delete organization",
+        description: `"${o.name}", its member links, departments and portal settings will be permanently removed. User accounts and source files remain. Organizations with linked training, issued certificates or child organizations cannot be deleted. This can't be undone.`,
+      });
+      if (!ok) return;
+      const { error } = await supabase.rpc(
+        "admin_delete_organization" as never,
+        { _organization: o.id } as never,
+      );
       if (error) throw error;
       toast.success("Organization deleted.");
-      refresh();
+      await Promise.all([
+        refresh(),
+        qc.invalidateQueries({ queryKey: ["my-organizations"] }),
+        qc.invalidateQueries({ queryKey: ["customer-portal"] }),
+        qc.invalidateQueries({ queryKey: ["learning-shell-brand"] }),
+      ]);
     } catch (error) {
       toast.error(friendlyError(error, "Could not delete this organization."));
+    } finally {
+      deletionPending.current = false;
+      setDeleting(null);
     }
   };
 
@@ -140,9 +174,9 @@ function AdminOrganizations() {
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
-                Set a parent organization to give that parent's managers read-only visibility into this
-                org's cohort and progress reports. It grants no management rights in the child org, and
-                takes effect only for the link you create here.
+                Set a parent organization to give that parent's managers read-only visibility into
+                this org's cohort and progress reports. It grants no management rights in the child
+                org, and takes effect only for the link you create here.
               </p>
               <div className="flex justify-end">
                 <Button size="sm" onClick={() => setCreating(true)}>
@@ -159,10 +193,21 @@ function AdminOrganizations() {
                     maxLength={200}
                     className="max-w-xs"
                   />
-                  <Button size="sm" disabled={busy || newName.trim().length < 2} onClick={createOrg}>
+                  <Button
+                    size="sm"
+                    disabled={busy || newName.trim().length < 2}
+                    onClick={createOrg}
+                  >
                     {busy ? "Creating…" : "Create"}
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => { setCreating(false); setNewName(""); }}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setCreating(false);
+                      setNewName("");
+                    }}
+                  >
                     Cancel
                   </Button>
                 </div>
@@ -175,7 +220,10 @@ function AdminOrganizations() {
               )}
               <div className="space-y-2">
                 {orgs.map((o) => (
-                  <div key={o.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border p-3">
+                  <div
+                    key={o.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border p-3"
+                  >
                     {renaming === o.id ? (
                       <div className="flex flex-wrap items-center gap-2">
                         <Input
@@ -185,7 +233,11 @@ function AdminOrganizations() {
                           maxLength={200}
                           className="max-w-xs"
                         />
-                        <Button size="sm" disabled={busy || renameValue.trim().length < 2} onClick={() => saveRename(o.id)}>
+                        <Button
+                          size="sm"
+                          disabled={busy || renameValue.trim().length < 2}
+                          onClick={() => saveRename(o.id)}
+                        >
                           Save
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => setRenaming(null)}>
@@ -196,7 +248,18 @@ function AdminOrganizations() {
                       <span className="font-semibold">{o.name}</span>
                     )}
                     <div className="flex flex-wrap items-center gap-3">
-                      <Button asChild size="sm" variant="outline"><Link to="/organizations/$id" params={{ id: o.id }}>Manage workspace</Link></Button>
+                      <Button asChild size="sm" variant="outline">
+                        <Link to="/organizations/$id" params={{ id: o.id }}>
+                          Manage workspace
+                        </Link>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setPortalEditing(portalEditing === o.id ? null : o.id)}
+                      >
+                        Edit portal address
+                      </Button>
                       <label className="flex items-center gap-2 text-sm">
                         Parent org
                         <select
@@ -215,14 +278,33 @@ function AdminOrganizations() {
                         </select>
                       </label>
                       {renaming !== o.id && (
-                        <Button size="sm" variant="outline" onClick={() => { setRenaming(o.id); setRenameValue(o.name); }}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setRenaming(o.id);
+                            setRenameValue(o.name);
+                          }}
+                        >
                           Rename
                         </Button>
                       )}
-                      <Button size="sm" variant="outline" className="text-destructive" onClick={() => removeOrg(o)}>
-                        Delete
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-destructive"
+                        disabled={deleting !== null}
+                        onClick={() => removeOrg(o)}
+                      >
+                        {deleting === o.id ? "Deleting…" : "Delete"}
                       </Button>
                     </div>
+                    {portalEditing === o.id && (
+                      <AdminOrganizationPortalPath
+                        organizationId={o.id}
+                        onClose={() => setPortalEditing(null)}
+                      />
+                    )}
                   </div>
                 ))}
               </div>
