@@ -4920,26 +4920,38 @@ function LessonEditor({
         {lesson.kind === "scorm" && (
           <ScormPicker value={scormLessonRef(body)} onChange={(pid) => setBody(`scorm:${pid}`)} />
         )}
-        {kind === "slide" && !readOnly && (
+        {(kind === "slide" || kind === "reading") && !readOnly && (
           <SlideEditor
             key={lesson.id}
             value={body}
-            onChange={setBody}
+            onChange={(next) => {
+              setBody(next);
+              if (
+                kind === "reading" &&
+                parseLessonSlides(next).some((slide) =>
+                  slide.blocks.some((block) => block.kind !== "text"),
+                )
+              )
+                setKind("slide");
+            }}
             readOnly={false}
             courseId={courseId}
             lessonTitle={title}
           />
         )}
-        {kind !== "quiz" && kind !== "scorm" && kind !== "slide" && (
-          <Textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            rows={14}
-            aria-label="Lesson notes"
-            placeholder="Lesson notes, steps or checklist"
-            maxLength={20000}
-          />
-        )}
+        {kind !== "quiz" &&
+          kind !== "scorm" &&
+          kind !== "slide" &&
+          (kind !== "reading" || readOnly) && (
+            <Textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={14}
+              aria-label="Lesson notes"
+              placeholder="Lesson notes, steps or checklist"
+              maxLength={20000}
+            />
+          )}
         {kind === "reading" && !readOnly && (
           <Button
             type="button"

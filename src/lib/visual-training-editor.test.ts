@@ -4,6 +4,18 @@ import { insertTrainingPart, updateTrainingPart } from "./visual-training-editor
 const body =
   "## Learn\nOriginal teaching.\n\n:::flip\nQuestion\n---\nAnswer\n:::\n\n## Confirm\nFinal teaching.\n\nSource: Manual.docx · section 1\nReview required before publishing.";
 describe("visual webpart authoring", () => {
+  it("can add a webpart to an existing reading without an outline heading", () => {
+    const next = insertTrainingPart("Original reading instructions.", 0, 0, {
+      kind: "flip",
+      front: "What should happen?",
+      back: "Follow the documented procedure.",
+    });
+    const slides = parseLessonSlides(next);
+    expect(slides).toHaveLength(1);
+    expect(slides[0]!.title).toBe("Introduction");
+    expect(slides[0]!.blocks.map((block) => block.kind)).toEqual(["text", "flip"]);
+    expect(next).toContain("Original reading instructions.");
+  });
   it("edits a single part without changing other slides or the source review footer", () => {
     const next = updateTrainingPart(body, 0, 0, "replace", {
       kind: "text",

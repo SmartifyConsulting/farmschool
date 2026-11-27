@@ -8,7 +8,10 @@ import { serializeBlocks } from "./lesson-block-editor";
 export const MAX_TRAINING_BODY = 500000;
 export function serializeTrainingSlides(slides: LessonSlide[]) {
   return slides
-    .map((slide) => `## ${slide.title.replace(/[\r\n]/g, " ")}\n\n${serializeBlocks(slide.blocks)}`)
+    .map(
+      (slide) =>
+        `## ${(slide.title || "Introduction").replace(/[\r\n]/g, " ")}\n\n${serializeBlocks(slide.blocks)}`,
+    )
     .join("\n\n");
 }
 export function updateTrainingPart(
