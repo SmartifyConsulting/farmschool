@@ -87,6 +87,7 @@ function MaterialWorkspace() {
           initialDesignReferences={project.data.state.designReferences}
           initialDesignerChoices={project.data.state.designerChoices}
           initialAutoPlan={project.data.state.autoPlan ?? false}
+          initialPrefill={project.data.state.prefill}
           workspace={{
             id: projectId,
             scope: project.data.state.scope,

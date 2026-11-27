@@ -1,3 +1,4 @@
+import { TrainingOutlineEditor } from "@/components/TrainingOutlineEditor";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -19,6 +20,7 @@ import { planCourseDesign } from "@/lib/course-design-plan.functions";
 import {
   courseDesignPlanSchema,
   designerChoicesSchema,
+  recoverableDesignerChoicesSchema,
   designerDefaults,
   topicsFromDesignPlan,
   validateCourseDesignPlan,
@@ -60,6 +62,7 @@ import {
   type TrainingPackage,
 } from "@/lib/training-design";
 import { trainingHtml, readTrainingPackage } from "@/lib/training-html";
+import { prefillStateSchema, reusablePrefill, type CoursePrefillState } from "@/lib/course-prefill";
 import { trainingLessonBody } from "@/lib/training-html";
 import { portableMaterialText } from "@/lib/library-materials";
 import { buildLessonScormZip } from "@/lib/scorm-export";
@@ -79,6 +82,7 @@ export function MaterialProducer({
   initialDesignReferences = [],
   initialDesignerChoices,
   initialAutoPlan = false,
+  initialPrefill,
   workspace,
   onClose,
   onSaved,
@@ -92,6 +96,7 @@ export function MaterialProducer({
   initialDesignReferences?: DesignReference[];
   initialDesignerChoices?: DesignerChoices | undefined;
   initialAutoPlan?: boolean;
+  initialPrefill?: CoursePrefillState | null | undefined;
   workspace?: {
     id: string;
     scope: "personal" | "admin";
@@ -116,6 +121,7 @@ export function MaterialProducer({
     initialDesignerChoices ?? designerDefaults,
   );
   const [designPlan, setDesignPlan] = useState<CourseDesignPlan | null>(null);
+  const [prefill, setPrefill] = useState<CoursePrefillState | null>(initialPrefill ?? null);
   const [planning, setPlanning] = useState(false);
   const planningInFlight = useRef(false);
   const [planningRequestId, setPlanningRequestId] = useState("");
@@ -203,6 +209,7 @@ export function MaterialProducer({
           : [];
       }) ?? [];
   const workspaceSnapshot = {
+    prefill,
     kind: "material",
     title,
     sourceIds: sources.map((source) => source.id),
@@ -237,9 +244,11 @@ export function MaterialProducer({
     canSave: !loading,
     state: workspaceSnapshot,
     restore: (snapshot) => {
+      const savedPrefill = prefillStateSchema.safeParse(snapshot["prefill"]);
+      if (savedPrefill.success) setPrefill(savedPrefill.data);
       if (typeof snapshot["autoPlan"] === "boolean") setAutoPlan(snapshot["autoPlan"]);
       if (snapshot["designerChoices"])
-        setDesignerChoices(designerChoicesSchema.parse(snapshot["designerChoices"]));
+        setDesignerChoices(recoverableDesignerChoicesSchema.parse(snapshot["designerChoices"]));
       if (snapshot["designPlan"])
         setDesignPlan(courseDesignPlanSchema.parse(snapshot["designPlan"]));
       if (typeof snapshot["planningRequestId"] === "string")
@@ -407,6 +416,12 @@ export function MaterialProducer({
     if (planningInFlight.current || planning || busy || loading || !autosave.ready) return;
     if (sourceMode !== "studio" || Object.keys(cache.current).length) {
       await rebuildStudioOutline();
+      return;
+    }
+    const prepared = reusablePrefill(prefill, designerChoices, units, designReferences);
+    if (prepared) {
+      applyDesignPlan(prepared);
+      setAutoPlan(false);
       return;
     }
     const parsed = designerChoicesSchema.safeParse(designerChoices);
@@ -1271,6 +1286,19 @@ export function MaterialProducer({
           <Tabs value={step} onValueChange={selectStep}>
             <TabsContent value="setup">
               <CourseDesignerWizard
+                units={units}
+                prefill={prefill}
+                autoPrefill={
+                  sourceMode === "studio" &&
+                  !designPlan &&
+                  !Object.keys(results).length &&
+                  !autoPlan
+                }
+                onPrefill={async (next) => {
+                  setPrefill(next);
+                  if (next.status === "pending" && next.requestId !== prefill?.requestId)
+                    await autosave.checkpoint({ ...workspaceSnapshot, prefill: next });
+                }}
                 value={designerChoices}
                 onChange={(value) => {
                   setDesignerChoices(value);
@@ -1343,138 +1371,24 @@ export function MaterialProducer({
               <div hidden={!outlineEditing}>
                 <div className="space-y-4">
                   {topic && (
-                    <section className="space-y-3" aria-label="Selected topic outline">
-                      <label className="block text-sm">
-                        Heading 1 — module
-                        <Input
-                          value={topic.module}
-                          maxLength={180}
-                          onChange={(e) => change({ module: e.target.value })}
-                        />
-                      </label>
-                      <label className="block text-sm">
-                        Heading 2 — topic
-                        <Input
-                          value={topic.title}
-                          maxLength={180}
-                          onChange={(e) => change({ title: e.target.value })}
-                        />
-                      </label>
-                      <label className="block text-sm">
-                        Learning objective
-                        <Textarea
-                          value={topic.objective}
-                          maxLength={500}
-                          onChange={(e) => change({ objective: e.target.value })}
-                        />
-                      </label>
-                      <label className="block text-sm">
-                        Number of slides
-                        <Input
-                          type="number"
-                          min={2}
-                          max={12}
-                          value={topic.slides}
-                          onChange={(e) => {
-                            const slides = Number(e.target.value);
-                            if (Number.isInteger(slides) && slides >= 2 && slides <= 12)
-                              change({
-                                slides,
-                                headings: Array.from(
-                                  { length: slides },
-                                  (_, i) =>
-                                    topic.headings[i] ??
-                                    `${topic.title} — part ${i + 1}`.slice(0, 160),
-                                ),
-                              });
-                          }}
-                        />
-                      </label>
-                      {topic.headings.map((heading, index) => (
-                        <label key={index} className="block text-sm">
-                          Heading 3 — slide {index + 1}
-                          <Input
-                            value={heading}
-                            maxLength={160}
-                            onChange={(e) =>
-                              change({
-                                headings: topic.headings.map((old, i) =>
-                                  i === index ? e.target.value : old,
-                                ),
-                              })
-                            }
-                          />
-                        </label>
-                      ))}
-                      <fieldset className="rounded-lg border p-3">
-                        <legend>Learning components</legend>
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          {TRAINING_TOOLS.map((tool) => (
-                            <label className="text-sm" key={tool}>
-                              <input
-                                type="checkbox"
-                                checked={topic.tools.includes(tool)}
-                                onChange={(e) =>
-                                  change({
-                                    tools: e.target.checked
-                                      ? [...topic.tools, tool]
-                                      : topic.tools.filter((t) => t !== tool),
-                                  })
-                                }
-                              />{" "}
-                              {TOOL_LABELS[tool]}
-                            </label>
-                          ))}
-                        </div>
-                      </fieldset>
-                      <fieldset className="rounded-lg border p-3">
-                        <legend>Assigned source pages / sections</legend>
-                        <div className="max-h-40 overflow-auto">
-                          {units.map((u) => (
-                            <label key={u.id} className="block text-sm">
-                              <input
-                                type="checkbox"
-                                checked={topic.unitIds.includes(u.id)}
-                                onChange={(e) =>
-                                  change({
-                                    unitIds: e.target.checked
-                                      ? [...topic.unitIds, u.id]
-                                      : topic.unitIds.filter((id) => id !== u.id),
-                                  })
-                                }
-                              />{" "}
-                              {u.file} · p.{u.page} · part {Number(u.id.split(":").at(-1)) + 1}
-                            </label>
-                          ))}
-                        </div>
-                      </fieldset>
-                      <div className="flex flex-wrap gap-2">
-                        <Button variant="outline" disabled={!selected} onClick={() => move(-1)}>
-                          Move up
-                        </Button>
-                        <Button
-                          variant="outline"
-                          disabled={selected === topics.length - 1}
-                          onClick={() => move(1)}
-                        >
-                          Move down
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            const next = topics.filter((t) => t.id !== topic.id);
-                            const index = Math.max(0, selected - 1);
-                            setTopics(next);
-                            setLocalSelected(index);
-                            workspace?.navigate(step, next[index]?.id ?? "");
-                            setBulkTopics((old) => old.filter((id) => id !== topic.id));
-                            setDirty(true);
-                          }}
-                        >
-                          Remove topic
-                        </Button>
-                      </div>
-                    </section>
+                    <TrainingOutlineEditor
+                      key={topic.id}
+                      topic={topic}
+                      units={units}
+                      index={selected}
+                      total={topics.length}
+                      onChange={change}
+                      onMove={move}
+                      onRemove={() => {
+                        const next = topics.filter((t) => t.id !== topic.id);
+                        const index = Math.max(0, selected - 1);
+                        setTopics(next);
+                        setLocalSelected(index);
+                        workspace?.navigate(step, next[index]?.id ?? "");
+                        setBulkTopics((old) => old.filter((id) => id !== topic.id));
+                        setDirty(true);
+                      }}
+                    />
                   )}
                 </div>
                 <Button

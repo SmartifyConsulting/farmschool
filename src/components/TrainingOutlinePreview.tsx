@@ -14,7 +14,7 @@ export function TrainingOutlinePreview({
   introduction: string;
   topics: TrainingTopic[];
   units: SourceUnit[];
-  onSelect: (id: string) => void;
+  onSelect?: (id: string) => void;
   plan?: CourseDesignPlan | null;
 }) {
   return (
@@ -43,12 +43,16 @@ export function TrainingOutlinePreview({
               <ul className="mt-2 list-disc space-y-1 pl-4 text-sm">
                 {group.topics.map((topic) => (
                   <li key={topic.id}>
-                    <button
-                      className="text-left hover:text-primary hover:underline"
-                      onClick={() => onSelect(topic.id)}
-                    >
-                      {topic.title.replace(/^\d+(?:\.\d+)*[.)]?\s+/, "")}
-                    </button>
+                    {onSelect ? (
+                      <button
+                        className="text-left hover:text-primary hover:underline"
+                        onClick={() => onSelect(topic.id)}
+                      >
+                        {topic.title.replace(/^\d+(?:\.\d+)*[.)]?\s+/, "")}
+                      </button>
+                    ) : (
+                      <span>{topic.title.replace(/^\d+(?:\.\d+)*[.)]?\s+/, "")}</span>
+                    )}
                   </li>
                 ))}
               </ul>

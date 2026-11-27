@@ -7,6 +7,12 @@ import { DesignReferenceAttachments } from "@/components/DesignReferenceAttachme
 import { designerChoicesSchema, type DesignerChoices } from "@/lib/course-design-plan";
 import { learningBlueprint, type LearningBlueprintId } from "@/lib/course-methodology";
 import type { DesignReference } from "@/lib/design-reference";
+import type { SourceUnit } from "@/lib/training-design";
+import type { CourseDesignPlan } from "@/lib/course-design-plan";
+import { useCoursePrefill } from "@/hooks/useCoursePrefill";
+import { reusablePrefill, setupLabels, type CoursePrefillState } from "@/lib/course-prefill";
+import { TrainingOutlinePreview } from "@/components/TrainingOutlinePreview";
+import { topicsFromDesignPlan } from "@/lib/course-design-plan";
 const steps = [
   "Goal and audience",
   "Length and depth",
@@ -26,23 +32,47 @@ export function CourseDesignerWizard({
   sourceSummary,
   sourceInput,
   extraQuestions,
+  units = [],
+  sourceKind = "library",
+  prefill = null,
+  onPrefill,
+  autoPrefill = false,
+  maxLessons = 80,
 }: {
   value: DesignerChoices;
   onChange: (choices: DesignerChoices) => void;
   references: DesignReference[];
   onReferencesChange: (references: DesignReference[]) => void;
-  onPlan: () => void;
+  onPlan: (plan?: CourseDesignPlan) => void;
   busy?: boolean;
   error?: string;
   sourceSummary: string;
   sourceInput?: ReactNode;
   extraQuestions?: Partial<Record<number, ReactNode>>;
+  units?: SourceUnit[];
+  sourceKind?: "library" | "author-text";
+  prefill?: CoursePrefillState | null;
+  onPrefill?: (state: CoursePrefillState) => void | Promise<void>;
+  autoPrefill?: boolean;
+  maxLessons?: number;
 }) {
   const [step, setStep] = useState(0);
   const [validation, setValidation] = useState("");
   const [attaching, setAttaching] = useState(false);
+  const inference = useCoursePrefill({
+    units,
+    sourceKind,
+    choices: value,
+    references,
+    state: prefill,
+    onState: onPrefill ?? (() => {}),
+    onChange,
+    enabled: autoPrefill && !busy,
+    maxLessons,
+  });
+  const proposed = reusablePrefill(prefill, value, units, references);
   const change = <K extends keyof DesignerChoices>(key: K, next: DesignerChoices[K]) =>
-    onChange({ ...value, [key]: next });
+    inference.change({ ...value, [key]: next });
   const next = () => {
     const stageSchema =
       step === 0
@@ -77,6 +107,67 @@ export function CourseDesignerWizard({
         <h2 className="mt-1 text-xl font-semibold">{steps[step]}</h2>
         <p className="supporting-text mt-2 text-muted-foreground">{sourceSummary}</p>
       </div>
+      {inference.reading && (
+        <p role="status" className="supporting-text rounded-lg border bg-muted/30 p-3">
+          Reading your document to suggest the setup and outline. You can keep editing; your choices
+          will be preserved. This uses your existing AI allowance.
+        </p>
+      )}
+      {prefill?.status === "failed" && (
+        <div className="space-y-2 text-sm">
+          <p role="alert">{prefill.error}</p>
+          <Button variant="outline" size="sm" onClick={() => void inference.retry()}>
+            Retry document analysis
+          </Button>
+          <p className="supporting-text">You can also continue with your own choices.</p>
+        </div>
+      )}
+      {prefill?.status === "complete" && prefill.plan?.courseSetup && (
+        <details className="rounded-lg border p-3">
+          <summary className="cursor-pointer text-sm font-medium">
+            AI setup suggestions · all choices remain editable
+          </summary>
+          <ul className="mt-2 space-y-2 text-sm">
+            {prefill.plan.courseSetup.findings
+              .filter(
+                (item) =>
+                  step >= 4 ||
+                  {
+                    goal: 0,
+                    audience: 0,
+                    priorKnowledge: 0,
+                    level: 0,
+                    durationMinutes: 1,
+                    depth: 1,
+                    tone: 2,
+                    language: 2,
+                    country: 2,
+                    outputPreferences: 2,
+                    assessmentCriteria: 4,
+                    sourceFidelity: 4,
+                  }[item.field] === step,
+              )
+              .map((item) => (
+                <li key={item.field}>
+                  <span className="font-medium">{setupLabels[item.field]}</span> ·{" "}
+                  {prefill.protectedFields.includes(item.field)
+                    ? "Your choice"
+                    : item.basis === "document"
+                      ? "Document evidence"
+                      : item.basis === "recommendation"
+                        ? "AI recommendation"
+                        : "Needs your choice"}
+                  <p className="supporting-text">{item.explanation}</p>
+                  {item.quote && (
+                    <blockquote className="supporting-text mt-1 border-l-2 pl-2">
+                      {item.quote}
+                    </blockquote>
+                  )}
+                </li>
+              ))}
+          </ul>
+        </details>
+      )}
       <fieldset disabled={busy || attaching} className="space-y-4">
         {step === 0 && (
           <>
@@ -215,15 +306,37 @@ export function CourseDesignerWizard({
             </div>
           </dl>
         )}
-        {step === 5 && (
+        {step === 5 && !proposed && (
           <p className="supporting-text">
             The AI will read the source sections, propose modules and lessons, map every section,
             consolidate repetition and build the learning-design checks. This uses one request from
             the existing AI allowance. Course content is generated after the outline is ready.
           </p>
         )}
-        {extraQuestions?.[step]}
+        <div
+          onChangeCapture={() =>
+            inference.protect(["level", "country", "sourceFidelity", "assessmentCriteria"])
+          }
+        >
+          {extraQuestions?.[step]}
+        </div>
       </fieldset>
+      {step === 5 && proposed && (
+        <TrainingOutlinePreview
+          title={proposed.title}
+          introduction={proposed.introduction}
+          topics={topicsFromDesignPlan(proposed, value, units)}
+          units={units}
+          plan={proposed}
+        />
+      )}
+      {step === 5 && prefill?.status === "complete" && (
+        <p className="supporting-text">
+          {proposed
+            ? "Your document analysis already prepared this outline. Continuing reuses it without another AI request."
+            : "Your choices or references changed. Building the updated outline uses another request from the existing allowance."}
+        </p>
+      )}
       {step === 2 && (
         <fieldset disabled={busy}>
           <DesignReferenceAttachments
@@ -251,13 +364,19 @@ export function CourseDesignerWizard({
         </Button>
         {step === steps.length - 1 ? (
           <Button
-            disabled={busy || attaching}
+            disabled={busy || attaching || inference.reading}
             onClick={() => {
-              if (designerChoicesSchema.safeParse(value).success) onPlan();
+              if (designerChoicesSchema.safeParse(value).success) onPlan(proposed);
               else setValidation("Complete the course choices first.");
             }}
           >
-            {busy ? "Planning the course…" : "Build AI outline"}
+            {busy
+              ? "Planning the course…"
+              : inference.reading
+                ? "Reading the document…"
+                : proposed
+                  ? "Use this outline"
+                  : "Build AI outline"}
           </Button>
         ) : (
           <Button disabled={busy || attaching} onClick={next}>

@@ -32,6 +32,12 @@ export const designerChoicesSchema = z.object({
     .optional(),
 });
 export type DesignerChoices = z.infer<typeof designerChoicesSchema>;
+export const recoverableDesignerChoicesSchema = designerChoicesSchema.extend({
+  goal: z.string().max(1000),
+  audience: z.string().max(300),
+  language: z.string().max(60),
+  durationMinutes: z.number().int().min(0).max(480),
+});
 export const designerDefaults: DesignerChoices = {
   goal: "Create a complete, concise training course from the supplied material.",
   audience: "People who need to apply this material in their work",
@@ -42,6 +48,34 @@ export const designerDefaults: DesignerChoices = {
   language: "English",
   blueprint: DEFAULT_COURSE_METHODOLOGY,
 };
+export const SETUP_FIELDS = [
+  "goal",
+  "audience",
+  "priorKnowledge",
+  "durationMinutes",
+  "depth",
+  "tone",
+  "language",
+  "level",
+  "country",
+  "sourceFidelity",
+  "assessmentCriteria",
+  "outputPreferences",
+] as const;
+export const courseSetupSchema = z.object({
+  choices: designerChoicesSchema,
+  findings: z
+    .array(
+      z.object({
+        field: z.enum(SETUP_FIELDS),
+        basis: z.enum(["document", "recommendation", "missing"]),
+        explanation: z.string().min(5).max(600),
+        unitIds: z.array(z.string().max(160)).max(10),
+        quote: z.string().max(400),
+      }),
+    )
+    .length(SETUP_FIELDS.length),
+});
 export const plannedObjectiveSchema = z.object({
   id: z.string().min(1).max(80),
   statement: z.string().min(10).max(400),
@@ -60,6 +94,7 @@ export const plannedLessonSchema = z.object({
   media: z.enum(["diagram", "image", "video", "none"]),
 });
 export const courseDesignPlanSchema = z.object({
+  courseSetup: courseSetupSchema.optional(),
   version: z.literal(1),
   title: z.string().min(3).max(200),
   introduction: z.string().min(20).max(1000),
@@ -136,6 +171,9 @@ export function restorePlannedSourceIds(value: unknown, units: SourceUnit[]) {
   );
   plan.coverage.forEach((item) => {
     item.unitId = aliases.get(item.unitId) ?? item.unitId;
+  });
+  plan.courseSetup?.findings.forEach((item) => {
+    item.unitIds = item.unitIds.map((id) => aliases.get(id) ?? id);
   });
   plan.modules.forEach((module) =>
     module.lessons.forEach((lesson) => {

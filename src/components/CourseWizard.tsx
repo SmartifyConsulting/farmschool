@@ -9,6 +9,8 @@ import {
   type CourseDesignPlan,
 } from "@/lib/course-design-plan";
 import { planCourseDesign } from "@/lib/course-design-plan.functions";
+import { studioTrainingOutline } from "@/lib/studio-training-outline";
+import { resetInferredChoices, type CoursePrefillState } from "@/lib/course-prefill";
 import { sourceUnits, type SourceUnit } from "@/lib/training-design";
 import { createMaterialWorkspace } from "@/lib/studio-workspace";
 import { detectContentFileType } from "@/lib/studio-content";
@@ -79,6 +81,7 @@ export function CourseWizard() {
   const [coursePlan, setCoursePlan] = useState<CourseDesignPlan | null>(null);
   const [planning, setPlanning] = useState(false);
   const [planUnits, setPlanUnits] = useState<SourceUnit[]>([]);
+  const [prefill, setPrefill] = useState<CoursePrefillState | null>(null);
   const sourceFile = useRef<File | null>(null);
   const sourceSaved = useRef<{ id: string; registered: boolean } | null>(null);
   const runPlanner = useServerFn(planCourseDesign);
@@ -104,9 +107,13 @@ export function CourseWizard() {
       tone: value.tone,
       learningBlueprint: value.blueprint,
       lessonLength: value.depth === "Balanced" ? "Standard" : value.depth,
+      level: value.level ?? "Beginner",
+      country: value.country ?? "",
+      sourceFidelity: value.sourceFidelity ?? "",
+      rubricCriteria: value.assessmentCriteria ?? [],
     }));
   };
-  const planOutline = async () => {
+  const planOutline = async (prepared?: CourseDesignPlan) => {
     if (planning || busy || extracting || !user) return;
     setPlanning(true);
     setError("");
@@ -162,6 +169,7 @@ export function CourseWizard() {
             designReferences: references,
             sourceMode: "studio",
             autoPlan: true,
+            prefill,
             ...(input.sourceFidelity ? { initialInstruction: input.sourceFidelity } : {}),
           },
         );
@@ -174,22 +182,28 @@ export function CourseWizard() {
         sourceFile.current = null;
         sourceSaved.current = null;
         setInput(wizardDefaults);
+        setPrefill(null);
+        setPlanUnits([]);
+        setDesignerOptions(designerDefaults);
+        setReferences([]);
         return;
       }
       const units = sourceUnits(crypto.randomUUID(), "Course brief", [
         { page: 1, text: input.sourceText || choices.goal },
       ]);
       setPlanUnits(units);
-      const plan = await runPlanner({
-        data: {
-          requestId: crypto.randomUUID(),
-          sourceKind: input.sourceText ? "author-text" : "topic",
-          maxLessons: 8,
-          choices,
-          units,
-          designReferences: references,
-        },
-      });
+      const plan =
+        prepared ??
+        (await runPlanner({
+          data: {
+            requestId: crypto.randomUUID(),
+            sourceKind: input.sourceText ? "author-text" : "topic",
+            maxLessons: 8,
+            choices,
+            units,
+            designReferences: references,
+          },
+        }));
       setCoursePlan(plan);
       setInput((old) => ({
         ...old,
@@ -243,11 +257,15 @@ export function CourseWizard() {
           "This source exceeds 1,000,000 characters. Split it into related source documents.",
         );
       sourceFile.current = file;
-      sourceSaved.current = null;
+      changeChoices(resetInferredChoices(choices, prefill));
+      const sourceId = crypto.randomUUID();
+      sourceSaved.current = { id: sourceId, registered: false };
+      setPlanUnits(studioTrainingOutline(sourceId, file.name, pages).units);
+      setPrefill(null);
       setCoursePlan(null);
       setInput((prev) => ({
         ...prev,
-        topic: prev.topic || "Create a concise training course from " + file.name,
+        topic: prev.topic,
         sourceText,
         sourceName: file.name,
       }));
@@ -383,7 +401,13 @@ export function CourseWizard() {
                   onChange={changeChoices}
                   references={references}
                   onReferencesChange={setReferences}
-                  onPlan={() => void planOutline()}
+                  onPlan={(prepared) => void planOutline(prepared)}
+                  units={planUnits}
+                  sourceKind="author-text"
+                  prefill={prefill}
+                  onPrefill={setPrefill}
+                  autoPrefill={!!sourceFile.current}
+                  maxLessons={sourceFile.current ? 80 : 8}
                   busy={busy || planning || extracting}
                   error={error}
                   extraQuestions={{

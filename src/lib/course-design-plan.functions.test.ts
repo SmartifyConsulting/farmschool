@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { designerDefaults } from "./course-design-plan";
+import { designerDefaults, SETUP_FIELDS } from "./course-design-plan";
 import { planUnits, validPlan } from "./course-design-plan.fixtures";
 const generate = vi.hoisted(() => vi.fn());
 vi.mock("@ai-sdk/openai", () => ({ createOpenAI: () => ({ responses: () => "mock-model" }) }));
@@ -21,7 +21,7 @@ vi.mock("@tanstack/react-start", () => ({
   },
 }));
 import { planCourseDesign } from "./course-design-plan.functions";
-function fixture(owned = true) {
+function fixture(owned = true, extra: Record<string, unknown> = {}) {
   vi.stubEnv("OPENAI_API_KEY", "synthetic-key");
   const objects = new Map<string, Blob>();
   const query = {
@@ -46,6 +46,7 @@ function fixture(owned = true) {
         sourceKind: "library",
         choices: designerDefaults,
         units: planUnits,
+        ...extra,
       },
       context: {
         userId: "owner",
@@ -59,6 +60,34 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 describe("saved AI outline planning", () => {
+  it("infers a reusable setup and outline in one allowed request with real evidence", async () => {
+    const f = fixture(true, { inferSetup: true });
+    const plan = {
+      ...validPlan(),
+      courseSetup: {
+        choices: { ...designerDefaults, audience: "Staff using the reporting procedure" },
+        findings: SETUP_FIELDS.map((field) => ({
+          field,
+          basis: field === "goal" ? "document" : "recommendation",
+          explanation: "Design recommendation based on the source reporting procedure.",
+          unitIds: field === "goal" ? ["s0001"] : [],
+          quote: field === "goal" ? planUnits[0]!.text : "",
+        })),
+      },
+    };
+    generate.mockResolvedValueOnce({ output: plan });
+    const result = (await f.call()) as typeof plan;
+    expect(result.courseSetup.findings[0]!.unitIds).toEqual([planUnits[0]!.id]);
+    expect(result.courseSetup.findings[0]!.basis).toBe("document");
+    await f.call();
+    expect(f.rpc).toHaveBeenCalledOnce();
+    expect(generate).toHaveBeenCalledOnce();
+  });
+  it("refuses an incomplete setup response without labelling missing fields as extracted", async () => {
+    const f = fixture(true, { inferSetup: true });
+    generate.mockResolvedValueOnce({ output: validPlan() });
+    await expect(f.call()).rejects.toThrow("setup");
+  });
   it("rejects another author's source before storage or quota use", async () => {
     const f = fixture(false);
     await expect(f.call()).rejects.toThrow("own raw");

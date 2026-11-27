@@ -2,7 +2,8 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import type { LibraryFile } from "./library-materials";
 import { designReferencesSchema, type DesignReference } from "./design-reference";
-import { designerChoicesSchema, type DesignerChoices } from "./course-design-plan";
+import { recoverableDesignerChoicesSchema, type DesignerChoices } from "./course-design-plan";
+import { prefillStateSchema, type CoursePrefillState } from "./course-prefill";
 
 export const materialProjectSchema = z
   .object({
@@ -16,8 +17,9 @@ export const materialProjectSchema = z
     initialInstruction: z.string().max(1000).optional(),
     sourceMode: z.enum(["studio", "legacy"]).optional(),
     designReferences: designReferencesSchema.default([]),
-    designerChoices: designerChoicesSchema.optional(),
+    designerChoices: recoverableDesignerChoicesSchema.optional(),
     autoPlan: z.boolean().optional(),
+    prefill: prefillStateSchema.nullable().optional(),
   })
   .passthrough();
 export async function createMaterialWorkspace(
@@ -33,6 +35,7 @@ export async function createMaterialWorkspace(
     designReferences?: DesignReference[];
     designerChoices?: DesignerChoices;
     autoPlan?: boolean;
+    prefill?: CoursePrefillState | null;
   },
 ) {
   const id = crypto.randomUUID();
