@@ -15,19 +15,26 @@ import { progressLibraryCourse } from "@/lib/library-course.functions";
 import { friendlyError } from "@/lib/friendly-error";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { Folder } from "lucide-react";
+import { catalogueSector } from "@/lib/catalogue-sectors";
 
 export function LibraryCourses({
   scope,
   stage,
+  search = "",
+  sector = null,
 }: {
   scope: "personal" | "admin";
-  stage: LibraryCourseStage;
+  stage?: LibraryCourseStage;
+  search?: string;
+  sector?: string | null;
 }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const confirm = useConfirm();
   const progress = useServerFn(progressLibraryCourse);
   const [busy, setBusy] = useState<string | null>(null);
+  const [opened, setOpened] = useState<string | null>(null);
   const courses = useQuery({
     queryKey: ["library-courses", scope, user?.id],
     enabled: !!user,
@@ -48,7 +55,15 @@ export function LibraryCourses({
         )
       ).data as unknown as LibraryCourse[],
   });
-  const records = (courses.data ?? []).filter((course) => libraryCourseStage(course) === stage);
+  const records = (courses.data ?? []).filter(
+    (course) =>
+      (!stage || libraryCourseStage(course) === stage) &&
+      (!search.trim() ||
+        (course.title + " " + course.description)
+          .toLowerCase()
+          .includes(search.trim().toLowerCase())) &&
+      (!sector || catalogueSector(course.category) === sector),
+  );
   const change = async (course: LibraryCourse, action: "complete" | "publish") => {
     if (busy) return;
     if (
@@ -91,16 +106,15 @@ export function LibraryCourses({
     }
   };
   return (
-    <section
-      className="mb-5 space-y-3"
-      aria-label={`${stage === "raw" ? "Unstarted imports" : stage === "drafts" ? "Draft courses" : "Completed courses"}`}
-    >
+    <section className="mb-5 space-y-3" aria-label="Imported course folders">
       <h2 className="text-sm font-semibold">
-        {stage === "raw"
-          ? "Imports not yet generated"
-          : stage === "drafts"
-            ? "Training in progress"
-            : "Completed training"}
+        {!stage
+          ? "Imported course folders"
+          : stage === "raw"
+            ? "Imports not yet generated"
+            : stage === "drafts"
+              ? "Training in progress"
+              : "Completed training"}
       </h2>
       {courses.isPending ? (
         <p role="status" className="supporting-text">
@@ -116,65 +130,107 @@ export function LibraryCourses({
       ) : (
         <>
           <p className="supporting-text text-muted-foreground">
-            {stage === "raw"
-              ? "These imports have no saved lessons yet. Their source files remain below when available."
-              : stage === "drafts"
-                ? "Saved lessons are working drafts until trainer review is recorded. Edit and review before marking Completed."
-                : "Reviewed courses can be published to the public Catalogue. Reusable file outputs appear below."}
+            {!stage
+              ? "Older course imports keep their own folder and preparation status. Raw files without saved source links stay in their separate lesson folders."
+              : stage === "raw"
+                ? "These imports have no saved lessons yet. Their source files remain below when available."
+                : stage === "drafts"
+                  ? "Saved lessons are working drafts until trainer review is recorded. Edit and review before marking Completed."
+                  : "Reviewed courses can be published to the public Catalogue. Reusable file outputs appear below."}
           </p>
           {!records.length && (
             <p className="supporting-text text-muted-foreground">
-              {stage === "produced"
-                ? "No reviewed courses are ready to publish yet."
-                : stage === "drafts"
-                  ? "No courses in progress."
-                  : "No empty course imports."}
+              {!stage
+                ? "No imported course folders match these filters."
+                : stage === "produced"
+                  ? "No reviewed courses are ready to publish yet."
+                  : stage === "drafts"
+                    ? "No courses in progress."
+                    : "No empty course imports."}
             </p>
           )}
-          {records.map((course) => (
-            <article
-              key={course.id}
-              className="flex flex-wrap items-center gap-3 rounded-lg border p-3"
-            >
-              <div className="min-w-0 flex-1">
-                <h3 className="break-words text-sm font-semibold">{course.title}</h3>
-                <p className="supporting-text text-muted-foreground">
-                  {course.studio_lessons[0]?.count ?? 0} lessons ·{" "}
-                  {course.published
-                    ? "Published"
-                    : stage === "produced"
-                      ? "Reviewed — not published"
-                      : stage === "drafts"
-                        ? "Draft — review required"
-                        : "Not generated"}
-                </p>
-              </div>
-              <Button asChild variant="outline" size="sm">
-                <Link to="/studio/$id" params={{ id: course.id }}>
-                  {course.published
-                    ? "View course"
-                    : stage === "raw"
-                      ? "Continue import"
-                      : "Edit and review"}
-                </Link>
-              </Button>
-              {stage === "drafts" && (
-                <Button size="sm" disabled={!!busy} onClick={() => void change(course, "complete")}>
-                  Mark Completed
-                </Button>
-              )}
-              {stage === "produced" && !course.published && (
-                <Button size="sm" disabled={!!busy} onClick={() => void change(course, "publish")}>
-                  Publish to Catalogue
-                </Button>
-              )}
-              {stage === "produced" && course.published && (
-                <Button asChild size="sm" variant="outline">
-                  <Link to="/search">Open Catalogue</Link>
-                </Button>
-              )}
-            </article>
-          ))}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {records.map((course) => {
+              const courseStage = libraryCourseStage(course);
+              const stage = courseStage;
+              return (
+                <article
+                  key={course.id}
+                  className="space-y-3 rounded-xl border border-yellow-200 bg-yellow-50 p-4"
+                >
+                  <button
+                    className="flex w-full items-start gap-3 text-left"
+                    aria-expanded={opened === course.id}
+                    onClick={() => setOpened(opened === course.id ? null : course.id)}
+                  >
+                    <Folder className="h-9 w-9 shrink-0 fill-yellow-300 text-yellow-500" />
+                    <div className="min-w-0 flex-1">
+                      <h3 className="break-words text-sm font-semibold">{course.title}</h3>
+                      <p className="supporting-text text-muted-foreground">
+                        {course.studio_lessons[0]?.count ?? 0} lessons ·{" "}
+                        {course.published
+                          ? "Published"
+                          : stage === "produced"
+                            ? "Reviewed — not published"
+                            : stage === "drafts"
+                              ? "Draft — review required"
+                              : "Not generated"}
+                      </p>
+                      <span
+                        className={`mt-2 inline-block rounded-full px-2 py-1 text-xs ${stage === "produced" ? "bg-emerald-100 text-emerald-900" : stage === "drafts" ? "bg-amber-100 text-amber-900" : "bg-muted text-muted-foreground"}`}
+                      >
+                        {stage === "produced"
+                          ? "Completed"
+                          : stage === "drafts"
+                            ? "Draft"
+                            : "Not started"}
+                      </span>
+                    </div>
+                  </button>
+                  {opened === course.id && (
+                    <div className="flex flex-wrap gap-2 border-t border-yellow-200 pt-3">
+                      <p className="supporting-text text-muted-foreground w-full">
+                        Original uploads remain in their lesson folders above. This course view does
+                        not infer source links from file names.
+                      </p>
+                      <Button asChild variant="outline" size="sm">
+                        <Link to="/studio/$id" params={{ id: course.id }}>
+                          {course.published
+                            ? "View course"
+                            : stage === "raw"
+                              ? "Continue import"
+                              : "Edit and review"}
+                        </Link>
+                      </Button>
+                      {stage === "drafts" && (
+                        <Button
+                          size="sm"
+                          disabled={!!busy}
+                          onClick={() => void change(course, "complete")}
+                        >
+                          Mark Completed
+                        </Button>
+                      )}
+                      {stage === "produced" && !course.published && (
+                        <Button
+                          size="sm"
+                          disabled={!!busy}
+                          onClick={() => void change(course, "publish")}
+                        >
+                          Publish to Catalogue
+                        </Button>
+                      )}
+                      {stage === "produced" && course.published && (
+                        <Button asChild size="sm" variant="outline">
+                          <Link to="/search">Open Catalogue</Link>
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
         </>
       )}
     </section>

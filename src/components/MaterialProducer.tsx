@@ -38,6 +38,10 @@ import { trainingHtml, readTrainingPackage } from "@/lib/training-html";
 import { trainingLessonBody } from "@/lib/training-html";
 import { portableMaterialText } from "@/lib/library-materials";
 import { buildLessonScormZip } from "@/lib/scorm-export";
+import { searchYouTubeVideo } from "@/lib/youtube-search.functions";
+import { trainingGenerationPlan, runTrainingGeneration } from "@/lib/training-generation";
+import { trainingImage } from "@/lib/training-image";
+import { DRAFT_MATERIAL_PREFIX } from "@/lib/lesson-material-folders";
 
 export function MaterialProducer({
   sources,
@@ -58,6 +62,9 @@ export function MaterialProducer({
   const confirm = useConfirm();
   const generate = useServerFn(generateTrainingTopic);
   const illustrate = useServerFn(generateTrainingIllustration);
+  const findVideo = useServerFn(searchYouTubeVideo);
+  const [includeImages, setIncludeImages] = useState(true);
+  const [includeVideos, setIncludeVideos] = useState(true);
   const [title, setTitle] = useState(initialTitle ?? sources[0]!.file_name.replace(/\.[^.]+$/, ""));
   const [instruction, setInstruction] = useState(
     "Teach every source topic. Preserve procedures, exceptions and responsibilities. Use varied learning components. Mark scenarios as hypothetical.",
@@ -195,19 +202,23 @@ export function MaterialProducer({
       );
       return;
     }
-    const chosen = topics.filter(
-      (t) =>
-        (!only || t.id === only) && cache.current[t.id]?.key !== topicKey(t, units, instruction),
+    const chosen = trainingGenerationPlan(
+      topics,
+      units,
+      cache.current,
+      instruction,
+      { images: includeImages, videos: includeVideos },
+      only,
     );
     if (!chosen.length) {
-      toast.info("Topics are current. Edit the outline or instructions to request new content.");
+      toast.info("The selected slides and media are current. Existing attachments are kept.");
       return;
     }
     if (
       !(await confirm({
         title: `Generate ${chosen.length} topic${chosen.length === 1 ? "" : "s"}?`,
-        description: `This uses ${chosen.length} AI requests from your allowance. Finished topics are kept if a later request fails. Keep this window open to retain progress. Nothing is published.`,
-        confirmLabel: "Generate planned slides",
+        description: `This plans ${chosen.filter((t) => t.slides).length} slide requests, ${chosen.filter((t) => t.image).length} image requests and up to ${chosen.filter((t) => t.video).length} video searches from your existing daily allowance. Image generation may incur normal AI charges. Existing slides and attachments are kept. Finished work is retained if a request fails. New media needs trainer review. Nothing is published.`,
+        confirmLabel: "Generate slides and media",
       }))
     )
       return;
@@ -216,35 +227,43 @@ export function MaterialProducer({
     setBusy(true);
     setDirty(true);
     try {
-      for (const [index, t] of chosen.entries()) {
-        if (stopped.current) break;
-        setProgress(`Generating topic ${index + 1} of ${chosen.length}: ${t.title}`);
-        const output = await generate({
-          data: {
-            title,
-            instruction,
-            topic: t,
-            budget: Math.min(
-              12000,
-              Math.max(
-                1200,
-                Math.floor(75000 / topics.length),
-                Math.ceil(
-                  units
-                    .filter((u) => t.unitIds.includes(u.id))
-                    .reduce((n, u) => n + u.text.length, 0) * 1.5,
+      const warnings = await runTrainingGeneration(chosen, {
+        stopped: () => stopped.current,
+        progress: setProgress,
+        slides: async (t) => {
+          const output = await generate({
+            data: {
+              title,
+              instruction,
+              topic: t,
+              budget: Math.min(
+                12000,
+                Math.max(
+                  1200,
+                  Math.floor(75000 / topics.length),
+                  Math.ceil(
+                    units
+                      .filter((u) => t.unitIds.includes(u.id))
+                      .reduce((n, u) => n + u.text.length, 0) * 1.5,
+                  ),
                 ),
               ),
-            ),
-            units: units.filter((u) => t.unitIds.includes(u.id)),
-          },
-        });
-        updateResult(t.id, {
-          key: topicKey(t, units, instruction),
-          body: output.body,
-          reviewed: false,
-        });
-      }
+              units: units.filter((u) => t.unitIds.includes(u.id)),
+            },
+          });
+          updateResult(t.id, {
+            key: topicKey(t, units, instruction),
+            body: output.body,
+            reviewed: false,
+          });
+        },
+        image: imageForTopic,
+        video: (t) =>
+          findVideo({ data: { query: `${t.title} ${t.objective} training`.slice(0, 120) } }),
+        attach: (id, patch) =>
+          setTopics((old) => old.map((t) => (t.id === id ? { ...t, ...patch } : t))),
+      });
+      if (warnings.length) setGenerationError(warnings.join(" "));
     } catch (e) {
       const message = friendlyError(
         e,
@@ -257,11 +276,11 @@ export function MaterialProducer({
       setProgress("");
     }
   };
-  const save = async () => {
-    if (!user || busy || problems.length || !title.trim()) return;
+  const save = async (asDraft = false) => {
+    if (!user || busy || (!asDraft && problems.length) || !title.trim()) return;
     setBusy(true);
     try {
-      const key = JSON.stringify(pkg);
+      const key = JSON.stringify([pkg, asDraft]);
       if (attempt.current?.key !== key) {
         const id = crypto.randomUUID();
         const name = (title.trim().replace(/[\\/:*?"<>|]/g, "-") || "Training") + ".html";
@@ -270,7 +289,7 @@ export function MaterialProducer({
           id,
           name,
           path: `${user.id}/library/produced/${id}/${name}`,
-          blob: new Blob([trainingHtml(pkg)], { type: "text/html;charset=utf-8" }),
+          blob: new Blob([trainingHtml(pkg, asDraft)], { type: "text/html;charset=utf-8" }),
         };
       }
       const out = attempt.current!;
@@ -288,7 +307,7 @@ export function MaterialProducer({
           _storage_path: out.path,
           _size_bytes: out.blob.size,
           _description:
-            `HTML training: ${topics.length} reviewed topics. Sources: ${sources.map((s) => s.file_name).join(", ")}`.slice(
+            `${asDraft ? DRAFT_MATERIAL_PREFIX : ""}HTML training: ${topics.length} ${asDraft ? "draft" : "reviewed"} topics. Sources: ${sources.map((s) => s.file_name).join(", ")}`.slice(
               0,
               4000,
             ),
@@ -298,7 +317,9 @@ export function MaterialProducer({
       if (registered.error) throw registered.error;
       if (registered.data !== out.id) throw new Error("Save not confirmed. Retry this output.");
       toast.success(
-        "HTML slides saved to Completed. Earlier outputs and Raw sources are preserved.",
+        asDraft
+          ? "Draft saved in its lesson folder. Raw sources and earlier versions are preserved."
+          : "Completed material saved in its lesson folder. Raw sources and earlier versions are preserved.",
       );
       onSaved();
     } catch (e) {
@@ -421,21 +442,24 @@ export function MaterialProducer({
   };
   const uploadImage = async (file: File) => {
     try {
-      if (!/^image\/(png|jpeg|webp)$/.test(file.type) || file.size > 8000000)
-        throw new Error("Choose a PNG, JPEG or WebP smaller than 8 MB.");
-      const bitmap = await createImageBitmap(file);
-      const scale = Math.min(1, 640 / Math.max(bitmap.width, bitmap.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-      canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-      bitmap.close();
-      const image = canvas.toDataURL("image/jpeg", 0.5);
-      if (image.length > 120000) throw new Error("Choose a smaller illustration.");
+      const image = await trainingImage(file);
       change({ image, mediaReviewed: false });
     } catch (e) {
       toast.error(friendlyError(e, "Could not read the image."));
     }
+  };
+  const imageForTopic = async (t: TrainingTopic) => {
+    const output = await illustrate({
+      data: {
+        sourceIds: sources.map((s) => s.id),
+        caption: `${t.title}. ${t.objective}. ${t.mediaPlan}. Source context: ${units
+          .filter((u) => t.unitIds.includes(u.id))
+          .map((u) => u.text)
+          .join(" ")}`.slice(0, 600),
+      },
+    });
+    const bytes = Uint8Array.from(atob(output.base64), (c) => c.charCodeAt(0));
+    return trainingImage(new File([bytes], "illustration.png", { type: "image/png" }));
   };
   const createIllustration = async () => {
     if (!topic || busy) return;
@@ -450,15 +474,9 @@ export function MaterialProducer({
       return;
     setBusy(true);
     try {
-      const output = await illustrate({
-        data: {
-          sourceIds: sources.map((s) => s.id),
-          caption: `${topic.title}. ${topic.mediaPlan}`.slice(0, 600),
-        },
-      });
-      const bytes = Uint8Array.from(atob(output.base64), (c) => c.charCodeAt(0));
-      await uploadImage(new File([bytes], "illustration.png", { type: "image/png" }));
+      const image = await imageForTopic(topic);
       change({
+        image,
         alt: `Illustration: ${topic.title}`,
         attribution: "AI-generated illustration — trainer review required",
         mediaReviewed: false,
@@ -505,6 +523,34 @@ export function MaterialProducer({
                 {topics.length} topics · {topics.reduce((n, t) => n + t.slides, 0)} planned slides.
                 Edit or combine the page-based starter topics before generating.
               </p>
+              <fieldset className="space-y-2 rounded-lg border p-3">
+                <legend className="text-sm font-semibold">Include supporting media</legend>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={includeImages}
+                    onChange={(e) => setIncludeImages(e.target.checked)}
+                  />
+                  Generate missing illustrations with AI
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={includeVideos}
+                    onChange={(e) => setIncludeVideos(e.target.checked)}
+                  />
+                  Find supporting YouTube videos
+                </label>
+                <p className="supporting-text text-muted-foreground">
+                  Generation fills missing media without replacing existing slides, images or
+                  videos. Each image and configured video search uses an additional allowance
+                  request. Videos are suggested sources, not verified teaching material.
+                </p>
+                <p className="supporting-text">
+                  Attached media: {topics.filter((t) => t.image).length} illustrations ·{" "}
+                  {topics.filter((t) => t.video).length} videos across {topics.length} topics.
+                </p>
+              </fieldset>
               {legacy && (
                 <p role="status">
                   The earlier output has no coverage outline and remains preserved in the Library.
@@ -865,6 +911,11 @@ export function MaterialProducer({
                         {results[t.id] ? parseLessonSlides(results[t.id]!.body).length : 0} /{" "}
                         {t.slides} slides · {t.tools.map((tool) => TOOL_LABELS[tool]).join(", ")}
                       </p>
+                      <p className="supporting-text">
+                        {t.image ? "Illustration attached" : "No illustration attached"} ·{" "}
+                        {t.video ? "Video attached" : "No video attached"}
+                        {(t.image || t.video) && !t.mediaReviewed ? " · Media review required" : ""}
+                      </p>
                       <label className="mt-2 flex gap-2">
                         <input
                           type="checkbox"
@@ -902,13 +953,16 @@ export function MaterialProducer({
               </Tabs>
               <div className="flex flex-wrap gap-2">
                 <Button disabled={!title.trim()} onClick={() => void run()}>
-                  Generate remaining topics
+                  Generate remaining topics and media
                 </Button>
                 <Button variant="outline" onClick={download}>
                   Download HTML {problems.length ? "draft" : "slides"}
                 </Button>
                 <Button variant="outline" onClick={saveDraft}>
                   Save progress in this browser
+                </Button>
+                <Button variant="outline" disabled={!title.trim()} onClick={() => void save(true)}>
+                  Save Draft to lesson folder
                 </Button>
                 <label className="block text-sm">
                   Open downloaded HTML draft
@@ -935,15 +989,16 @@ export function MaterialProducer({
                   Download SCORM text package
                 </Button>
                 <Button disabled={!!problems.length || !title.trim()} onClick={() => void save()}>
-                  Save HTML slides to Completed
+                  Save Completed material
                 </Button>
                 <Button variant="outline" onClick={() => void close()}>
                   Cancel
                 </Button>
               </div>
               <p className="supporting-text text-muted-foreground">
-                One AI request per topic. Images are uploaded or supplied by you; unavailable media
-                stays labelled as a placeholder. Saving does not publish a course.
+                Slides, illustrations and video searches use separate requests from the existing
+                allowance. If media cannot be attached, the reason is shown; placeholders are not
+                finished media. Saving does not publish a course.
               </p>
               {generationError && (
                 <p role="alert" className="rounded-lg border p-3 text-sm">

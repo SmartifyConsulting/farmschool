@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { producedMaterialStatus } from "@/lib/lesson-material-folders";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -97,7 +98,7 @@ export function LibraryMaterialPicker({
       if (data !== attempt.id) throw new Error("Copy not confirmed. Retry the same item.");
       toast.success(
         lesson
-          ? "Completed lesson copied into your draft curriculum."
+          ? "Produced material copied into your draft curriculum."
           : "File copied into your draft content library.",
       );
       await Promise.all([
@@ -115,7 +116,7 @@ export function LibraryMaterialPicker({
     <Tabs defaultValue="raw">
       <SectionTabsList aria-label="Curriculum material source">
         <SectionTabsTrigger value="raw">Raw Material</SectionTabsTrigger>
-        <SectionTabsTrigger value="produced">Completed</SectionTabsTrigger>
+        <SectionTabsTrigger value="produced">Produced material</SectionTabsTrigger>
         <SectionTabsTrigger value="courses">Other courses</SectionTabsTrigger>
       </SectionTabsList>
       {(["raw", "produced"] as const).map((stage) => (
@@ -179,6 +180,9 @@ export function LibraryMaterialPicker({
                     <div className="min-w-0 flex-1">
                       <p className="break-words text-sm font-medium">{file.file_name}</p>
                       <p className="text-sm text-muted-foreground">
+                        {file.material_stage === "produced"
+                          ? producedMaterialStatus(file) + " · "
+                          : "Raw material · "}
                         {libraryFolderPath(file.folder_id, library.folders) || "Root"}
                       </p>
                     </div>
@@ -212,7 +216,7 @@ export function LibraryMaterialPicker({
                   .includes(search.trim().toLowerCase()),
             ) && (
               <p className="py-4 text-sm text-muted-foreground">
-                No {stage === "raw" ? "Raw" : "Completed"} files match this search.
+                No {stage === "raw" ? "Raw" : "produced"} files match this search.
               </p>
             )}
         </TabsContent>
